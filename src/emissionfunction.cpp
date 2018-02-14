@@ -29,19 +29,16 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   phi_tab = phi_tab_in; phi_tab_length = phi_tab->getNumberOfRows();
   y_tab = y_tab_in; y_tab_length = y_tab->getNumberOfRows();
 
-  //a class member to hold 3D spectra for one species
+  //a class member to hold 3D spectra
   dN_pTdpTdphidy = new double [pT_tab_length * phi_tab_length * y_tab_length];
-  dN_ptdptdphidy_filename = "results/dN_ptdptdphidy.dat";
 
   // get control parameters
-  CALCULATEDED3P = paraRdr->getVal("calculate_dEd3p");
   INCLUDE_BULKDELTAF = paraRdr->getVal("turn_on_bulk");
   INCLUDE_MUB = paraRdr->getVal("turn_on_muB");
   INCLUDE_DELTAF = paraRdr->getVal("turn_on_shear");
   GROUPING_PARTICLES = paraRdr->getVal("grouping_particles");
   PARTICLE_DIFF_TOLERANCE = paraRdr->getVal("particle_diff_tolerance");
-  USE_HISTORIC_FORMAT = paraRdr->getVal("use_historic_format");
-  F0_IS_NOT_SMALL = paraRdr->getVal("f0_is_not_small");
+  //F0_IS_NOT_SMALL = paraRdr->getVal("f0_is_not_small");
   bulk_deltaf_kind = paraRdr->getVal("bulk_deltaf_kind");
 
   particles = particles_in;
@@ -53,15 +50,16 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   number_of_chosen_particles = chosen_particles_in->getNumberOfRows();
 
   chosen_particles_01_table = new int[Nparticles];
-  for (int n=0; n<Nparticles; n++) chosen_particles_01_table[n]=0;
-  for (int m=0; m<number_of_chosen_particles; m++)
+  for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
+
+  for (int m = 0; m < number_of_chosen_particles; m++)
   {
-    int monval = chosen_particles_in->get(1,m+1);
-    for (int n=0; n<Nparticles; n++)
+    int mc_id = chosen_particles_in->get(1, m + 1);
+    for (int n = 0; n < Nparticles; n++)
     {
-      if (particles[n].monval==monval)
+      if (particles[n].mc_id == mc_id)
       {
-        chosen_particles_01_table[n]=1;
+        chosen_particles_01_table[n] = 1;
         break;
       }
     }
@@ -105,12 +103,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
 EmissionFunctionArray::~EmissionFunctionArray()
 {
-  delete dN_ptdptdphidy;
-  if(CALCULATEDED3P == 1) delete dE_ptdptdphidy;
   delete[] chosen_particles_01_table;
   delete[] chosen_particles_sampling_table;
   delete bulkdf_coeff;
-  delete[] dN_pTdpTdphidy_3D; //for holding 3d spectra of one species
+  delete[] dN_pTdpTdphidy; //for holding 3d spectra
 }
 
 //this function reorganizes the loop structure again
@@ -392,19 +388,17 @@ void EmissionFunctionArray::write_dN_ptdptdphidy_toFile(int monval) //pass monte
 
 
 //*********************************************************************************************
-void EmissionFunctionArray::calculate_dN_ptdptdphidy_4all(int to_order)
+void EmissionFunctionArray::calculate_spectra()
 // Calculate dNArrays and flows for all particles given in chosen_particle file.
 {
-  cout << endl
-  << "****************************************************************"
-  << endl
-  << "Function calculate_dN_ptdptdphidy_4all started... " << endl;
+
+  cout << "calculate_spectra() has started... " << endl;
   Stopwatch sw;
   sw.tic();
 
   // loop over chosen particles
   particle_info* particle = NULL;
-  for (int m=0; m<number_of_chosen_particles; m++)
+  for (int m = 0; m < number_of_chosen_particles; m++)
   {
     int particle_idx = chosen_particles_sampling_table[m];
     particle = &particles[particle_idx];

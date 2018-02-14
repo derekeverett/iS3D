@@ -1,4 +1,3 @@
-// Ver 1.3.1
 
 #include <string>
 #include <ostream>

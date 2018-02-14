@@ -1,7 +1,3 @@
-/***********************************************************************
-ParameterReader class is used to simplify the process of reading parameters from an input file and/or from the command line.
-Version 1.01 (09-20-2011) Zhi Qiu
-***********************************************************************/
 
 #ifndef _ParameterReaderHeader
 #define _ParameterReaderHeader
@@ -14,7 +10,8 @@ using namespace std;
 class ParameterReader
 {
   private:
-    vector<string>* names; vector<double>* values; // store all parameter names and values
+    vector<string>* names;
+    vector<double>* values; // store all parameter names and values
     string removeComments(string str, string commentSymbol); // all substring after "symbol" in "str" will be removed
     void phraseEquationWithoutComments(string equation); // phrase an equation like "x=1", assume string has no comments
     long find(string name); // give the index of parameter with "name", or -1 if it does not exist
@@ -32,10 +29,3 @@ class ParameterReader
 
 
 #endif
-
-/***********************************************************************
-Changelog:
-09-20-2011: Ver1.01
- -- Bug fix: If the parameter file that is passed to the readFromFile function does not exist, the program stops instead of going into infinite loops.
-
-***********************************************************************/

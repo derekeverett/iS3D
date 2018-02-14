@@ -56,7 +56,7 @@ inline long irand(long LB, long RB)
 
 //**********************************************************************
 inline double drand(double LB, double RB)
-// Get random number with uniform distribution between LB and RB with 
+// Get random number with uniform distribution between LB and RB with
 // boundary-protection.
 {
   double width = RB-LB;
@@ -68,53 +68,4 @@ void GaussLegendre_getWeight(int npts,double* x,double* w, double A, double B, i
 
 void get_bin_average_and_count(istream& is, ostream& os, vector<double>* bins, long col_to_bin=0, void (*func)(vector<double>*)=NULL, long wanted_data_columns=-1, bool silence=false); // Note that col_to_bin starts with 1, and bins is assumed to be monotonically increasing
 
-// Seems to be included in gnu library already...
-// inline double asinh(double x) { return log(x + sqrt(x*x + 1)); }
-// inline double acosh(double x) { return x>0? log(x + sqrt(x*x - 1)) : -log(x + sqrt(x*x - 1)); }
-// inline double atanh(double x) { return 1.0/2.0*log((1+x)/(1-x)); }
-
-
 #endif
-
-
-
-/*----------------------------------------------------------------------
- Change logs:
-
- 04-26-2010:
- -- invertFunc, invertTable, stringToDoubles, readBlockData functions added.
- 04-25-2011:
- -- interpCubic function adxed.
- 12-17-2010:
- -- sixPoint2dInterp function adxed.
- 08-05-2011:
- -- Ver 1.1:
-    Functions adaptiveSimpsons and qiu_simpsons added. The qiu_simpsons function, when using 20 recursions, is 4 times faster than adaptiveSimpsons. The function used to test this is sin(2000*x), integrated on [0,1].
- 09-09-2011:
- -- Ver 1.2:
-    Function toLower added. It simply convert all letters in a string to lower case.
-    Function stringToDouble added.
-    Function trim added.
- 02-02-2012:
- -- Ver 1.2.1:
-    Function trim now also removes tabs besides spaces.
- 02-04-2012:
- -- Ver 1.5:
-    Functions added: interpCubic, binarySearch, formatedPrint, gamma_function,
-    interpLinearDirect, interpLinearMono, interpNearestDirect, interpNearestMono.
-    Function interpCubic is renamed to interpCubicMono.
- 03-14-2012:
- -- Ver 1.5.1:
-    Functions added: print_progressbar.
- 03-19-2012:
- -- Ver 1.6:
-    Functions added: display_logo, drand, irand, GaussLegendre_getweight, get_bin_average_and_count.
-    Function formatedPrint now accepts a stream argument.
- 03-19-2012:
- -- Ver 1.6.1:
-    Function get_bin_average_and_count can now average transformed data
-    that have different number of columns than the data directly read in.
- 03-23-2012:
- -- Ver 1.6.2:
-    Functions added: asinh, acosh, atanh.
------------------------------------------------------------------------*/
