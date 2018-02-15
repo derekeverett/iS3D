@@ -180,17 +180,17 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               double pn = (-1.0 / tau[icell_glb]) * mT * sinh(y - eta[icell_glb]); //contravariant
 
               //thermal equilibrium distributions - for viscous hydro
-              double pdotu = pt * ut[icell_glb] - px * ux[icell_glb] - py * uy[icell_glb] - (tau[icell_glb] * tau[icell_glb]) * pn * un[icell_glb]; //watch factors of tau from metric! is ueta read in as contravariant?
+              double pdotu = pt * ut[icell_glb] - px * ux[icell_glb] - py * uy[icell_glb] - (tau[icell_glb] * tau[icell_glb]) * pn * un[icell_glb]; //watch factors of tau from metric!
               double baryon_factor = 0.0;
               if (INCLUDE_BARYON) baryon_factor = Baryon[ipart] * muB[icell_glb];
               double exponent = (pdotu - baryon_factor) / T[icell_glb];
               double f0 = 1. / (exp(exponent) + sign);
-              double pdotdsigma = pt * dat[icell_glb] + px * dax[icell_glb] + py * day[icell_glb] + pn * dan[icell_glb]; //are these dax, day etc. the covariant components?
+              double pdotdsigma = pt * dat[icell_glb] - px * dax[icell_glb] - py * day[icell_glb] - pn * dan[icell_glb] * (tau[icell_glb] * tau[icell_glb]); //CHECK THESE METRIC FACTORS !
 
               //viscous corrections
               double delta_f_shear = 0.0;
               double tau2 = tau[icell_glb] * tau[icell_glb];
-              double tau4 = tau[icell_glb] * tau[icell_glb] * tau[icell_glb] * tau[icell_glb];
+              double tau4 = tau2 * tau2;
               //double pimunu_pmu_pnu = (pt * pt * pitt[icell_glb] - 2.0 * pt * px * pitx[icell_glb] - 2.0 * pt * py * pity[icell_glb] + px * px * pixx[icell_glb] + 2.0 * px * py * pixy[icell_glb] + py * py * piyy[icell_glb] + pn * pn * pinn[icell_glb]);
               pimunu_pmu_pnu = pitt[icell_glb] * pt * pt + pixx[icell_glb] * px * px + piyy[icell_glb] * py * py + pinn[icell_glb] * pn * pn * (1.0 / tau4)
               + 2.0 * (-pitx[icell_glb] * pt * px - pity[icell_glb] * pt * py - pitn[icell_glb] * pt * pn * (1.0 / tau2) + pixy[icell_glb] * px * py + pixn[icell_glb] * px * pn * (1.0 / tau2) + piyn[icell_glb] * py * pn * (1.0 / tau2));
@@ -199,9 +199,11 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               //put fourteen moment expression for bulk viscosity (\delta)f here
               double delta_f_baryondiff = 0.0;
               //put fourteen moment expression for baryon diffusion (\delta)f here
+
+              //WHAT IS RATIO - CHANGE THIS ?
               double ratio = min(1., fabs(1. / (delta_f_shear + delta_f_bulk + delta_f_baryondiff)));
               long long int ir = icell + (FO_chunk * ipart) + (FO_chunk * npart * ipT) + (FO_chunk * npart * pT_tab_length * iphip) + (FO_chunk * npart * pT_tab_length * phi_tab_length * iy);
-              dN_pTdpTdphidy_all[ir] = (prefactor * Degen[ipart] * pdotdsigma * tau[icell] * f0 * (1. + (delta_f_shear + delta_f_bulk + delta_f_baryondiff) * ratio));
+              dN_pTdpTdphidy_all[ir] = (prefactor * Degen[ipart] * pdotdsigma * tau[icell_glb] * f0 * (1. + (delta_f_shear + delta_f_bulk + delta_f_baryondiff) * ratio));
             } //iy
           } //iphip
         } //ipT

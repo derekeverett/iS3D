@@ -31,13 +31,14 @@ typedef struct
 
 typedef struct
 {
-   double tau, x, y, eta; //spacetime position
-   double dat, dax, day, dan; //covariant surface normal vector
-   double ut, ux, uy, un; //covariant flow velocity
+   double tau, x, y, eta; //contravariant spacetime position
+   double dat, dax, day, dan; //contravariant surface normal vector
+   double ut, ux, uy, un; //contravariant flow velocity
    double E, T, P; //energy density, Temperature and Pressure
-   double Bn, muB, muS; //what is Bn? Baryon Chemical potential and Strangeness chem. pot.
-   double pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn; //covariant components of shear stress
+   double pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn; //contravariant components of shear stress
    double bulkPi; //bulk pressure
+   double muB, muS; //baryon chemical potential, strangeness chem. pot.
+   double nB, Vt, Vx, Vy, Vn; //baryon number density, contravariant baryon diffusion current 
 } FO_surf;
 
 class read_FOdata

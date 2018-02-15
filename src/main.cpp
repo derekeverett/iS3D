@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
   cout << "Finished reading freezeout surface!" << endl;
 
-  Table chosen_particles("EOS/chosen_particles.dat"); // skip others except for these particle
+  Table chosen_particles("PDG/chosen_particles.dat"); // skip others except for these particle
   Table pT_tab("tables/pT_gauss_table.dat"); // pt value and weight table
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!

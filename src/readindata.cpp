@@ -49,7 +49,7 @@ void read_FOdata::read_surf_switch(int length, FO_surf* surf_ptr)
   return;
 }
 
-//THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! Baryon chemical potential is at the end ...
+//THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! baryon number, baryon chemical potential at the end...
 void read_FOdata::read_surf_VH(long length, FO_surf* surf_ptr)
 {
   ostringstream surfdat_stream;
@@ -58,7 +58,7 @@ void read_FOdata::read_surf_VH(long length, FO_surf* surf_ptr)
   ifstream surfdat(surfdat_stream.str().c_str());
   for (long i = 0; i < length; i++)
   {
-    // freeze out spacetime position
+    // contravariant spacetime position
     surfdat >> surf_ptr[i].tau;
     surfdat >> surf_ptr[i].x;
     surfdat >> surf_ptr[i].y;
@@ -89,7 +89,7 @@ void read_FOdata::read_surf_VH(long length, FO_surf* surf_ptr)
     //if (include_shear_deltaf)
     //{
       surfdat >> dummy;
-      surf_ptr[i].pitt = dummy * hbarC;
+      surf_ptr[i].pitt = dummy * hbarC; //ten contravariant components of shear stress tensor
       surfdat >> dummy;
       surf_ptr[i].pitx = dummy * hbarC;
       surfdat >> dummy;
@@ -112,17 +112,19 @@ void read_FOdata::read_surf_VH(long length, FO_surf* surf_ptr)
     //if (include_bulk_deltaf)
     //{
       surfdat >> dummy;
-      surf_ptr[i].bulkPi = dummy * hbarC;
+      surf_ptr[i].bulkPi = dummy * hbarC; //bulk pressure
     //}
     if (include_baryon)
     {
       surfdat >> dummy;
-      surf_ptr[i].muB = dummy * hbarC;
+      surf_ptr[i].muB = dummy * hbarC; //baryon chemical potential
     }
     if (include_baryondiff_deltaf)
     {
       surfdat >> dummy;
-      surf_ptr[i].Vt = dummy * hbarC;
+      surf_ptr[i].nB = dummy * hbarC; //baryon density
+      surfdat >> dummy;
+      surf_ptr[i].Vt = dummy * hbarC; //four contravariant components of baryon diffusion vector
       surfdat >> dummy;
       surf_ptr[i].Vx = dummy * hbarC;
       surfdat >> dummy;
@@ -145,7 +147,7 @@ int read_FOdata::read_resonances_list(particle_info* particle)
   double eps = 1e-15;
   int Nparticle=0;
   cout << " -- Read in particle resonance decay table...";
-  ifstream resofile("EOS/pdg.dat");
+  ifstream resofile("PDG/pdg.dat");
   int local_i = 0;
   int dummy_int;
   while (!resofile.eof())
