@@ -121,7 +121,6 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
   double *pitt, double *pitx, double *pity, double *pitn, double *pixx, double *pixy, double *pixn, double *piyy, double *piyn, double *pinn, double *bulkPi,
   double *muB, double *Vt, double *Vx, double *Vy, double *Vn)
 {
-
   double prefactor = 1.0 / (8.0 double * (M_PI *M _PI * M_PI)) / hbarC / hbarC / hbarC;
   int FO_chunk = 10000;
 
@@ -190,9 +189,11 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
               //viscous corrections
               double delta_f_shear = 0.0;
+              double tau2 = tau[icell_glb] * tau[icell_glb];
+              double tau4 = tau[icell_glb] * tau[icell_glb] * tau[icell_glb] * tau[icell_glb];
               //double pimunu_pmu_pnu = (pt * pt * pitt[icell_glb] - 2.0 * pt * px * pitx[icell_glb] - 2.0 * pt * py * pity[icell_glb] + px * px * pixx[icell_glb] + 2.0 * px * py * pixy[icell_glb] + py * py * piyy[icell_glb] + pn * pn * pinn[icell_glb]);
-              pimunu_pmu_pnu = pitt[icell_glb] * pt * pt + pixx[icell_glb] * px * px + piyy[icell_glb] * py * py + pinn[icell_glb] * pn * pn
-              + 2.0 * (pitx[icell_glb] * pt * px + pity[icell_glb] * pt * py + pitn[icell_glb] * pt * pn + pixy[icell_glb] * px * py + pixn[icell_glb] * px * pn + piyn[icell_glb] * py * pn);
+              pimunu_pmu_pnu = pitt[icell_glb] * pt * pt + pixx[icell_glb] * px * px + piyy[icell_glb] * py * py + pinn[icell_glb] * pn * pn * (1.0 / tau4)
+              + 2.0 * (-pitx[icell_glb] * pt * px - pity[icell_glb] * pt * py - pitn[icell_glb] * pt * pn * (1.0 / tau2) + pixy[icell_glb] * px * py + pixn[icell_glb] * px * pn * (1.0 / tau2) + piyn[icell_glb] * py * pn * (1.0 / tau2));
               delta_f_shear = ((1.0 - Sign[ipart] * f0) * pimunu_pmu_pnu * shear_deltaf_prefactor);
               double delta_f_bulk = 0.0;
               //put fourteen moment expression for bulk viscosity (\delta)f here
