@@ -13,22 +13,18 @@ class EmissionFunctionArray
 private:
   ParameterReader* paraRdr;
 
-  int INCLUDE_BULKDELTAF, INCLUDE_DELTAF;
-  int INCLUDE_MUB;
-  int bulk_deltaf_kind;
-  int GROUPING_PARTICLES;
+  int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
+  int INCLUDE_BARYON;
+  int GROUP_PARTICLES;
   double PARTICLE_DIFF_TOLERANCE;
-  int F0_IS_NOT_SMALL;
 
-  Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
+  Table *pT_tab, *phi_tab, *y_tab;
   int pT_tab_length, phi_tab_length, y_tab_length;
   long FO_length;
-  Table *dN_ptdptdphidy;
   double *dN_pTdpTdphidy; //to hold 3D spectra of one species
   int number_of_chosen_particles;
-  int Nparticles;
   particle_info* particles;
-  FO_surf* FOsurf_ptr;
+  FO_surf* surf_ptr;
   int last_particle_idx; // store the last particle index being used by calculate_dN_ptdptdphidy function
   bool particles_are_the_same(int, int);
 
@@ -41,9 +37,7 @@ public:
 
   void calculate_dN_ptdptdphidy(int); //again changed array handling
   void write_dN_ptdptdphidy_toFile(int); //write 3D spectra to file
-
-  void calculate_dN_ptdptdphidy_4all(int to_order=9);
-  void getbulkvisCoefficients(double Tdec, double* bulkvisCoefficients);
+  void calculate_spectra();
 
 };
 

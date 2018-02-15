@@ -33,32 +33,17 @@ int main(int argc, char *argv[])
   string pathToOutput = "results";
 
   //load freeze out information
-  //where is the switch that determines the type of FO file?
   read_FOdata freeze_out_data(paraRdr, pathToInput);
 
   long FO_length = 0;
-  FO_length = freeze_out_data.get_number_of_freezeout_cells();
+  FO_length = freeze_out_data.get_number_cells();
   cout << "Total number of freezeout cells: " <<  FO_length << endl;
 
   FO_surf* surf_ptr = new FO_surf[FO_length];
 
-  //WHAT IS PARTICLE MU?
-  /*
-  for(int i=0; i<FO_length; i++)
-  {
-    for(int j=0; j<Maxparticle; j++)
-    {
-      FOsurf_ptr[i].particle_mu[j] = 0.0e0;
-    }
-  }
-  */
+  freeze_out_data.read_surf_switch(FO_length, surf_ptr);
 
-  freeze_out_data.read_in_freeze_out_data(FO_length, surf_ptr);
-
-  //WHAT CHEMICAL POTENTIAL IS THIS?
-  //read the chemical potential on the freeze out surface
   particle_info *particle = new particle_info [Maxparticle];
-  int Nparticle = freeze_out_data.read_in_chemical_potentials(path, FO_length, FOsurf_ptr, particle);
 
   cout << "Finished reading freezeout surface!" << endl;
 
@@ -67,7 +52,7 @@ int main(int argc, char *argv[])
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
 
-  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, particle, Nparticle, surf_ptr, FO_length);
+  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, particle, surf_ptr, FO_length);
 
   efa.calculate_spectra();
 

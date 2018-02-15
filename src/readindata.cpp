@@ -19,9 +19,11 @@ read_FOdata::read_FOdata(ParameterReader* paraRdr_in, string path_in)
 {
   paraRdr = paraRdr_in;
   pathToInput = path_in;
-  mode = paraRdr->getVal("hydro_mode");
-  turn_on_bulk = paraRdr->getVal("turn_on_bulk");
-  turn_on_muB = paraRdr->getVal("turn_on_muB");
+  mode = paraRdr->getVal("mode"); //this determines whether the file read in has viscous hydro dissipative currents or viscous anisotropic dissipative currents
+  include_baryon = paraRdr->getVal("include_baryon");
+  include_bulk_deltaf = paraRdr->getVal("include_bulk_deltaf");
+  include_shear_deltaf = paraRdr->getVal("include_shear_deltaf");
+  include_baryondiff_deltaf = paraRdr->getVal("include_baryondiff_deltaf");
 }
 
 read_FOdata::~read_FOdata()
@@ -29,29 +31,26 @@ read_FOdata::~read_FOdata()
 
 }
 
-int read_FOdata::get_number_of_freezeout_cells()
+int read_FOdata::get_number_cells()
 {
   int number_of_cells = 0;
   //add more options for types of FO file
-  else if (mode == 2) // outputs from MUSIC full (3+1)-d
-  {
-    ostringstream surface_file;
-    surface_file << pathToInput << "/surface.dat";
-    Table block_file(surface_file.str().c_str());
-    number_of_cells = block_file.getNumberOfRows();
-  }
+  ostringstream surface_file;
+  surface_file << pathToInput << "/surface.dat";
+  Table block_file(surface_file.str().c_str());
+  number_of_cells = block_file.getNumberOfRows();
   return(number_of_cells);
 }
 
-void read_FOdata::read_in_freeze_out_data(int length, FO_surf* surf_ptr)
+void read_FOdata::read_surf_switch(int length, FO_surf* surf_ptr)
 {
-  if (mode == 2)   // MUSIC full (3+1)-d outputs
-  read_FOsurfdat_MUSIC(length, surf_ptr);
-  //put more options here
+  if (mode == 1) read_surf_VH(length, surf_ptr); //surface file containing viscous hydro dissipative currents
+  else if (mode == 2) read_surf_VAH(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents
   return;
 }
 
-void read_FOdata::read_FOsurfdat_MUSIC(long length, FO_surf* surf_ptr)
+//THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! Baryon chemical potential is at the end ...
+void read_FOdata::read_surf_VH(long length, FO_surf* surf_ptr)
 {
   ostringstream surfdat_stream;
   double dummy;
@@ -59,19 +58,19 @@ void read_FOdata::read_FOsurfdat_MUSIC(long length, FO_surf* surf_ptr)
   ifstream surfdat(surfdat_stream.str().c_str());
   for (long i = 0; i < length; i++)
   {
-    // freeze out position
+    // freeze out spacetime position
     surfdat >> surf_ptr[i].tau;
     surfdat >> surf_ptr[i].x;
     surfdat >> surf_ptr[i].y;
     surfdat >> surf_ptr[i].eta;
 
-    // freeze out normal vectors
+    // contravariant surface normal vector
     surfdat >> surf_ptr[i].dat;
     surfdat >> surf_ptr[i].dax;
     surfdat >> surf_ptr[i].day;
     surfdat >> surf_ptr[i].dan;
 
-    // flow velocity
+    // contravariant flow velocity
     surfdat >> surf_ptr[i].ut;
     surfdat >> surf_ptr[i].ux;
     surfdat >> surf_ptr[i].uy;
@@ -79,49 +78,66 @@ void read_FOdata::read_FOsurfdat_MUSIC(long length, FO_surf* surf_ptr)
 
     // thermodynamic quantities at freeze out
     surfdat >> dummy;
-    surf_ptr[i].E = dummy * hbarC;
+    surf_ptr[i].E = dummy * hbarC; //energy density
     surfdat >> dummy;
-    surf_ptr[i].T = dummy * hbarC;
+    surf_ptr[i].T = dummy * hbarC; //Temperature
     surfdat >> dummy;
-    surf_ptr[i].muB = dummy * hbarC;
-    surfdat >> dummy;                    //(e+p)/T
-    surf_ptr[i].P = dummy * surf_ptr[i].T - surf_ptr[i].E;
-    surf_ptr[i].Bn = 0.0; //what is this?
-    surf_ptr[i].muS = 0.0;
+    surf_ptr[i].P = dummy * hbarC; //pressure
 
+    //file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
     // dissipative quantities at freeze out
-    surfdat >> dummy;
-    surf_ptr[i].pitt = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pitx = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pity = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pitn = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pixx = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pixy = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pixn = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].piyy = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].piyn = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pinn = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].bulkPi = dummy * hbarC;
-    if(turn_on_muB == 1)
+    //if (include_shear_deltaf)
+    //{
+      surfdat >> dummy;
+      surf_ptr[i].pitt = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].pitx = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].pity = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].pitn = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].pixx = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].pixy = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].pixn = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].piyy = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].piyn = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].pinn = dummy * hbarC;
+    //}
+    //if (include_bulk_deltaf)
+    //{
+      surfdat >> dummy;
+      surf_ptr[i].bulkPi = dummy * hbarC;
+    //}
+    if (include_baryon)
     {
       surfdat >> dummy;
       surf_ptr[i].muB = dummy * hbarC;
     }
-    else
-    surf_ptr[i].muB = 0.0;
+    if (include_baryondiff_deltaf)
+    {
+      surfdat >> dummy;
+      surf_ptr[i].Vt = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].Vx = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].Vy = dummy * hbarC;
+      surfdat >> dummy;
+      surf_ptr[i].Vn = dummy * hbarC;
+    }
+
   }
   surfdat.close();
   return;
+}
+
+void read_FOdata::read_surf_VAH(long length, FO_surf* surf_ptr)
+{
 }
 
 int read_FOdata::read_resonances_list(particle_info* particle)

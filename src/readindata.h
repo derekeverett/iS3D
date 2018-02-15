@@ -31,14 +31,13 @@ typedef struct
 
 typedef struct
 {
-   double tau, x, y, eta;
-   double dat, dax, day, dan;
-   double ut, ux, uy, un;
-   double E, T, P;
-   double Bn, muB, muS; //what is Bn? we won't need muS ...
-   double pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn;
-   double bulkPi;
-   double particle_mu[Maxparticle]; //WHAT IS THIS?
+   double tau, x, y, eta; //spacetime position
+   double dat, dax, day, dan; //covariant surface normal vector
+   double ut, ux, uy, un; //covariant flow velocity
+   double E, T, P; //energy density, Temperature and Pressure
+   double Bn, muB, muS; //what is Bn? Baryon Chemical potential and Strangeness chem. pot.
+   double pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn; //covariant components of shear stress
+   double bulkPi; //bulk pressure
 } FO_surf;
 
 class read_FOdata
@@ -46,22 +45,21 @@ class read_FOdata
     private:
         ParameterReader* paraRdr;
         string pathToInput;
-        int mode;
-        int turn_on_bulk;
-        int turn_on_muB;
+        int mode; //type of freezeout surface, VH or VAH
+        int include_baryon; //switch to turn on/off baryon chemical potential
+        int include_bulk_deltaf; //switch to turn on/off (\delta)f correction from bulk viscosity
+        int include_shear_deltaf; //switch to turn on/off (\delta)f correction from shear viscosity
+        int include_baryondiff_deltaf; //switch to turn on/off (\delta)f correction from baryon diffusion
 
     public:
         read_FOdata(ParameterReader* paraRdr_in, string pathToInput);
         ~read_FOdata();
 
-        int get_number_of_freezeout_cells();
-        void read_in_freeze_out_data(int length, FO_surf* surf_ptr);
-        int read_in_chemical_potentials(string pathToInput, int FO_length, FO_surf* surf_ptr, particle_info* particle_ptr); //what chemical potentials are these?
-        void read_decdat(int length, FO_surf* surf_ptr);
-        void read_surfdat(int length, FO_surf* surf_ptr);
-        void read_FOsurfdat(int length, FO_surf* surf_ptr);
+        int get_number_cells();
+        void read_surf_switch(long length, FO_surf* surf_ptr);
+        void read_surf_VH(long length, FO_surf* surf_ptr);
+        void read_surf_VAH(long length, FO_surf* surf_ptr);
         int read_resonances_list(particle_info* particle);
-        void calculate_particle_mu(int Nparticle, FO_surf* FOsurf_ptr, int FO_length, particle_info* particle, double** particle_mu);
 };
 
 #endif

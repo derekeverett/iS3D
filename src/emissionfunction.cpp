@@ -22,36 +22,55 @@ using namespace std;
 
 
 // Class EmissionFunctionArray ------------------------------------------
-EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, particle_info* particles_in, int Nparticles_in, FO_surf* FOsurf_ptr_in, long FO_length_in)
+EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, particle_info* particles_in, FO_surf* surf_ptr_in, long FO_length_in)
 {
   paraRdr = paraRdr_in;
-  pT_tab = pT_tab_in; pT_tab_length = pT_tab->getNumberOfRows();
-  phi_tab = phi_tab_in; phi_tab_length = phi_tab->getNumberOfRows();
-  y_tab = y_tab_in; y_tab_length = y_tab->getNumberOfRows();
-
-  //a class member to hold 3D spectra
-  dN_pTdpTdphidy = new double [pT_tab_length * phi_tab_length * y_tab_length];
+  pT_tab = pT_tab_in;
+  pT_tab_length = pT_tab->getNumberOfRows();
+  phi_tab = phi_tab_in;
+  phi_tab_length = phi_tab->getNumberOfRows();
+  y_tab = y_tab_in;
+  y_tab_length = y_tab->getNumberOfRows();
 
   // get control parameters
-  INCLUDE_BULKDELTAF = paraRdr->getVal("turn_on_bulk");
-  INCLUDE_MUB = paraRdr->getVal("turn_on_muB");
-  INCLUDE_DELTAF = paraRdr->getVal("turn_on_shear");
-  GROUPING_PARTICLES = paraRdr->getVal("grouping_particles");
+  INCLUDE_BARYON = paraRdr->getVal("include_baryon");
+  INCLUDE_BULK_DELTAF = paraRdr->getVal("include_bulk_deltaf");
+  INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
+  INCLUDE_BARYONDIFF_DELTAF = paraRdr->getVal("include_baryondiff_deltaf");
+  GROUP_PARTICLES = paraRdr->getVal("group_particles");
   PARTICLE_DIFF_TOLERANCE = paraRdr->getVal("particle_diff_tolerance");
-  //F0_IS_NOT_SMALL = paraRdr->getVal("f0_is_not_small");
-  bulk_deltaf_kind = paraRdr->getVal("bulk_deltaf_kind");
 
   particles = particles_in;
-  Nparticles = Nparticles_in;
-
-  FOsurf_ptr = FOsurf_ptr_in;
+  surf_ptr = surf_ptr_in;
   FO_length = FO_length_in;
-
   number_of_chosen_particles = chosen_particles_in->getNumberOfRows();
 
-  chosen_particles_01_table = new int[Nparticles];
-  for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
+  chosen_particles_table = new int[Nparticles];
+  //a class member to hold 3D spectra for all chosen particles
+  dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
 
+  for (int n = 0; n < Nparticles; n++) chosen_particles_table[n] = 0;
+
+  //only grab chosen particles from the table
+  for (int m = 0; m < number_of_chosen_particles; m++)
+  { //loop over all chosen particles
+    int mc_id = chosen_particles_in->get(1, m + 1);
+
+    for (int n = 0; n < Nparticles; n++)
+    {
+      if (particles[n].mc_id == mc_id)
+      {
+        chosen_particles_table[n] = 1;
+        break;
+      }
+    }
+  }
+
+  //is this necessary???
+  // next, for sampling processes
+  chosen_particles_sampling_table = new int[number_of_chosen_particles];
+  // first copy the chosen_particles table, but now using indices instead of mc_id
+  int current_idx = 0;
   for (int m = 0; m < number_of_chosen_particles; m++)
   {
     int mc_id = chosen_particles_in->get(1, m + 1);
@@ -59,78 +78,52 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     {
       if (particles[n].mc_id == mc_id)
       {
-        chosen_particles_01_table[n] = 1;
-        break;
-      }
-    }
-  }
-  // next, for sampling processes
-  chosen_particles_sampling_table = new int[number_of_chosen_particles];
-  // first copy the chosen_particles table, but now using indices instead of monval
-  int current_idx = 0;
-  for (int m=0; m<number_of_chosen_particles; m++)
-  {
-    int monval = chosen_particles_in->get(1,m+1);
-    for (int n=0; n<Nparticles; n++)
-    {
-      if (particles[n].monval==monval)
-      {
         chosen_particles_sampling_table[current_idx] = n;
         current_idx ++;
         break;
       }
     }
   }
+
   // next re-order them so that particles with similar mass are adjacent
-  if (GROUPING_PARTICLES == 1) // sort particles according to their mass; bubble-sorting
+  if (GROUP_PARTICLES == 1) // sort particles according to their mass; bubble-sorting
   {
-    for (int m=0; m<number_of_chosen_particles; m++)
-      for (int n=0; n<number_of_chosen_particles-m-1; n++)
-        if (particles[chosen_particles_sampling_table[n]].mass > particles[chosen_particles_sampling_table[n+1]].mass)
+    for (int m = 0; m < number_of_chosen_particles; m++)
+    {
+      for (int n = 0; n < number_of_chosen_particles - m - 1; n++)
+      {
+        if (particles[chosen_particles_sampling_table[n]].mass > particles[chosen_particles_sampling_table[n + 1]].mass)
         {
           // swap them
-          int particle_idx = chosen_particles_sampling_table[n+1];
-          chosen_particles_sampling_table[n+1] = chosen_particles_sampling_table[n];
+          int particle_idx = chosen_particles_sampling_table[n + 1];
+          chosen_particles_sampling_table[n + 1] = chosen_particles_sampling_table[n];
           chosen_particles_sampling_table[n] = particle_idx;
         }
+      }
+    }
   }
   last_particle_idx = -1;
-
-  //arrays for bulk delta f coefficients
-  bulkdf_coeff = new Table ("tables/BulkDf_Coefficients_Hadrons_s95p-v0-PCE.dat");
 }
 
 
 EmissionFunctionArray::~EmissionFunctionArray()
 {
-  delete[] chosen_particles_01_table;
+  delete[] chosen_particles_table;
   delete[] chosen_particles_sampling_table;
-  delete bulkdf_coeff;
-  delete[] dN_pTdpTdphidy; //for holding 3d spectra
+  delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
 }
 
-//this function reorganizes the loop structure again
+//this is where the magic happens
 //try acceleration via omp threads and simd, as well as openacc
-void EmissionFunctionArray::calculate_dN_ptdptdphidy(int particle_idx)
+void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign, double *Degen, double *Baryon,
+  double *T, double *P, double *E, double *tau, double *eta, double *ut, double *ux, double *uy, double *un,
+  double *dat, double *dax, double *day, double *dan,
+  double *pitt, double *pitx, double *pity, double *pitn, double *pixx, double *pixy, double *pixn, double *piyy, double *piyn, double *pinn, double *bulkPi,
+  double *muB, double *Vt, double *Vx, double *Vy, double *Vn)
 {
-  last_particle_idx = particle_idx;
-  particle_info* particle;
-  particle = &particles[particle_idx];
 
-  double mass = particle->mass;
-  double sign = particle->sign;
-  double degen = particle->gspin;
-  int baryon = particle->baryon;
-
-  double prefactor = 1.0/(8.0*(M_PI*M_PI*M_PI))/hbarC/hbarC/hbarC;
-
-  FO_surf* surf = &FOsurf_ptr[0];
-
+  double prefactor = 1.0 / (8.0 double * (M_PI *M _PI * M_PI)) / hbarC / hbarC / hbarC;
   int FO_chunk = 10000;
-
-  double *bulkvisCoefficients;
-  if (bulk_deltaf_kind == 0) bulkvisCoefficients = new double [3];
-  else bulkvisCoefficients = new double [2];
 
   double trig_phi_table[phi_tab_length][2]; // 2: 0,1-> cos,sin
   for (int j = 0; j < phi_tab_length; j++)
@@ -139,251 +132,138 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(int particle_idx)
     trig_phi_table[j][0] = cos(phi);
     trig_phi_table[j][1] = sin(phi);
   }
-  //fill arrays with values points in pT and y, don't need phip values but cos(phip)/sin(phip) which are in trig table
+  //fill arrays with values points in pT and y
   double pTValues[pT_tab_length];
   double yValues[y_tab_length];
+  for (int ipT = 0; ipT < pT_tab_length; ipT++) pTValues[ipT] = pT_tab->get(1, ipT + 1);
+  for (int iy = 0; iy < y_tab_length; iy++) yValues[iy] = y_tab->get(1, iy + 1);
 
-  for (int ipT = 0; ipT < pT_tab_length; ipT++)
-  {
-    pTValues[ipT] = pT_tab->get(1, ipT + 1);
-  }
-
-  for (int iy = 0; iy < y_tab_length; iy++)
-  {
-    yValues[iy] = y_tab->get(1, iy + 1);
-  }
-
-  //now fill arrays with surface info
-  double *Tdec, *Pdec, *Edec, *mu, *tau, *eta, *utau, *ux, *uy, *ueta;
-  double *datau, *dax, *day, *daeta, *pi00, *pi01, *pi02, *pi11, *pi12, *pi22, *pi33;
-  double *muB, *bulkPi;
-
-  Tdec = (double*)calloc(FO_length, sizeof(double));
-  Pdec = (double*)calloc(FO_length, sizeof(double));
-  Edec = (double*)calloc(FO_length, sizeof(double));
-  mu = (double*)calloc(FO_length, sizeof(double));
-  tau = (double*)calloc(FO_length, sizeof(double));
-  eta = (double*)calloc(FO_length, sizeof(double));
-  utau = (double*)calloc(FO_length, sizeof(double));
-  ux = (double*)calloc(FO_length, sizeof(double));
-  uy = (double*)calloc(FO_length, sizeof(double));
-  ueta = (double*)calloc(FO_length, sizeof(double));
-
-  datau = (double*)calloc(FO_length, sizeof(double));
-  dax = (double*)calloc(FO_length, sizeof(double));
-  day = (double*)calloc(FO_length, sizeof(double));
-  daeta = (double*)calloc(FO_length, sizeof(double));
-  pi00 = (double*)calloc(FO_length, sizeof(double));
-  pi01 = (double*)calloc(FO_length, sizeof(double));
-  pi02 = (double*)calloc(FO_length, sizeof(double));
-  pi11 = (double*)calloc(FO_length, sizeof(double));
-  pi12 = (double*)calloc(FO_length, sizeof(double));
-  pi22 = (double*)calloc(FO_length, sizeof(double));
-  pi33 = (double*)calloc(FO_length, sizeof(double));
-
-  muB = (double*)calloc(FO_length, sizeof(double));
-  bulkPi = (double*)calloc(FO_length, sizeof(double));
-
-  //this should be moved outside this function so that it is not done redundantly for every particle inside particle loop
-  //also it should only be copied once to the gpu ... !
-  //#pragma omp parallel for
-  for (int icell = 0; icell < FO_length; icell++)
-  {
-    //reading info from surface
-    surf = &FOsurf_ptr[icell];
-    Tdec[icell] = surf->Tdec;
-    Pdec[icell] = surf->Pdec;
-    Edec[icell] = surf->Edec;
-    mu[icell] = surf->particle_mu[last_particle_idx];
-    tau[icell] = surf->tau;
-    eta[icell] = surf->eta;
-    utau[icell] = surf->u0;
-    ux[icell] = surf->u1;
-    uy[icell] = surf->u2;
-    ueta[icell] = surf->u3;
-    datau[icell] = surf->da0;
-    dax[icell] = surf->da1;
-    day[icell] = surf->da2;
-    daeta[icell] = surf->da3;
-    pi00[icell] = surf->pi00;
-    pi01[icell] = surf->pi01;
-    pi02[icell] = surf->pi02;
-    pi11[icell] = surf->pi11;
-    pi12[icell] = surf->pi12;
-    pi22[icell] = surf->pi22;
-    pi33[icell] = surf->pi33;
-    muB[icell] = surf->muB;
-    bulkPi[icell] = surf->bulkPi;
-  }
-
-  //declare a huge array of size FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
-  //to hold the spectra for each surface cell in a chunk
+  //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
+  //to hold the spectra for each surface cell in a chunk, for all particle species
+  //in this way, we are limited to small values of FO_chunk, because our array holds values for all species...
+  //try putting loop over particle species as outermost loop so that we don't need such a huge array?
+  int npart = number_of_chosen_particles;
   double *dN_pTdpTdphidy_all;
-  dN_pTdpTdphidy_all = (double*)calloc(FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
+  dN_pTdpTdphidy_all = (double*)calloc(npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
 
   //loop over bite size chunks of FO surface
   for (int n = 0; n < FO_length / FO_chunk + 1; n++)
   {
-    printf("start filling big array\n");
-    int end = FO_chunk;
-    if (n == (FO_length / FO_chunk)) end = FO_length - (n * FO_chunk); //don't go out of array bounds
+    printf("start filling big array \n");
+    int endFO = FO_chunk;
+    if (n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); //don't go out of array bounds
     //this section of code takes majority of time (compared to the reduction ) when using omp with 20 threads
     #pragma omp parallel for
     #pragma acc kernels
     #pragma acc loop independent
-    for (int icell = 0; icell < FO_chunk; icell++) //cell index inside each chunk
+    for (int icell = 0; icell < endFO; icell++) //cell index inside each chunk
     {
       int icell_glb = n * FO_chunk + icell; //global FO cell index
-      for (int ipT = 0; ipT < pT_tab_length; ipT++)
+
+      //now loop over all particle species and momenta - consider particle loop outside of loop over cells?
+      for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
       {
-        double pT = pTValues[ipT];
-        double mT = sqrt(mass * mass + pT * pT);
-
-        for (int iphip = 0; iphip < phi_tab_length; iphip++)
+        for (int ipT = 0; ipT < pT_tab_length; ipT++)
         {
-          double px = pT * trig_phi_table[iphip][0];
-          double py = pT * trig_phi_table[iphip][1];
+          double pT = pTValues[ipT];
+          double mT = sqrt(Mass[ipart] * Mass[ipart] + pT * pT);
 
-          for (int iy = 0; iy < y_tab_length; iy++)
+          for (int iphip = 0; iphip < phi_tab_length; iphip++)
           {
-            double y = yValues[iy];
+            double px = pT * trig_phi_table[iphip][0];
+            double py = pT * trig_phi_table[iphip][1];
 
-            double deltaf_prefactor = 0.0;
-
-            if (INCLUDE_DELTAF) deltaf_prefactor = 1.0/(2.0 * Tdec[icell_glb] * Tdec[icell_glb] * (Edec[icell_glb] + Pdec[icell_glb]));
-            //NEED TO MOVE getbulkvisCoefficients OUTSIDE OF ACC ROUTINE SOMEHOW
-            if (INCLUDE_BULKDELTAF == 1)
+            for (int iy = 0; iy < y_tab_length; iy++)
             {
-              //FIX THIS - NEED BULK VIS COEFFICIENTS ON GPU
-              getbulkvisCoefficients(Tdec[icell_glb], bulkvisCoefficients);
-            }
-            double ptau = mT * cosh(y - eta[icell_glb]); //contravariant
-            double peta = (-1.0 / tau[icell_glb]) * mT * sinh(y - eta[icell_glb]); //contravariant
+              double y = yValues[iy];
+              double shear_deltaf_prefactor = 1.0 / (2.0 * T[icell_glb] * T[icell_glb] * (E[icell_glb] + P[icell_glb]));
+              double pt = mT * cosh(y - eta[icell_glb]); //contravariant
+              double pn = (-1.0 / tau[icell_glb]) * mT * sinh(y - eta[icell_glb]); //contravariant
 
-            //thermal equilibrium distributions
-            double pdotu = ptau * utau[icell_glb] - px * ux[icell_glb] - py * uy[icell_glb] - (tau[icell_glb] * tau[icell_glb]) * peta * ueta[icell_glb]; //watch factors of tau from metric! is ueta read in as contravariant?
-            double expon = (pdotu - mu[icell_glb] - baryon * muB[icell_glb]) / Tdec[icell_glb];
-            double f0 = 1./(exp(expon) + sign);
-            // Must adjust this to be correct for the p*del \tau term.
-            double pdotdsigma = ptau * datau[icell_glb] + px * dax[icell_glb] + py * day[icell_glb] + peta * daeta[icell_glb]; //are these dax, day etc. the covariant components?
-            //viscous corrections
-            double delta_f_shear = 0.0;
-            if (INCLUDE_DELTAF)
-            {
-              double Wfactor = (ptau * ptau * pi00[icell_glb] - 2.0 * ptau * px * pi01[icell_glb] - 2.0 * ptau * py * pi02[icell_glb] + px * px * pi11[icell_glb] + 2.0 * px * py * pi12[icell_glb] + py * py * pi22[icell_glb] + peta * peta *pi33[icell_glb]);
-              delta_f_shear = ((1 - F0_IS_NOT_SMALL*sign*f0) * Wfactor * deltaf_prefactor);
-            }
-            double delta_f_bulk = 0.0;
-            if (INCLUDE_BULKDELTAF == 1)
-            {
-              if (bulk_deltaf_kind == 0) delta_f_bulk = (- (1. - F0_IS_NOT_SMALL * sign * f0) * bulkPi[icell_glb] * (bulkvisCoefficients[0] * mass * mass + bulkvisCoefficients[1] * pdotu + bulkvisCoefficients[2] * pdotu * pdotu));
-              else if (bulk_deltaf_kind == 1)
-              {
-                double E_over_T = pdotu / Tdec[icell_glb];
-                double mass_over_T = mass / Tdec[icell_glb];
-                delta_f_bulk = (-1.0 * (1. - sign * f0)/E_over_T * bulkvisCoefficients[0] * (mass_over_T * mass_over_T/3. - bulkvisCoefficients[1] * E_over_T * E_over_T) * bulkPi[icell_glb]);
-              }
-              else if (bulk_deltaf_kind == 2)
-              {
-                double E_over_T = pdotu / Tdec[icell_glb];
-                delta_f_bulk = (-1.*(1.-sign * f0) * (-bulkvisCoefficients[0] + bulkvisCoefficients[1] * E_over_T) * bulkPi[icell_glb]);
-              }
-              else if (bulk_deltaf_kind == 3)
-              {
-                double E_over_T = pdotu / Tdec[icell_glb];
-                delta_f_bulk = (-1.0*(1.-sign * f0) / sqrt(E_over_T) * (-bulkvisCoefficients[0] + bulkvisCoefficients[1] * E_over_T) * bulkPi[icell_glb]);
-              }
-              else if (bulk_deltaf_kind == 4)
-              {
-                double E_over_T = pdotu / Tdec[icell_glb];
-                delta_f_bulk = (-1.0*(1.-sign * f0) * (bulkvisCoefficients[0] - bulkvisCoefficients[1] / E_over_T) * bulkPi[icell_glb]);
-              }
-            }
+              //thermal equilibrium distributions - for viscous hydro
+              double pdotu = pt * ut[icell_glb] - px * ux[icell_glb] - py * uy[icell_glb] - (tau[icell_glb] * tau[icell_glb]) * pn * un[icell_glb]; //watch factors of tau from metric! is ueta read in as contravariant?
+              double baryon_factor = 0.0;
+              if (INCLUDE_BARYON) baryon_factor = Baryon[ipart] * muB[icell_glb];
+              double exponent = (pdotu - baryon_factor) / T[icell_glb];
+              double f0 = 1. / (exp(exponent) + sign);
+              double pdotdsigma = pt * dat[icell_glb] + px * dax[icell_glb] + py * day[icell_glb] + pn * dan[icell_glb]; //are these dax, day etc. the covariant components?
 
-            double ratio = min(1., fabs(1. / (delta_f_shear + delta_f_bulk)));
-            long long int ir = icell + (FO_chunk * ipT) + (FO_chunk * pT_tab_length * iphip) + (FO_chunk * pT_tab_length * phi_tab_length * iy);
-            dN_pTdpTdphidy_all[ir] = (prefactor * degen * pdotdsigma * tau[icell] * f0 * (1. + (delta_f_shear + delta_f_bulk) * ratio));
-          } //iy
-        } //iphip
-      } //ipT
+              //viscous corrections
+              double delta_f_shear = 0.0;
+              //double pimunu_pmu_pnu = (pt * pt * pitt[icell_glb] - 2.0 * pt * px * pitx[icell_glb] - 2.0 * pt * py * pity[icell_glb] + px * px * pixx[icell_glb] + 2.0 * px * py * pixy[icell_glb] + py * py * piyy[icell_glb] + pn * pn * pinn[icell_glb]);
+              pimunu_pmu_pnu = pitt[icell_glb] * pt * pt + pixx[icell_glb] * px * px + piyy[icell_glb] * py * py + pinn[icell_glb] * pn * pn
+              + 2.0 * (pitx[icell_glb] * pt * px + pity[icell_glb] * pt * py + pitn[icell_glb] * pt * pn + pixy[icell_glb] * px * py + pixn[icell_glb] * px * pn + piyn[icell_glb] * py * pn);
+              delta_f_shear = ((1.0 - Sign[ipart] * f0) * pimunu_pmu_pnu * shear_deltaf_prefactor);
+              double delta_f_bulk = 0.0;
+              //put fourteen moment expression for bulk viscosity (\delta)f here
+              double delta_f_baryondiff = 0.0;
+              //put fourteen moment expression for baryon diffusion (\delta)f here
+              double ratio = min(1., fabs(1. / (delta_f_shear + delta_f_bulk + delta_f_baryondiff)));
+              long long int ir = icell + (FO_chunk * ipart) + (FO_chunk * npart * ipT) + (FO_chunk * npart * pT_tab_length * iphip) + (FO_chunk * npart * pT_tab_length * phi_tab_length * iy);
+              dN_pTdpTdphidy_all[ir] = (prefactor * Degen[ipart] * pdotdsigma * tau[icell] * f0 * (1. + (delta_f_shear + delta_f_bulk + delta_f_baryondiff) * ratio));
+            } //iy
+          } //iphip
+        } //ipT
+      } //ipart
     } //icell
     printf("performing reduction over cells\n");
     //now perform the reduction over cells
     //this section of code is quite fast compared to filling dN_xxx_all when using multiple threads openmp
     #pragma omp parallel for collapse(3)
     #pragma acc kernels
-    for (int ipT = 0; ipT < pT_tab_length; ipT++)
+    for (int ipart = 0; ipart < npart; ipart++)
     {
-      for (int iphip = 0; iphip < phi_tab_length; iphip++)
+      for (int ipT = 0; ipT < pT_tab_length; ipT++)
       {
-        for (int iy = 0; iy < y_tab_length; iy++)
+        for (int iphip = 0; iphip < phi_tab_length; iphip++)
         {
-          long long int is = ipT + (pT_tab_length * iphip) + (pT_tab_length * phi_tab_length * iy);
-          double dN_pTdpTdphidy_3D_tmp = 0.0; //reduction variable
-          #pragma omp simd reduction(+:dN_pTdpTdphidy_3D_tmp)
-          for (int icell = 0; icell < FO_chunk; icell++)
+          for (int iy = 0; iy < y_tab_length; iy++)
           {
-            long long int ir = icell + (FO_chunk * ipT) + (FO_chunk * pT_tab_length * iphip) + (FO_chunk * pT_tab_length * phi_tab_length * iy);
-            dN_pTdpTdphidy_3D_tmp += dN_pTdpTdphidy_all[ir];
-          }//icell
-           dN_pTdpTdphidy_3D[is] += dN_pTdpTdphidy_3D_tmp; //cumulative sum over all chunks
-        }//iy
-      }//iphip
-    }//ipT
+            long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+            double dN_pTdpTdphidy_tmp = 0.0; //reduction variable
+            #pragma omp simd reduction(+:dN_pTdpTdphidy_tmp)
+            for (int icell = 0; icell < FO_chunk; icell++)
+            {
+              long long int ir = icell + (FO_chunk * ipart) + (FO_chunk * npart * ipT) + (FO_chunk * npart * pT_tab_length * iphip) + (FO_chunk * npart * pT_tab_length * phi_tab_length * iy);
+              dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[ir];
+            }//icell
+            dN_pTdpTdphidy[is] += dN_pTdpTdphidy_tmp; //sum over all chunks
+          }//iy
+        }//iphip
+      }//ipT
+    }//ipart species
   }//n FO chunk
 
   //free memory
   free(dN_pTdpTdphidy_all);
-  free(Tdec);
-  free(Pdec);
-  free(Edec);
-  free(mu);
-  free(tau);
-  free(eta);
-  free(utau);
-  free(ux);
-  free(uy);
-  free(ueta);
-  free(datau);
-  free(dax);
-  free(day);
-  free(daeta);
-  free(pi00);
-  free(pi01);
-  free(pi02);
-  free(pi11);
-  free(pi12);
-  free(pi22);
-  free(pi33);
-  free(muB);
-  free(bulkPi);
+
 }
 
-void EmissionFunctionArray::write_dN_ptdptdphidy_toFile(int monval) //pass monte carlo ID as argument for filename
-// Append the dN_xxx results to file.
+void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
 {
   printf("writing to file\n");
-  //write 3D spectra in block format, different blocks for different values of rapidity,
+  //write 3D spectra in block format, different blocks for different species,
+  //different sublocks for different values of rapidity
   //rows corespond to phip and columns correspond to pT
   char filename[255] = "";
-  sprintf(filename, "results/%d_spectra_3D.dat", monval);
-  ofstream spectra3DFile(filename, ios_base::app);
-  //this writes in block format , different blocks correspond to different values of y
-  //in each block, the row corresponds to the value of phip and the column to the value of pT
-  for (int iy = 0; iy < y_tab_length; iy++)
+  sprintf(filename, "results/dN_pTdpTdphidy.dat");
+  ofstream spectraFile(filename, ios_base::app);
+  for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
   {
-    for (int iphip = 0; iphip < phi_tab_length; iphip++)
+    for (int iy = 0; iy < y_tab_length; iy++)
     {
-      for (int ipT = 0; ipT < pT_tab_length; ipT++)
+      for (int iphip = 0; iphip < phi_tab_length; iphip++)
       {
-        long long int is = ipT + (pT_tab_length * iphip) + (pT_tab_length * phi_tab_length * iy);
-        spectra3DFile << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy_3D[is] << "\t";
-      } //ipT
-      spectra3DFile << "\n";
-    } //iphip
-  } //iy
+        for (int ipT = 0; ipT < pT_tab_length; ipT++)
+        {
+          long long int is = ipT + (pT_tab_length * iphip) + (pT_tab_length * phi_tab_length * iy);
+          spectra3DFile << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy_3D[is] << "\t";
+        } //ipT
+        spectra3DFile << "\n";
+      } //iphip
+    } //iy
+  }//ipart
   spectra3DFile.close();
-
 }
 
 
@@ -391,38 +271,172 @@ void EmissionFunctionArray::write_dN_ptdptdphidy_toFile(int monval) //pass monte
 void EmissionFunctionArray::calculate_spectra()
 // Calculate dNArrays and flows for all particles given in chosen_particle file.
 {
-
   cout << "calculate_spectra() has started... " << endl;
   Stopwatch sw;
   sw.tic();
 
-  // loop over chosen particles
-  particle_info* particle = NULL;
-  for (int m = 0; m < number_of_chosen_particles; m++)
-  {
-    int particle_idx = chosen_particles_sampling_table[m];
-    particle = &particles[particle_idx];
-    int monval = particle->monval;
-    cout << "Index: " << m << ", Name: " << particle->name << ", Monte-carlo index: " << monval << endl;
-    // Calculate dN / (ptdpt dphi dy)
-    if (m>0 && particles_are_the_same(particle_idx, chosen_particles_sampling_table[m-1]))
-    {
-      cout << " -- Using dN_ptdptdphidy from previous calculation... " << endl;
-      last_particle_idx = particle_idx; // fake a calculation
-    }
-    else
-    {
-      cout << " -- Calculating dN_ptdptdphidy..." << endl;
-      //calculate_dN_ptdptdphidy(particle_idx);  //for 2D spectra
-      calculate_dN_ptdptdphidy_parallel_3(particle_idx); //for 3D spectra
-      //then write to file here
-      write_dN_ptdptdphidy3d_toFile(monval); //write the spectra for one species
-    }
+  //fill arrays with all particle info and freezeout info to pass to function which will perform the integral
+  //this should only be done once, not for each particle... then launch calculation on accelerator w/o unecessary copies
 
+  //particle info
+  double *Mass, *Sign, *Degen, *Baryon;
+  Mass = (double*)calloc(number_of_chosen_particles, sizeof(double));
+  Sign = (double*)calloc(number_of_chosen_particles, sizeof(double));
+  Degen = (double*)calloc(number_of_chosen_particles, sizeof(double));
+  Baryon = (double*)calloc(number_of_chosen_particles, sizeof(double));
+
+  for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+  {
+    int particle_idx = chosen_particles_sampling_table[ipart];
+    particle = &particles[particle_idx];
+    Mass[ipart] = particle->mass;
+    Sign[ipart] = particle->sign;
+    Degen[ipart] = particle->gspin;
+    Baryon[ipart] = particle->baryon;
+  }
+
+  //freezeout surface info
+  double *T, *P, *E, *tau, *eta, *ut, *ux, *uy, *un;
+  double *dat, *dax, *day, *dan;
+  double *pitt, *pitx, *pity, *pitn, *pixx, *pixy, *pixn, *piyy, *piyn, *pinn, *bulkPi;
+  double *muB, *Vt, *Vx, *Vy, *Vn;
+
+  T = (double*)calloc(FO_length, sizeof(double));
+  P = (double*)calloc(FO_length, sizeof(double));
+  E = (double*)calloc(FO_length, sizeof(double));
+  tau = (double*)calloc(FO_length, sizeof(double));
+  eta = (double*)calloc(FO_length, sizeof(double));
+  ut = (double*)calloc(FO_length, sizeof(double));
+  ux = (double*)calloc(FO_length, sizeof(double));
+  uy = (double*)calloc(FO_length, sizeof(double));
+  un = (double*)calloc(FO_length, sizeof(double));
+
+  dat = (double*)calloc(FO_length, sizeof(double));
+  dax = (double*)calloc(FO_length, sizeof(double));
+  day = (double*)calloc(FO_length, sizeof(double));
+  dan = (double*)calloc(FO_length, sizeof(double));
+
+  pitt = (double*)calloc(FO_length, sizeof(double));
+  pitx = (double*)calloc(FO_length, sizeof(double));
+  pity = (double*)calloc(FO_length, sizeof(double));
+  pitn = (double*)calloc(FO_length, sizeof(double));
+  pixx = (double*)calloc(FO_length, sizeof(double));
+  pixy = (double*)calloc(FO_length, sizeof(double));
+  pixn = (double*)calloc(FO_length, sizeof(double));
+  piyy = (double*)calloc(FO_length, sizeof(double));
+  piyn = (double*)calloc(FO_length, sizeof(double));
+  pinn = (double*)calloc(FO_length, sizeof(double));
+  bulkPi = (double*)calloc(FO_length, sizeof(double));
+
+  if (INCLUDE_BARYON)
+  {
+    muB = (double*)calloc(FO_length, sizeof(double));
+
+    if (INCLUDE_BARYONDIFF_DELTAF)
+    {
+      Vt = (double*)calloc(FO_length, sizeof(double));
+      Vx = (double*)calloc(FO_length, sizeof(double));
+      Vy = (double*)calloc(FO_length, sizeof(double));
+      Vn = (double*)calloc(FO_length, sizeof(double));
+
+    }
+  }
+
+  for (long icell = 0; icell < FO_length; icell++)
+  {
+    //reading info from surface
+    surf = &surf_ptr[icell];
+    T[icell] = surf->T;
+    P[icell] = surf->P;
+    E[icell] = surf->E;
+    tau[icell] = surf->tau;
+    eta[icell] = surf->eta;
+
+    ut[icell] = surf->ut;
+    ux[icell] = surf->ux;
+    uy[icell] = surf->uy;
+    un[icell] = surf->un;
+
+    dat[icell] = surf->dat;
+    dax[icell] = surf->dax;
+    day[icell] = surf->day;
+    dan[icell] = surf->dan;
+
+    pitt[icell] = surf->pitt;
+    pitx[icell] = surf->pitx;
+    pity[icell] = surf->pity;
+    pitn[icell] = surf->pitn;
+    pixx[icell] = surf->pixx;
+    pixy[icell] = surf->pixy;
+    pixn[icell] = surf->pixn;
+    piyy[icell] = surf->piyy;
+    piyn[icell] = surf->piyn;
+    pinn[icell] = surf->pinn;
+    bulkPi[icell] = surf->bulkPi;
+
+    if (INCLUDE_BARYON)
+    {
+      muB[icell] = surf->muB;
+
+      if (INCLUDE_BARYONDIFF_DELTAF)
+      {
+        Vt[icell] = surf->Vt;
+        Vx[icell] = surf->Vx;
+        Vy[icell] = surf->Vy;
+        Vn[icell] = surf->Vn;
+      }
+    }
+  }
+
+  //launch function to perform integrations - this should be readily parallelizable
+  calculate_dN_ptdptdphidy(Mass, Sign, Degen, Baryon,
+                          T, P, E, tau, eta, ut, ux, uy, un,
+                          dat, dax, day, dan,
+                          pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+                          muB, Vt, Vx, Vy, Vn);
+
+  //write the results to file
+  write_dN_pTdpTdphidy_toFile();
+
+  //free memory
+  free(T);
+  free(P);
+  free(E);
+  free(tau);
+  free(eta);
+  free(ut);
+  free(ux);
+  free(uy);
+  free(un);
+  free(dat);
+  free(dax);
+  free(day);
+  free(dan);
+  free(pitt);
+  free(pitx);
+  free(pity);
+  free(pitn);
+  free(pixx);
+  free(pixy);
+  free(pixn);
+  free(piyy);
+  free(piyn);
+  free(pinn);
+  free(bulkPi);
+
+  if (INCLUDE_BARYON)
+  {
+    free(muB);
+    if (INCLUDE_BARYONDIFF_DELTAF)
+    {
+      free(Vt);
+      free(Vx);
+      free(Vy);
+      free(Vn);
+    }
   }
   sw.toc();
-  cout << " -- Calculate_dN_ptdptdphidy_and_flows_4all finishes " << sw.takeTime() << " seconds." << endl;
-
+  cout << " -- calculate_spectra() finished " << sw.takeTime() << " seconds." << endl;
 }
 
 bool EmissionFunctionArray::particles_are_the_same(int idx1, int idx2)
