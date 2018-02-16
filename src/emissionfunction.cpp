@@ -22,7 +22,7 @@ using namespace std;
 
 
 // Class EmissionFunctionArray ------------------------------------------
-EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, particle_info* particles_in, FO_surf* surf_ptr_in, long FO_length_in)
+EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, particle_info* particles_in, int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in)
 {
   paraRdr = paraRdr_in;
   pT_tab = pT_tab_in;
@@ -41,15 +41,16 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   PARTICLE_DIFF_TOLERANCE = paraRdr->getVal("particle_diff_tolerance");
 
   particles = particles_in;
+  Nparticles = Nparticles_in;
   surf_ptr = surf_ptr_in;
   FO_length = FO_length_in;
   number_of_chosen_particles = chosen_particles_in->getNumberOfRows();
 
-  chosen_particles_table = new int[Nparticles];
+  chosen_particles_01_table = new int[Nparticles];
   //a class member to hold 3D spectra for all chosen particles
   dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
 
-  for (int n = 0; n < Nparticles; n++) chosen_particles_table[n] = 0;
+  for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
 
   //only grab chosen particles from the table
   for (int m = 0; m < number_of_chosen_particles; m++)
@@ -60,7 +61,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     {
       if (particles[n].mc_id == mc_id)
       {
-        chosen_particles_table[n] = 1;
+        chosen_particles_01_table[n] = 1;
         break;
       }
     }
@@ -102,13 +103,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
   }
-  last_particle_idx = -1;
 }
 
 
 EmissionFunctionArray::~EmissionFunctionArray()
 {
-  delete[] chosen_particles_table;
+  delete[] chosen_particles_01_table;
   delete[] chosen_particles_sampling_table;
   delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
 }
@@ -121,7 +121,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
   double *pitt, double *pitx, double *pity, double *pitn, double *pixx, double *pixy, double *pixn, double *piyy, double *piyn, double *pinn, double *bulkPi,
   double *muB, double *Vt, double *Vx, double *Vy, double *Vn)
 {
-  double prefactor = 1.0 / (8.0 double * (M_PI *M _PI * M_PI)) / hbarC / hbarC / hbarC;
+  double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
   int FO_chunk = 10000;
 
   double trig_phi_table[phi_tab_length][2]; // 2: 0,1-> cos,sin
@@ -184,7 +184,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               double baryon_factor = 0.0;
               if (INCLUDE_BARYON) baryon_factor = Baryon[ipart] * muB[icell_glb];
               double exponent = (pdotu - baryon_factor) / T[icell_glb];
-              double f0 = 1. / (exp(exponent) + sign);
+              double f0 = 1. / (exp(exponent) + Sign[ipart]);
               double pdotdsigma = pt * dat[icell_glb] - px * dax[icell_glb] - py * day[icell_glb] - pn * dan[icell_glb] * (tau[icell_glb] * tau[icell_glb]); //CHECK THESE METRIC FACTORS !
 
               //viscous corrections
@@ -192,7 +192,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               double tau2 = tau[icell_glb] * tau[icell_glb];
               double tau4 = tau2 * tau2;
               //double pimunu_pmu_pnu = (pt * pt * pitt[icell_glb] - 2.0 * pt * px * pitx[icell_glb] - 2.0 * pt * py * pity[icell_glb] + px * px * pixx[icell_glb] + 2.0 * px * py * pixy[icell_glb] + py * py * piyy[icell_glb] + pn * pn * pinn[icell_glb]);
-              pimunu_pmu_pnu = pitt[icell_glb] * pt * pt + pixx[icell_glb] * px * px + piyy[icell_glb] * py * py + pinn[icell_glb] * pn * pn * (1.0 / tau4)
+              double pimunu_pmu_pnu = pitt[icell_glb] * pt * pt + pixx[icell_glb] * px * px + piyy[icell_glb] * py * py + pinn[icell_glb] * pn * pn * (1.0 / tau4)
               + 2.0 * (-pitx[icell_glb] * pt * px - pity[icell_glb] * pt * py - pitn[icell_glb] * pt * pn * (1.0 / tau2) + pixy[icell_glb] * px * py + pixn[icell_glb] * px * pn * (1.0 / tau2) + piyn[icell_glb] * py * pn * (1.0 / tau2));
               delta_f_shear = ((1.0 - Sign[ipart] * f0) * pimunu_pmu_pnu * shear_deltaf_prefactor);
               double delta_f_bulk = 0.0;
@@ -248,6 +248,7 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
   //write 3D spectra in block format, different blocks for different species,
   //different sublocks for different values of rapidity
   //rows corespond to phip and columns correspond to pT
+  int npart = number_of_chosen_particles;
   char filename[255] = "";
   sprintf(filename, "results/dN_pTdpTdphidy.dat");
   ofstream spectraFile(filename, ios_base::app);
@@ -259,14 +260,14 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
       {
         for (int ipT = 0; ipT < pT_tab_length; ipT++)
         {
-          long long int is = ipT + (pT_tab_length * iphip) + (pT_tab_length * phi_tab_length * iy);
-          spectra3DFile << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy_3D[is] << "\t";
+          long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+          spectraFile << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[is] << "\t";
         } //ipT
-        spectra3DFile << "\n";
+        spectraFile << "\n";
       } //iphip
     } //iy
   }//ipart
-  spectra3DFile.close();
+  spectraFile.close();
 }
 
 
@@ -282,6 +283,7 @@ void EmissionFunctionArray::calculate_spectra()
   //this should only be done once, not for each particle... then launch calculation on accelerator w/o unecessary copies
 
   //particle info
+  particle_info *particle;
   double *Mass, *Sign, *Degen, *Baryon;
   Mass = (double*)calloc(number_of_chosen_particles, sizeof(double));
   Sign = (double*)calloc(number_of_chosen_particles, sizeof(double));
@@ -299,6 +301,7 @@ void EmissionFunctionArray::calculate_spectra()
   }
 
   //freezeout surface info
+  FO_surf *surf = &surf_ptr[0];
   double *T, *P, *E, *tau, *eta, *ut, *ux, *uy, *un;
   double *dat, *dax, *day, *dan;
   double *pitt, *pitx, *pity, *pitn, *pixx, *pixy, *pixn, *piyy, *piyn, *pinn, *bulkPi;
@@ -400,7 +403,6 @@ void EmissionFunctionArray::calculate_spectra()
 
   //write the results to file
   write_dN_pTdpTdphidy_toFile();
-
   //free memory
   free(T);
   free(P);
@@ -441,7 +443,7 @@ void EmissionFunctionArray::calculate_spectra()
   sw.toc();
   cout << " -- calculate_spectra() finished " << sw.takeTime() << " seconds." << endl;
 }
-
+/*
 bool EmissionFunctionArray::particles_are_the_same(int idx1, int idx2)
 {
     if (particles[idx1].sign!=particles[idx2].sign) return false;
@@ -459,107 +461,4 @@ bool EmissionFunctionArray::particles_are_the_same(int idx1, int idx2)
 
     return true;
 }
-//#pragma acc routine
-void EmissionFunctionArray::getbulkvisCoefficients(double Tdec, double* bulkvisCoefficients)
-{
-   double Tdec_fm = Tdec/hbarC;  // [1/fm]
-   double Tdec_fm_power[11];    // cache the polynomial power of Tdec_fm
-   Tdec_fm_power[1] = Tdec_fm;
-   for(int ipower = 2; ipower < 11; ipower++)
-       Tdec_fm_power[ipower] = Tdec_fm_power[ipower-1]*Tdec_fm;
-   if(bulk_deltaf_kind == 0)       // 14 moment expansion
-   {
-        // load from file
-        bulkvisCoefficients[0] = bulkdf_coeff->interp(1, 2, Tdec_fm, 5)/pow(hbarC, 3);  //B0 [fm^3/GeV^3]
-        bulkvisCoefficients[1] = bulkdf_coeff->interp(1, 3, Tdec_fm, 5)/pow(hbarC, 2);  // D0 [fm^3/GeV^2]
-        bulkvisCoefficients[2] = bulkdf_coeff->interp(1, 4, Tdec_fm, 5)/pow(hbarC, 3);  // E0 [fm^3/GeV^3]
-        // parameterization for mu = 0
-        //bulkvisCoefficients[0] = exp(-15.04512474*Tdec_fm + 11.76194266)/pow(hbarC, 3); //B0[fm^3/GeV^3]
-        //bulkvisCoefficients[1] = exp( -12.45699277*Tdec_fm + 11.4949293)/hbarC/hbarC;  // D0 [fm^3/GeV^2]
-        //bulkvisCoefficients[2] = -exp(-14.45087586*Tdec_fm + 11.62716548)/pow(hbarC, 3);  // E0 [fm^3/GeV^3]
-   }
-   else if(bulk_deltaf_kind == 1)  // relaxation type
-   {
-       // parameterization from JF
-       // A Polynomial fit to each coefficient -- X is the temperature in fm^-1
-       // Both fits are reliable between T=100 -- 180 MeV , do not trust it beyond
-       bulkvisCoefficients[0] = (  642096.624265727
-                                 - 8163329.49562861*Tdec_fm_power[1]
-                                 + 47162768.4292073*Tdec_fm_power[2]
-                                 - 162590040.002683*Tdec_fm_power[3]
-                                 + 369637951.096896*Tdec_fm_power[4]
-                                 - 578181331.809836*Tdec_fm_power[5]
-                                 + 629434830.225675*Tdec_fm_power[6]
-                                 - 470493661.096657*Tdec_fm_power[7]
-                                 + 230936465.421*Tdec_fm_power[8]
-                                 - 67175218.4629078*Tdec_fm_power[9]
-                                 + 8789472.32652964*Tdec_fm_power[10]);
-
-       bulkvisCoefficients[1] = (  1.18171174036192
-                                 - 17.6740645873717*Tdec_fm_power[1]
-                                 + 136.298469057177*Tdec_fm_power[2]
-                                 - 635.999435106846*Tdec_fm_power[3]
-                                 + 1918.77100633321*Tdec_fm_power[4]
-                                 - 3836.32258307711*Tdec_fm_power[5]
-                                 + 5136.35746882372*Tdec_fm_power[6]
-                                 - 4566.22991441914*Tdec_fm_power[7]
-                                 + 2593.45375240886*Tdec_fm_power[8]
-                                 - 853.908199724349*Tdec_fm_power[9]
-                                 + 124.260460450113*Tdec_fm_power[10]);
-   }
-   else if (bulk_deltaf_kind == 2)
-   {
-       // A Polynomial fit to each coefficient -- Tfm is the temperature in fm^-1
-       // Both fits are reliable between T=100 -- 180 MeV , do not trust it beyond
-       bulkvisCoefficients[0] = (
-               21091365.1182649 - 290482229.281782*Tdec_fm_power[1]
-             + 1800423055.01882*Tdec_fm_power[2] - 6608608560.99887*Tdec_fm_power[3]
-             + 15900800422.7138*Tdec_fm_power[4] - 26194517161.8205*Tdec_fm_power[5]
-             + 29912485360.2916*Tdec_fm_power[6] - 23375101221.2855*Tdec_fm_power[7]
-             + 11960898238.0134*Tdec_fm_power[8] - 3618358144.18576*Tdec_fm_power[9]
-             + 491369134.205902*Tdec_fm_power[10]);
-
-       bulkvisCoefficients[1] = (
-               4007863.29316896 - 55199395.3534188*Tdec_fm_power[1]
-             + 342115196.396492*Tdec_fm_power[2] - 1255681487.77798*Tdec_fm_power[3]
-             + 3021026280.08401*Tdec_fm_power[4] - 4976331606.85766*Tdec_fm_power[5]
-             + 5682163732.74188*Tdec_fm_power[6] - 4439937810.57449*Tdec_fm_power[7]
-             + 2271692965.05568*Tdec_fm_power[8] - 687164038.128814*Tdec_fm_power[9]
-             + 93308348.3137008*Tdec_fm_power[10]);
-   }
-   else if (bulk_deltaf_kind == 3)
-   {
-       bulkvisCoefficients[0] = (
-               160421664.93603 - 2212807124.97991*Tdec_fm_power[1]
-             + 13707913981.1425*Tdec_fm_power[2] - 50204536518.1767*Tdec_fm_power[3]
-             + 120354649094.362*Tdec_fm_power[4] - 197298426823.223*Tdec_fm_power[5]
-             + 223953760788.288*Tdec_fm_power[6] - 173790947240.829*Tdec_fm_power[7]
-             + 88231322888.0423*Tdec_fm_power[8] - 26461154892.6963*Tdec_fm_power[9]
-             + 3559805050.19592*Tdec_fm_power[10]);
-       bulkvisCoefficients[1] = (
-               33369186.2536556 - 460293490.420478*Tdec_fm_power[1]
-             + 2851449676.09981*Tdec_fm_power[2] - 10443297927.601*Tdec_fm_power[3]
-             + 25035517099.7809*Tdec_fm_power[4] - 41040777943.4963*Tdec_fm_power[5]
-             + 46585225878.8723*Tdec_fm_power[6] - 36150531001.3718*Tdec_fm_power[7]
-             + 18353035766.9323*Tdec_fm_power[8] - 5504165325.05431*Tdec_fm_power[9]
-             + 740468257.784873*Tdec_fm_power[10]);
-   }
-   else if (bulk_deltaf_kind == 4)
-   {
-       bulkvisCoefficients[0] = (
-               1167272041.90731 - 16378866444.6842*Tdec_fm_power[1]
-             + 103037615761.617*Tdec_fm_power[2] - 382670727905.111*Tdec_fm_power[3]
-             + 929111866739.436*Tdec_fm_power[4] - 1540948583116.54*Tdec_fm_power[5]
-             + 1767975890298.1*Tdec_fm_power[6] - 1385606389545*Tdec_fm_power[7]
-             + 709922576963.213*Tdec_fm_power[8] - 214726945096.326*Tdec_fm_power[9]
-             + 29116298091.9219*Tdec_fm_power[10]);
-       bulkvisCoefficients[1] = (
-               5103633637.7213 - 71612903872.8163*Tdec_fm_power[1]
-             + 450509014334.964*Tdec_fm_power[2] - 1673143669281.46*Tdec_fm_power[3]
-             + 4062340452589.89*Tdec_fm_power[4] - 6737468792456.4*Tdec_fm_power[5]
-             + 7730102407679.65*Tdec_fm_power[6] - 6058276038129.83*Tdec_fm_power[7]
-             + 3103990764357.81*Tdec_fm_power[8] - 938850005883.612*Tdec_fm_power[9]
-             + 127305171097.249*Tdec_fm_power[10]);
-   }
-   return;
-}
+*/

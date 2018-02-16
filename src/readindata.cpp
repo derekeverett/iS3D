@@ -42,7 +42,7 @@ int read_FOdata::get_number_cells()
   return(number_of_cells);
 }
 
-void read_FOdata::read_surf_switch(int length, FO_surf* surf_ptr)
+void read_FOdata::read_surf_switch(long length, FO_surf* surf_ptr)
 {
   if (mode == 1) read_surf_VH(length, surf_ptr); //surface file containing viscous hydro dissipative currents
   else if (mode == 2) read_surf_VAH(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents
@@ -152,7 +152,7 @@ int read_FOdata::read_resonances_list(particle_info* particle)
   int dummy_int;
   while (!resofile.eof())
   {
-    resofile >> particle[local_i].monval;
+    resofile >> particle[local_i].mc_id;
     resofile >> particle[local_i].name;
     resofile >> particle[local_i].mass;
     resofile >> particle[local_i].width;
@@ -185,7 +185,7 @@ int read_FOdata::read_resonances_list(particle_info* particle)
     if (particle[local_i].baryon == 1)
     {
       local_i++;
-      particle[local_i].monval = -particle[local_i-1].monval;
+      particle[local_i].mc_id = -particle[local_i-1].mc_id;
       ostringstream antiname;
       antiname << "Anti-" << particle[local_i-1].name;
       particle[local_i].name = antiname.str();
@@ -218,7 +218,7 @@ int read_FOdata::read_resonances_list(particle_info* particle)
               if(idx == local_i && particle[local_i-1].stable == 0 && particle[local_i-1].decays_branchratio[j] > eps)
                 {
                   cout << "Error: can not find decay particle index for anti-baryon!" << endl;
-                  cout << "particle monval : " << particle[local_i-1].decays_part[j][k] << endl;
+                  cout << "particle mc_id : " << particle[local_i-1].decays_part[j][k] << endl;
                   exit(1);
                 }
               if (particle[idx].baryon == 0 && particle[idx].charge == 0 && particle[idx].strange == 0) particle[local_i].decays_part[j][k] = (particle[local_i-1].decays_part[j][k]);

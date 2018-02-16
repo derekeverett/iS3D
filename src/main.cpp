@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
   freeze_out_data.read_surf_switch(FO_length, surf_ptr);
 
   particle_info *particle = new particle_info [Maxparticle];
+  int Nparticle = freeze_out_data.read_resonances_list(particle); //number of resonances in pdf file
 
   cout << "Finished reading freezeout surface!" << endl;
 
@@ -52,11 +53,11 @@ int main(int argc, char *argv[])
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
 
-  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, particle, surf_ptr, FO_length);
+  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, particle, Nparticle, surf_ptr, FO_length);
 
   efa.calculate_spectra();
 
-  delete [] FOsurf_ptr;
+  delete [] surf_ptr;
   delete paraRdr;
 
   cout << "Done. Goodbye!" << endl;
