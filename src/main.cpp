@@ -19,8 +19,9 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-  cout << "Welcome to iS3D, a program to compute particle spectra from 3+1D Hydro Freezeout Surfaces!" << endl;
+  cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
   cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu" << endl;
+  cout << "Modified by Derek Everett, Lipei Du and Mike McNelis (2018)" << endl;
 
   // Read-in parameters
   cout << "Reading in Parameters from parameters.dat" << endl;
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
   string pathToOutput = "results";
 
   //load freeze out information
-  read_FOdata freeze_out_data(paraRdr, pathToInput);
+  FO_data_reader freeze_out_data(paraRdr, pathToInput);
 
   long FO_length = 0;
   FO_length = freeze_out_data.get_number_cells();
@@ -48,8 +49,8 @@ int main(int argc, char *argv[])
 
   cout << "Finished reading freezeout surface!" << endl;
 
-  Table chosen_particles("PDG/chosen_particles.dat"); // skip others except for these particle
-  Table pT_tab("tables/pT_gauss_table.dat"); // pt value and weight table
+  Table chosen_particles("PDG/chosen_particles.dat"); // skip others except for these particles
+  Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
 
@@ -60,6 +61,6 @@ int main(int argc, char *argv[])
   delete [] surf_ptr;
   delete paraRdr;
 
-  cout << "Done. Goodbye!" << endl;
+  cout << "Done Calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
 
 }

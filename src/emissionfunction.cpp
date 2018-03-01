@@ -6,7 +6,9 @@
 #include <iomanip>
 #include <vector>
 #include <stdio.h>
-#include <omp.h>
+#ifdef _OMP
+  #include <omp.h>
+#endif
 #include "main.h"
 #include "readindata.h"
 #include "emissionfunction.h"

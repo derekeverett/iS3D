@@ -15,7 +15,7 @@
 
 using namespace std;
 
-read_FOdata::read_FOdata(ParameterReader* paraRdr_in, string path_in)
+FO_data_reader::FO_data_reader(ParameterReader* paraRdr_in, string path_in)
 {
   paraRdr = paraRdr_in;
   pathToInput = path_in;
@@ -26,12 +26,12 @@ read_FOdata::read_FOdata(ParameterReader* paraRdr_in, string path_in)
   include_baryondiff_deltaf = paraRdr->getVal("include_baryondiff_deltaf");
 }
 
-read_FOdata::~read_FOdata()
+FO_data_reader::~FO_data_reader()
 {
 
 }
 
-int read_FOdata::get_number_cells()
+int FO_data_reader::get_number_cells()
 {
   int number_of_cells = 0;
   //add more options for types of FO file
@@ -42,7 +42,7 @@ int read_FOdata::get_number_cells()
   return(number_of_cells);
 }
 
-void read_FOdata::read_surf_switch(long length, FO_surf* surf_ptr)
+void FO_data_reader::read_surf_switch(long length, FO_surf* surf_ptr)
 {
   if (mode == 1) read_surf_VH(length, surf_ptr); //surface file containing viscous hydro dissipative currents
   else if (mode == 2) read_surf_VAH(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents
@@ -50,7 +50,7 @@ void read_FOdata::read_surf_switch(long length, FO_surf* surf_ptr)
 }
 
 //THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! baryon number, baryon chemical potential at the end...
-void read_FOdata::read_surf_VH(long length, FO_surf* surf_ptr)
+void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
 {
   ostringstream surfdat_stream;
   double dummy;
@@ -138,11 +138,11 @@ void read_FOdata::read_surf_VH(long length, FO_surf* surf_ptr)
   return;
 }
 
-void read_FOdata::read_surf_VAH(long length, FO_surf* surf_ptr)
+void FO_data_reader::read_surf_VAH(long length, FO_surf* surf_ptr)
 {
 }
 
-int read_FOdata::read_resonances_list(particle_info* particle)
+int FO_data_reader::read_resonances_list(particle_info* particle)
 {
   double eps = 1e-15;
   int Nparticle=0;

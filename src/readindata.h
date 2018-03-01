@@ -38,10 +38,10 @@ typedef struct
    double pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn; //contravariant components of shear stress
    double bulkPi; //bulk pressure
    double muB, muS; //baryon chemical potential, strangeness chem. pot.
-   double nB, Vt, Vx, Vy, Vn; //baryon number density, contravariant baryon diffusion current 
+   double nB, Vt, Vx, Vy, Vn; //baryon number density, contravariant baryon diffusion current
 } FO_surf;
 
-class read_FOdata
+class FO_data_reader
 {
     private:
         ParameterReader* paraRdr;
@@ -53,8 +53,8 @@ class read_FOdata
         int include_baryondiff_deltaf; //switch to turn on/off (\delta)f correction from baryon diffusion
 
     public:
-        read_FOdata(ParameterReader* paraRdr_in, string pathToInput);
-        ~read_FOdata();
+        FO_data_reader(ParameterReader* paraRdr_in, string pathToInput);
+        ~FO_data_reader();
 
         int get_number_cells();
         void read_surf_switch(long length, FO_surf* surf_ptr);

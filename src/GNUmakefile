@@ -1,5 +1,5 @@
 # ===========================================================================
-#  Makefile iS                                     Chun Shen Apr. 9, 2013
+#  Makefile iS3D
 # ===========================================================================
 ##
 ##  Environments :	MAIN	= 	main sourcefile
@@ -13,7 +13,8 @@
 #CC := $(shell ../../crank/configure_compiler_C++.sh)
 CC = g++
 #CC = pgc++
-CFLAGS= -O3 -Wall -fopenmp -march=native
+CFLAGS= -O3 -Wall -march=native
+#CFLAGS= -O3 -Wall -fopenmp -march=native
 #CFLAGS= -acc -fast -Minfo -ta=nvidia,time
 #CFLAGS= -acc -fast -ta=tesla:managed #uses unified memory - simplifies copying of dynamic arrays host <-> device
 
