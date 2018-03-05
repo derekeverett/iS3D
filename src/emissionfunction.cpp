@@ -150,7 +150,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
   //loop over bite size chunks of FO surface
   for (int n = 0; n < FO_length / FO_chunk + 1; n++)
   {
-    printf("start filling big array \n");
+    printf("Progress : Finished chunk %d of %d \n", n, FO_length / FO_chunk);
     int endFO = FO_chunk;
     if (n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); //don't go out of array bounds
     //this section of code takes majority of time (compared to the reduction ) when using omp with 20 threads
@@ -179,6 +179,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               double y = yValues[iy];
               double shear_deltaf_prefactor = 1.0 / (2.0 * T[icell_glb] * T[icell_glb] * (E[icell_glb] + P[icell_glb]));
               double pt = mT * cosh(y - eta[icell_glb]); //contravariant
+              //if (isnan(pt)) printf(" found pt nan! \n");
               double pn = (-1.0 / tau[icell_glb]) * mT * sinh(y - eta[icell_glb]); //contravariant
 
               //thermal equilibrium distributions - for viscous hydro
@@ -186,6 +187,8 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               double baryon_factor = 0.0;
               if (INCLUDE_BARYON) baryon_factor = Baryon[ipart] * muB[icell_glb];
               double exponent = (pdotu - baryon_factor) / T[icell_glb];
+              //if (isnan(exponent)) printf(" found exponent nan! \n");
+              //if (isnan(Sign[ipart])) printf(" found Sign nan! \n");
               double f0 = 1. / (exp(exponent) + Sign[ipart]);
               double pdotdsigma = pt * dat[icell_glb] - px * dax[icell_glb] - py * day[icell_glb] - pn * dan[icell_glb] * (tau[icell_glb] * tau[icell_glb]); //CHECK THESE METRIC FACTORS !
 
@@ -204,14 +207,21 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
               //WHAT IS RATIO - CHANGE THIS ?
               double ratio = min(1., fabs(1. / (delta_f_shear + delta_f_bulk + delta_f_baryondiff)));
+              if (isnan(ratio)) printf(" found ratio nan! \n");
+              if (isnan(prefactor)) printf(" found prefactor nan! \n");
+              if (isnan(Degen[ipart])) printf(" found Degen nan! \n");
+              if (isnan(pdotdsigma)) printf(" found pdotdsigma nan! \n");
+              if (isnan(tau[icell_glb])) printf(" found tau nan! \n");
+              if (isnan(f0)) printf(" found f0 nan! \n");
+              if (isnan(delta_f_shear)) printf(" found delta_f_shear nan! \n");
               long long int ir = icell + (FO_chunk * ipart) + (FO_chunk * npart * ipT) + (FO_chunk * npart * pT_tab_length * iphip) + (FO_chunk * npart * pT_tab_length * phi_tab_length * iy);
               dN_pTdpTdphidy_all[ir] = (prefactor * Degen[ipart] * pdotdsigma * tau[icell_glb] * f0 * (1. + (delta_f_shear + delta_f_bulk + delta_f_baryondiff) * ratio));
+
             } //iy
           } //iphip
         } //ipT
       } //ipart
     } //icell
-    printf("performing reduction over cells\n");
     //now perform the reduction over cells
     //this section of code is quite fast compared to filling dN_xxx_all when using multiple threads openmp
     #pragma omp parallel for collapse(3)

@@ -49,7 +49,12 @@ int main(int argc, char *argv[])
 
   cout << "Finished reading freezeout surface!" << endl;
 
+  //FOR THIS READ IN TO WORK PROPERLY, THIS FILE MUST HAVE AN EMPTY ROW AT THE END!
+  //perhaps switch to a different method of reading in the chosen_particles.dat file that doesn't
+  //have this undesirable feature
   Table chosen_particles("PDG/chosen_particles.dat"); // skip others except for these particles
+
+  cout << "Number of chosen particles : " << chosen_particles.getNumberOfRows() << endl;
   Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
