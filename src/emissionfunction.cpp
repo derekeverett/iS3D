@@ -260,6 +260,8 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
   //write 3D spectra in block format, different blocks for different species,
   //different sublocks for different values of rapidity
   //rows corespond to phip and columns correspond to pT
+
+  //is there a better / less confusing format for this file?
   int npart = number_of_chosen_particles;
   char filename[255] = "";
   sprintf(filename, "results/dN_pTdpTdphidy.dat");
