@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 
   cout << "Finished reading freezeout surface!" << endl;
 
-  //FOR THIS READ IN TO WORK PROPERLY, THIS FILE MUST HAVE AN EMPTY ROW AT THE END!
+  //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
   //perhaps switch to a different method of reading in the chosen_particles.dat file that doesn't
   //have this undesirable feature
   Table chosen_particles("PDG/chosen_particles.dat"); // skip others except for these particles

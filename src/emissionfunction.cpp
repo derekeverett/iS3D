@@ -115,13 +115,22 @@ EmissionFunctionArray::~EmissionFunctionArray()
   delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
 }
 
-//this is where the magic happens
-//try acceleration via omp threads and simd, as well as openacc
+//this is where the magic happens - and the speed bottleneck
+//this is the function that needs to be parallelized
+//try acceleration via omp threads and simd, as well as openacc, CUDA?
 void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign, double *Degen, double *Baryon,
   double *T, double *P, double *E, double *tau, double *eta, double *ut, double *ux, double *uy, double *un,
   double *dat, double *dax, double *day, double *dan,
   double *pitt, double *pitx, double *pity, double *pitn, double *pixx, double *pixy, double *pixn, double *piyy, double *piyn, double *pinn, double *bulkPi,
   double *muB, double *Vt, double *Vx, double *Vy, double *Vn)
+
+  // CAN WE PUT AN IF STATEMENT HERE FOR CUDA?
+  //#ifdef __NVCC
+  //COPY ALL ARRAYS TO DEVICE, PERFORM INTEGRALS, COPY BACK TO HOST
+  //endif
+  //#else DO THE FOLLOWING
+  //OR DO WE NEED A SEPARATE .CU FIle ?
+
 {
   double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
   int FO_chunk = 10000;
@@ -156,7 +165,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
     //this section of code takes majority of time (compared to the reduction ) when using omp with 20 threads
     #pragma omp parallel for
     #pragma acc kernels
-    #pragma acc loop independent
+    //#pragma acc loop independent
     for (int icell = 0; icell < endFO; icell++) //cell index inside each chunk
     {
       int icell_glb = n * FO_chunk + icell; //global FO cell index
