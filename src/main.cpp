@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
   paraRdr->echo();
 
   string pathToInput = "input";
-  string pathToOutput = "results";
+  //string pathToOutput = "results";
 
   //load freeze out information
   FO_data_reader freeze_out_data(paraRdr, pathToInput);
