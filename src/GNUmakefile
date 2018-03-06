@@ -13,6 +13,7 @@
 #CC := $(shell ../../crank/configure_compiler_C++.sh)
 CC = g++
 #CC = pgc++
+#CC = nvcc
 CFLAGS= -O3 -Wall -march=native
 #CFLAGS= -O3 -Wall -fopenmp -march=native
 #CFLAGS= -acc -fast -Minfo -ta=nvidia,time
@@ -32,8 +33,12 @@ endif
 SRC		=	main.cpp arsenal.cpp emissionfunction.cpp \
 			Table.cpp readindata.cpp ParameterReader.cpp
 
+#SRC   = main.cpp arsenal.cpp cuda/emissionfunction.cu Table.cpp readindata.cpp ParameterReader.cpp
+
 INC		= 	main.h arsenal.h emissionfunction.h \
                   Table.h readindata.h Stopwatch.h ParameterReader.h
+
+#INC   =   main.h arsenal.h cuda/emissionfunction.cuh Table.h readindata.h Stopwatch.h ParameterReader.h 
 
 # -------------------------------------------------
 

@@ -6,14 +6,14 @@
 #include <iomanip>
 #include <vector>
 #include <stdio.h>
-#include "main.h"
-#include "readindata.h"
+#include "../main.h"
+#include "../readindata.h"
 
 #include "emissionfunction.cuh"
 
-#include "Stopwatch.h"
-#include "arsenal.h"
-#include "ParameterReader.h"
+#include "../Stopwatch.h"
+#include "../arsenal.h"
+#include "../ParameterReader.h"
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -24,13 +24,105 @@
 
 using namespace std;
 
+// Class EmissionFunctionArray ------------------------------------------
+EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, particle_info* particles_in, int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in)
+{
+  paraRdr = paraRdr_in;
+  pT_tab = pT_tab_in;
+  pT_tab_length = pT_tab->getNumberOfRows();
+  phi_tab = phi_tab_in;
+  phi_tab_length = phi_tab->getNumberOfRows();
+  y_tab = y_tab_in;
+  y_tab_length = y_tab->getNumberOfRows();
+
+  // get control parameters
+  INCLUDE_BARYON = paraRdr->getVal("include_baryon");
+  INCLUDE_BULK_DELTAF = paraRdr->getVal("include_bulk_deltaf");
+  INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
+  INCLUDE_BARYONDIFF_DELTAF = paraRdr->getVal("include_baryondiff_deltaf");
+  GROUP_PARTICLES = paraRdr->getVal("group_particles");
+  PARTICLE_DIFF_TOLERANCE = paraRdr->getVal("particle_diff_tolerance");
+
+  particles = particles_in;
+  Nparticles = Nparticles_in;
+  surf_ptr = surf_ptr_in;
+  FO_length = FO_length_in;
+  number_of_chosen_particles = chosen_particles_in->getNumberOfRows();
+
+  chosen_particles_01_table = new int[Nparticles];
+  //a class member to hold 3D spectra for all chosen particles
+  dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+
+  for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
+
+  //only grab chosen particles from the table
+  for (int m = 0; m < number_of_chosen_particles; m++)
+  { //loop over all chosen particles
+    int mc_id = chosen_particles_in->get(1, m + 1);
+
+    for (int n = 0; n < Nparticles; n++)
+    {
+      if (particles[n].mc_id == mc_id)
+      {
+        chosen_particles_01_table[n] = 1;
+        break;
+      }
+    }
+  }
+
+  //is this necessary???
+  // next, for sampling processes
+  chosen_particles_sampling_table = new int[number_of_chosen_particles];
+  // first copy the chosen_particles table, but now using indices instead of mc_id
+  int current_idx = 0;
+  for (int m = 0; m < number_of_chosen_particles; m++)
+  {
+    int mc_id = chosen_particles_in->get(1, m + 1);
+    for (int n = 0; n < Nparticles; n++)
+    {
+      if (particles[n].mc_id == mc_id)
+      {
+        chosen_particles_sampling_table[current_idx] = n;
+        current_idx ++;
+        break;
+      }
+    }
+  }
+
+  // next re-order them so that particles with similar mass are adjacent
+  if (GROUP_PARTICLES == 1) // sort particles according to their mass; bubble-sorting
+  {
+    for (int m = 0; m < number_of_chosen_particles; m++)
+    {
+      for (int n = 0; n < number_of_chosen_particles - m - 1; n++)
+      {
+        if (particles[chosen_particles_sampling_table[n]].mass > particles[chosen_particles_sampling_table[n + 1]].mass)
+        {
+          // swap them
+          int particle_idx = chosen_particles_sampling_table[n + 1];
+          chosen_particles_sampling_table[n + 1] = chosen_particles_sampling_table[n];
+          chosen_particles_sampling_table[n] = particle_idx;
+        }
+      }
+    }
+  }
+}
+
+
+EmissionFunctionArray::~EmissionFunctionArray()
+{
+  delete[] chosen_particles_01_table;
+  delete[] chosen_particles_sampling_table;
+  delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
+}
+
 __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_particles, int pT_tab_length, int phi_tab_length, int y_tab_length,
                               double* dN_pTdpTdphidy_d, double* pT_d, double* trig_d, double* y_d,
                               double *Mass_d, double *Sign_d, double *Degen_d, double *Baryon_d,
                               double *T_d, double *P_d, double *E_d, double *tau_d, double *eta_d, double *ut_d, double *ux_d, double *uy_d, double *un_d,
                               double *dat_d, double *dax_d, double *day_d, double *dan_d,
                               double *pitt_d, double *pitx_d, double *pity_d, double *pitn_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *pinn_d, double *bulkPi_d,
-                              double *muB_d, double *Vt_d, double *Vx_d, double *Vy_d, double *Vn_d)
+                              double *muB_d, double *Vt_d, double *Vx_d, double *Vy_d, double *Vn_d, double prefactor, int INCLUDE_BARYON, int INCLUDE_BARYONDIFF_DELTAF)
 {
   //This array is a shared array that will contain the integration contributions from each cell.
   __shared__ double temp[threadsPerBlock];
@@ -392,7 +484,7 @@ void EmissionFunctionArray::calculate_spectra()
                                 T_d, P_d, E_d, tau_d, eta_d, ut_d, ux_d, uy_d, un_d,
                                 dat_d, dax_d, day_d, dan_d,
                                 pitt_d, pitx_d, pity_d, pitn_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, pinn_d, bulkPi_d,
-                                muB_d, Vt_d, Vx_d, Vy_d, Vn_d)
+                                muB_d, Vt_d, Vx_d, Vy_d, Vn_d, prefactor, INCLUDE_BARYON, INCLUDE_BARYONDIFF_DELTAF)
   cudaDeviceSynchronize();
 
   err = cudaGetLastError();
@@ -505,7 +597,7 @@ void EmissionFunctionArray::calculate_spectra()
     if (INCLUDE_BARYONDIFF_DELTAF)
     {
       cudaFree(Vt_d);
-      cudaFree(Vx_d); 
+      cudaFree(Vx_d);
       cudaFree(Vy_d);
       cudaFree(Vn_d);
     }
