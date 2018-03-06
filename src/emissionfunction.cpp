@@ -124,13 +124,6 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
   double *pitt, double *pitx, double *pity, double *pitn, double *pixx, double *pixy, double *pixn, double *piyy, double *piyn, double *pinn, double *bulkPi,
   double *muB, double *Vt, double *Vx, double *Vy, double *Vn)
 
-  // CAN WE PUT AN IF STATEMENT HERE FOR CUDA?
-  //#ifdef __NVCC
-  //COPY ALL ARRAYS TO DEVICE, PERFORM INTEGRALS, COPY BACK TO HOST
-  //endif
-  //#else DO THE FOLLOWING
-  //OR DO WE NEED A SEPARATE .CU FIle ?
-
 {
   double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
   int FO_chunk = 10000;
@@ -157,6 +150,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
   dN_pTdpTdphidy_all = (double*)calloc(npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
 
   //loop over bite size chunks of FO surface
+
   for (int n = 0; n < FO_length / FO_chunk + 1; n++)
   {
     printf("Progress : Finished chunk %d of %d \n", n, FO_length / FO_chunk);
@@ -216,13 +210,13 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
               //WHAT IS RATIO - CHANGE THIS ?
               double ratio = min(1., fabs(1. / (delta_f_shear + delta_f_bulk + delta_f_baryondiff)));
-              if (isnan(ratio)) printf(" found ratio nan! \n");
-              if (isnan(prefactor)) printf(" found prefactor nan! \n");
-              if (isnan(Degen[ipart])) printf(" found Degen nan! \n");
-              if (isnan(pdotdsigma)) printf(" found pdotdsigma nan! \n");
-              if (isnan(tau[icell_glb])) printf(" found tau nan! \n");
-              if (isnan(f0)) printf(" found f0 nan! \n");
-              if (isnan(delta_f_shear)) printf(" found delta_f_shear nan! \n");
+              //if (isnan(ratio)) printf(" found ratio nan! \n");
+              //if (isnan(prefactor)) printf(" found prefactor nan! \n");
+              //if (isnan(Degen[ipart])) printf(" found Degen nan! \n");
+              //if (isnan(pdotdsigma)) printf(" found pdotdsigma nan! \n");
+              //if (isnan(tau[icell_glb])) printf(" found tau nan! \n");
+              //if (isnan(f0)) printf(" found f0 nan! \n");
+              //if (isnan(delta_f_shear)) printf(" found delta_f_shear nan! \n");
               long long int ir = icell + (FO_chunk * ipart) + (FO_chunk * npart * ipT) + (FO_chunk * npart * pT_tab_length * iphip) + (FO_chunk * npart * pT_tab_length * phi_tab_length * iy);
               dN_pTdpTdphidy_all[ir] = (prefactor * Degen[ipart] * pdotdsigma * tau[icell_glb] * f0 * (1. + (delta_f_shear + delta_f_bulk + delta_f_baryondiff) * ratio));
 
