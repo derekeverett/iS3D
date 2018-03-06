@@ -3,9 +3,9 @@
 
 #include<string>
 #include<vector>
-#include "Table.cuh"
-#include "main.cuh"
-#include "ParameterReader.cuh"
+#include "Table.h"
+#include "main.h"
+#include "ParameterReader.h"
 using namespace std;
 
 class EmissionFunctionArray

@@ -6,14 +6,12 @@
 #include <iomanip>
 #include <vector>
 #include <stdio.h>
-#include "../main.h"
-#include "../readindata.h"
-
+#include "main.cuh"
+#include "readindata.cuh"
 #include "emissionfunction.cuh"
-
-#include "../Stopwatch.h"
-#include "../arsenal.h"
-#include "../ParameterReader.h"
+#include "Stopwatch.cuh"
+#include "arsenal.cuh"
+#include "ParameterReader.cuh"
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -128,7 +126,7 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
   __shared__ double temp[threadsPerBlock];
 
   //Assign a global index and a local index
-  int idx_glb = threadIdx.x + blockDim.x * blockIdx.x;
+  //int idx_glb = threadIdx.x + blockDim.x * blockIdx.x;
   int icell = threadIdx.x;
   __syncthreads();
 
@@ -147,7 +145,7 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
       double mT       = sqrt(Mass_d[ipart] * Mass_d[ipart] + pT_d[ipT] * pT_d[ipT]);
       double y        = y_d[iy];
       double pt       = mT * cosh(y - eta_d[icell]); //contravariant
-      double pn       = (-1.0 / tau_d[icell]) * mT * sinh(y - eta[icell]); //contravariant
+      double pn       = (-1.0 / tau_d[icell]) * mT * sinh(y - eta_d[icell]); //contravariant
 
       //thermal equilibrium distributions - for viscous hydro
       double pdotu = pt * ut_d[icell] - px * ux_d[icell] - py * uy_d[icell] - (tau_d[icell] * tau_d[icell]) * pn * un_d[icell]; //watch factors of tau from metric!
@@ -155,13 +153,14 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
       if (INCLUDE_BARYON) baryon_factor = Baryon_d[ipart] * muB_d[icell];
       double exponent = (pdotu - baryon_factor) / T_d[icell];
       double f0 = 1. / (exp(exponent) + Sign_d[ipart]);
-      double pdotdsigma = pt * dat_d[icell] - px * dax_d[icell] - py * day_d[icell] - pn * dan_d[icell] * (tau[icell] * tau[icell]); //CHECK THESE METRIC FACTORS !
+      double pdotdsigma = pt * dat_d[icell] - px * dax_d[icell] - py * day_d[icell] - pn * dan_d[icell] * (tau_d[icell] * tau_d[icell]); //CHECK THESE METRIC FACTORS !
 
       //viscous corrections
       double delta_f_shear = 0.0;
-      double tau2 = tau[icell] * tau[icell];
+      double tau2 = tau_d[icell] * tau_d[icell];
       double tau4 = tau2 * tau2;
       //double pimunu_pmu_pnu = (pt * pt * pitt[icell_glb] - 2.0 * pt * px * pitx[icell_glb] - 2.0 * pt * py * pity[icell_glb] + px * px * pixx[icell_glb] + 2.0 * px * py * pixy[icell_glb] + py * py * piyy[icell_glb] + pn * pn * pinn[icell_glb]);
+      double shear_deltaf_prefactor = 1.0 / (2.0 * T_d[icell] * T_d[icell] * (E_d[icell] + P_d[icell]));
       double pimunu_pmu_pnu = pitt_d[icell] * pt * pt + pixx_d[icell] * px * px + piyy_d[icell] * py * py + pinn_d[icell] * pn * pn * (1.0 / tau4)
       + 2.0 * (-pitx_d[icell] * pt * px - pity_d[icell] * pt * py - pitn_d[icell] * pt * pn * (1.0 / tau2) + pixy_d[icell] * px * py + pixn_d[icell] * px * pn * (1.0 / tau2) + piyn_d[icell] * py * pn * (1.0 / tau2));
       delta_f_shear = ((1.0 - Sign_d[ipart] * f0) * pimunu_pmu_pnu * shear_deltaf_prefactor);
@@ -346,6 +345,11 @@ void EmissionFunctionArray::calculate_spectra()
   dN_pTdpTdphidy = (double*) malloc( spectrum_size * sizeof(double) );
   for(int i = 0; i < spectrum_size; i++) dN_pTdpTdphidy[i] = 0.0;
 
+  double *pT, *trig, *y;
+  pT = (double*)calloc(pT_tab_length, sizeof(double));
+  trig = (double*)calloc(2 * phi_tab_length, sizeof(double));
+  y = (double*)calloc(y_tab_length, sizeof(double));
+
   for (int i = 0; i < pT_tab_length; i++) pT[i] = pT_tab->get(1, i+1);
   for (int i = 0; i < phi_tab_length; i++)
   {
@@ -356,11 +360,13 @@ void EmissionFunctionArray::calculate_spectra()
 
   cout << "Declaring and Allocating device arrays " << endl;
   double *Mass_d, *Sign_d, *Degen_d, *Baryon_d;
+  double *pT_d, *trig_d, *y_d;
   double *T_d, *P_d, *E_d, *tau_d, *eta_d, *ut_d, *ux_d, *uy_d, *un_d;
   double *dat_d, *dax_d, *day_d, *dan_d;
   double *pitt_d, *pitx_d, *pity_d, *pitn_d, *pixx_d, *pixy_d, *pixn_d, *piyy_d, *piyn_d, *pinn_d, *bulkPi_d;
   double *muB_d, *Vt_d, *Vx_d, *Vy_d, *Vn_d;
-
+  double *dN_pTdpTdphidy_d;
+ 
   //Allocate memory on device
   cudaMalloc( (void**) &Mass_d,   number_of_chosen_particles * sizeof(double)       );
   cudaMalloc( (void**) &Sign_d,   number_of_chosen_particles * sizeof(double)       );
@@ -397,7 +403,7 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMalloc( (void**) &piyy_d,  FO_length * sizeof(double)                         );
   cudaMalloc( (void**) &piyn_d,  FO_length * sizeof(double)                         );
   cudaMalloc( (void**) &pinn_d,  FO_length * sizeof(double)                         );
-  cudaMalloc( (void**) &Pi_d,    FO_length * sizeof(double)                         );
+  cudaMalloc( (void**) &bulkPi_d,    FO_length * sizeof(double)                         );
 
   if (INCLUDE_BARYON)
   {
@@ -451,7 +457,7 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMemcpy( piyy_d,  piyy,FO_length * sizeof(double),   cudaMemcpyHostToDevice );
   cudaMemcpy( piyn_d,  piyn,FO_length * sizeof(double),   cudaMemcpyHostToDevice );
   cudaMemcpy( pinn_d,  pinn,FO_length * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( Pi_d,    Pi,  FO_length * sizeof(double),   cudaMemcpyHostToDevice );
+  cudaMemcpy( bulkPi_d,bulkPi, FO_length * sizeof(double),cudaMemcpyHostToDevice );
 
   if (INCLUDE_BARYON)
   {
@@ -484,7 +490,7 @@ void EmissionFunctionArray::calculate_spectra()
                                 T_d, P_d, E_d, tau_d, eta_d, ut_d, ux_d, uy_d, un_d,
                                 dat_d, dax_d, day_d, dan_d,
                                 pitt_d, pitx_d, pity_d, pitn_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, pinn_d, bulkPi_d,
-                                muB_d, Vt_d, Vx_d, Vy_d, Vn_d, prefactor, INCLUDE_BARYON, INCLUDE_BARYONDIFF_DELTAF)
+				muB_d, Vt_d, Vx_d, Vy_d, Vn_d, prefactor, INCLUDE_BARYON, INCLUDE_BARYONDIFF_DELTAF);
   cudaDeviceSynchronize();
 
   err = cudaGetLastError();
