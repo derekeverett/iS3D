@@ -204,6 +204,38 @@ __global__ void blockReduction(double* dN_pTdpTdphidy_d, int final_spectrum_size
   }
 }
 
+
+void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
+{
+  printf("Writing spectra to results/dN_pTdpTdphidy.dat\n");
+  //write 3D spectra in block format, different blocks for different species,
+  //different sublocks for different values of rapidity
+  //rows corespond to phip and columns correspond to pT
+
+  //is there a better / less confusing format for this file?
+  int npart = number_of_chosen_particles;
+  char filename[255] = "";
+  sprintf(filename, "results/dN_pTdpTdphidy.dat");
+  ofstream spectraFile(filename, ios_base::app);
+  for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+  {
+    for (int iy = 0; iy < y_tab_length; iy++)
+    {
+      for (int iphip = 0; iphip < phi_tab_length; iphip++)
+      {
+        for (int ipT = 0; ipT < pT_tab_length; ipT++)
+        {
+          long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+          spectraFile << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[is] << "\t";
+        } //ipT
+        spectraFile << "\n";
+      } //iphip
+    } //iy
+  }//ipart
+  spectraFile.close();
+}
+
+
 void EmissionFunctionArray::calculate_spectra()
 {
   cudaDeviceSynchronize();
@@ -366,7 +398,7 @@ void EmissionFunctionArray::calculate_spectra()
   double *pitt_d, *pitx_d, *pity_d, *pitn_d, *pixx_d, *pixy_d, *pixn_d, *piyy_d, *piyn_d, *pinn_d, *bulkPi_d;
   double *muB_d, *Vt_d, *Vx_d, *Vy_d, *Vn_d;
   double *dN_pTdpTdphidy_d;
- 
+
   //Allocate memory on device
   cudaMalloc( (void**) &Mass_d,   number_of_chosen_particles * sizeof(double)       );
   cudaMalloc( (void**) &Sign_d,   number_of_chosen_particles * sizeof(double)       );
@@ -523,9 +555,11 @@ void EmissionFunctionArray::calculate_spectra()
 
   //Copy final spectra for all particles from device to host
   cout << "Copying spectra from device to host" << endl;
-
   cudaMemcpy( dN_pTdpTdphidy, dN_pTdpTdphidy_d, number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length * sizeof(double),  cudaMemcpyDeviceToHost );
 
+  //write the results to disk
+  write_dN_pTdpTdphidy_toFile();
+  
   //Clean up on host and device
   cout << "Deallocating host and device memory" << endl;
 
