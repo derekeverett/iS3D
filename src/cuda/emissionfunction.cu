@@ -244,6 +244,13 @@ void EmissionFunctionArray::calculate_spectra()
   Stopwatch sw;
   sw.tic();
 
+  err = cudaGetLastError();
+  if (err != cudaSuccess)
+  {
+    printf("Error at very beginning: %s\n", cudaGetErrorString(err));
+    err = cudaSuccess;
+  }
+
   int  blocks_ker1 = (FO_length + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the first kernel (thread reduction)
   long spectrum_size = blocks_ker1 * number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; //the size of the spectrum which has been intrablock reduced, but not interblock reduced
   int  final_spectrum_size = number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; //size of final array for all particles , as a function of particle, pT and phi and y
@@ -468,7 +475,7 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMemcpy( Mass_d,   	Mass,   number_of_chosen_particles * sizeof(double),   cudaMemcpyHostToDevice );
   cudaMemcpy( Sign_d,   	Sign,   number_of_chosen_particles * sizeof(double),   cudaMemcpyHostToDevice );
   cudaMemcpy( Degen_d,   	Degen,  number_of_chosen_particles * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( Baryon_d,   Baryon, number_of_chosen_particles * sizeof(double),   cudaMemcpyHostToDevice );
+  cudaMemcpy( Baryon_d,   Baryon, number_of_chosen_particles * sizeof(int),      cudaMemcpyHostToDevice );
 
   cudaMemcpy( pT_d,   	pT,   pT_tab_length * sizeof(double),   cudaMemcpyHostToDevice );
   cudaMemcpy( trig_d, trig,   2 * phi_tab_length * sizeof(double),   cudaMemcpyHostToDevice );
@@ -501,7 +508,7 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMemcpy( piyn_d, piyn,FO_length * sizeof(double), cudaMemcpyHostToDevice );
   cudaMemcpy( pinn_d, pinn,FO_length * sizeof(double), cudaMemcpyHostToDevice );
 
-  cudaMemcpy( bulkPi_d,bulkPi, FO_length * sizeof(double),cudaMemcpyHostToDevice );
+  cudaMemcpy( bulkPi_d,bulkPi, FO_length * sizeof(double), cudaMemcpyHostToDevice );
 
   if (INCLUDE_BARYON)
   {
@@ -516,6 +523,12 @@ void EmissionFunctionArray::calculate_spectra()
   }
   cudaMemcpy( dN_pTdpTdphidy_d, dN_pTdpTdphidy, spectrum_size * sizeof(double), cudaMemcpyHostToDevice ); //this is an empty array, we shouldn't need to memcpy it?
 
+  err = cudaGetLastError();
+  if (err != cudaSuccess)
+  {
+    printf("Error in a cudaMemcpy: %s\n", cudaGetErrorString(err));
+    err = cudaSuccess;
+  }
   //Perform kernels, first calculation of integrand and reduction across threads, then a reduction across blocks
   double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
   if(debug) cout << "Starting First Kernel : thread reduction" << endl;
@@ -524,7 +537,7 @@ void EmissionFunctionArray::calculate_spectra()
   cudaEventCreate(&stop);
   cudaEventRecord(start);
   cudaDeviceSynchronize();
-  /*
+
   calculate_dN_pTdpTdphidy<<<blocks_ker1, threadsPerBlock>>>(FO_length, number_of_chosen_particles, pT_tab_length, phi_tab_length, y_tab_length,
                                                               dN_pTdpTdphidy_d, pT_d, trig_d, y_d,
                                                               Mass_d, Sign_d, Degen_d, Baryon_d,
@@ -532,7 +545,7 @@ void EmissionFunctionArray::calculate_spectra()
                                                               dat_d, dax_d, day_d, dan_d,
                                                               pitt_d, pitx_d, pity_d, pitn_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, pinn_d, bulkPi_d,
                                                               muB_d, Vt_d, Vx_d, Vy_d, Vn_d, prefactor, INCLUDE_BARYON, INCLUDE_BARYONDIFF_DELTAF);
-  */
+
 
   cudaDeviceSynchronize();
   err = cudaGetLastError();
