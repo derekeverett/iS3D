@@ -224,8 +224,8 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
       {
         for (int ipT = 0; ipT < pT_tab_length; ipT++)
         {
-          long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
-          spectraFile << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[is] << "\t";
+          long long int imm = ipT + iphip * (pT_tab_length) + iy * (pT_tab_length * phi_tab_length) + ipart * (pT_tab_length * phi_tab_length * y_tab_length);
+          spectraFile << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[imm] << "\t";
         } //ipT
         spectraFile << "\n";
       } //iphip
@@ -264,8 +264,8 @@ void EmissionFunctionArray::calculate_spectra()
   cout << "unreduced spectrum size = " << spectrum_size        << endl; //?
   cout << "reduced spectrum size   = " << final_spectrum_size  << endl; //?
   cout << "threads per block       = " << threadsPerBlock      << endl;
-  cout << "blocks in first kernel  = " << blocks_ker1     << endl;
-  cout << "blocks in second kernel = " << blocks_ker2               << endl;
+  cout << "blocks in first kernel  = " << blocks_ker1          << endl;
+  cout << "blocks in second kernel = " << blocks_ker2          << endl;
 
   //Declare and fill arrays on host
   cout << "Declaring and filling host arrays with particle and freezeout surface info" << endl;
@@ -575,7 +575,8 @@ void EmissionFunctionArray::calculate_spectra()
 
   //Copy final spectra for all particles from device to host
   cout << "Copying spectra from device to host" << endl;
-  cudaMemcpy( dN_pTdpTdphidy, dN_pTdpTdphidy_d, final_spectrum_size * sizeof(double), cudaMemcpyDeviceToHost );
+  //cudaMemcpy( dN_pTdpTdphidy, dN_pTdpTdphidy_d, final_spectrum_size * sizeof(double), cudaMemcpyDeviceToHost );
+  cudaMemcpy( dN_pTdpTdphidy, dN_pTdpTdphidy_d, spectrum_size * sizeof(double), cudaMemcpyDeviceToHost );
 
   //write the results to disk
   write_dN_pTdpTdphidy_toFile();
