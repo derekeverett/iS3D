@@ -208,7 +208,7 @@ __global__ void blockReduction(double* dN_pTdpTdphidy_d, int final_spectrum_size
 
 void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
 {
-  printf("Writing spectra to results/dN_pTdpTdphidy.dat\n");
+  printf("writing to file\n");
   //write 3D spectra in block format, different blocks for different species,
   //different sublocks for different values of rapidity
   //rows corespond to phip and columns correspond to pT
@@ -216,6 +216,25 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
   //is there a better / less confusing format for this file?
   int npart = number_of_chosen_particles;
   char filename[255] = "";
+  sprintf(filename, "results/dN_pTdpTdphidy_block.dat");
+  ofstream spectraFileBlock(filename, ios_base::app);
+  for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+  {
+    for (int iy = 0; iy < y_tab_length; iy++)
+    {
+      for (int iphip = 0; iphip < phi_tab_length; iphip++)
+      {
+        for (int ipT = 0; ipT < pT_tab_length; ipT++)
+        {
+          long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+          spectraFileBlock << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[is] << "\t";
+        } //ipT
+        spectraFileBlock << "\n";
+      } //iphip
+    } //iy
+  }//ipart
+  spectraFileBlock.close();
+
   sprintf(filename, "results/dN_pTdpTdphidy.dat");
   ofstream spectraFile(filename, ios_base::app);
   for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
@@ -226,8 +245,11 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
       {
         for (int ipT = 0; ipT < pT_tab_length; ipT++)
         {
-          long long int imm = ipT + iphip * (pT_tab_length) + iy * (pT_tab_length * phi_tab_length) + ipart * (pT_tab_length * phi_tab_length * y_tab_length);
-          spectraFile << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[imm] << "\t";
+          double y = y_tab->get(1,iy + 1);
+          double pT = pT_tab->get(1,ipT + 1);
+          double phip = phi_tab->get(1,iphip + 1);
+          long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+          spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
         } //ipT
         spectraFile << "\n";
       } //iphip
