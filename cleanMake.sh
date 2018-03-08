@@ -7,5 +7,11 @@ cd cuda
 rm iS.e
 rm -r obj
 mkdir obj
-cd ../..
+cd ../cpp
+rm iS.e
+rm -r obj
+mkdir obj
+cd ../../
+make iS.e
 make iS_GPU.e
+
