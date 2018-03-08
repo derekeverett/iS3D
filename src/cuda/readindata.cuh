@@ -32,7 +32,7 @@ typedef struct
 typedef struct
 {
    double tau, x, y, eta; //contravariant spacetime position
-   double dat, dax, day, dan; //contravariant surface normal vector
+   double dat, dax, day, dan; //COVARIANT surface normal vector
    double ut, ux, uy, un; //contravariant flow velocity
    double E, T, P; //energy density, Temperature and Pressure
    double pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn; //contravariant components of shear stress

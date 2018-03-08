@@ -64,7 +64,8 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surfdat >> surf_ptr[i].y;
     surfdat >> surf_ptr[i].eta;
 
-    // contravariant surface normal vector
+    // COVARIANT surface normal vector
+    //note cornelius writes covariant normal vector (used in cpu-ch, gpu-vh,...)
     surfdat >> surf_ptr[i].dat;
     surfdat >> surf_ptr[i].dax;
     surfdat >> surf_ptr[i].day;

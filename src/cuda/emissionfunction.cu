@@ -130,6 +130,8 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
 
     for (long imm = 0; imm < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; imm++) //each thread <-> FO cell , and each thread loops over all momenta and species
     {
+      //all vector components are CONTRAVARIANT EXCEPT the surface normal vector dat, dax, day, dan, which are COVARIANT
+
       temp[icell] = 0.0;
       if (icell < FO_length) //this index corresponds to the freezeout cell
       {
@@ -151,7 +153,7 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
         if (INCLUDE_BARYON) baryon_factor = Baryon_d[ipart] * muB_d[icell];
         double exponent = (pdotu - baryon_factor) / T_d[icell];
         double f0 = 1. / (exp(exponent) + Sign_d[ipart]);
-        double pdotdsigma = pt * dat_d[icell] - px * dax_d[icell] - py * day_d[icell] - pn * dan_d[icell] * (tau_d[icell] * tau_d[icell]); //CHECK THESE METRIC FACTORS !
+        double pdotdsigma = pt * dat_d[icell] + px * dax_d[icell] + py * day_d[icell] + pn * dan_d[icell]; //CHECK THIS !
 
         //viscous corrections
         double delta_f_shear = 0.0;

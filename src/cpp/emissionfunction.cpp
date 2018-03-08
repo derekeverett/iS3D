@@ -174,15 +174,15 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
           for (int iphip = 0; iphip < phi_tab_length; iphip++)
           {
-            double px = pT * trig_phi_table[iphip][0];
-            double py = pT * trig_phi_table[iphip][1];
+            double px = pT * trig_phi_table[iphip][0]; //contravariant
+            double py = pT * trig_phi_table[iphip][1]; //contravariant
 
             for (int iy = 0; iy < y_tab_length; iy++)
             {
+              //all vector components are CONTRAVARIANT EXCEPT the surface normal vector dat, dax, day, dan, which are COVARIANT
               double y = yValues[iy];
               double shear_deltaf_prefactor = 1.0 / (2.0 * T[icell_glb] * T[icell_glb] * (E[icell_glb] + P[icell_glb]));
               double pt = mT * cosh(y - eta[icell_glb]); //contravariant
-              //if (isnan(pt)) printf(" found pt nan! \n");
               double pn = (-1.0 / tau[icell_glb]) * mT * sinh(y - eta[icell_glb]); //contravariant
 
               //thermal equilibrium distributions - for viscous hydro
@@ -190,10 +190,10 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               double baryon_factor = 0.0;
               if (INCLUDE_BARYON) baryon_factor = Baryon[ipart] * muB[icell_glb];
               double exponent = (pdotu - baryon_factor) / T[icell_glb];
-              //if (isnan(exponent)) printf(" found exponent nan! \n");
-              //if (isnan(Sign[ipart])) printf(" found Sign nan! \n");
               double f0 = 1. / (exp(exponent) + Sign[ipart]);
-              double pdotdsigma = pt * dat[icell_glb] - px * dax[icell_glb] - py * day[icell_glb] - pn * dan[icell_glb] * (tau[icell_glb] * tau[icell_glb]); //CHECK THESE METRIC FACTORS !
+
+              //momentum vector is contravariant, surface normal vector is COVARIANT
+              double pdotdsigma = pt * dat[icell_glb] + px * dax[icell_glb] + py * day[icell_glb] + pn * dan[icell_glb]; //CHECK THIS !
 
               //viscous corrections
               double delta_f_shear = 0.0;
@@ -202,7 +202,9 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               //double pimunu_pmu_pnu = (pt * pt * pitt[icell_glb] - 2.0 * pt * px * pitx[icell_glb] - 2.0 * pt * py * pity[icell_glb] + px * px * pixx[icell_glb] + 2.0 * px * py * pixy[icell_glb] + py * py * piyy[icell_glb] + pn * pn * pinn[icell_glb]);
               double pimunu_pmu_pnu = pitt[icell_glb] * pt * pt + pixx[icell_glb] * px * px + piyy[icell_glb] * py * py + pinn[icell_glb] * pn * pn * (1.0 / tau4)
               + 2.0 * (-pitx[icell_glb] * pt * px - pity[icell_glb] * pt * py - pitn[icell_glb] * pt * pn * (1.0 / tau2) + pixy[icell_glb] * px * py + pixn[icell_glb] * px * pn * (1.0 / tau2) + piyn[icell_glb] * py * pn * (1.0 / tau2));
+
               delta_f_shear = ((1.0 - Sign[ipart] * f0) * pimunu_pmu_pnu * shear_deltaf_prefactor);
+
               double delta_f_bulk = 0.0;
               //put fourteen moment expression for bulk viscosity (\delta)f here
               double delta_f_baryondiff = 0.0;
@@ -210,13 +212,6 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
               //WHAT IS RATIO - CHANGE THIS ?
               double ratio = min(1., fabs(1. / (delta_f_shear + delta_f_bulk + delta_f_baryondiff)));
-              //if (isnan(ratio)) printf(" found ratio nan! \n");
-              //if (isnan(prefactor)) printf(" found prefactor nan! \n");
-              //if (isnan(Degen[ipart])) printf(" found Degen nan! \n");
-              //if (isnan(pdotdsigma)) printf(" found pdotdsigma nan! \n");
-              //if (isnan(tau[icell_glb])) printf(" found tau nan! \n");
-              //if (isnan(f0)) printf(" found f0 nan! \n");
-              //if (isnan(delta_f_shear)) printf(" found delta_f_shear nan! \n");
               long long int ir = icell + (FO_chunk * ipart) + (FO_chunk * npart * ipT) + (FO_chunk * npart * pT_tab_length * iphip) + (FO_chunk * npart * pT_tab_length * phi_tab_length * iy);
               dN_pTdpTdphidy_all[ir] = (prefactor * Degen[ipart] * pdotdsigma * tau[icell_glb] * f0 * (1. + (delta_f_shear + delta_f_bulk + delta_f_baryondiff) * ratio));
 
@@ -267,6 +262,25 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
   //is there a better / less confusing format for this file?
   int npart = number_of_chosen_particles;
   char filename[255] = "";
+  sprintf(filename, "results/dN_pTdpTdphidy_block.dat");
+  ofstream spectraFileBlock(filename, ios_base::app);
+  for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+  {
+    for (int iy = 0; iy < y_tab_length; iy++)
+    {
+      for (int iphip = 0; iphip < phi_tab_length; iphip++)
+      {
+        for (int ipT = 0; ipT < pT_tab_length; ipT++)
+        {
+          long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+          spectraFileBlock << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[is] << "\t";
+        } //ipT
+        spectraFileBlock << "\n";
+      } //iphip
+    } //iy
+  }//ipart
+  spectraFileBlock.close();
+
   sprintf(filename, "results/dN_pTdpTdphidy.dat");
   ofstream spectraFile(filename, ios_base::app);
   for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
@@ -277,8 +291,11 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
       {
         for (int ipT = 0; ipT < pT_tab_length; ipT++)
         {
+          double y = y_tab->get(1,iy + 1);
+          double pT = pT_tab->get(1,ipT + 1);
+          double phip = phi_tab->get(1,iphip + 1);
           long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
-          spectraFile << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[is] << "\t";
+          spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
         } //ipT
         spectraFile << "\n";
       } //iphip
