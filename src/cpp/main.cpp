@@ -20,9 +20,8 @@ using namespace std;
 int main(int argc, char *argv[])
 {
   cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
+  cout << "Derek Everett, Sameed Pervaiz, Mike McNelis and Lipei Du (2018)" << endl;
   cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu" << endl;
-  cout << "Modified by Derek Everett, Lipei Du and Mike McNelis (2018)" << endl;
-
   // Read-in parameters
   cout << "Reading in Parameters from parameters.dat" << endl;
   ParameterReader *paraRdr = new ParameterReader;
