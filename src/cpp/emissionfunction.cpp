@@ -122,7 +122,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
   double *T, double *P, double *E, double *tau, double *eta, double *ut, double *ux, double *uy, double *un,
   double *dat, double *dax, double *day, double *dan,
   double *pitt, double *pitx, double *pity, double *pitn, double *pixx, double *pixy, double *pixn, double *piyy, double *piyn, double *pinn, double *bulkPi,
-  double *muB, double *Vt, double *Vx, double *Vy, double *Vn)
+  double *muB, double *Vt, double *Vx, double *Vy, double *Vn, double c0)
 
 {
   double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
@@ -207,6 +207,10 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
               double delta_f_bulk = 0.0;
               //put fourteen moment expression for bulk viscosity (\delta)f here
+
+              //this expression is just for testing , not correct!
+              delta_f_bulk = c0 * bulkPi[icell_glb];
+
               double delta_f_baryondiff = 0.0;
               //put fourteen moment expression for baryon diffusion (\delta)f here
 
@@ -428,12 +432,54 @@ void EmissionFunctionArray::calculate_spectra()
     }
   }
 
+  //read in tables of delta_f coefficients
+  //write now these tables are in units fm^x, e.g. Temperature in fm^(-1)
+  //recall our FO variables have different units, e.g. T[] has units GeV
+  //put c0, c1, c2 into an array of three values
+  //put c3, c4 into an array of two values?
+  printf("Reading in delta_f coefficient tables \n");
+  int n_T = 100; //number of points in Temperature
+  int n_muB = 1; //number of points in baryon chem pot
+  if (INCLUDE_BARYON) n_muB = 500;
+  FILE *fileIn;
+  char fname[255];
+  sprintf(fname, "%s", "deltaf_coefficients/c0_df14_vh_muB_0.dat");
+  fileIn = fopen(fname, "r");
+  if (fileIn == NULL) printf("Couldn't open deltaf_coefficients table !\n");
+  double table_c0[n_T]; //values of c_0
+  double table_T[n_T]; //values of temperature
+  double c0 = 0;
+  double T_invfm = T[0] / hbarC; //FO Temp in units fm^(-1)
+  //fill the array from file
+  char buffer[100];
+  fgets(buffer, 100, fileIn); //skip the header
+  for (int iT = 0; iT < n_T; iT++)
+  {
+    fscanf(fileIn, "%lf\t\t%lf\n", &table_T[iT], &table_c0[iT]);
+  }
+  //now linearly interpolate to find c0 at freezeout temperature
+  //freezeout temperature is determined by the first cell of freezeout surface, T[0]...
+  for (int iT = 0; iT < n_T; iT++)
+  {
+    if (T_invfm < table_T[iT]) //find where we cross the FO temperature
+    {
+      c0 = table_c0[iT - 1] + table_c0[iT] * ( (T_invfm - table_T[iT - 1]) / table_T[iT - 1]);
+      break;
+    }
+  }
+
+  //how should we convert units of c0?
+  // c0 = c0 / hbarC / hbarC / hbarC / hbarC / hbarC / hbarC;
+
+  //for testing
+  cout << "c0 = " << c0 << endl;
+
   //launch function to perform integrations - this should be readily parallelizable
   calculate_dN_ptdptdphidy(Mass, Sign, Degen, Baryon,
                           T, P, E, tau, eta, ut, ux, uy, un,
                           dat, dax, day, dan,
                           pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-                          muB, Vt, Vx, Vy, Vn);
+                          muB, Vt, Vx, Vy, Vn, c0);
 
   //write the results to file
   write_dN_pTdpTdphidy_toFile();
