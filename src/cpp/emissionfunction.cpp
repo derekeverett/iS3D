@@ -210,6 +210,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
               //this expression is just for testing , not correct!
               delta_f_bulk = bulkPi[icell_glb] * (df_coeff[0] + pdotu * df_coeff[1] + pdotu * pdotu * df_coeff[2]);
+              if (isnan(delta_f_bulk)) printf("Found delta_f_bulk nan!");
 
               double delta_f_baryondiff = 0.0;
               //put fourteen moment expression for baryon diffusion (\delta)f here
