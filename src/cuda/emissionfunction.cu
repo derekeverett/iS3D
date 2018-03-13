@@ -145,7 +145,7 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
         double mT       = sqrt(Mass_d[ipart] * Mass_d[ipart] + pT_d[ipT] * pT_d[ipT]);
         double y        = y_d[iy];
         double pt       = mT * cosh(y - eta_d[icell]); //contravariant
-        double pn       = (-1.0 / tau_d[icell]) * mT * sinh(y - eta_d[icell]); //contravariant
+        double pn       = (1.0 / tau_d[icell]) * mT * sinh(y - eta_d[icell]); //contravariant
 
         //thermal equilibrium distributions - for viscous hydro
         double pdotu = pt * ut_d[icell] - px * ux_d[icell] - py * uy_d[icell] - (tau_d[icell] * tau_d[icell]) * pn * un_d[icell]; //watch factors of tau from metric!

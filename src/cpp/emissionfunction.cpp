@@ -183,7 +183,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               double y = yValues[iy];
               double shear_deltaf_prefactor = 1.0 / (2.0 * T[icell_glb] * T[icell_glb] * (E[icell_glb] + P[icell_glb]));
               double pt = mT * cosh(y - eta[icell_glb]); //contravariant
-              double pn = (-1.0 / tau[icell_glb]) * mT * sinh(y - eta[icell_glb]); //contravariant
+              double pn = (1.0 / tau[icell_glb]) * mT * sinh(y - eta[icell_glb]); //contravariant
 
               //thermal equilibrium distributions - for viscous hydro
               double pdotu = pt * ut[icell_glb] - px * ux[icell_glb] - py * uy[icell_glb] - (tau[icell_glb] * tau[icell_glb]) * pn * un[icell_glb]; //watch factors of tau from metric!
@@ -218,8 +218,9 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               //WHAT IS RATIO - CHANGE THIS ?
               double ratio = min(1., fabs(1. / (delta_f_shear + delta_f_bulk + delta_f_baryondiff)));
               long long int ir = icell + (FO_chunk * ipart) + (FO_chunk * npart * ipT) + (FO_chunk * npart * pT_tab_length * iphip) + (FO_chunk * npart * pT_tab_length * phi_tab_length * iy);
-              dN_pTdpTdphidy_all[ir] = (prefactor * Degen[ipart] * pdotdsigma * tau[icell_glb] * f0 * (1. + (delta_f_shear + delta_f_bulk + delta_f_baryondiff) * ratio));
-
+	      //the ratio factor regulates the delta f correction, try turning it off, see if spectra remain positive definite 
+              //dN_pTdpTdphidy_all[ir] = (prefactor * Degen[ipart] * pdotdsigma * tau[icell_glb] * f0 * (1. + (delta_f_shear + delta_f_bulk + delta_f_baryondiff) * ratio));
+	      dN_pTdpTdphidy_all[ir] = (prefactor * Degen[ipart] * pdotdsigma * tau[icell_glb] * f0 * (1. + (delta_f_shear + delta_f_bulk + delta_f_baryondiff)));
             } //iy
           } //iphip
         } //ipT
@@ -278,7 +279,8 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
         for (int ipT = 0; ipT < pT_tab_length; ipT++)
         {
           long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
-          spectraFileBlock << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[is] << "\t";
+	  if (dN_pTdpTdphidy[is] < 1.0e-40) spectraFileBlock << scientific <<  setw(15) << setprecision(8) << 0.0 << "\t";
+          else spectraFileBlock << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[is] << "\t";
         } //ipT
         spectraFileBlock << "\n";
       } //iphip
@@ -300,7 +302,8 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
           double pT = pT_tab->get(1,ipT + 1);
           double phip = phi_tab->get(1,iphip + 1);
           long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
-          spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
+	  if (dN_pTdpTdphidy[is] < 1.0e-40) spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << 0.0 << "\n";
+          else spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
         } //ipT
         spectraFile << "\n";
       } //iphip
