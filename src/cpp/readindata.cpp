@@ -331,7 +331,7 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
 
     // energy density and temperature
     surface_data >> data;
-    surface[i].e = data * hbarC; // (fm^-4 -> GeV/fm^3)
+    surface[i].E = data * hbarC; // (fm^-4 -> GeV/fm^3)
     surface_data >> data;
     surface[i].T = data * hbarC; // (fm^-1 -> GeV)
 
