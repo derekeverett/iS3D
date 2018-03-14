@@ -45,7 +45,8 @@ int FO_data_reader::get_number_cells()
 void FO_data_reader::read_surf_switch(long length, FO_surf* surf_ptr)
 {
   if (mode == 1) read_surf_VH(length, surf_ptr); //surface file containing viscous hydro dissipative currents
-  else if (mode == 2) read_surf_VAH(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents
+  else if (mode == 2) read_surf_VAH_PLMatch(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents for use with CPU-VAH
+  else if (mode == 3) read_surf_VAH_PLPTMatch(length, surf_ptr); //usrface file containing anisotropic viscous hydro dissipative currents for use with Mike's Hydro
   return;
 }
 
@@ -139,8 +140,280 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
   return;
 }
 
-void FO_data_reader::read_surf_VAH(long length, FO_surf* surf_ptr)
+void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
 {
+  // vahydro: Dennis' version
+  ostringstream surface_file;
+  surface_file << pathToInput << "/surface.dat";      // stream "input/surface.dat" to surface_file
+  ifstream surface_data(surface_file.str().c_str());  // open surface.dat
+  // intermediate value which is read from file; need to convert units
+  double data;
+
+  // intermediate energy density, longitudinal pressure and effective temperature (hydro units)
+  //  * note: used for extracting variables lambda and xi
+  double E_data;      // (fm^-4)
+  double pl_data;     // (fm^-4)
+  double Lambda_data; // (fm^-1)
+
+  // for bounds criteria (see end)
+  double eps_xi = 0.001; //this is the same as 0.001, not doing what you think it does i guess
+  double eps_lambda = 0.001;
+
+  // load surface struct
+  for(long i = 0; i < FO_length; i++)
+  {
+    // file format 1:
+    // (x^mu, da_mu, u^mu, E, T, pl, pi^munu, W^mu, bulkPi, Lambda, xi)
+
+    // file format 2 (do-able):
+    // (x^mu, da_mu, u^mu, E, T, pl, pi^munu, W^mu, bulkPi)
+
+    // need to make a "mode" option for FO_surf struct
+
+    // Make sure all the units are correct
+
+    // contravariant Milne spacetime position
+    surface_data >> surface[i].tau; // (fm)
+    surface_data >> surface[i].x;   // (fm)
+    surface_data >> surface[i].y;   // (fm)
+    surface_data >> surface[i].eta; // (1)
+
+    // covariant surface normal vector
+    //  * note: cornelius writes covariant normal vector (used in cpu-vh, gpu-vh)
+    surface_data >> surface[i].dat; // (fm^3)
+    surface_data >> surface[i].dax; // (fm^3)
+    surface_data >> surface[i].day; // (fm^3)
+    surface_data >> surface[i].dan; // (fm^4)
+
+    // contravariant fluid velocity
+    surface_data >> surface[i].ut;  // (1)
+    surface_data >> surface[i].ux;  // (1)
+    surface_data >> surface[i].uy;  // (1)
+    surface_data >> surface[i].un;  // (fm^-1)
+
+    // energy density
+    surface_data >> E_data;         // (load energy density here, this works right?)
+    surface[i].E = E_data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    // temperature
+    surface_data >> data;
+    surface[i].T = data * hbarC;    // (fm^-1 -> GeV)
+    // longitudinal pressure
+    surface_data >> pl_data;         // (load pl_data here)
+    surface[i].PL = pl_data * hbarC; // (fm^-4 -> GeV/fm^3)
+
+    // contravariant transverse shear stress (pi^munu == pi_perp^munu)
+    surface_data >> data;
+    surface[i].pitt = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].pitx = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].pity = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].pitn = data * hbarC;  // (fm^-5 -> GeV/fm^4)
+    surface_data >> data;
+    surface[i].pixx = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].pixy = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].pixn = data * hbarC;  // (fm^-5 -> GeV/fm^4)
+    surface_data >> data;
+    surface[i].piyy = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].piyn = data * hbarC;  // (fm^-5 -> GeV/fm^4)
+    surface_data >> data;
+    surface[i].pinn = data * hbarC;  // (fm^-6 -> GeV/fm^5)
+
+    // contravariant longitudinal momentum diffusion current (W^mu == W_perpz^mu)
+    surface_data >> data;
+    surface[i].Wt = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].Wx = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].Wy = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].Wn = data * hbarC;  // (fm^-5 -> GeV/fm^4)
+
+    // residual bulk pressure (bulkPi == bulkPi-tilde)
+    //  * note for derek: I don't think you need deltaf_bulktilde for CF calculation.
+    //    perhaps bulkPi-tilde has some effect on the entropy density increase for the bulk QGP
+    //    during the vahydro evolution. but its delta-f effect on the freezeout surface is very small.
+    //    Anyway, I'll start making vahydro 14-moment coefficient tables for pi^munu, W^mu and bulkPi
+    //    effects that depends on (Lambda, xi, muB = 0) at the end of the week.
+    surface_data >> data;
+    surface[i].bulkPi = data * hbarC;   // (fm^-4 -> GeV/fm^3)
+
+    // Options for loading effective temperature and longitudinal momentum deformation parameter
+    //  * note: dennis's version doesn't store lambda and xi evolution in structs
+    //          they're inferred from e and pl (see thesis)
+
+    // 1) read directly from file (cannot be done currently)
+    // surface_data >> data;
+    // surface[i].Lambda = data * hbarC;    // (fm^-1 -> GeV)
+    // surface_data >> surface[i].xi;       // (1)
+
+    // 2) Infer them from (E,pl) using the conformal approximation from vahydro QGP (thesis)
+    //    it's a crude approximation for a hadron resonance gas but it's easy
+    //   * note: or would you rather do the inferred calculation in emissionfunction.cpp?
+    //           it skips having to store this extra data
+
+    //might make more sense to move these function inside emission function, so that we can accelerate it
+    /*
+    Lambda_data = get_Lambda(E_data, pl_data);  // caution: these two functions aren't defined yet
+    // formula: lambda = not sure just by glancing, look up again tomorrow...
+
+    surface[i].Lambda = Lambda_data * hbarC;    // (fm^-1 -> GeV)
+
+    surface[i].xi = get_xi(E_data, pl_data);    // (1)
+    // formula: xi = Rxi^-1(e/pl) get more details tomorrow...
+
+    // check if variables are within bounds
+    //  * note: not likely to happen but just to be safe..
+    if(surface[i].Lambda <= eps_Lambda) // Lambda > 0
+    {
+      cout << "Lambda is out of bounds!" << endl;
+      exit(-1);
+      // or make a cutoff?
+      //surface[i].Lambda = eps_Lambda;
+    }
+
+    if(surface[i].xi <= -1.0 + eps_xi) // -1 < xi < infty
+    {
+      cout << "xi is out of bounds!" << endl;
+      exit(-1);
+      // or make a cutoff?
+      //surface[i].xi = -1.0 + eps_xi;
+    }
+    */
+  } // i
+  // close file
+  surface_data.close();
+  return;
+}
+
+void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
+{
+  // vahydro: mike's version (which is better ;)
+  ostringstream surface_file;
+  surface_file << pathToInput << "/surface.dat";      // stream "input/surface.dat" to surface_file
+  ifstream surface_data(surface_file.str().c_str());  // open surface.dat
+
+  // intermediate data value (for converting to correct units)
+  double data;
+
+  // load surface struct
+  for(long i = 0; i < FO_length; i++)
+  {
+    // surface.dat file format (columns):
+    // (x^mu, da_mu, u^mu, e, T, pl, pt, pi^munu, W^mu, Lambda, at, al, muB, upsilonB, nB, nBl, V^mu)
+
+    // need to make mode option for FO_surf struct
+
+    // Make sure all the units are correct
+
+    // contravariant Milne spacetime position
+    surface_data >> surface[i].tau; // (fm)
+    surface_data >> surface[i].x;   // (fm)
+    surface_data >> surface[i].y;   // (fm)
+    surface_data >> surface[i].eta; // (1)
+
+    // covariant surface normal vector
+    //  * note: cornelius writes covariant normal vector (used in cpu-vh, gpu-vh)
+    surface_data >> surface[i].dat; // (fm^3)
+    surface_data >> surface[i].dax; // (fm^3)
+    surface_data >> surface[i].day; // (fm^3)
+    surface_data >> surface[i].dan; // (fm^4)
+
+    // contravariant fluid velocity
+    surface_data >> surface[i].ut;  // (1)
+    surface_data >> surface[i].ux;  // (1)
+    surface_data >> surface[i].uy;  // (1)
+    surface_data >> surface[i].un;  // (fm^-1)
+
+    // energy density and temperature
+    surface_data >> data;
+    surface[i].E = data * hbarC; // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].T = data * hbarC; // (fm^-1 -> GeV)
+
+    // longitudinal and transverse pressures
+    surface_data >> data;
+    surface[i].PL = data * hbarC; // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].PT = data * hbarC; // (fm^-4 -> GeV/fm^3)
+
+    // contravariant transverse shear stress (pi^munu == pi_perp^munu)
+    surface_data >> data;
+    surface[i].pitt = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].pitx = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].pity = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].pitn = data * hbarC;  // (fm^-5 -> GeV/fm^4)
+    surface_data >> data;
+    surface[i].pixx = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].pixy = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].pixn = data * hbarC;  // (fm^-5 -> GeV/fm^4)
+    surface_data >> data;
+    surface[i].piyy = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].piyn = data * hbarC;  // (fm^-5 -> GeV/fm^4)
+    surface_data >> data;
+    surface[i].pinn = data * hbarC;  // (fm^-6 -> GeV/fm^5)
+
+    // contravariant longitudinal momentum diffusion current (W^mu == W_perpz^mu)
+    surface_data >> data;
+    surface[i].Wt = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].Wx = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].Wy = data * hbarC;  // (fm^-4 -> GeV/fm^3)
+    surface_data >> data;
+    surface[i].Wn = data * hbarC;  // (fm^-5 -> GeV/fm^4)
+
+    // effective temperature
+    surface_data >> data;
+    surface[i].Lambda = data * hbarC;   // (fm^-1 -> GeV)
+
+    // transverse and longitudinal momentum deformation scales
+    surface_data >> surface[i].aT;      // (1)
+    surface_data >> surface[i].aL;      // (1)
+
+    if(include_baryon)
+    {
+      // baryon chemical potential
+      surface_data >> data;
+      surface[i].muB = data * hbarC;      // (fm^-1 -> GeV)
+
+      // effective baryon chemical potential
+      surface_data >> data;
+      surface[i].upsilonB = data * hbarC; // (fm^-1 -> GeV)
+    }
+
+    if(include_baryondiff_deltaf)
+    {
+      // net baryon density
+      surface_data >> data;
+      surface[i].nB = data * hbarC;   // (fm^-3 -> GeV/fm^2)
+
+      // LRF longitudinal baryon diffusion
+      surface_data >> data;
+      surface[i].nBL = data * hbarC;  // (fm^-3 -> GeV/fm^2)
+
+      // contravariant transverse baryon diffusion (V^mu == V_perp^mu)
+      surface_data >> data;
+      surface[i].Vt = data * hbarC;   // (fm^-3 -> GeV/fm^2)
+      surface_data >> data;
+      surface[i].Vx = data * hbarC;   // (fm^-3 -> GeV/fm^2)
+      surface_data >> data;
+      surface[i].Vy = data * hbarC;   // (fm^-3 -> GeV/fm^2)
+    }
+  } // i
+  // close file
+  surface_data.close();
+  return;
 }
 
 int FO_data_reader::read_resonances_list(particle_info* particle)
