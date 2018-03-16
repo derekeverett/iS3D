@@ -3,8 +3,8 @@ mode = 1                          # mode for reading in freeze out information
                                   # 2: reads freezeout file from 3+1D viscous anisotropic hydro
 
 include_baryon = 0                #switch to include baryon chemical potential in distribution function
-include_bulk_deltaf = 1           #switch to include delta f correction from bulk pressure
-include_shear_deltaf = 1          #switch to include delta f correction from shear stress
+include_bulk_deltaf = 0           #switch to include delta f correction from bulk pressure
+include_shear_deltaf = 0          #switch to include delta f correction from shear stress
 include_baryondiff_deltaf = 0     #switch to include delta f correction from baryon diffusion current
 
 group_particles = 0               # group particles with the similar mass and to speed up calculations
