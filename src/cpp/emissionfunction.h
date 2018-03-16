@@ -13,6 +13,7 @@ class EmissionFunctionArray
 private:
   ParameterReader* paraRdr;
 
+  int MODE; //vh or vah , ...
   int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
   int INCLUDE_BARYON;
   int GROUP_PARTICLES;
@@ -38,7 +39,7 @@ public:
     double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double*);
+    double *, double *, double *, double *, double *, double*, double*);
   void write_dN_pTdpTdphidy_toFile(); //write 3D spectra to file
   void calculate_spectra();
 

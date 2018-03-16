@@ -11,11 +11,12 @@
 ##
 
 #CC := $(shell ../../crank/configure_compiler_C++.sh)
-CC = g++
+#CC = g++ #Linux
+CC = g++-7 #Mac OSX high sierra 
 #CC = pgc++
 #CC = nvcc
 #CFLAGS= -O3 -Wall -march=native
-#CFLAGS= -O3 -Wall -fopenmp -march=native
+CFLAGS= -fopenmp -march=native
 #CFLAGS= -acc -fast -Minfo -ta=nvidia,time
 #CFLAGS= -acc -fast -ta=tesla:managed #uses unified memory - simplifies copying of dynamic arrays host <-> device
 
