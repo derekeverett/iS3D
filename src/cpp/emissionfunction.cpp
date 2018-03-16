@@ -292,7 +292,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                     df_bulk = (c0 + c2 * pdotu * pdotu) * bulkPi;
                   }
                 }
-                
+
                 // baryon diffusion correction:
                 double df_baryondiff = 0.0;
 
@@ -306,7 +306,8 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                 }
 
                 long long int ir = icell + (FO_chunk * ipart) + (FO_chunk * npart * ipT) + (FO_chunk * npart * pT_tab_length * iphip) + (FO_chunk * npart * pT_tab_length * phi_tab_length * iy);
-                dN_pTdpTdphidy_all[ir] = (prefactor * degeneracy * pdotdsigma * tau * feq * (1.0 + feqbar * (df_shear + df_bulk + df_baryondiff)));
+                //check that this expression is correct
+                dN_pTdpTdphidy_all[ir] = (prefactor * degeneracy * pdotdsigma * feq * (1.0 + feqbar * (df_shear + df_bulk + df_baryondiff)));
               } //iy
             } //iphip
           } //ipT
