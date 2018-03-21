@@ -250,7 +250,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
               for (int iy = 0; iy < y_tab_length; iy++)
               {
-                //all vector components are CONTRAVARIANT EXCEPT the foace normal vector dat, dax, day, dan, which are COVARIANT
+                //all vector components are CONTRAVARIANT EXCEPT the surface normal vector dat, dax, day, dan, which are COVARIANT
                 double y = yValues[iy];
                 //double shear_deltaf_prefactor = 1.0 / (2.0 * T[icell_glb] * T[icell_glb] * (E[icell_glb] + P[icell_glb]));
                 double pt = mT * cosh(y - eta); //contravariant
