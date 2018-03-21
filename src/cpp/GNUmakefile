@@ -11,8 +11,8 @@
 ##
 
 #CC := $(shell ../../crank/configure_compiler_C++.sh)
-#CC = g++ #Linux
-CC = g++-7 #Mac OSX high sierra 
+CC = g++ #Linux
+#CC = g++-7 #Mac OSX high sierra 
 #CC = pgc++
 #CC = nvcc
 #CFLAGS= -O3 -Wall -march=native

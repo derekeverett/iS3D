@@ -8,6 +8,8 @@ export OMP_NUM_THREADS="$1"
 #rm -r obj
 #mkdir obj
 #cd ../../
+rm -r results
+mkdir results
 rm iS.e
 cd src
 rm iS.e
