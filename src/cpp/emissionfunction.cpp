@@ -330,7 +330,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                 long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
                 double dN_pTdpTdphidy_tmp = 0.0; //reduction variable
                 #pragma omp simd reduction(+:dN_pTdpTdphidy_tmp)
-                for (int icell = 0; icell < FO_chunk; icell++)
+                for (int icell = 0; icell < endFO; icell++)
                 {
                   long long int iSpectra = icell + (endFO * ipart) + (endFO * npart * ipT) + (endFO * npart * pT_tab_length * iphip) + (endFO * npart * pT_tab_length * phi_tab_length * iy);
                   dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[iSpectra];
