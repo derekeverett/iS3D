@@ -40,6 +40,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   INCLUDE_BULK_DELTAF = paraRdr->getVal("include_bulk_deltaf");
   INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
   INCLUDE_BARYONDIFF_DELTAF = paraRdr->getVal("include_baryondiff_deltaf");
+  REGULATE_DELTAF = paraRdr->getVal("regulate_deltaf");
   GROUP_PARTICLES = paraRdr->getVal("group_particles");
   PARTICLE_DIFF_TOLERANCE = paraRdr->getVal("particle_diff_tolerance");
 
@@ -304,11 +305,16 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                   double Vmu_pmu = Vt * pt - Vx * px - Vy * py - Vn * tau2_pn;
                   df_baryondiff = (baryon * c3 + c4 * pdotu) * Vmu_pmu;
                 }
-
+                double df = df_shear + df_bulk + df_baryondiff;
                 //long long int ir = icell + (FO_chunk * ipart) + (FO_chunk * npart * ipT) + (FO_chunk * npart * pT_tab_length * iphip) + (FO_chunk * npart * pT_tab_length * phi_tab_length * iy);
                 long long int iSpectra = icell + (endFO * ipart) + (endFO * npart * ipT) + (endFO * npart * pT_tab_length * iphip) + (endFO * npart * pT_tab_length * phi_tab_length * iy);
                 //check that this expression is correct
-                dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma * feq * (1.0 + feqbar * (df_shear + df_bulk + df_baryondiff)));
+                if (REGULATE_DELTAF)
+                {
+                  double reg_df = max( -1.0, min( feqbar * df, 1.0 ) );
+                  dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma * feq * (1.0 + reg_df));
+                }
+                else dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma * feq * (1.0 + feqbar * df));
               } //iy
             } //iphip
           } //ipT
