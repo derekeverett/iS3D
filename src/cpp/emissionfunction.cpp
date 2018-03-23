@@ -53,6 +53,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   chosen_particles_01_table = new int[Nparticles];
   //a class member to hold 3D spectra for all chosen particles
   dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+  //zero the array
+  for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
+  {
+    dN_pTdpTdphidy[iSpectra] = 0.0;
+  }
 
   for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
 
@@ -71,7 +76,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     }
   }
 
-  //is this necessary???
   // next, for sampling processes
   chosen_particles_sampling_table = new int[number_of_chosen_particles];
   // first copy the chosen_particles table, but now using indices instead of mc_id
@@ -396,8 +400,9 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
             double pT = pT_tab->get(1,ipT + 1);
             double phip = phi_tab->get(1,iphip + 1);
             long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
-            if (dN_pTdpTdphidy[is] < 1.0e-40) spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << 0.0 << "\n";
-            else spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
+            //if (dN_pTdpTdphidy[is] < 1.0e-40) spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << 0.0 << "\n";
+            //else spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
           } //ipT
           spectraFile << "\n";
         } //iphip
