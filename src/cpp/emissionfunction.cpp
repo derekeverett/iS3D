@@ -282,25 +282,23 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
                 // bulk correction:
                 double df_bulk = 0.0;
-                double c0 = df_coeff[0];
-                double c2 = df_coeff[2];
-
                 if (INCLUDE_BULK_DELTAF)
                 {
+                  double c0 = df_coeff[0];
+                  double c2 = df_coeff[2];
                   if (INCLUDE_BARYON)
                   {
                     double c1 = df_coeff[1];
-                    df_bulk = (c0 + (baryon * c1 + c2 * pdotu) * pdotu) * bulkPi;
+                    df_bulk = ((c0-c2)*mass2 + c1 * baryon * pdotu + (4.0*c2-c0)*pdotu*pdotu) * bulkPi;
                   }
                   else
                   {
-                    df_bulk = (c0 + c2 * pdotu * pdotu) * bulkPi;
+                    df_bulk = ((c0-c2)*mass2 + (4.0*c2-c0)*pdotu*pdotu) * bulkPi;
                   }
                 }
 
                 // baryon diffusion correction:
                 double df_baryondiff = 0.0;
-
                 if (INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
                 {
                   double c3 = df_coeff[3];
@@ -694,7 +692,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
     }
 
     // convert 14-momentum coefficients to real-life units (hbarC ~ 0.2 GeV * fm)
-    df_coeff[0] /= hbarC;
+    df_coeff[0] /= (hbarC * hbarC * hbarC);
     df_coeff[1] /= (hbarC * hbarC);
     df_coeff[2] /= (hbarC * hbarC * hbarC);
     df_coeff[3] /= (hbarC * hbarC);
