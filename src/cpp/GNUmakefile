@@ -12,7 +12,7 @@
 
 #CC := $(shell ../../crank/configure_compiler_C++.sh)
 CC = g++ #Linux
-#CC = g++-7 #Mac OSX high sierra 
+#CC = g++-7 #Mac OSX high sierra
 #CC = pgc++
 #CC = nvcc
 #CFLAGS= -O3 -Wall -march=native
@@ -31,8 +31,8 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS.e
 endif
 
-SRC   =	main.cpp arsenal.cpp emissionfunction.cpp Table.cpp readindata.cpp ParameterReader.cpp 
-INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h
+SRC   =	main.cpp arsenal.cpp emissionfunction.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp
+INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h
 
 
 # -------------------------------------------------

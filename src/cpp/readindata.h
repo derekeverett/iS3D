@@ -40,7 +40,7 @@ typedef struct
    double muB, muS; //baryon chemical potential, strangeness chem. pot.
    double nB, Vt, Vx, Vy, Vn; //baryon number density, contravariant baryon diffusion current, or in case of VAH transverse baryon diffusion vector
 
-   //quantities exclusive to VAH 
+   //quantities exclusive to VAH
    double PL; //longitudinal pressure
    double PT; //transvserse pressure
    double Wt, Wx, Wy, Wn; //contraviariant longitudinal momentum diffusion current W^\mu = W_perpz^\mu
@@ -72,6 +72,7 @@ class FO_data_reader
         void read_surf_VH(long length, FO_surf* surf_ptr);
         void read_surf_VAH_PLMatch(long length, FO_surf* surf_ptr);
         void read_surf_VAH_PLPTMatch(long length, FO_surf* surf_ptr);
+        void read_surf_VH_MUSIC(long length, FO_surf* surf_ptr);
         int read_resonances_list(particle_info* particle);
 };
 

@@ -15,6 +15,7 @@
 #include "Stopwatch.h"
 #include "arsenal.h"
 #include "ParameterReader.h"
+#include "deltafReader.h"
 #ifdef _OPENACC
 #include <accelmath.h>
 #endif
@@ -24,7 +25,7 @@ using namespace std;
 
 
 // Class EmissionFunctionArray ------------------------------------------
-EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, particle_info* particles_in, int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in)
+EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, particle_info* particles_in, int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in,  deltaf_coefficients df_in)
 {
   paraRdr = paraRdr_in;
   pT_tab = pT_tab_in;
@@ -36,6 +37,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
   // get control parameters
   MODE = paraRdr->getVal("mode");
+  DF_MODE = paraRdr->getVal("df_mode");
   INCLUDE_BARYON = paraRdr->getVal("include_baryon");
   INCLUDE_BULK_DELTAF = paraRdr->getVal("include_bulk_deltaf");
   INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
@@ -48,6 +50,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   Nparticles = Nparticles_in;
   surf_ptr = surf_ptr_in;
   FO_length = FO_length_in;
+  df = df_in;
   number_of_chosen_particles = chosen_particles_in->getNumberOfRows();
 
   chosen_particles_01_table = new int[Nparticles];
@@ -309,7 +312,8 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                 }
                 double df = df_shear + df_bulk + df_baryondiff;
                 //long long int ir = icell + (FO_chunk * ipart) + (FO_chunk * npart * ipT) + (FO_chunk * npart * pT_tab_length * iphip) + (FO_chunk * npart * pT_tab_length * phi_tab_length * iy);
-                long long int iSpectra = icell + (endFO * ipart) + (endFO * npart * ipT) + (endFO * npart * pT_tab_length * iphip) + (endFO * npart * pT_tab_length * phi_tab_length * iy);
+                //long long int iSpectra = icell + (endFO * ipart) + (endFO * npart * ipT) + (endFO * npart * pT_tab_length * iphip) + (endFO * npart * pT_tab_length * phi_tab_length * iy);
+                long long int iSpectra = icell + endFO * (ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy)));
                 //check that this expression is correct
                 if (REGULATE_DELTAF)
                 {
@@ -335,15 +339,17 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
             {
               for (int iy = 0; iy < y_tab_length; iy++)
               {
-                long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+                //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+                long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
                 double dN_pTdpTdphidy_tmp = 0.0; //reduction variable
                 #pragma omp simd reduction(+:dN_pTdpTdphidy_tmp)
                 for (int icell = 0; icell < endFO; icell++)
                 {
-                  long long int iSpectra = icell + (endFO * ipart) + (endFO * npart * ipT) + (endFO * npart * pT_tab_length * iphip) + (endFO * npart * pT_tab_length * phi_tab_length * iy);
+                  //long long int iSpectra = icell + (endFO * ipart) + (endFO * npart * ipT) + (endFO * npart * pT_tab_length * iphip) + (endFO * npart * pT_tab_length * phi_tab_length * iy);
+                  long long int iSpectra = icell + endFO * iS3D;
                   dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[iSpectra];
                 }//icell
-                dN_pTdpTdphidy[is] += dN_pTdpTdphidy_tmp; //sum over all chunks
+                dN_pTdpTdphidy[iS3D] += dN_pTdpTdphidy_tmp; //sum over all chunks
               }//iy
             }//iphip
           }//ipT
@@ -374,9 +380,10 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
         {
           for (int ipT = 0; ipT < pT_tab_length; ipT++)
           {
-            long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
-            if (dN_pTdpTdphidy[is] < 1.0e-40) spectraFileBlock << scientific <<  setw(15) << setprecision(8) << 0.0 << "\t";
-            else spectraFileBlock << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[is] << "\t";
+            //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+            long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+            if (dN_pTdpTdphidy[iS3D] < 1.0e-40) spectraFileBlock << scientific <<  setw(15) << setprecision(8) << 0.0 << "\t";
+            else spectraFileBlock << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[iS3D] << "\t";
           } //ipT
           spectraFileBlock << "\n";
         } //iphip
@@ -397,10 +404,11 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
             double y = y_tab->get(1,iy + 1);
             double pT = pT_tab->get(1,ipT + 1);
             double phip = phi_tab->get(1,iphip + 1);
-            long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+            //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
+            long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
             //if (dN_pTdpTdphidy[is] < 1.0e-40) spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << 0.0 << "\n";
             //else spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
-            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[iS3D] << "\n";
           } //ipT
           spectraFile << "\n";
         } //iphip
@@ -535,6 +543,26 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
       }
     }
 
+    // df_coeff array:
+    //  - holds {c0,c1,c2,c3,c4}              (14-moment vhydro)
+    //      or  {F,G,betabulk,betaV,betapi}   (CE vhydro, modified vhydro)
+
+    double df_coeff[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+
+    // 14-moment vhydro
+    if(DF_MODE == 1)
+    {
+      df_coeff[0] = df.c0;
+      df_coeff[1] = df.c1;
+      df_coeff[2] = df.c2;
+      df_coeff[3] = df.c3;
+      df_coeff[4] = df.c4;
+
+      // print coefficients
+      cout << "c0 = " << df_coeff[0] << "\tc1 = " << df_coeff[1] << "\tc2 = " << df_coeff[2] << "\tc3 = " << df_coeff[3] << "\tc4 = " << df_coeff[4] << endl;
+    }
+
+    /*
     // read in tables of delta_f coefficients (we could make a separate file)
 
     // coefficient files:
@@ -700,7 +728,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
     //for testing
     cout << "c0 = " << df_coeff[0] << "\tc1 = " << df_coeff[1] << "\tc2 = " << df_coeff[2] << "\tc3 = " << df_coeff[3] << "\tc4 = " << df_coeff[4] << endl;
-
+    */
     //launch function to perform integrations - this should be readily parallelizable
     calculate_dN_ptdptdphidy(Mass, Sign, Degen, Baryon,
       T, P, E, tau, eta, ut, ux, uy, un,
