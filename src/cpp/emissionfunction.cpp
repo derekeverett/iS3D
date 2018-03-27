@@ -479,7 +479,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
       if (INCLUDE_BARYONDIFF_DELTAF)
       {
-        nB = (double*) calloc(FO_length, sizeof(double));
+        nB = (double*)calloc(FO_length, sizeof(double));
         Vt = (double*)calloc(FO_length, sizeof(double));
         Vx = (double*)calloc(FO_length, sizeof(double));
         Vy = (double*)calloc(FO_length, sizeof(double));
