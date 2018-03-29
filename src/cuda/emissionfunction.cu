@@ -18,6 +18,7 @@
 
 #define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
 #define threadsPerBlock 512 //try optimizing this, also we can define two different threads/block for the separate kernels
+#define FO_chunk 10000
 #define debug 1	//1 for debugging, 0 otherwise
 
 using namespace std;
@@ -129,180 +130,186 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
   double *muB_d, double *nB_d, double *Vt_d, double *Vx_d, double *Vy_d, double *Vn_d, double prefactor, double *df_coeff_d,
   int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF)
   {
-    //This array is a shared array that will contain the integration contributions from each cell.
-    __shared__ double temp[threadsPerBlock];
-    //Assign a global index and a local index
-    int icell = threadIdx.x + blockDim.x * blockIdx.x; //global idx
-    int idx_local = threadIdx.x; //local idx
-    __syncthreads();
-
-    for (long imm = 0; imm < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; imm++) //each thread <-> FO cell , and each thread loops over all momenta and species
+    for (int n = 0; n < (FO_length/FO_chunk)+1; n++)
     {
-      //all vector components are CONTRAVARIANT EXCEPT the surface normal vector dat, dax, day, dan, which are COVARIANT
+      //This array is a shared array that will contain the integration contributions from each cell.
+      __shared__ double temp[threadsPerBlock];
+      //Assign a global index and a local index
+      int icell = threadIdx.x + blockDim.x * blockIdx.x; //global idx
+      int idx_local = threadIdx.x; //local idx
+      __syncthreads();
 
-      temp[idx_local] = 0.0;
-      if (icell < FO_length) //this index corresponds to the freezeout cell
+      for (long imm = 0; imm < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; imm++) //each thread <-> FO cell , and each thread loops over all momenta and species
       {
+        //all vector components are CONTRAVARIANT EXCEPT the surface normal vector dat, dax, day, dan, which are COVARIANT
 
-        //get Freezeout cell info
-        /******************************************************************/
-        double tau = tau_d[icell];         // longitudinal proper time
-        double eta = eta_d[icell];         // spacetime rapidity
-
-        double dat = dat_d[icell];         // covariant normal surface vector
-        double dax = dax_d[icell];
-        double day = day_d[icell];
-        double dan = dan_d[icell];
-
-        double ut = ut_d[icell];           // contravariant fluid velocity
-        double ux = ux_d[icell];
-        double uy = uy_d[icell];
-        double un = un_d[icell];
-
-        double T = T_d[icell];             // temperature
-        double E = E_d[icell];             // energy density
-        double P = P_d[icell];             // pressure
-
-        double pitt = pitt_d[icell];       // pi^munu
-        double pitx = pitx_d[icell];
-        double pity = pity_d[icell];
-        double pitn = pitn_d[icell];
-        double pixx = pixx_d[icell];
-        double pixy = pixy_d[icell];
-        double pixn = pixn_d[icell];
-        double piyy = piyy_d[icell];
-        double piyn = piyn_d[icell];
-        double pinn = pinn_d[icell];
-
-        double bulkPi = bulkPi_d[icell];   // bulk pressure
-
-        double muB = 0.0;                         // baryon chemical potential
-        double nB = 0.0;                          // net baryon density
-        double Vt = 0.0;                          // baryon diffusion
-        double Vx = 0.0;
-        double Vy = 0.0;
-        double Vn = 0.0;
-
-        if(INCLUDE_BARYON)
+        temp[idx_local] = 0.0;
+        int endFO = FO_chunk;
+        if (n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); //don't go out of array bounds
+        if (icell < endFO)
         {
-          muB = muB_d[icell];
+          //get Freezeout cell info
+          /******************************************************************/
+          int icell_glb = icell + (n * FO_chunk); //this runs over the entire FO surface
+          double tau = tau_d[icell_glb];         // longitudinal proper time
+          double eta = eta_d[icell_glb];         // spacetime rapidity
 
-          if(INCLUDE_BARYONDIFF_DELTAF)
+          double dat = dat_d[icell_glb];         // covariant normal surface vector
+          double dax = dax_d[icell_glb];
+          double day = day_d[icell_glb];
+          double dan = dan_d[icell_glb];
+
+          double ut = ut_d[icell_glb];           // contravariant fluid velocity
+          double ux = ux_d[icell_glb];
+          double uy = uy_d[icell_glb];
+          double un = un_d[icell_glb];
+
+          double T = T_d[icell_glb];             // temperature
+          double E = E_d[icell_glb];             // energy density
+          double P = P_d[icell_glb];             // pressure
+
+          double pitt = pitt_d[icell_glb];       // pi^munu
+          double pitx = pitx_d[icell_glb];
+          double pity = pity_d[icell_glb];
+          double pitn = pitn_d[icell_glb];
+          double pixx = pixx_d[icell_glb];
+          double pixy = pixy_d[icell_glb];
+          double pixn = pixn_d[icell_glb];
+          double piyy = piyy_d[icell_glb];
+          double piyn = piyn_d[icell_glb];
+          double pinn = pinn_d[icell_glb];
+
+          double bulkPi = bulkPi_d[icell_glb];   // bulk pressure
+
+          double muB = 0.0;                         // baryon chemical potential
+          double nB = 0.0;                          // net baryon density
+          double Vt = 0.0;                          // baryon diffusion
+          double Vx = 0.0;
+          double Vy = 0.0;
+          double Vn = 0.0;
+
+          if(INCLUDE_BARYON)
           {
-            nB = nB_d[icell];
-            Vt = Vt_d[icell];
-            Vx = Vx_d[icell];
-            Vy = Vy_d[icell];
-            Vn = Vn_d[icell];
+            muB = muB_d[icell_glb];
+
+            if(INCLUDE_BARYONDIFF_DELTAF)
+            {
+              nB = nB_d[icell_glb];
+              Vt = Vt_d[icell_glb];
+              Vx = Vx_d[icell_glb];
+              Vy = Vy_d[icell_glb];
+              Vn = Vn_d[icell_glb];
+            }
           }
-        }
-        /**************************************************************/
+          /**************************************************************/
 
-        //get particle info and momenta
-        //imm = ipT + (iphip * (pT_tab_length)) + (iy * (pT_tab_length * phi_tab_length)) + (ipart * (pT_tab_length * phi_tab_length * y_tab_length))
-        int ipart       = imm / (pT_tab_length * phi_tab_length * y_tab_length);
-        int iy          = (imm - (ipart * pT_tab_length * phi_tab_length * y_tab_length) ) / (pT_tab_length * phi_tab_length);
-        int iphip       = (imm - (ipart * pT_tab_length * phi_tab_length * y_tab_length) - (iy * pT_tab_length * phi_tab_length) ) / pT_tab_length;
-        int ipT         = imm - ( (ipart * (pT_tab_length * phi_tab_length * y_tab_length)) + (iy * (pT_tab_length * phi_tab_length)) + (iphip * (pT_tab_length)) );
+          //get particle info and momenta
+          //imm = ipT + (iphip * (pT_tab_length)) + (iy * (pT_tab_length * phi_tab_length)) + (ipart * (pT_tab_length * phi_tab_length * y_tab_length))
+          int ipart       = imm / (pT_tab_length * phi_tab_length * y_tab_length);
+          int iy          = (imm - (ipart * pT_tab_length * phi_tab_length * y_tab_length) ) / (pT_tab_length * phi_tab_length);
+          int iphip       = (imm - (ipart * pT_tab_length * phi_tab_length * y_tab_length) - (iy * pT_tab_length * phi_tab_length) ) / pT_tab_length;
+          int ipT         = imm - ( (ipart * (pT_tab_length * phi_tab_length * y_tab_length)) + (iy * (pT_tab_length * phi_tab_length)) + (iphip * (pT_tab_length)) );
 
-        // set particle properties
-        double mass = Mass_d[ipart];    // (GeV)
-        double mass2 = mass * mass;
-        double sign = Sign_d[ipart];
-        double degeneracy = Degen_d[ipart];
-        double baryon = 0.0;
-        double chem = 0.0;           // chemical potential term in feq
-        if(INCLUDE_BARYON)
-        {
-          baryon = Baryon_d[ipart];
-          chem = baryon * muB;
-        }
-
-        double px       = pT_d[ipT] * trig_d[ipT + phi_tab_length];
-        double py       = pT_d[ipT] * trig_d[ipT];
-        double mT       = sqrt(mass2 + pT_d[ipT] * pT_d[ipT]);
-        double y        = y_d[iy];
-        double pt       = mT * cosh(y - eta); //contravariant
-        double pn       = (1.0 / tau) * mT * sinh(y - eta); //contravariant
-
-        // useful expressions
-        double tau2 = tau * tau;
-        double tau2_pn = tau2 * pn;
-        double shear_coeff = 0.5 / (T * T * ( E + P));  // (see df_shear)
-
-        //momentum vector is contravariant, surface normal vector is COVARIANT
-        double pdotdsigma = pt * dat + px * dax + py * day + pn * dan;
-
-        //thermal equilibrium distributions - for viscous hydro
-        double pdotu = pt * ut - px * ux - py * uy - tau2_pn * un;    // u.p = LRF energy
-        double feq = 1.0 / ( exp(( pdotu - chem ) / T) + sign);
-
-        //viscous corrections
-        double feqbar = 1.0 - sign*feq;
-        // shear correction:
-        double df_shear = 0.0;
-        // pi^munu * p_mu * p_nu (factorized and corrected the tau factors I think)
-        double pimunu_pmu_pnu = pitt * pt * pt + pixx * px * px + piyy * py * py + pinn * tau2_pn * tau2_pn
-        + 2.0 * (-(pitx * px + pity * py) * pt + pixy * px * py + tau2_pn * (pixn * px + piyn * py - pitn * pt));
-
-        if (INCLUDE_SHEAR_DELTAF) df_shear = shear_coeff * pimunu_pmu_pnu;  // df / (feq*feqbar)
-
-        // bulk correction:
-        double df_bulk = 0.0;
-        if (INCLUDE_BULK_DELTAF)
-        {
-          double c0 = df_coeff_d[0];
-          double c2 = df_coeff_d[2];
-          if (INCLUDE_BARYON)
+          // set particle properties
+          double mass = Mass_d[ipart];    // (GeV)
+          double mass2 = mass * mass;
+          double sign = Sign_d[ipart];
+          double degeneracy = Degen_d[ipart];
+          double baryon = 0.0;
+          double chem = 0.0;           // chemical potential term in feq
+          if(INCLUDE_BARYON)
           {
-            double c1 = df_coeff_d[1];
-            df_bulk = ((c0-c2)*mass2 + c1 * baryon * pdotu + (4.0*c2-c0)*pdotu*pdotu) * bulkPi;
+            baryon = Baryon_d[ipart];
+            chem = baryon * muB;
           }
-          else
+
+          double px       = pT_d[ipT] * trig_d[ipT + phi_tab_length];
+          double py       = pT_d[ipT] * trig_d[ipT];
+          double mT       = sqrt(mass2 + pT_d[ipT] * pT_d[ipT]);
+          double y        = y_d[iy];
+          double pt       = mT * cosh(y - eta); //contravariant
+          double pn       = (1.0 / tau) * mT * sinh(y - eta); //contravariant
+
+          // useful expressions
+          double tau2 = tau * tau;
+          double tau2_pn = tau2 * pn;
+          double shear_coeff = 0.5 / (T * T * ( E + P));  // (see df_shear)
+
+          //momentum vector is contravariant, surface normal vector is COVARIANT
+          double pdotdsigma = pt * dat + px * dax + py * day + pn * dan;
+
+          //thermal equilibrium distributions - for viscous hydro
+          double pdotu = pt * ut - px * ux - py * uy - tau2_pn * un;    // u.p = LRF energy
+          double feq = 1.0 / ( exp(( pdotu - chem ) / T) + sign);
+
+          //viscous corrections
+          double feqbar = 1.0 - sign*feq;
+          // shear correction:
+          double df_shear = 0.0;
+          // pi^munu * p_mu * p_nu (factorized and corrected the tau factors I think)
+          double pimunu_pmu_pnu = pitt * pt * pt + pixx * px * px + piyy * py * py + pinn * tau2_pn * tau2_pn
+          + 2.0 * (-(pitx * px + pity * py) * pt + pixy * px * py + tau2_pn * (pixn * px + piyn * py - pitn * pt));
+
+          if (INCLUDE_SHEAR_DELTAF) df_shear = shear_coeff * pimunu_pmu_pnu;  // df / (feq*feqbar)
+
+          // bulk correction:
+          double df_bulk = 0.0;
+          if (INCLUDE_BULK_DELTAF)
           {
-            df_bulk = ((c0-c2)*mass2 + (4.0*c2-c0)*pdotu*pdotu) * bulkPi;
+            double c0 = df_coeff_d[0];
+            double c2 = df_coeff_d[2];
+            if (INCLUDE_BARYON)
+            {
+              double c1 = df_coeff_d[1];
+              df_bulk = ((c0-c2)*mass2 + c1 * baryon * pdotu + (4.0*c2-c0)*pdotu*pdotu) * bulkPi;
+            }
+            else
+            {
+              df_bulk = ((c0-c2)*mass2 + (4.0*c2-c0)*pdotu*pdotu) * bulkPi;
+            }
           }
-        }
 
-        // baryon diffusion correction:
-        double df_baryondiff = 0.0;
-        if (INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+          // baryon diffusion correction:
+          double df_baryondiff = 0.0;
+          if (INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+          {
+            double c3 = df_coeff_d[3];
+            double c4 = df_coeff_d[4];
+            // V^mu * p_mu
+            double Vmu_pmu = Vt * pt - Vx * px - Vy * py - Vn * tau2_pn;
+            df_baryondiff = (baryon * c3 + c4 * pdotu) * Vmu_pmu;
+          }
+          double df = df_shear + df_bulk + df_baryondiff;
+
+          double result = 0.0;
+          if (REGULATE_DELTAF)
+          {
+            double reg_df = max( -1.0, min( feqbar * df, 1.0 ) );
+            result = (prefactor * degeneracy * pdotdsigma * feq * (1.0 + reg_df));
+          }
+          else result = (prefactor * degeneracy * pdotdsigma * feq * (1.0 + feqbar * df));
+          temp[idx_local] += result;
+        }//if(icell < FO_chunk)
+
+        int N = blockDim.x;
+        __syncthreads(); //Make sure threads are prepared for reduction
+        do
         {
-          double c3 = df_coeff_d[3];
-          double c4 = df_coeff_d[4];
-          // V^mu * p_mu
-          double Vmu_pmu = Vt * pt - Vx * px - Vy * py - Vn * tau2_pn;
-          df_baryondiff = (baryon * c3 + c4 * pdotu) * Vmu_pmu;
-        }
-        double df = df_shear + df_bulk + df_baryondiff;
+          //Here N must be a power of two. Try reducing by powers of 2, 4, 6 etc...
+          N /= 2;
+          if (idx_local < N) temp[idx_local] += temp[idx_local + N];
+          __syncthreads();//Test if this is needed
+        } while(N != 1);
 
-        double result = 0.0;
-        if (REGULATE_DELTAF)
-        {
-          double reg_df = max( -1.0, min( feqbar * df, 1.0 ) );
-          result = (prefactor * degeneracy * pdotdsigma * feq * (1.0 + reg_df));
-        }
-        else result = (prefactor * degeneracy * pdotdsigma * feq * (1.0 + feqbar * df));
-        temp[idx_local] += result;
-
-      }//if(icell < FO_length)
-
-      int N = blockDim.x;
-      __syncthreads(); //Make sure threads are prepared for reduction
-      do
-      {
-        //Here N must be a power of two. Try reducing by powers of 2, 4, 6 etc...
-        N /= 2;
-        if (idx_local < N) temp[idx_local] += temp[idx_local + N];
-        __syncthreads();//Test if this is needed
-      } while(N != 1);
-
-      long final_spectrum_size = number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length;
-      if (idx_local == 0) dN_pTdpTdphidy_d[blockIdx.x * final_spectrum_size + imm] = temp[0];
-    } //for (long imm)
+        long final_spectrum_size = number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length;
+        //if (idx_local == 0) dN_pTdpTdphidy_d[blockIdx.x * final_spectrum_size + imm] = temp[0];
+        if (idx_local == 0) dN_pTdpTdphidy_d[blockIdx.x * final_spectrum_size + imm] += temp[0]; //add up results for each chunk
+      } //for (long imm)
+    } //for (int n) chunk loop
   } //calculate_dN_pTdpTdphidy
 
 //Does a block reduction, where the previous kernel did a thread reduction.
+//test if chunking is necessary for this kernel ?
 __global__ void blockReduction(double* dN_pTdpTdphidy_d, int final_spectrum_size, int blocks_ker1)
 {
   int idx = threadIdx.x + blockDim.x * blockIdx.x;
@@ -387,7 +394,8 @@ void EmissionFunctionArray::calculate_spectra()
     err = cudaSuccess;
   }
 
-  int  blocks_ker1 = (FO_length + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the first kernel (thread reduction)
+  //int  blocks_ker1 = (FO_length + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the first kernel (thread reduction)
+  int  blocks_ker1 = (FO_chunk + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the first kernel (thread reduction)
   long spectrum_size = blocks_ker1 * number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; //the size of the spectrum which has been intrablock reduced, but not interblock reduced
   int  final_spectrum_size = number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; //size of final array for all particles , as a function of particle, pT and phi and y
   int  blocks_ker2 = (final_spectrum_size + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the second kernel (block reduction)
