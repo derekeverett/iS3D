@@ -54,7 +54,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   //a class member to hold 3D spectra for all chosen particles
   dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
   //zero the array
-  for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
+  for (long iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
   {
     dN_pTdpTdphidy[iSpectra] = 0.0;
   }
@@ -121,7 +121,7 @@ EmissionFunctionArray::~EmissionFunctionArray()
   delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
 }
 
-__global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_particles, int pT_tab_length, int phi_tab_length, int y_tab_length,
+__global__ void calculate_dN_pTdpTdphidy( long FO_length, long number_of_chosen_particles, long pT_tab_length, long phi_tab_length, long y_tab_length,
   double* dN_pTdpTdphidy_d, double* pT_d, double* trig_d, double* y_d,
   double *Mass_d, double *Sign_d, double *Degen_d, double *Baryon_d,
   double *T_d, double *P_d, double *E_d, double *tau_d, double *eta_d, double *ut_d, double *ux_d, double *uy_d, double *un_d,
@@ -130,27 +130,27 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
   double *muB_d, double *nB_d, double *Vt_d, double *Vx_d, double *Vy_d, double *Vn_d, double prefactor, double *df_coeff_d,
   int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF)
   {
-    for (int n = 0; n < (FO_length/FO_chunk)+1; n++)
+    for (long n = 0; n < (FO_length / FO_chunk) + 1; n++)
     {
       //This array is a shared array that will contain the integration contributions from each cell.
       __shared__ double temp[threadsPerBlock];
       //Assign a global index and a local index
       int icell = threadIdx.x + blockDim.x * blockIdx.x; //global idx
       int idx_local = threadIdx.x; //local idx
-      __syncthreads();
+      long endFO = FO_chunk;
+      if (n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); //don't go out of array bounds
 
+      __syncthreads();
       for (long imm = 0; imm < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; imm++) //each thread <-> FO cell , and each thread loops over all momenta and species
       {
         //all vector components are CONTRAVARIANT EXCEPT the surface normal vector dat, dax, day, dan, which are COVARIANT
-
         temp[idx_local] = 0.0;
-        int endFO = FO_chunk;
-        if (n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); //don't go out of array bounds
+
         if (icell < endFO)
         {
           //get Freezeout cell info
           /******************************************************************/
-          int icell_glb = icell + (n * FO_chunk); //this runs over the entire FO surface
+          long icell_glb = icell + (n * FO_chunk); //this runs over the entire FO surface
           double tau = tau_d[icell_glb];         // longitudinal proper time
           double eta = eta_d[icell_glb];         // spacetime rapidity
 
@@ -205,10 +205,10 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
 
           //get particle info and momenta
           //imm = ipT + (iphip * (pT_tab_length)) + (iy * (pT_tab_length * phi_tab_length)) + (ipart * (pT_tab_length * phi_tab_length * y_tab_length))
-          int ipart       = imm / (pT_tab_length * phi_tab_length * y_tab_length);
-          int iy          = (imm - (ipart * pT_tab_length * phi_tab_length * y_tab_length) ) / (pT_tab_length * phi_tab_length);
-          int iphip       = (imm - (ipart * pT_tab_length * phi_tab_length * y_tab_length) - (iy * pT_tab_length * phi_tab_length) ) / pT_tab_length;
-          int ipT         = imm - ( (ipart * (pT_tab_length * phi_tab_length * y_tab_length)) + (iy * (pT_tab_length * phi_tab_length)) + (iphip * (pT_tab_length)) );
+          long ipart       = imm / (pT_tab_length * phi_tab_length * y_tab_length);
+          long iy          = (imm - (ipart * pT_tab_length * phi_tab_length * y_tab_length) ) / (pT_tab_length * phi_tab_length);
+          long iphip       = (imm - (ipart * pT_tab_length * phi_tab_length * y_tab_length) - (iy * pT_tab_length * phi_tab_length) ) / pT_tab_length;
+          long ipT         = imm - ( (ipart * (pT_tab_length * phi_tab_length * y_tab_length)) + (iy * (pT_tab_length * phi_tab_length)) + (iphip * (pT_tab_length)) );
 
           // set particle properties
           double mass = Mass_d[ipart];    // (GeV)
@@ -282,12 +282,21 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
           double df = df_shear + df_bulk + df_baryondiff;
 
           double result = 0.0;
+
+          if (isnan(prefactor)) printf("found prefactor nan\n");
+          if (isnan(degeneracy)) printf("found degeneracy nan\n");
+          if (isnan(pdotdsigma)) printf("found pdotdsigma nan\n");
+          if (isnan(feq)) printf("found feq nan\n");
+          if (isnan(feqbar)) printf("found feqbar nan\n");
+          if (isnan(df)) printf("found df nan\n");
+
           if (REGULATE_DELTAF)
           {
             double reg_df = max( -1.0, min( feqbar * df, 1.0 ) );
             result = (prefactor * degeneracy * pdotdsigma * feq * (1.0 + reg_df));
           }
           else result = (prefactor * degeneracy * pdotdsigma * feq * (1.0 + feqbar * df));
+          if(isnan(result)) printf("found result nan \n");
           temp[idx_local] += result;
         }//if(icell < FO_chunk)
 
@@ -312,12 +321,16 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, int number_of_chosen_p
 //test if chunking is necessary for this kernel ?
 __global__ void blockReduction(double* dN_pTdpTdphidy_d, int final_spectrum_size, int blocks_ker1)
 {
-  int idx = threadIdx.x + blockDim.x * blockIdx.x;
+  long idx = threadIdx.x + blockDim.x * blockIdx.x;
   if (idx < final_spectrum_size)
   {
     if (blocks_ker1 == 1) return; //Probably will never happen, but best to be careful
     //Need to start at i=1, since adding everything to i=0
-    for (int i = 1; i < blocks_ker1; i++) dN_pTdpTdphidy_d[idx] += dN_pTdpTdphidy_d[idx + i * final_spectrum_size];
+    for (int i = 1; i < blocks_ker1; i++)
+    {
+      dN_pTdpTdphidy_d[idx] += dN_pTdpTdphidy_d[idx + i * final_spectrum_size];
+      if (isnan(dN_pTdpTdphidy_d[idx])) printf("found dN_pTdpTdphidy_d nan \n");
+    }
   }
 }
 
@@ -329,17 +342,17 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
   //different sublocks for different values of rapidity
   //rows corespond to phip and columns correspond to pT
 
-  int npart = number_of_chosen_particles;
+  long npart = number_of_chosen_particles;
   char filename[255] = "";
   sprintf(filename, "results/dN_pTdpTdphidy_block.dat");
   ofstream spectraFileBlock(filename, ios_base::app);
-  for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+  for (long ipart = 0; ipart < number_of_chosen_particles; ipart++)
   {
-    for (int iy = 0; iy < y_tab_length; iy++)
+    for (long iy = 0; iy < y_tab_length; iy++)
     {
-      for (int iphip = 0; iphip < phi_tab_length; iphip++)
+      for (long iphip = 0; iphip < phi_tab_length; iphip++)
       {
-        for (int ipT = 0; ipT < pT_tab_length; ipT++)
+        for (long ipT = 0; ipT < pT_tab_length; ipT++)
         {
           long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
           if (dN_pTdpTdphidy[is] < 1.0e-40) spectraFileBlock << scientific <<  setw(15) << setprecision(8) << 0.0 << "\t";
@@ -353,13 +366,13 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
 
   sprintf(filename, "results/dN_pTdpTdphidy.dat");
   ofstream spectraFile(filename, ios_base::app);
-  for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+  for (long ipart = 0; ipart < number_of_chosen_particles; ipart++)
   {
-    for (int iy = 0; iy < y_tab_length; iy++)
+    for (long iy = 0; iy < y_tab_length; iy++)
     {
-      for (int iphip = 0; iphip < phi_tab_length; iphip++)
+      for (long iphip = 0; iphip < phi_tab_length; iphip++)
       {
-        for (int ipT = 0; ipT < pT_tab_length; ipT++)
+        for (long ipT = 0; ipT < pT_tab_length; ipT++)
         {
           double y = y_tab->get(1,iy + 1);
           double pT = pT_tab->get(1,ipT + 1);
@@ -395,10 +408,10 @@ void EmissionFunctionArray::calculate_spectra()
   }
 
   //int  blocks_ker1 = (FO_length + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the first kernel (thread reduction)
-  int  blocks_ker1 = (FO_chunk + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the first kernel (thread reduction)
+  long  blocks_ker1 = (FO_chunk + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the first kernel (thread reduction)
   long spectrum_size = blocks_ker1 * number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; //the size of the spectrum which has been intrablock reduced, but not interblock reduced
-  int  final_spectrum_size = number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; //size of final array for all particles , as a function of particle, pT and phi and y
-  int  blocks_ker2 = (final_spectrum_size + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the second kernel (block reduction)
+  long  final_spectrum_size = number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; //size of final array for all particles , as a function of particle, pT and phi and y
+  long  blocks_ker2 = (final_spectrum_size + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the second kernel (block reduction)
 
   cout << "# of chosen particles   = " << number_of_chosen_particles << endl;
   cout << "FO_length               = " << FO_length            << endl;
@@ -663,8 +676,9 @@ void EmissionFunctionArray::calculate_spectra()
       cudaMemcpy( Vn_d, Vn, FO_length * sizeof(double), cudaMemcpyHostToDevice );
     }
   }
-  cudaMemcpy( dN_pTdpTdphidy_d, dN_pTdpTdphidy, spectrum_size * sizeof(double), cudaMemcpyHostToDevice ); //this is an empty array, we shouldn't need to memcpy it?
 
+  //cudaMemcpy( dN_pTdpTdphidy_d, dN_pTdpTdphidy, spectrum_size * sizeof(double), cudaMemcpyHostToDevice ); //this is an empty array, we shouldn't need to memcpy it?
+  cudaMemset(dN_pTdpTdphidy_d, 0.0, spectrum_size * sizeof(double));
 
   // read in tables of delta_f coefficients (we could make a separate file)
 
