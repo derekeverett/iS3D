@@ -27,11 +27,11 @@ SYSTEMFILES     =       $(SRCGNU)
 # --------------- Files involved ------------------
 
 ifeq "$(MAIN)" ""
-MAIN		=	iS.e
+MAIN		=	iS3D_GPU.e
 endif
 
-SRC   = main.cu arsenal.cu emissionfunction.cu Table.cu readindata.cu ParameterReader.cu
-INC   = main.cuh arsenal.cuh emissionfunction.cuh Table.cuh readindata.cuh Stopwatch.cuh ParameterReader.cuh 
+SRC   = main.cu arsenal.cu emissionfunction.cu Table.cu readindata.cu ParameterReader.cu deltafReader.cu
+INC   = main.cuh arsenal.cuh emissionfunction.cuh Table.cuh readindata.cuh Stopwatch.cuh ParameterReader.cuh deltafReader.cuh 
 
 # -------------------------------------------------
 

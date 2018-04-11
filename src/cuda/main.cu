@@ -14,6 +14,7 @@
 #include "emissionfunction.cuh"
 #include "arsenal.cuh"
 #include "ParameterReader.cuh"
+#include "deltafReader.cuh"
 
 using namespace std;
 
@@ -48,6 +49,14 @@ int main(int argc, char *argv[])
 
   cout << "Finished reading freezeout surface!" << endl;
 
+  // load delta-f coefficients:
+  deltaf_coefficients df;
+
+  string pathTodeltaf = "deltaf_coefficients";
+
+  DeltafReader deltaf(paraRdr, pathTodeltaf);
+  df = deltaf.load_coefficients(surf_ptr[0]);
+
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
   //perhaps switch to a different method of reading in the chosen_particles.dat file that doesn't
   //have this undesirable feature
@@ -58,7 +67,7 @@ int main(int argc, char *argv[])
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
 
-  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, particle, Nparticle, surf_ptr, FO_length);
+  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, particle, Nparticle, surf_ptr, FO_length, df);
 
   efa.calculate_spectra();
 

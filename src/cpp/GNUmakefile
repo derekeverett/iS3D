@@ -28,7 +28,7 @@ SYSTEMFILES     =       $(SRCGNU)
 # --------------- Files involved ------------------
 
 ifeq "$(MAIN)" ""
-MAIN		=	iS.e
+MAIN		=	iS3D.e
 endif
 
 SRC   =	main.cpp arsenal.cpp emissionfunction.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp

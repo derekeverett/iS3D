@@ -6,6 +6,7 @@
 #include "Table.cuh"
 #include "main.cuh"
 #include "ParameterReader.cuh"
+#include "deltafReader.cuh"
 using namespace std;
 
 class EmissionFunctionArray
@@ -14,6 +15,7 @@ private:
   ParameterReader* paraRdr;
 
   int MODE; //vh or vah , ...
+  int DF_MODE;  // delta-f type
   int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
   int REGULATE_DELTAF;
   int INCLUDE_BARYON;
@@ -30,10 +32,11 @@ private:
   int number_of_chosen_particles;
   particle_info* particles;
   FO_surf* surf_ptr;
+  deltaf_coefficients df;
   bool particles_are_the_same(int, int);
 
 public:
-  EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in);
+  EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients df_in);
   ~EmissionFunctionArray();
 
   void calculate_dN_ptdptdphidy(double *, double *, double *, double *,
