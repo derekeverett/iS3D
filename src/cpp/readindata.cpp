@@ -220,26 +220,18 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
   // intermediate value which is read from file; need to convert units
   double data;
 
-  // intermediate energy density, longitudinal pressure and effective temperature (hydro units)
-  //  * note: used for extracting variables lambda and xi
-  double E_data;      // (fm^-4)
-  double pl_data;     // (fm^-4)
-  double Lambda_data; // (fm^-1)
-
-  // for bounds criteria (see end)
-  double eps_xi = 0.001; //this is the same as 0.001, not doing what you think it does i guess
-  double eps_lambda = 0.001;
+  // intermediate temperature, equilibrium pressure and longitudinal
+  // pressure (fm^-4) used for extracting variables lambda and aL
+  double T, P, PL;
+  double aL, Lambda;
 
   // load surface struct
   for(long i = 0; i < FO_length; i++)
   {
-    // file format 1:
-    // (x^mu, da_mu, u^mu, E, T, pl, pi^munu, W^mu, bulkPi, Lambda, xi)
+    // file format: (x^mu, da_mu, u^mu, E, T, P, pl, pi^munu, W^mu, bulkPi)
 
-    // file format 2 (do-able):
-    // (x^mu, da_mu, u^mu, E, T, pl, pi^munu, W^mu, bulkPi)
 
-    // need to make a "mode" option for FO_surf struct
+    // need to add (pl, Wmu, aL, Lambda) to the struct
 
     // Make sure all the units are correct
 
@@ -263,14 +255,20 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
     surface_data >> surface[i].un;  // (fm^-1)
 
     // energy density
-    surface_data >> E_data;         // (load energy density here, this works right?)
-    surface[i].E = E_data * hbarC;  // (fm^-4 -> GeV/fm^3)
-    // temperature
     surface_data >> data;
-    surface[i].T = data * hbarC;    // (fm^-1 -> GeV)
+    surface[i].E = data * hbarC;     // (fm^-4 -> GeV/fm^3)
+
+    // temperature
+    surface_data >> T;               // store T for (aL,Lambda) calculation
+    surface[i].T = T * hbarC;        // (fm^-1 -> GeV)
+
+    // equilibrium pressure
+    surface_data >> P;               // store P for (aL,Lambda) calculation
+    surface[i].P = P * hbarC;        // (fm^-4 -> GeV/fm^3)
+
     // longitudinal pressure
-    surface_data >> pl_data;         // (load pl_data here)
-    surface[i].PL = pl_data * hbarC; // (fm^-4 -> GeV/fm^3)
+    surface_data >> PL;              // store pl for (aL,Lambda) calculation
+    surface[i].PL = PL * hbarC;      // (fm^-4 -> GeV/fm^3)
 
     // contravariant transverse shear stress (pi^munu == pi_perp^munu)
     surface_data >> data;
@@ -304,57 +302,26 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
     surface_data >> data;
     surface[i].Wn = data * hbarC;  // (fm^-5 -> GeV/fm^4)
 
-    // residual bulk pressure (bulkPi == bulkPi-tilde)
-    //  * note for derek: I don't think you need deltaf_bulktilde for CF calculation.
-    //    perhaps bulkPi-tilde has some effect on the entropy density increase for the bulk QGP
-    //    during the vahydro evolution. but its delta-f effect on the freezeout surface is very small.
-    //    Anyway, I'll start making vahydro 14-moment coefficient tables for pi^munu, W^mu and bulkPi
-    //    effects that depends on (Lambda, xi, muB = 0) at the end of the week.
     surface_data >> data;
     surface[i].bulkPi = data * hbarC;   // (fm^-4 -> GeV/fm^3)
 
-    // Options for loading effective temperature and longitudinal momentum deformation parameter
-    //  * note: dennis's version doesn't store lambda and xi evolution in structs
-    //          they're inferred from e and pl (see thesis)
 
-    // 1) read directly from file (cannot be done currently)
-    // surface_data >> data;
-    // surface[i].Lambda = data * hbarC;    // (fm^-1 -> GeV)
-    // surface_data >> surface[i].xi;       // (1)
-
-    // 2) Infer them from (E,pl) using the conformal approximation from vahydro QGP (thesis)
-    //    it's a crude approximation for a hadron resonance gas but it's easy
-    //   * note: or would you rather do the inferred calculation in emissionfunction.cpp?
-    //           it skips having to store this extra data
-
-    //might make more sense to move these function inside emission function, so that we can accelerate it
-    /*
-    Lambda_data = get_Lambda(E_data, pl_data);  // caution: these two functions aren't defined yet
-    // formula: lambda = not sure just by glancing, look up again tomorrow...
-
-    surface[i].Lambda = Lambda_data * hbarC;    // (fm^-1 -> GeV)
-
-    surface[i].xi = get_xi(E_data, pl_data);    // (1)
-    // formula: xi = Rxi^-1(e/pl) get more details tomorrow...
-
-    // check if variables are within bounds
-    //  * note: not likely to happen but just to be safe..
-    if(surface[i].Lambda <= eps_Lambda) // Lambda > 0
+    // infer anisotropic variables: conformal factorization approximation
+    if((PL / P) < 3.0)
     {
-      cout << "Lambda is out of bounds!" << endl;
+      aL = aL_fit(PL / P);
+      Lambda = (T / pow(0.5 * aL * R200(aL), 0.25));
+
+      surface[i].aL = aL;
+      surface[i].Lambda = Lambda * hbarC;    // (fm^-1 -> GeV)
+    }
+    else
+    {
+      cout << "pl is too large, stopping anisotropic variables..." << endl;
       exit(-1);
-      // or make a cutoff?
-      //surface[i].Lambda = eps_Lambda;
     }
 
-    if(surface[i].xi <= -1.0 + eps_xi) // -1 < xi < infty
-    {
-      cout << "xi is out of bounds!" << endl;
-      exit(-1);
-      // or make a cutoff?
-      //surface[i].xi = -1.0 + eps_xi;
-    }
-    */
+
   } // i
   // close file
   surface_data.close();
