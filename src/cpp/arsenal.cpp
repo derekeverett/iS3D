@@ -1048,7 +1048,7 @@ double R200(double aL)
 {
   double result;
 
-  double x = (1.0 / (aL * aL)) - 1.0;
+  double x = (1.0 / (aL * aL)) - 1.0;  // same as xi in conformal ahydro
   double t200;
   double delta = 0.01;
 

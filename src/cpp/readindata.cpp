@@ -310,7 +310,7 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
     if((PL / P) < 3.0)
     {
       aL = aL_fit(PL / P);
-      Lambda = (T / pow(0.5 * R200(aL), 0.25));
+      Lambda = (T / pow(0.5 * aL * R200(aL), 0.25));
 
       surface[i].aL = aL;
       surface[i].Lambda = Lambda * hbarC;    // (fm^-1 -> GeV)
