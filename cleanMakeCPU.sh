@@ -3,14 +3,14 @@ export OMP_NUM_THREADS="$1"
 rm -r results
 mkdir results
 
-rm iS.e
+rm iS3D.e
 cd src
-rm iS.e
+rm iS3D.e
 cd cpp
-rm iS.e
+rm iS3D.e
 rm -r obj
 mkdir obj
 cd ../../
 
-make iS.e
+make iS3D.e
 

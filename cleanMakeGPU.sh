@@ -1,9 +1,9 @@
 export OMP_NUM_THREADS="$1"
-rm iS_GPU.e
+rm iS3D_GPU.e
 cd src
-rm iS.e
+rm iS3D_GPU.e
 cd cuda
-rm iS.e
+rm iS3D_GPU.e
 rm -r obj
 mkdir obj
 cd ../../
@@ -11,5 +11,5 @@ cd ../../
 rm -r results
 mkdir results
 
-make iS_GPU.e
+make iS3D_GPU.e
 
