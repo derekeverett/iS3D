@@ -810,8 +810,8 @@ void GaussLegendre_getWeight(int npts,double* xg,double* wg, double A, double B,
 //ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 //  gauss.f: Points and weights for Gaussian quadrature                 c
 //                       c
-//  taken from: "Projects in Computational Physics" by Landau and Paez  c 
-//         copyrighted by John Wiley and Sons, New York            c      
+//  taken from: "Projects in Computational Physics" by Landau and Paez  c
+//         copyrighted by John Wiley and Sons, New York            c
 //                                                                      c
 //  written by: Oregon State University Nuclear Theory Group            c
 //         Guangliang He & Rubin H. Landau                         c
@@ -855,7 +855,7 @@ void GaussLegendre_getWeight(int npts,double* xg,double* wg, double A, double B,
 //     transform gausspoints to other range than [-1;1]
 //     iop = 1  [A,B]       uniform
 //     iop = 2  [0,inf]     A is midpoint
-//     opt = 3  [-inf,inf]  scale is A 
+//     opt = 3  [-inf,inf]  scale is A
 //     opt = 4  [B,inf]     A+2B is midoint
 //     opt = 5  [0,B]     AB/(A+B)+ is midoint
 
@@ -863,11 +863,11 @@ void GaussLegendre_getWeight(int npts,double* xg,double* wg, double A, double B,
   double xp, wp;
   for(int i=0; i<N; i++) {
       if(iop == 1) {
-          //...... A to B 
+          //...... A to B
           xp=(B+A)/2+(B-A)/2*xg[i];
           wp=(B-A)/2*wg[i];
       } else if(iop == -1) {
-          //......   A to B 
+          //......   A to B
           xp=(B+A)/2+(B-A)/2*xg[i];
           if(i <= N/2)
             xp=(A+B)/2-(xp-A);
@@ -880,7 +880,7 @@ void GaussLegendre_getWeight(int npts,double* xg,double* wg, double A, double B,
           double tmp=(1-xg[i]);
           wp=2.*A/(tmp*tmp)*wg[i];
       } else if(iop ==  3) {
-          //...... -inf to inf scale A 
+          //...... -inf to inf scale A
           xp=A*(xg[i])/(1-xg[i]*xg[i]);
           double tmp=1-xg[i]*xg[i];
           wp=A*(1+xg[i]*xg[i])/(tmp*tmp)*wg[i];
@@ -890,7 +890,7 @@ void GaussLegendre_getWeight(int npts,double* xg,double* wg, double A, double B,
           double tmp=1-xg[i];
           wp=2.*(B+A)/(tmp*tmp)*wg[i];
       } else if(iop == 5) {
-          //...... -A to A , scale B 
+          //...... -A to A , scale B
           //xp=A*pow(abs(xg[i]),B) *sign(1.0,xg(i));
           double tmp = xg[i] >= 0 ? 1.0 : -1.0;
           xp=A*pow(abs(xg[i]),B) * tmp;
@@ -961,7 +961,7 @@ void get_bin_average_and_count(istream& is, ostream& os, vector<double>* bins, l
   {
     bin_total_and_count[i][j] = 0;
   }
-  
+
   // add up all data
   long number_of_lines=1;
   while (is.eof()==false)
@@ -992,7 +992,7 @@ void get_bin_average_and_count(istream& is, ostream& os, vector<double>* bins, l
     if (bin_total_and_count[i][number_of_cols]<1e-15) continue;
     bin_total_and_count[i][j] /= bin_total_and_count[i][number_of_cols];
   }
-    
+
 
   // get dN/(d bin_width)
   for (long i=0; i<number_of_bins; i++)
@@ -1012,3 +1012,71 @@ void get_bin_average_and_count(istream& is, ostream& os, vector<double>* bins, l
   }
 
 }
+
+
+
+double aL_fit(double pl_peq_ratio)
+{
+  double x = pl_peq_ratio;  // longitudinal pressure / equilibrium pressure
+
+  double x2 = x * x;
+  double x3 = x2 * x;
+  double x4 = x3 * x;
+  double x5 = x4 * x;
+  double x6 = x5 * x;
+  double x7 = x6 * x;
+  double x8 = x7 * x;
+  double x9 = x8 * x;
+  double x10 = x9 * x;
+  double x11 = x10 * x;
+  double x12 = x11 * x;
+  double x13 = x12 * x;
+  double x14 = x13 * x;
+
+  double result = (2.307660683188896e-22 + 1.7179667824677117e-16*x + 7.2725449826862375e-12*x2 + 4.2846163672079405e-8*x3 + 0.00004757224421671691*x4 +
+     0.011776118846199547*x5 + 0.7235583305942909*x6 + 11.582755440134724*x7 + 44.45243622597357*x8 + 12.673594148032494*x9 -
+     33.75866652773691*x10 + 8.04299287188939*x11 + 1.462901772148128*x12 - 0.6320131889637761*x13 + 0.048528166213735346*x14)/
+   (5.595674409987461e-19 + 8.059757191879689e-14*x + 1.2033043382301483e-9*x2 + 2.9819348588423508e-6*x3 + 0.0015212379997299082*x4 +
+     0.18185453852532632*x5 + 5.466199358534425*x6 + 40.1581708710626*x7 + 44.38310108782752*x8 - 55.213789667214364*x9 +
+     1.5449108423263358*x10 + 11.636087951096759*x11 - 4.005934533735304*x12 + 0.4703844693488544*x13 - 0.014599143701745957*x14);
+
+  return result;
+}
+
+
+double R200(double aL)
+{
+  double result;
+
+  double x = (1.0 / (aL * aL)) - 1.0;  // same as xi in conformal ahydro
+  double t200;
+  double delta = 0.01;
+
+  if(x > delta)
+  {
+    t200 = 1.0 + (1.0 + x) * atan(sqrt(x))/sqrt(x);
+  }
+  else if(x < -delta && x > -1.0)
+  {
+    t200 = 1.0 + (1.0 + x) * atanh(sqrt(-x))/sqrt(-x);
+  }
+  else if(x >= -delta && x <= delta)
+  {
+    t200 = 2.0 + x*(0.6666666666666667 + x*(-0.1333333333333333 +
+      x*(0.05714285714285716 + x*(-0.031746031746031744 + x*(0.020202020202020193 +
+      x*(-0.013986013986013984 + (0.010256410256410262 - 0.00784313725490196*x)*x))))));
+  }
+  else if(x <= -1.0)
+  {
+    cout << "x is out of bounds!" << endl;
+    exit(-1);
+  }
+
+  result = (aL * t200);
+
+  return result;
+}
+
+
+
+
