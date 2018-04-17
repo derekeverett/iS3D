@@ -4,16 +4,16 @@ mode                      = 1   # mode for reading in freeze out information
                                 # 3: reads freezeout file from 3+1D viscous anisotropic hydro (PL,PT matching)
                                 # 4: reads freezeout file from 3+1D viscous hydro (MUSIC boost invariant format)
 
-df_mode					          = 1	  # mode for type of delta-f correction
-								                # 1: 14-moment approximation viscous hydro
-								                # 2: Chapman-Enskog expansion viscous hydro
-								                # 3: Modified equilibrium distribution
-								                # 4: 14-moment approximation vahydro (PL matching)
-								                # 5: Chapman-Enskog expansion vahydro (PL, PT matching)
-								                # 6: Modified anisotropic distribution
+df_mode			  = 1	# mode for type of delta-f correction
+			    	# 1: 14-moment approximation viscous hydro
+			  	# 2: Chapman-Enskog expansion viscous hydro
+			  	# 3: Modified equilibrium distribution
+			  	# 4: 14-moment approximation vahydro (PL matching)
+			  	# 5: Chapman-Enskog expansion vahydro (PL, PT matching)
+				# 6: Modified anisotropic distribution
 
 include_baryon            = 0   # switch to include baryon chemical potential in distribution function
-include_bulk_deltaf       = 0   # switch to include delta f correction from bulk pressure
+include_bulk_deltaf       = 1   # switch to include delta f correction from bulk pressure
 include_shear_deltaf      = 1   # switch to include delta f correction from shear stress
 include_baryondiff_deltaf = 0   # switch to include delta f correction from baryon diffusion current
 regulate_deltaf           = 0   # if on, force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH

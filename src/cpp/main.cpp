@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
   string pathTodeltaf = "deltaf_coefficients";
 
   DeltafReader deltaf(paraRdr, pathTodeltaf);
-  df = deltaf.load_coefficients(surf_ptr[0]);
+  df = deltaf.load_coefficients(surf_ptr, FO_length);
 
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
   //perhaps switch to a different method of reading in the chosen_particles.dat file that doesn't

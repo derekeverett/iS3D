@@ -68,4 +68,15 @@ void GaussLegendre_getWeight(int npts,double* x,double* w, double A, double B, i
 
 void get_bin_average_and_count(istream& is, ostream& os, vector<double>* bins, long col_to_bin=0, void (*func)(vector<double>*)=NULL, long wanted_data_columns=-1, bool silence=false); // Note that col_to_bin starts with 1, and bins is assumed to be monotonically increasing
 
+
+
+// anisotropic functions for vah_pl_matching surface reader
+double aL_fit(double pl_peq_ratio);
+double R200(double aL);
+
 #endif
+
+
+
+
+

@@ -454,6 +454,9 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
     double *pitt, *pitx, *pity, *pitn, *pixx, *pixy, *pixn, *piyy, *piyn, *pinn, *bulkPi;
     double *muB, *nB, *Vt, *Vx, *Vy, *Vn;
 
+    double *c0, *c1, *c2, *c3, *c4; //delta-f coeffs for vah
+
+
     T = (double*)calloc(FO_length, sizeof(double));
     P = (double*)calloc(FO_length, sizeof(double));
     E = (double*)calloc(FO_length, sizeof(double));
@@ -494,6 +497,15 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
         Vn = (double*)calloc(FO_length, sizeof(double));
 
       }
+    }
+
+    if (DF_MODE == 4)
+    {
+      c0 = (double*)calloc(FO_length, sizeof(double));
+      c1 = (double*)calloc(FO_length, sizeof(double));
+      c2 = (double*)calloc(FO_length, sizeof(double));
+      c3 = (double*)calloc(FO_length, sizeof(double));
+      c4 = (double*)calloc(FO_length, sizeof(double));
     }
 
     for (long icell = 0; icell < FO_length; icell++)
@@ -540,6 +552,15 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
           Vy[icell] = surf->Vy;
           Vn[icell] = surf->Vn;
         }
+      }
+
+      if (DF_MODE == 4)
+      {
+        c0[icell] = surf->c0;
+        c1[icell] = surf->c1;
+        c2[icell] = surf->c2;
+        c3[icell] = surf->c3;
+        c4[icell] = surf->c4;
       }
     }
 

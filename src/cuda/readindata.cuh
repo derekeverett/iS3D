@@ -42,11 +42,10 @@ typedef struct
 
    //quantities exclusive to VAH
    double PL; //longitudinal pressure
-   double PT; //transvserse pressure
+   double PT; //transverse pressure
    double Wt, Wx, Wy, Wn; //contraviariant longitudinal momentum diffusion current W^\mu = W_perpz^\mu
-   double Lambda; //effective Temperature
-   double xi; //momentum deformation parameter for PL matching
-   double aT, aL; // transverse and longitudinal momentum deformation parameters for PL + PT matching
+   double Lambda; // effective Temperature
+   double aL, aT; // longitudinal and transverse momentum anisotropy parameters
    double upsilonB; //effective baryon chemical potential
    double nBL; //LRF longitudinal baryon diffusion
 

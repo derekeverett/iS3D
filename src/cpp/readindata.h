@@ -49,6 +49,8 @@ typedef struct
    double upsilonB; //effective baryon chemical potential
    double nBL; //LRF longitudinal baryon diffusion
 
+   double c0,c1,c2,c3,c4; //for vah every FO has different delta-f coefficients 
+
 } FO_surf;
 
 class FO_data_reader
