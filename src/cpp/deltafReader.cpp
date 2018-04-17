@@ -224,7 +224,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
     for (long icell = 0; icell < FO_length; icell++)
     {
       double aL = surface[icell].aL;
-      double Lambda = surface[icell].Lambda;
+      double Lambda = surface[icell].Lambda / hbarC;
 
       //set the values of delta-f coefficients for every FO cell
 

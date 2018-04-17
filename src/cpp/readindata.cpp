@@ -229,7 +229,7 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
   for(long i = 0; i < FO_length; i++)
   {
     // file format: (x^mu, da_mu, u^mu, E, T, P, pl, pi^munu, W^mu, bulkPi)
-
+    // don't really need E 
 
     // need to add (pl, Wmu, aL, Lambda) to the struct
 
