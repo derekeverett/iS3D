@@ -30,14 +30,14 @@ DeltafReader::~DeltafReader()
 
 }
 
-deltaf_coefficients DeltafReader::load_coefficients(FO_surf surface)
+deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_length)
 {
   deltaf_coefficients df_data;
 
   // T and muB (fm^-1)
-  double T_FO = surface.T / hbarC;
+  double T_FO = surface[0].T / hbarC;
   double muB_FO = 0.0;
-  if(include_baryon) muB_FO = surface.muB / hbarC;
+  if(include_baryon) muB_FO = surface[0].muB / hbarC;
 
 
   printf("Reading in Deltaf coefficients...\n");
@@ -60,7 +60,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf surface)
 
   // how to take put pathTodeltaf in here?
 
-  if (df_mode == 1) //viscous hydro 14 moment 
+  if (df_mode == 1) //viscous hydro 14 moment
   {
     sprintf(c0_name, "%s", "deltaf_coefficients/vh/c0_df14_vh.dat");
     sprintf(c1_name, "%s", "deltaf_coefficients/vh/c1_df14_vh.dat");
@@ -69,7 +69,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf surface)
     sprintf(c4_name, "%s", "deltaf_coefficients/vh/c4_df14_vh.dat");
   }
 
-  else if (df_mode == 4) //va hydro PL matching 14 moment 
+  else if (df_mode == 4) //va hydro PL matching 14 moment
   {
     sprintf(c0_name, "%s", "deltaf_coefficients/vah/c0_vah1.dat");
     sprintf(c1_name, "%s", "deltaf_coefficients/vah/c1_vah1.dat");
@@ -202,10 +202,55 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf surface)
       } //i1
     } //i2
 
-    /* NOW WHAT?*/
+    for (long icell = 0; icell < FO_length; icell++)
+    {
+      double aL = surface[icell].aL;
+      double Lambda = surface[icell].Lambda;
+
+      //set the values of delta-f coefficients for every FO cell
+
+      for (int i2 = 0; i2 < n2; i2++)
+      {
+        for (int i1 = 0; i1 < n1; i1++)
+        {
+          if( (i1 > 0) && (aL < aL_array[i1][i2]) && (i2 > 0) && (Lambda < L_array[i1][i2]) )
+          {
+            // bilinear-interpolate w.r.t. Lambda and alpha_L
+            surface[icell].c0 = c0[i1-1][i2-1]
+                          + c0[i1][i2-1] * ((Lambda - L_array[i1-1][i2-1]) / L_array[i1-1][i2-1])
+                          + c0[i1-1][i2] * ((aL - aL_array[i1-1][i2-1]) / aL_array[i1-1][i2-1])
+                          + c0[i1][i2] * ((Lambda - L_array[i1-1][i2-1]) / L_array[i1-1][i2-1]) * ((aL - aL_array[i1-1][i2-1]) / aL_array[i1-1][i2-1]);
+
+            surface[icell].c1 = c1[i1-1][i2-1]
+                          + c1[i1][i2-1] * ((Lambda - L_array[i1-1][i2-1]) / L_array[i1-1][i2-1])
+                          + c1[i1-1][i2] * ((aL - aL_array[i1-1][i2-1]) / aL_array[i1-1][i2-1])
+                          + c1[i1][i2] * ((Lambda - L_array[i1-1][i2-1]) / L_array[i1-1][i2-1]) * ((aL - aL_array[i1-1][i2-1]) / aL_array[i1-1][i2-1]);
+
+            surface[icell].c2 = c2[i1-1][i2-1]
+                          + c2[i1][i2-1] * ((Lambda - L_array[i1-1][i2-1]) / L_array[i1-1][i2-1])
+                          + c2[i1-1][i2] * ((aL - aL_array[i1-1][i2-1]) / aL_array[i1-1][i2-1])
+                          + c2[i1][i2] * ((Lambda - L_array[i1-1][i2-1]) / L_array[i1-1][i2-1]) * ((aL - aL_array[i1-1][i2-1]) / aL_array[i1-1][i2-1]);
+
+            surface[icell].c3 = c3[i1-1][i2-1]
+                          + c3[i1][i2-1] * ((Lambda - L_array[i1-1][i2-1]) / L_array[i1-1][i2-1])
+                          + c3[i1-1][i2] * ((aL - aL_array[i1-1][i2-1]) / aL_array[i1-1][i2-1])
+                          + c3[i1][i2] * ((Lambda - L_array[i1-1][i2-1]) / L_array[i1-1][i2-1]) * ((aL - aL_array[i1-1][i2-1]) / aL_array[i1-1][i2-1]);
+
+            surface[icell].c4 = c4[i1-1][i2-1]
+                          + c4[i1][i2-1] * ((Lambda - L_array[i1-1][i2-1]) / L_array[i1-1][i2-1])
+                          + c4[i1-1][i2] * ((aL - aL_array[i1-1][i2-1]) / aL_array[i1-1][i2-1])
+                          + c4[i1][i2] * ((Lambda - L_array[i1-1][i2-1]) / L_array[i1-1][i2-1]) * ((aL - aL_array[i1-1][i2-1]) / aL_array[i1-1][i2-1]);
+
+            break;
+          }
+        } //i1
+      } //i2
+    }
 
 
-  } // if (mode == 2)
+
+
+  } // if (df_mode == 4)
 
   return df_data;
 }
