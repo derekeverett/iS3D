@@ -269,7 +269,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                   double delta_eta = 0.5;
                   for (int ieta = 0; ieta < neta; ieta++)
                   {
-                    double eta_min = ((double)(neta - 1) / 2.0) * delta_eta;
+                    double eta_min = (-1.0) * ((double)(neta - 1) / 2.0) * delta_eta;
                     eta = eta_min + ieta * delta_eta;
 
                     //double shear_deltaf_prefactor = 1.0 / (2.0 * T[icell_glb] * T[icell_glb] * (E[icell_glb] + P[icell_glb]));
