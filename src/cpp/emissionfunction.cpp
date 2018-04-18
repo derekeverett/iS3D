@@ -258,15 +258,20 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               double px = pT * trig_phi_table[iphip][0]; //contravariant
               double py = pT * trig_phi_table[iphip][1]; //contravariant
 
-              for (int iy = 0; iy < y_tab_length; iy++)
+              int n_rap;
+              if (DIMENSION == 2) n_rap = 1; //if a boost invariant surface, only evaluate dN/pTdpTdphidy at y=0
+              else if (DIMENSION == 3) n_rap = y_tab_length; //for 3D surface evaluate at differing values of y
+              for (int iy = 0; iy < n_rap; iy++)
               {
                 //all vector components are CONTRAVARIANT EXCEPT the surface normal vector dat, dax, day, dan, which are COVARIANT
-                double y = yValues[iy];
+                double y;
+                if (DIMENSION == 2) y = 0.0;
+                else if (DIMENSION == 3) y = yValues[iy];
 
                 if (DIMENSION == 2) //special case of boost invariant FO surface - need to loop over eta 'by hand'
                 {
-                  int neta = 15;
-                  double delta_eta = 0.5;
+                  int neta = 41;
+                  double delta_eta = 0.25;
                   for (int ieta = 0; ieta < neta; ieta++)
                   {
                     double eta_min = (-1.0) * ((double)(neta - 1) / 2.0) * delta_eta;
@@ -418,7 +423,11 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
           {
             for (int iphip = 0; iphip < phi_tab_length; iphip++)
             {
-              for (int iy = 0; iy < y_tab_length; iy++)
+              int n_rap;
+              if (DIMENSION == 2) n_rap = 1;
+              else if (DIMENSION == 3) n_rap = y_tab_length;
+
+              for (int iy = 0; iy < n_rap; iy++)
               {
                 //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
                 long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
@@ -476,13 +485,19 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
     ofstream spectraFile(filename, ios_base::app);
     for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
-      for (int iy = 0; iy < y_tab_length; iy++)
+      int n_rap;
+      if (DIMENSION == 2) n_rap = 1;
+      else if (DIMENSION == 3) n_rap = y_tab_length;
+
+      for (int iy = 0; iy < n_rap; iy++)
       {
         for (int iphip = 0; iphip < phi_tab_length; iphip++)
         {
           for (int ipT = 0; ipT < pT_tab_length; ipT++)
           {
-            double y = y_tab->get(1,iy + 1);
+            double y;
+            if (DIMENSION == 3) y = y_tab->get(1,iy + 1);
+            else if (DIMENSION == 2) y = 0.0;
             double pT = pT_tab->get(1,ipT + 1);
             double phip = phi_tab->get(1,iphip + 1);
             //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
