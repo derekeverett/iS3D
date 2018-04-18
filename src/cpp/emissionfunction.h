@@ -15,6 +15,7 @@ private:
   ParameterReader* paraRdr;
 
   int MODE; //vh or vah , ...
+  int DIMENSION; //boost invariant hydro surface or 3+1D 
   int DF_MODE;  // delta-f type
   int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
   int REGULATE_DELTAF;

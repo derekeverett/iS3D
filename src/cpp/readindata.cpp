@@ -155,19 +155,25 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
     surfdat >> surf_ptr[i].x;
     surfdat >> surf_ptr[i].y;
     surfdat >> surf_ptr[i].eta;
+    surf_ptr[i].eta = 0.0;
 
     // COVARIANT surface normal vector
     //note cornelius writes covariant normal vector (used in cpu-vh, gpu-vh,...)
-    surfdat >> surf_ptr[i].dat;
-    surfdat >> surf_ptr[i].dax;
-    surfdat >> surf_ptr[i].day;
-    surfdat >> surf_ptr[i].dan;
+    surfdat >> dummy;
+    surf_ptr[i].dat = dummy * surf_ptr[i].tau;
+    surfdat >> dummy;
+    surf_ptr[i].dax = dummy * surf_ptr[i].tau;
+    surfdat >> dummy;
+    surf_ptr[i].day = dummy * surf_ptr[i].tau;
+    surfdat >> dummy;
+    surf_ptr[i].dan = dummy * surf_ptr[i].tau;
 
     // contravariant flow velocity
     surfdat >> surf_ptr[i].ut;
     surfdat >> surf_ptr[i].ux;
     surfdat >> surf_ptr[i].uy;
-    surfdat >> surf_ptr[i].un;
+    surfdat >> dummy;
+    surf_ptr[i].un = dummy / surf_ptr[i].tau;
 
     // thermodynamic quantities at freeze out
     surfdat >> dummy;
@@ -187,19 +193,19 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
     surfdat >> dummy;
     surf_ptr[i].pity = dummy * hbarC;
     surfdat >> dummy;
-    surf_ptr[i].pitn = dummy * hbarC;
+    surf_ptr[i].pitn = dummy * hbarC / surf_ptr[i].tau;
     surfdat >> dummy;
     surf_ptr[i].pixx = dummy * hbarC;
     surfdat >> dummy;
     surf_ptr[i].pixy = dummy * hbarC;
     surfdat >> dummy;
-    surf_ptr[i].pixn = dummy * hbarC;
+    surf_ptr[i].pixn = dummy * hbarC / surf_ptr[i].tau;
     surfdat >> dummy;
     surf_ptr[i].piyy = dummy * hbarC;
     surfdat >> dummy;
-    surf_ptr[i].piyn = dummy * hbarC;
+    surf_ptr[i].piyn = dummy * hbarC / surf_ptr[i].tau;
     surfdat >> dummy;
-    surf_ptr[i].pinn = dummy * hbarC;
+    surf_ptr[i].pinn = dummy * hbarC / surf_ptr[i].tau / surf_ptr[i].tau;
 
     //bulk pressure
     surfdat >> dummy;
