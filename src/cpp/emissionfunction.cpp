@@ -196,7 +196,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
     //loop over bite size chunks of FO surface
     for (int n = 0; n < (FO_length / FO_chunk) + 1; n++)
     {
-      printf("Progress : Finished chunk %d of %d \n", n, FO_length / FO_chunk);
+      printf("Progress : Finished chunk %d of %ld \n", n, FO_length / FO_chunk);
       int endFO = FO_chunk;
       if (n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); //don't go out of array bounds
       #pragma omp parallel for
@@ -213,18 +213,14 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
         if(DIMENSION == 3) 
         {
           etaValues[0] = eta_fo[icell_glb];     // spacetime rapidity from surface file
-        }
-        
-        //double eta = eta_fo[icell_glb];         
-
+        }        
         double dat = dat_fo[icell_glb];         // covariant normal surface vector
         double dax = dax_fo[icell_glb];
         double day = day_fo[icell_glb];
         double dan = dan_fo[icell_glb];
 
-        //double ut = ut_fo[icell_glb];         // contravariant fluid velocity
-        double ux = ux_fo[icell_glb];           // enforce normalization 
-        double uy = uy_fo[icell_glb];
+        double ux = ux_fo[icell_glb];           // contravariant fluid velocity 
+        double uy = uy_fo[icell_glb];           // reinforce normalization
         double un = un_fo[icell_glb];
         double ut = sqrt(fabs(1.0 + ux*ux + uy*uy + tau2*un*un));
 
@@ -426,8 +422,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double *Sign, double *Degeneracy,
   double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
-  double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo,
-  double *Wt_fo, double *Wx_fo, double *Wy_fo, double *Wn_fo, double *Lambda_fo, double *aL_fo, double *c0_fo, double *c1_fo, double *c2_fo, double *c3_fo, double *c4_fo)
+  double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo, double *Wx_fo, double *Wy_fo, double *Lambda_fo, double *aL_fo, double *c0_fo, double *c1_fo, double *c2_fo, double *c3_fo, double *c4_fo)
   {
     double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
     int FO_chunk = 10000;
@@ -439,11 +434,44 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
       trig_phi_table[j][0] = cos(phi);
       trig_phi_table[j][1] = sin(phi);
     }
+
     //fill arrays with values points in pT and y
     double pTValues[pT_tab_length];
-    double yValues[y_tab_length];
     for (int ipT = 0; ipT < pT_tab_length; ipT++) pTValues[ipT] = pT_tab->get(1, ipT + 1);
-    for (int iy = 0; iy < y_tab_length; iy++) yValues[iy] = y_tab->get(1, iy + 1);
+
+    // fill arrays with values points in y and eta
+    int y_pts = y_tab_length;    // defaults pts for 3+1d
+    int eta_pts = 1;    
+
+    if(DIMENSION == 2)
+    {
+      y_pts = 1;
+      eta_pts = eta_tab_length;
+    }
+
+    double yValues[y_pts];
+    double etaValues[eta_pts];
+    double etaDeltaWeights[eta_pts];    // eta_weight * delta_eta
+
+    double delta_eta = (eta_tab->get(1,2)) - (eta_tab->get(1,1));  // assume uniform grid 
+
+    if(DIMENSION == 2)
+    {
+      yValues[0] = 0.0;
+      for(int ieta = 0; ieta < eta_pts; ieta++)
+      {
+        etaValues[ieta] = eta_tab->get(1, ieta + 1); 
+        etaDeltaWeights[ieta] = (eta_tab->get(2, ieta + 1)) * delta_eta;
+        //cout << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
+      }
+    }
+    else if(DIMENSION == 3)
+    {
+      etaValues[0] = 0.0;       // below, will load eta_fo
+      etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
+      for (int iy = 0; iy < y_pts; iy++) yValues[iy] = y_tab->get(1, iy + 1);
+    }
+
 
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spectra for each surface cell in a chunk, for all particle species
@@ -455,7 +483,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
     //loop over bite size chunks of FO surface
     for (int n = 0; n < (FO_length / FO_chunk) + 1; n++)
     {
-      printf("Progress : Finished chunk %d of %d \n", n, FO_length / FO_chunk);
+      printf("Progress : Finished chunk %d of %ld \n", n, FO_length / FO_chunk);
       int endFO = FO_chunk;
       if (n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); // don't go out of array bounds
       #pragma omp parallel for
@@ -467,9 +495,11 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
 
         // set freezeout info to local varibles
         double tau = tau_fo[icell_glb];         // longitudinal proper time
-        double tau2 = tau * tau;                // useful expression 
-        double eta = eta_fo[icell_glb];         // spacetime rapidity
-
+        double tau2 = tau * tau;                // useful expression
+        if(DIMENSION == 3) 
+        {
+          etaValues[0] = eta_fo[icell_glb];     // spacetime rapidity from surface file
+        }     
         double dat = dat_fo[icell_glb];         // covariant normal surface vector
         double dax = dax_fo[icell_glb];
         double day = day_fo[icell_glb];
@@ -496,11 +526,11 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
         double pinn = pinn_fo[icell_glb];
 
         double bulkPi = bulkPi_fo[icell_glb];   // residual bulk pressure
-
-        double Wt = Wt_fo[icell_glb];           // W^mu
-        double Wx = Wx_fo[icell_glb];           
-        double Wy = Wy_fo[icell_glb];          
-        double Wn = Wn_fo[icell_glb];
+      
+        double Wx = Wx_fo[icell_glb];           // W^mu   
+        double Wy = Wy_fo[icell_glb];           // reinforce orthogonality   
+        double Wt = (ux * Wx  +  uy * Wy) * ut / (u0 * u0); 
+        double Wn = Wt * un / ut; 
       
         double Lambda = Lambda_fo[icell_glb];   // anisotropic variables          
         double aL = aL_fo[icell_glb];
@@ -535,61 +565,74 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
               double px = pT * trig_phi_table[iphip][0]; //contravariant
               double py = pT * trig_phi_table[iphip][1]; //contravariant
 
-              for (int iy = 0; iy < y_tab_length; iy++)
+              for (int iy = 0; iy < y_pts; iy++)
               {
                 // all vector components are CONTRAVARIANT EXCEPT the surface normal vector dat, dax, day, dan, which are COVARIANT
                 double y = yValues[iy];
-                double pt = mT * cosh(y - eta); 
-                double pn = mT_over_tau * sinh(y - eta); 
 
-                // useful expression
-                double tau2_pn = tau2 * pn;
+                double pdotdsigma_f_eta_sum = 0.0;
 
-                // momentum vector is contravariant, surface normal vector is COVARIANT
-                double pdotdsigma = pt * dat  +  px * dax  +  py * day  +  pn * dan;
-
-                //thermal equilibrium distributions - for viscous hydro
-                double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;    // u.p = LRF energy
-                double pdotz = pt * zt  -  tau2_pn * zn;                            // z.p = - LRF longitudinal momentum 
-
-                double xiL = 1.0 / (aL * aL)  -  1.0;
-
-                double Ea = sqrt(pdotu * pdotu  +  xiL * pdotz * pdotz);  
-
-                double fa = 1.0 / ( exp(Ea / Lambda) + sign);
-
-                //viscous corrections
-                double fabar = 1.0 - sign*fa;
-
-                // residual shear correction:
-                double df_shear = 0.0;
-
-                if (INCLUDE_SHEAR_DELTAF)
+                // sum over eta
+                for (int ieta = 0; ieta < eta_pts; ieta++)
                 {
-                  // - (-z.p)p_{mu}.W^mu
-                  double Wmu_pmu_pz = pdotz * (Wt * pt  -  Wx * px  -  Wy * py  -  Wn * tau2_pn);
+                  double eta = etaValues[ieta];
+                  double delta_eta_weight = etaDeltaWeights[ieta];
 
-                  // p_{mu.p_nu}.piperp^munu
-                  double pimunu_pmu_pnu = pitt * pt * pt + pixx * px * px + piyy * py * py + pinn * tau2_pn * tau2_pn
-                + 2.0 * (-(pitx * px + pity * py) * pt + pixy * px * py + tau2_pn * (pixn * px + piyn * py - pitn * pt));
+                  double pt = mT * cosh(y - eta); 
+                  double pn = mT_over_tau * sinh(y - eta); 
 
-                  df_shear = c3 * Wmu_pmu_pz  +  c4 * pimunu_pmu_pnu;  // df / (feq*feqbar)
-                }
+                  // useful expression
+                  double tau2_pn = tau2 * pn;
 
-                // residual bulk correction:
-                double df_bulk = 0.0;
-                if (INCLUDE_BULK_DELTAF) df_bulk = (c0 * mass2  +  c1 * pdotz * pdotz  +  c2 * pdotu * pdotu) * bulkPi;
-               
-                double df = df_shear + df_bulk;
+                  // momentum vector is contravariant, surface normal vector is COVARIANT
+                  double pdotdsigma = pt * dat  +  px * dax  +  py * day  +  pn * dan;
+
+                  //thermal equilibrium distributions - for viscous hydro
+                  double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;    // u.p = LRF energy
+                  double pdotz = pt * zt  -  tau2_pn * zn;                            // z.p = - LRF longitudinal momentum 
+
+                  double xiL = 1.0 / (aL * aL)  -  1.0;
+
+                  double Ea = sqrt(pdotu * pdotu  +  xiL * pdotz * pdotz);  
+
+                  double fa = 1.0 / ( exp(Ea / Lambda) + sign);
+
+                  // residual viscous corrections
+                  double fabar = 1.0 - sign*fa;
+
+                  // residual shear correction:
+                  double df_shear = 0.0;
+
+                  if (INCLUDE_SHEAR_DELTAF)
+                  {
+                    // - (-z.p)p_{mu}.W^mu
+                    double Wmu_pmu_pz = pdotz * (Wt * pt  -  Wx * px  -  Wy * py  -  Wn * tau2_pn);
+
+                    // p_{mu.p_nu}.piperp^munu
+                    double pimunu_pmu_pnu = pitt * pt * pt + pixx * px * px + piyy * py * py + pinn * tau2_pn * tau2_pn
+                  + 2.0 * (-(pitx * px + pity * py) * pt + pixy * px * py + tau2_pn * (pixn * px + piyn * py - pitn * pt));
+
+                    df_shear = c3 * Wmu_pmu_pz  +  c4 * pimunu_pmu_pnu;  // df / (feq*feqbar)
+                  }
+
+                  // residual bulk correction:
+                  double df_bulk = 0.0;
+                  if (INCLUDE_BULK_DELTAF) df_bulk = (c0 * mass2  +  c1 * pdotz * pdotz  +  c2 * pdotu * pdotu) * bulkPi;
+                 
+                  double df = df_shear + df_bulk;
+
+                  if (REGULATE_DELTAF)
+                  {
+                    double reg_df = max( -1.0, min( fabar * df, 1.0 ) );
+                    pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * fa * (1.0 + reg_df));
+                  }
+                  else pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * fa * (1.0 + fabar * df));
+
+                } // ieta
                 
                 long long int iSpectra = icell + endFO * (ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy)));
-                //check that this expression is correct
-                if (REGULATE_DELTAF)
-                {
-                  double reg_df = max( -1.0, min( fabar * df, 1.0 ) );
-                  dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma * fa * (1.0 + reg_df));
-                }
-                else dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma * fa * (1.0 + fabar * df));
+
+                dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma_f_eta_sum);
               } //iy
             } //iphip
           } //ipT
@@ -606,7 +649,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
           {
             for (int iphip = 0; iphip < phi_tab_length; iphip++)
             {
-              for (int iy = 0; iy < y_tab_length; iy++)
+              for (int iy = 0; iy < y_pts; iy++)
               {
                 //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
                 long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
@@ -785,7 +828,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
 
 
     // freezeout surface info exclusive for VAH_PL 
-    double *PL, *Wt, *Wx, *Wy, *Wn;
+    double *PL, *Wx, *Wy;
     double *Lambda, *aL;
     double *c0, *c1, *c2, *c3, *c4; //delta-f coeffs for vah
 
@@ -793,10 +836,10 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
     {
       PL = (double*)calloc(FO_length, sizeof(double));
 
-      Wt = (double*)calloc(FO_length, sizeof(double));
+      //Wt = (double*)calloc(FO_length, sizeof(double));
       Wx = (double*)calloc(FO_length, sizeof(double));
       Wy = (double*)calloc(FO_length, sizeof(double));
-      Wn = (double*)calloc(FO_length, sizeof(double));
+      //Wn = (double*)calloc(FO_length, sizeof(double));
 
       Lambda = (double*)calloc(FO_length, sizeof(double));
       aL = (double*)calloc(FO_length, sizeof(double));
@@ -868,10 +911,10 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
       if(MODE == 2)
       {
         PL[icell] = surf->PL;
-        Wt[icell] = surf->Wt;
+        //Wt[icell] = surf->Wt;
         Wx[icell] = surf->Wx;
         Wy[icell] = surf->Wy;
-        Wn[icell] = surf->Wn;
+        //Wn[icell] = surf->Wn;
 
         Lambda[icell] = surf->Lambda;
         aL[icell] = surf->aL;
@@ -924,7 +967,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
         tau, eta, ux, uy, un,
         dat, dax, day, dan,
         pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-        Wt, Wx, Wy, Wn, Lambda, aL, c0, c1, c2, c3, c4);
+        Wx, Wy, Lambda, aL, c0, c1, c2, c3, c4);
     }
 
     
@@ -988,10 +1031,8 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
     if(MODE == 2)
     {
       free(PL); 
-      free(Wt);
       free(Wx);
       free(Wy);
-      free(Wn);
       free(Lambda);
       free(aL);
       if (DF_MODE == 4)
