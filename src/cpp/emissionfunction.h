@@ -17,6 +17,7 @@ private:
   int MODE; //vh or vah , ...
   int DF_MODE;  // delta-f type
   int DIMENSION; // hydro d+1 dimensions (2+1 or 3+1)
+  int REINFORCE; // reinforce orthogonality, traceless
   int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
   int REGULATE_DELTAF;
   int INCLUDE_BARYON;
@@ -41,16 +42,16 @@ public:
   ~EmissionFunctionArray();
 
   void calculate_dN_ptdptdphidy(double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *, double *, double *,
+    double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *,
-    double *, double *, double *, double *, double*, double*);
+    double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
+    double *, double *, double *, double *, double *, double*, double*);
 
   void calculate_dN_ptdptdphidy_VAH_PL(double *, double *, double *,
-  double *, double *, double *, double *, double *,
+  double *, double *, double *, double *, double *, double *,
   double *, double *, double *, double *,
-  double *, double *, double *,
-  double *, double *, double *, double *, double *, double *, double *, double *, double *);
+  double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
+  double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
   void write_dN_pTdpTdphidy_toFile(); //write 3D spectra to file
   void calculate_spectra();

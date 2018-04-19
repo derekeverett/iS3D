@@ -41,6 +41,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   MODE = paraRdr->getVal("mode");
   DF_MODE = paraRdr->getVal("df_mode");
   DIMENSION = paraRdr->getVal("dimension");
+  REINFORCE = paraRdr->getVal("reinforce"); 
   INCLUDE_BARYON = paraRdr->getVal("include_baryon");
   INCLUDE_BULK_DELTAF = paraRdr->getVal("include_bulk_deltaf");
   INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
@@ -131,10 +132,10 @@ EmissionFunctionArray::~EmissionFunctionArray()
 //this is the function that needs to be parallelized
 //try acceleration via omp threads and simd, as well as openacc, CUDA?
 void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
-  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
+  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
-  double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
-  double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff)
+  double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo,
+  double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff)
 
   {
     double prefactor = pow(2.0 * M_PI * hbarC, -3);
@@ -234,11 +235,9 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
         double dan = dan_fo[icell_glb];
 
         double ux = ux_fo[icell_glb];           // contravariant fluid velocity
-        double uy = uy_fo[icell_glb];           // reinforce normalization
+        double uy = uy_fo[icell_glb];           
         double un = un_fo[icell_glb];
-        double one_uperp2 = 1.0  +  ux * ux  +  uy * uy;
-        double ut = sqrt(one_uperp2  +  tau2 * un * un);
-        double ut2 = ut * ut;
+        double ut; 
 
         double T = T_fo[icell_glb];             // temperature
         double P = P_fo[icell_glb];             // pressure
@@ -249,13 +248,28 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
         double pixn = pixn_fo[icell_glb];
         double piyy = piyy_fo[icell_glb];
         double piyn = piyn_fo[icell_glb];
+        double pitt, pitx, pity, pitn, pinn; 
 
-        // reinforce pi^munu orthogonality/traceless
-        double pinn = (pixx*(ux*ux - ut2) + piyy*(uy*uy - ut2) + 2.0*(pixy*ux*uy + tau2*un*(pixn*ux + piyn*uy))) / (tau2 * one_uperp2);
-        double pitn = (pixn*ux + piyn*uy + tau2*pinn*un) / ut;
-        double pity = (pixy*ux + piyy*uy + tau2*piyn*un) / ut;
-        double pitx = (pixx*ux + pixy*uy + tau2*pixn*un) / ut;
-        double pitt = (pitx*ux + pity*uy + tau2*pitn*un) / ut;
+        if(REINFORCE) // reinforce u, pi^munu properties
+        {
+          double one_uperp2 = 1.0  +  ux * ux  +  uy * uy;
+          ut = sqrt(one_uperp2  +  tau2 * un * un);
+          double ut2 = ut * ut; 
+          pinn = (pixx*(ux*ux - ut2) + piyy*(uy*uy - ut2) + 2.0*(pixy*ux*uy + tau2*un*(pixn*ux + piyn*uy))) / (tau2 * one_uperp2);
+          pitn = (pixn*ux + piyn*uy + tau2*pinn*un) / ut;
+          pity = (pixy*ux + piyy*uy + tau2*piyn*un) / ut;
+          pitx = (pixx*ux + pixy*uy + tau2*pixn*un) / ut;
+          pitt = (pitx*ux + pity*uy + tau2*pitn*un) / ut;
+        }
+        else
+        {
+          ut = ut_fo[icell_glb];
+          pitt = pitt_fo[icell_glb];      
+          pitx = pitx_fo[icell_glb];
+          pity = pity_fo[icell_glb];
+          pitn = pitn_fo[icell_glb];
+          pinn = pinn_fo[icell_glb];
+        }
 
         double bulkPi = bulkPi_fo[icell_glb];   // bulk pressure
 
@@ -276,7 +290,8 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
             Vx = Vx_fo[icell_glb];  // reinforce V.u = 0
             Vy = Vy_fo[icell_glb];
             Vn = Vn_fo[icell_glb];
-            Vt = (Vx * ux  + Vy * uy  +  tau2 * Vn * un) / ut;
+            if(REINFORCE) Vt = (Vx * ux  + Vy * uy  +  tau2 * Vn * un) / ut;
+            else Vt = Vt_fo[icell_glb];
           }
         }
 
@@ -437,9 +452,9 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
 // haven't defined in the header yet...
 void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double *Sign, double *Degeneracy,
-  double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
+  double *tau_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
-  double *pixx_fo, double *pixy_fo, double *bulkPi_fo, double *Wx_fo,double *Wy_fo, double *Lambda_fo, double *aL_fo, double *c0_fo, double *c1_fo, double *c2_fo, double *c3_fo, double *c4_fo)
+  double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo, double *Wt_fo, double *Wx_fo,double *Wy_fo, double *Wn_fo, double *Lambda_fo, double *aL_fo, double *c0_fo, double *c1_fo, double *c2_fo, double *c3_fo, double *c4_fo)
   {
     double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
     int FO_chunk = 10000;
@@ -525,39 +540,63 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
 
         double ux = ux_fo[icell_glb];           // contravariant fluid velocity
         double uy = uy_fo[icell_glb];           // enforce normalization: u.u = 1
-        double un = un_fo[icell_glb];
-        double ut = sqrt(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un);
-
+        double un = un_fo[icell_glb]; 
+        double ut;
+        
         double u0 = sqrt(1.0  +  ux * ux  +  uy * uy);
-        double zt = tau * un / u0;
-        double zn = ut / (u0 * tau);            // z basis vector
 
         double pixx = pixx_fo[icell_glb];       // piperp^munu
         double pixy = pixy_fo[icell_glb];
-
-        // reinforce piperp^munu properties (solve eqs. by row)
-        // x
-        double pitx = (pixx * ux  +  pixy * uy) * ut / (u0 * u0);
-        double pixn = un * pitx / ut;
-        // y
-        double piyy = (-pixx * (1.0 + uy * uy)  +  2.0 * pixy * ux * uy) / (1.0 + ux * ux);
-        double pity = (pixy * ux  +  piyy * uy) * ut / (u0 * u0);
-        double piyn = un * pity / ut;
-        // n
-        double pitn = (pixn * ux  +  piyn * uy) * ut / (u0 * u0);
-        double pinn = un * pitn / ut;
-        // t
-        double pitt = ut * pitn / un;
-
-
-
-
-        double bulkPi = bulkPi_fo[icell_glb];   // residual bulk pressure
+        double pitt, pitx, pity, pitn, pixn, piyy, piyn, pinn; 
 
         double Wx = Wx_fo[icell_glb];           // W^mu
-        double Wy = Wy_fo[icell_glb];           // reinforce orthogonality
-        double Wt = (ux * Wx  +  uy * Wy) * ut / (u0 * u0);
-        double Wn = Wt * un / ut;
+        double Wy = Wy_fo[icell_glb];    
+        double Wt, Wn;       
+
+        if(REINFORCE)
+        {
+          // reinforce normalization
+          ut = sqrt(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un);
+
+          // reinforce piperp^munu properties (solve eqs. by row)
+          // x
+          pitx = (pixx * ux  +  pixy * uy) * ut / (u0 * u0);
+          pixn = un * pitx / ut;
+          // y
+          piyy = (-pixx * (1.0 + uy * uy)  +  2.0 * pixy * ux * uy) / (1.0 + ux * ux);
+          pity = (pixy * ux  +  piyy * uy) * ut / (u0 * u0);
+          piyn = un * pity / ut;
+          // n
+          pitn = (pixn * ux  +  piyn * uy) * ut / (u0 * u0);
+          pinn = un * pitn / ut;
+          // t
+          pitt = ut * pitn / un;
+
+          // reinforce W^mu properties
+          Wt = (ux * Wx  +  uy * Wy) * ut / (u0 * u0);
+          Wn = Wt * un / ut;
+        }
+        else
+        {
+          ut = ut_fo[icell_glb]; 
+
+          pitt = pitt_fo[icell_glb];
+          pitx = pitx_fo[icell_glb];
+          pity = pity_fo[icell_glb];
+          pitn = pitn_fo[icell_glb];
+          pixn = pixn_fo[icell_glb];
+          piyy = piyy_fo[icell_glb];
+          piyn = piyn_fo[icell_glb];
+          pinn = pinn_fo[icell_glb];
+
+          Wt = Wt_fo[icell_glb];
+          Wn = Wn_fo[icell_glb];
+        }
+
+        double zt = tau * un / u0;
+        double zn = ut / (u0 * tau);            // z basis vector
+
+        double bulkPi = bulkPi_fo[icell_glb];   // residual bulk pressure
 
         double Lambda = Lambda_fo[icell_glb];   // anisotropic variables
         double aL = aL_fo[icell_glb];
@@ -805,14 +844,15 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
     }
 
     // freezeout surface info common for VH / VAH
-    double *tau, *eta, *ux, *uy, *un;
+    double *tau, *eta, *ut, *ux, *uy, *un;
     double *dat, *dax, *day, *dan;
-    double *pixx, *pixy, *pixn, *piyy, *piyn, *bulkPi;
-    double *muB, *nB, *Vx, *Vy, *Vn;
+    double *pitt, *pitx, *pity, *pitn, *pixx, *pixy, *pixn, *piyy, *piyn, *pinn, *bulkPi;
+    double *muB, *nB, *Vt, *Vx, *Vy, *Vn;
 
     tau = (double*)calloc(FO_length, sizeof(double));
     eta = (double*)calloc(FO_length, sizeof(double));
 
+    ut = (double*)calloc(FO_length, sizeof(double));
     ux = (double*)calloc(FO_length, sizeof(double));
     uy = (double*)calloc(FO_length, sizeof(double));
     un = (double*)calloc(FO_length, sizeof(double));
@@ -822,11 +862,16 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
     day = (double*)calloc(FO_length, sizeof(double));
     dan = (double*)calloc(FO_length, sizeof(double));
 
+    pitt = (double*)calloc(FO_length, sizeof(double));
+    pitx = (double*)calloc(FO_length, sizeof(double));
+    pity = (double*)calloc(FO_length, sizeof(double));
+    pitn = (double*)calloc(FO_length, sizeof(double));
     pixx = (double*)calloc(FO_length, sizeof(double));
     pixy = (double*)calloc(FO_length, sizeof(double));
     pixn = (double*)calloc(FO_length, sizeof(double));
     piyy = (double*)calloc(FO_length, sizeof(double));
     piyn = (double*)calloc(FO_length, sizeof(double));
+    pinn = (double*)calloc(FO_length, sizeof(double));
 
     bulkPi = (double*)calloc(FO_length, sizeof(double));
 
@@ -837,6 +882,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
       if (INCLUDE_BARYONDIFF_DELTAF)
       {
         nB = (double*)calloc(FO_length, sizeof(double));
+        Vt = (double*)calloc(FO_length, sizeof(double));
         Vx = (double*)calloc(FO_length, sizeof(double));
         Vy = (double*)calloc(FO_length, sizeof(double));
         Vn = (double*)calloc(FO_length, sizeof(double));
@@ -845,16 +891,16 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
 
 
     // freezeout surface info exclusive for VAH_PL
-    double *PL, *Wx, *Wy;
+    double *Wt, *Wx, *Wy, *Wn;
     double *Lambda, *aL;
     double *c0, *c1, *c2, *c3, *c4; //delta-f coeffs for vah
 
     if(MODE == 2)
     {
-      PL = (double*)calloc(FO_length, sizeof(double));
-
+      Wt = (double*)calloc(FO_length, sizeof(double));
       Wx = (double*)calloc(FO_length, sizeof(double));
       Wy = (double*)calloc(FO_length, sizeof(double));
+      Wn = (double*)calloc(FO_length, sizeof(double));
 
       Lambda = (double*)calloc(FO_length, sizeof(double));
       aL = (double*)calloc(FO_length, sizeof(double));
@@ -887,6 +933,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
       tau[icell] = surf->tau;
       eta[icell] = surf->eta;
 
+      ut[icell] = surf->ut;
       ux[icell] = surf->ux;
       uy[icell] = surf->uy;
       un[icell] = surf->un;
@@ -896,11 +943,16 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
       day[icell] = surf->day;
       dan[icell] = surf->dan;
 
+      pitt[icell] = surf->pitt;
+      pitx[icell] = surf->pitx;
+      pity[icell] = surf->pity;
+      pitn[icell] = surf->pitn;
       pixx[icell] = surf->pixx;
       pixy[icell] = surf->pixy;
       pixn[icell] = surf->pixn;
       piyy[icell] = surf->piyy;
       piyn[icell] = surf->piyn;
+      pinn[icell] = surf->pinn;
 
       bulkPi[icell] = surf->bulkPi;
 
@@ -911,6 +963,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
         if (INCLUDE_BARYONDIFF_DELTAF)
         {
           nB[icell] = surf->nB;
+          Vt[icell] = surf->Vt;
           Vx[icell] = surf->Vx;
           Vy[icell] = surf->Vy;
           Vn[icell] = surf->Vn;
@@ -919,9 +972,10 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
 
       if(MODE == 2)
       {
-        PL[icell] = surf->PL;
+        Wt[icell] = surf->Wt;
         Wx[icell] = surf->Wx;
         Wy[icell] = surf->Wy;
+        Wn[icell] = surf->Wn;
 
         Lambda[icell] = surf->Lambda;
         aL[icell] = surf->aL;
@@ -960,10 +1014,10 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
 
       // launch function to perform integrations - this should be readily parallelizable (VH)
       calculate_dN_ptdptdphidy(Mass, Sign, Degen, Baryon,
-        T, P, E, tau, eta, ux, uy, un,
+        T, P, E, tau, eta, ut, ux, uy, un,
         dat, dax, day, dan,
-        pixx, pixy, pixn, piyy, piyn, bulkPi,
-        muB, nB, Vx, Vy, Vn, df_coeff);
+        pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+        muB, nB, Vt, Vx, Vy, Vn, df_coeff);
 
     }
 
@@ -971,10 +1025,10 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
     {
       // launch function to perform integrations (VAH_PL)
       calculate_dN_ptdptdphidy_VAH_PL(Mass, Sign, Degen,
-        tau, eta, ux, uy, un,
+        tau, eta, ut, ux, uy, un,
         dat, dax, day, dan,
-        pixx, pixy, bulkPi,
-        Wx, Wy, Lambda, aL, c0, c1, c2, c3, c4);
+        pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+        Wt, Wx, Wy, Wn, Lambda, aL, c0, c1, c2, c3, c4);
     }
 
 
@@ -1001,19 +1055,26 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
     free(tau);
     free(eta);
 
+    free(ut);
     free(ux);
     free(uy);
     free(un);
+
     free(dat);
     free(dax);
     free(day);
     free(dan);
 
+    free(pitt);
+    free(pitx);
+    free(pity);
+    free(pitn);
     free(pixx);
     free(pixy);
     free(pixn);
     free(piyy);
     free(piyn);
+    free(pinn);
 
     free(bulkPi);
 
@@ -1023,6 +1084,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
       if (INCLUDE_BARYONDIFF_DELTAF)
       {
         free(nB);
+        free(Vt);
         free(Vx);
         free(Vy);
         free(Vn);
@@ -1031,9 +1093,10 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
 
     if(MODE == 2)
     {
-      free(PL);
+      free(Wt);
       free(Wx);
       free(Wy);
+      free(Wn);
       free(Lambda);
       free(aL);
       if (DF_MODE == 4)
