@@ -30,14 +30,14 @@ DeltafReader::~DeltafReader()
 
 }
 
-deltaf_coefficients DeltafReader::load_coefficients(FO_surf surface)
+deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_length)
 {
   deltaf_coefficients df_data;
 
   // T and muB (fm^-1)
-  double T_FO = surface.T / hbarC;
+  double T_FO = surface[0].T / hbarC;
   double muB_FO = 0.0;
-  if(include_baryon) muB_FO = surface.muB / hbarC;
+  if(include_baryon) muB_FO = surface[0].muB / hbarC;
 
 
   printf("Reading in Deltaf coefficients...\n");
@@ -60,7 +60,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf surface)
 
   // how to take put pathTodeltaf in here?
 
-  if (df_mode == 1) //viscous hydro 14 moment 
+  if (df_mode == 1) //viscous hydro 14 moment
   {
     sprintf(c0_name, "%s", "deltaf_coefficients/vh/c0_df14_vh.dat");
     sprintf(c1_name, "%s", "deltaf_coefficients/vh/c1_df14_vh.dat");
@@ -69,7 +69,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf surface)
     sprintf(c4_name, "%s", "deltaf_coefficients/vh/c4_df14_vh.dat");
   }
 
-  else if (df_mode == 4) //va hydro PL matching 14 moment 
+  else if (df_mode == 4) //va hydro PL matching 14 moment
   {
     sprintf(c0_name, "%s", "deltaf_coefficients/vah/c0_vah1.dat");
     sprintf(c1_name, "%s", "deltaf_coefficients/vah/c1_vah1.dat");
@@ -129,12 +129,12 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf surface)
   if(!include_baryon) nB = 1;
 
   // T and muB arrays
-  double T_array[nT][nB];
-  double muB_array[nT][nB];
+  double T_array[nT];
+  double muB_array[nB];
 
-  //L and aL arrays
-  double L_array[nL][naL];
-  double aL_array[nL][naL];
+  // L and aL arrays
+  double L_array[nL];
+  double aL_array[naL];
 
   // coefficient tables
 
@@ -155,57 +155,127 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf surface)
 
   if (df_mode == 1)
   {
-    for(int i2 = 0; i2 < n2; i2++)
+    for(int i2 = 0; i2 < n2; i2++) // muB
     {
-      for(int i1 = 0; i1 < n1; i1++)
+      int found = 0;
+
+      for(int i1 = 0; i1 < n1; i1++) // T
       {
         // set T and muB (fm^-1) arrays from file
-        fscanf(c0_file, "%lf\t\t%lf\t\t%lf\n", &T_array[i1][i2], &muB_array[i1][i2], &c0[i1][i2]);
-        fscanf(c1_file, "%lf\t\t%lf\t\t%lf\n", &T_array[i1][i2], &muB_array[i1][i2], &c1[i1][i2]);
-        fscanf(c2_file, "%lf\t\t%lf\t\t%lf\n", &T_array[i1][i2], &muB_array[i1][i2], &c2[i1][i2]);
-        fscanf(c3_file, "%lf\t\t%lf\t\t%lf\n", &T_array[i1][i2], &muB_array[i1][i2], &c3[i1][i2]);
-        fscanf(c4_file, "%lf\t\t%lf\t\t%lf\n", &T_array[i1][i2], &muB_array[i1][i2], &c4[i1][i2]);
+        fscanf(c0_file, "%lf\t\t%lf\t\t%lf\n", &T_array[i1], &muB_array[i2], &c0[i1][i2]);
+        fscanf(c1_file, "%lf\t\t%lf\t\t%lf\n", &T_array[i1], &muB_array[i2], &c1[i1][i2]);
+        fscanf(c2_file, "%lf\t\t%lf\t\t%lf\n", &T_array[i1], &muB_array[i2], &c2[i1][i2]);
+        fscanf(c3_file, "%lf\t\t%lf\t\t%lf\n", &T_array[i1], &muB_array[i2], &c3[i1][i2]);
+        fscanf(c4_file, "%lf\t\t%lf\t\t%lf\n", &T_array[i1], &muB_array[i2], &c4[i1][i2]);
 
-        // check if cross freezeout temperature (T_array increasing)
-        if(i1 > 0 && T_FO < T_array[i1][i2])
+        // check if cross freezeout temperature (T_array increasing: T_FO in btw T_array[i1-1] and T_array[i1]))
+        if(i1 > 0 && T_FO < T_array[i1])
         {
           // linear-interpolate wrt temperature (c0,c2) at T_invfm
-          df_data.c0 = c0[i1-1][i2] + c0[i1][i2] * ((T_FO - T_array[i1-1][i2]) / T_array[i1-1][i2]);
-          df_data.c1 = c1[i1-1][i2] + c1[i1][i2] * ((T_FO - T_array[i1-1][i2]) / T_array[i1-1][i2]);
-          df_data.c2 = c2[i1-1][i2] + c2[i1][i2] * ((T_FO - T_array[i1-1][i2]) / T_array[i1-1][i2]);
-          df_data.c3 = c3[i1-1][i2] + c3[i1][i2] * ((T_FO - T_array[i1-1][i2]) / T_array[i1-1][i2]);
-          df_data.c4 = c4[i1-1][i2] + c4[i1][i2] * ((T_FO - T_array[i1-1][i2]) / T_array[i1-1][i2]);
+          //df_data.c0 = c0[i1-1][i2] + c0[i1][i2] * ((T_FO - T_array[i1-1][i2]) / T_array[i1-1][i2]);
+          //df_data.c1 = c1[i1-1][i2] + c1[i1][i2] * ((T_FO - T_array[i1-1][i2]) / T_array[i1-1][i2]);
+          //df_data.c2 = c2[i1-1][i2] + c2[i1][i2] * ((T_FO - T_array[i1-1][i2]) / T_array[i1-1][i2]);
+          //df_data.c3 = c3[i1-1][i2] + c3[i1][i2] * ((T_FO - T_array[i1-1][i2]) / T_array[i1-1][i2]);
+          //df_data.c4 = c4[i1-1][i2] + c4[i1][i2] * ((T_FO - T_array[i1-1][i2]) / T_array[i1-1][i2]);
+
+          double T1 = T_array[i1-1];
+          double T2 = T_array[i1];
+
+          df_data.c0 = (c0[i1-1][i2] * (T2 - T_FO)  +  c0[i1][i2] * (T_FO - T1)) / (T2 - T1);
+          df_data.c1 = (c1[i1-1][i2] * (T2 - T_FO)  +  c1[i1][i2] * (T_FO - T1)) / (T2 - T1);
+          df_data.c2 = (c2[i1-1][i2] * (T2 - T_FO)  +  c2[i1][i2] * (T_FO - T1)) / (T2 - T1);
+          df_data.c3 = (c3[i1-1][i2] * (T2 - T_FO)  +  c3[i1][i2] * (T_FO - T1)) / (T2 - T1);
+          df_data.c4 = (c4[i1-1][i2] * (T2 - T_FO)  +  c4[i1][i2] * (T_FO - T1)) / (T2 - T1);
+
+          // convert 14-momentum coefficients to real-life units
+          df_data.c0 /= (hbarC * hbarC * hbarC);
+          df_data.c1 /= (hbarC * hbarC);
+          df_data.c2 /= (hbarC * hbarC * hbarC);
+          df_data.c3 /= (hbarC * hbarC);
+          df_data.c4 /= (hbarC * hbarC * hbarC);
+
+          found = 1;
           break;
         }
       } //i1
+      if(found == 1) break;
     } //i2
-
-    // convert 14-momentum coefficients to real-life units
-    df_data.c0 /= (hbarC * hbarC * hbarC);
-    df_data.c1 /= (hbarC * hbarC);
-    df_data.c2 /= (hbarC * hbarC * hbarC);
-    df_data.c3 /= (hbarC * hbarC);
-    df_data.c4 /= (hbarC * hbarC * hbarC);
   }
   else if (df_mode == 4)
   {
-    for(int i2 = 0; i2 < n2; i2++)
+    for(int i2 = 0; i2 < n2; i2++)   // aL
     {
-      for(int i1 = 0; i1 < n1; i1++)
+      for(int i1 = 0; i1 < n1; i1++) // Lambda
       {
         // set L and aL (fm^-1) arrays from file
-        fscanf(c0_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1][i2], &aL_array[i1][i2], &c0[i1][i2]);
-        fscanf(c1_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1][i2], &aL_array[i1][i2], &c1[i1][i2]);
-        fscanf(c2_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1][i2], &aL_array[i1][i2], &c2[i1][i2]);
-        fscanf(c3_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1][i2], &aL_array[i1][i2], &c3[i1][i2]);
-        fscanf(c4_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1][i2], &aL_array[i1][i2], &c4[i1][i2]);
+        fscanf(c0_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1], &aL_array[i2], &c0[i1][i2]);
+        fscanf(c1_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1], &aL_array[i2], &c1[i1][i2]);
+        fscanf(c2_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1], &aL_array[i2], &c2[i1][i2]);
+        fscanf(c3_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1], &aL_array[i2], &c3[i1][i2]);
+        fscanf(c4_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1], &aL_array[i2], &c4[i1][i2]);
       } //i1
     } //i2
 
-    /* NOW WHAT?*/
 
 
-  } // if (mode == 2)
+    double hbarC3 = (hbarC * hbarC * hbarC);
+
+
+    for (long icell = 0; icell < FO_length; icell++)
+    {
+      double aL = surface[icell].aL;
+      double Lambda = surface[icell].Lambda / hbarC;
+
+      //set the values of delta-f coefficients for every FO cell
+
+      for (int i2 = 0; i2 < n2; i2++)   // aL
+      {
+        int found = 0;
+
+        for (int i1 = 0; i1 < n1; i1++)  // Lambda
+        {
+          if( (i1 > 0) && (Lambda < L_array[i1])  && (i2 > 0) && (aL < aL_array[i2]) )
+          {
+            // bilinear-interpolate w.r.t. Lambda and alpha_L
+
+            double Lambda1 = L_array[i1-1];
+            double Lambda2 = L_array[i1];
+            double aL1 = aL_array[i2-1];
+            double aL2 = aL_array[i2];
+
+
+            surface[icell].c0 = ((c0[i1-1][i2-1] * (Lambda2 - Lambda)  +  c0[i1][i2-1] * (Lambda - Lambda1)) * (aL2 - aL)
+                              + (c0[i1-1][i2] * (Lambda2 - Lambda)  +  c0[i1][i2] * (Lambda - Lambda1)) * (aL - aL1)) / ((aL2 - aL1) * (Lambda2 - Lambda1));
+
+            surface[icell].c1 = ((c1[i1-1][i2-1] * (Lambda2 - Lambda)  +  c1[i1][i2-1] * (Lambda - Lambda1)) * (aL2 - aL)
+                              + (c1[i1-1][i2] * (Lambda2 - Lambda)  +  c1[i1][i2] * (Lambda - Lambda1)) * (aL - aL1)) / ((aL2 - aL1) * (Lambda2 - Lambda1));
+
+            surface[icell].c2 = ((c2[i1-1][i2-1] * (Lambda2 - Lambda)  +  c2[i1][i2-1] * (Lambda - Lambda1)) * (aL2 - aL)
+                              + (c2[i1-1][i2] * (Lambda2 - Lambda)  +  c2[i1][i2] * (Lambda - Lambda1)) * (aL - aL1)) / ((aL2 - aL1) * (Lambda2 - Lambda1));
+
+            surface[icell].c3 = ((c3[i1-1][i2-1] * (Lambda2 - Lambda)  +  c3[i1][i2-1] * (Lambda - Lambda1)) * (aL2 - aL)
+                              + (c3[i1-1][i2] * (Lambda2 - Lambda)  +  c3[i1][i2] * (Lambda - Lambda1)) * (aL - aL1)) / ((aL2 - aL1) * (Lambda2 - Lambda1));
+
+            surface[icell].c4 = ((c4[i1-1][i2-1] * (Lambda2 - Lambda)  +  c4[i1][i2-1] * (Lambda - Lambda1)) * (aL2 - aL)
+                              + (c4[i1-1][i2] * (Lambda2 - Lambda)  +  c4[i1][i2] * (Lambda - Lambda1)) * (aL - aL1)) / ((aL2 - aL1) * (Lambda2 - Lambda1));
+
+
+            // convert to real life units
+
+            surface[icell].c0 /= hbarC3;
+            surface[icell].c1 /= hbarC3;
+            surface[icell].c2 /= hbarC3;
+            surface[icell].c3 /= hbarC3;
+            surface[icell].c4 /= hbarC3;
+
+            found = 1;  // found
+            break;
+          }
+        } //i1
+        if(found == 1) break;
+      } //i2
+    } // icell
+  } // if (df_mode == 4)
 
   return df_data;
 }
