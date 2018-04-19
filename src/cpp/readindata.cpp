@@ -12,6 +12,7 @@
 #include "arsenal.h"
 #include "ParameterReader.h"
 #include "Table.h"
+#include "gaussThermal.h"
 
 using namespace std;
 
@@ -52,7 +53,7 @@ void FO_data_reader::read_surf_switch(long length, FO_surf* surf_ptr)
 }
 
 //THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! baryon number, baryon chemical potential at the end...
-void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
+void FO_data_reader::read_surf_VH(long length, FO_surf * surf_ptr)
 {
   ostringstream surfdat_stream;
   double dummy;
@@ -62,7 +63,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
   {
     // contravariant spacetime position
     surfdat >> surf_ptr[i].tau;
-    surfdat >> surf_ptr[i].x;
+    surfdat >> surf_ptr[i].x;    // are we going to remove x,y?
     surfdat >> surf_ptr[i].y;
     surfdat >> surf_ptr[i].eta;
 
@@ -81,36 +82,35 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
 
     // thermodynamic quantities at freeze out
     surfdat >> dummy;
-    surf_ptr[i].E = dummy * hbarC; //energy density
+    surf_ptr[i].E = dummy * hbarC; // energy density
     surfdat >> dummy;
-    surf_ptr[i].T = dummy * hbarC; //Temperature
+    surf_ptr[i].T = dummy * hbarC; // temperature
     surfdat >> dummy;
-    surf_ptr[i].P = dummy * hbarC; //pressure
+    surf_ptr[i].P = dummy * hbarC; // pressure
 
-    //file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
+    // file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
     // dissipative quantities at freeze out
-    //if (include_shear_deltaf)
-    //{
-      surfdat >> dummy;
-      surf_ptr[i].pitt = dummy * hbarC; //ten contravariant components of shear stress tensor
-      surfdat >> dummy;
-      surf_ptr[i].pitx = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].pity = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].pitn = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].pixx = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].pixy = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].pixn = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].piyy = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].piyn = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].pinn = dummy * hbarC;
+    
+    surfdat >> dummy;
+    surf_ptr[i].pitt = dummy * hbarC; //ten contravariant components of shear stress tensor
+    surfdat >> dummy;
+    surf_ptr[i].pitx = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pity = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pitn = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pixx = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pixy = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pixn = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].piyy = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].piyn = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pinn = dummy * hbarC;
     //}
     //if (include_bulk_deltaf)
     //{
@@ -120,20 +120,25 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     if (include_baryon)
     {
       surfdat >> dummy;
-      surf_ptr[i].muB = dummy * hbarC; //baryon chemical potential
+      surf_ptr[i].muB = dummy * hbarC; // baryon chemical potential
     }
     if (include_baryondiff_deltaf)
     {
-      surfdat >> dummy;
-      surf_ptr[i].nB = dummy * hbarC; //baryon density
-      surfdat >> dummy;
-      surf_ptr[i].Vt = dummy * hbarC; //four contravariant components of baryon diffusion vector
-      surfdat >> dummy;
-      surf_ptr[i].Vx = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].Vy = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].Vn = dummy * hbarC;
+      surfdat >> surf_ptr[i].nB;       // (fm^-3) 
+      surfdat >> surf_ptr[i].Vt;
+      surfdat >> surf_ptr[i].Vx;
+      surfdat >> surf_ptr[i].Vy;
+      surfdat >> surf_ptr[i].Vn;
+      // surfdat >> dummy;
+      // surf_ptr[i].nB = dummy * hbarC; //baryon density
+      // surfdat >> dummy;
+      // surf_ptr[i].Vt = dummy * hbarC; //four contravariant components of baryon diffusion vector
+      // surfdat >> dummy;
+      // surf_ptr[i].Vx = dummy * hbarC;
+      // surfdat >> dummy;
+      // surf_ptr[i].Vy = dummy * hbarC;
+      // surfdat >> dummy;
+      // surf_ptr[i].Vn = dummy * hbarC;
     }
 
   }
@@ -230,8 +235,6 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
   {
     // file format: (x^mu, da_mu, u^mu, E, T, P, pl, pi^munu, W^mu, bulkPi)
     // don't really need E 
-
-    // need to add (pl, Wmu, aL, Lambda) to the struct
 
     // Make sure all the units are correct
 
@@ -433,20 +436,14 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
     if(include_baryondiff_deltaf)
     {
       // net baryon density
-      surface_data >> data;
-      surface[i].nB = data * hbarC;   // (fm^-3 -> GeV/fm^2)
-
+      surface_data >> surface[i].nB;
       // LRF longitudinal baryon diffusion
-      surface_data >> data;
-      surface[i].nBL = data * hbarC;  // (fm^-3 -> GeV/fm^2)
-
+      surface_data >> surface[i].nBL;
       // contravariant transverse baryon diffusion (V^mu == V_perp^mu)
-      surface_data >> data;
-      surface[i].Vt = data * hbarC;   // (fm^-3 -> GeV/fm^2)
-      surface_data >> data;
-      surface[i].Vx = data * hbarC;   // (fm^-3 -> GeV/fm^2)
-      surface_data >> data;
-      surface[i].Vy = data * hbarC;   // (fm^-3 -> GeV/fm^2)
+      surface_data >> surface[i].Vt;
+      surface_data >> surface[i].Vx; 
+      surface_data >> surface[i].Vy; 
+      surface_data >> surface[i].Vn; 
     }
   } // i
   // close file
@@ -454,7 +451,7 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
   return;
 }
 
-int FO_data_reader::read_resonances_list(particle_info* particle)
+int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf * surf_ptr, deltaf_coefficients df)
 {
   double eps = 1e-15;
   int Nparticle=0;
@@ -541,12 +538,82 @@ int FO_data_reader::read_resonances_list(particle_info* particle)
       }
     local_i++;	// Add one to the counting variable "i" for the meson/baryon
   }
-resofile.close();
-Nparticle = local_i - 1; //take account the final fake one
-for (int i = 0; i < Nparticle; i++)
+  resofile.close();
+  Nparticle = local_i - 1; //take account the final fake one
+  for (int i = 0; i < Nparticle; i++)
   {
     if (particle[i].baryon == 0) particle[i].sign = -1;
     else particle[i].sign = 1;
   }
-return(Nparticle);
+
+  if(df_mode == 3)
+  { 
+    double T = (surf_ptr[0]->T) / hbarC;                         // temperature in fm units
+    double alphaB = 0.0;
+    if(include_baryon) alphaB = (surf_ptr[0]->muB) / T;  // alphaB = muB / T 
+
+    // Chapman-Enskog coefficients in fm units 
+    double F = df.F / hbarC;                             
+    double G = df.G;                                     
+    double betabulk = df.betabulk / hbarC; 
+
+    FILE * gla_file;
+    char header[300];
+    gla_file = fopen("gla12_roots_weights_64_pts.dat", "r");
+    if(gla_file == NULL) printf("Couldn't open Gauss-Laguerre roots/weights file\n");
+
+    int pbar_pts;
+
+    // get # quadrature pts
+    fscanf(gla_file, "%d\n", &pbar_pts);
+
+    // Gauss Laguerre roots-weights
+    double pbar_root1[pbar_pts];
+    double pbar_weight1[pbar_pts];
+    double pbar_root2[pbar_pts];
+    double pbar_weight2[pbar_pts];
+
+    // skip the next 2 headers
+    fgets(header, 100, gla_file);
+    fgets(header, 100, gla_file);
+
+    // load roots/weights
+    for(int i = 0; i < pbar_pts; i++)
+    {
+      fscanf(gla_file, "%lf\t\t%lf\t\t%lf\t\t%lf\n", &pbar_root1[i], &pbar_weight1[i], &pbar_root2[i], &pbar_weight2[i]);
+    }
+
+    // close file 
+    fclose(gla_file);
+
+
+    // prefactors
+    double neq_fact = pow(T,3) / (2.0 * M_PI * M_PI);
+    double N10_fact = neq_fact;
+    double J20_fact = pow(T,4) / (2.0 * M_PI * M_PI);
+
+    for(int i = 0; i < Nparticle; i++)
+    {
+    
+      // particle info 
+      double degeneracy = (double)particle[i].gspin; 
+      double baryon = (double)particle[i].baryon;
+      double sign = (double)particle[i].sign;
+      double mbar = particle[i].mass / T;
+
+      double N10 = degeneracy * N10_fact * GaussThermal(N10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+      double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+
+      double neq = degeneracy * neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+      double nlinear_correction = neq + (N10 * G) + (J20 * F / pow(T,2)); 
+
+      // load modified info 
+      particle[i].equilibrium_density = neq; 
+      particle[i].linearized_density_correction = nlinear_correction; 
+   }
+  }
+
+
+
+  return(Nparticle);
 }
