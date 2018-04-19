@@ -41,15 +41,15 @@ public:
   ~EmissionFunctionArray();
 
   void calculate_dN_ptdptdphidy(double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *, double *, double *, double *,
+    double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double*, double*);
+    double *, double *, double *, double *, double *, double *,
+    double *, double *, double *, double *, double*, double*);
 
   void calculate_dN_ptdptdphidy_VAH_PL(double *, double *, double *,
   double *, double *, double *, double *, double *,
   double *, double *, double *, double *,
-  double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
+  double *, double *, double *,
   double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
   void write_dN_pTdpTdphidy_toFile(); //write 3D spectra to file
