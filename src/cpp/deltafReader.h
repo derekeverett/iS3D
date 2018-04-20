@@ -13,8 +13,7 @@ class DeltafReader
     private:
         ParameterReader * paraRdr;
         string pathTodeltaf;
-
-        int mode;    // type of freezeout surface, VH or VAH
+        
         int df_mode; // type of delta-f correction (e.g. 14-moment, CE, or modified distribution)
         int include_baryon;
 

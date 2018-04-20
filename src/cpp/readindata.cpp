@@ -20,7 +20,7 @@ FO_data_reader::FO_data_reader(ParameterReader* paraRdr_in, string path_in)
 {
   paraRdr = paraRdr_in;
   pathToInput = path_in;
-  mode = paraRdr->getVal("mode"); //this determines whether the file read in has viscous hydro dissipative currents or viscous anisotropic dissipative currents
+  hydro_mode = paraRdr->getVal("hydro_mode"); //this determines whether the file read in has viscous hydro dissipative currents or viscous anisotropic dissipative currents
   df_mode = paraRdr->getVal("df_mode");
   include_baryon = paraRdr->getVal("include_baryon");
   include_bulk_deltaf = paraRdr->getVal("include_bulk_deltaf");
@@ -46,10 +46,10 @@ int FO_data_reader::get_number_cells()
 
 void FO_data_reader::read_surf_switch(long length, FO_surf* surf_ptr)
 {
-  if (mode == 1) read_surf_VH(length, surf_ptr); //surface file containing viscous hydro dissipative currents
-  else if (mode == 2) read_surf_VAH_PLMatch(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents for use with CPU-VAH
-  else if (mode == 3) read_surf_VAH_PLPTMatch(length, surf_ptr); //usrface file containing anisotropic viscous hydro dissipative currents for use with Mike's Hydro
-  else if (mode == 4) read_surf_VH_MUSIC(length, surf_ptr);
+  if (hydro_mode == 1) read_surf_VH(length, surf_ptr); //surface file containing viscous hydro dissipative currents
+  else if (hydro_mode == 2) read_surf_VAH_PLMatch(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents for use with CPU-VAH
+  else if (hydro_mode == 3) read_surf_VAH_PLPTMatch(length, surf_ptr); //usrface file containing anisotropic viscous hydro dissipative currents for use with Mike's Hydro
+  else if (hydro_mode == 4) read_surf_VH_MUSIC(length, surf_ptr);
   return;
 }
 
@@ -112,11 +112,9 @@ void FO_data_reader::read_surf_VH(long length, FO_surf * surf_ptr)
     surf_ptr[i].piyn = dummy * hbarC;
     surfdat >> dummy;
     surf_ptr[i].pinn = dummy * hbarC;
-    //}
-    //if (include_bulk_deltaf)
-    //{
-      surfdat >> dummy;
-      surf_ptr[i].bulkPi = dummy * hbarC; //bulk pressure
+  
+    surfdat >> dummy;
+    surf_ptr[i].bulkPi = dummy * hbarC; //bulk pressure
     //}
     if (include_baryon)
     {
@@ -547,6 +545,8 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf * surf
     else particle[i].sign = 1;
   }
 
+
+  // for modified equilibrium distribution 
   if(df_mode == 3)
   {
     double T = surf_ptr[0].T / hbarC;                         // temperature in fm units

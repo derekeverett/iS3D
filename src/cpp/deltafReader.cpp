@@ -19,7 +19,6 @@ DeltafReader::DeltafReader(ParameterReader * paraRdr_in, string path_in)
   paraRdr = paraRdr_in;
   pathTodeltaf = path_in;
 
-  mode = paraRdr->getVal("mode");
   df_mode = paraRdr->getVal("df_mode");
   include_baryon = paraRdr->getVal("include_baryon");
 
@@ -63,11 +62,11 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf * surface, long FO_l
 
     // how to put pathTodeltaf in here
 
-    sprintf(c0_name, "%s", "deltaf_coefficients/c0_df14_vh.dat");
-    sprintf(c1_name, "%s", "deltaf_coefficients/c1_df14_vh.dat");
-    sprintf(c2_name, "%s", "deltaf_coefficients/c2_df14_vh.dat");
-    sprintf(c3_name, "%s", "deltaf_coefficients/c3_df14_vh.dat");
-    sprintf(c4_name, "%s", "deltaf_coefficients/c4_df14_vh.dat");
+    sprintf(c0_name, "%s", "deltaf_coefficients/vh/c0_df14_vh.dat");
+    sprintf(c1_name, "%s", "deltaf_coefficients/vh/c1_df14_vh.dat");
+    sprintf(c2_name, "%s", "deltaf_coefficients/vh/c2_df14_vh.dat");
+    sprintf(c3_name, "%s", "deltaf_coefficients/vh/c3_df14_vh.dat");
+    sprintf(c4_name, "%s", "deltaf_coefficients/vh/c4_df14_vh.dat");
 
     c0_file = fopen(c0_name, "r");
     c1_file = fopen(c1_name, "r");
@@ -186,11 +185,11 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf * surface, long FO_l
 
     // how to take put pathTodeltaf in here?
 
-    sprintf(F_name, "%s", "deltaf_coefficients/F_dfce_vh.dat");
-    sprintf(G_name, "%s", "deltaf_coefficients/G_dfce_vh.dat");
-    sprintf(betabulk_name, "%s", "deltaf_coefficients/betabulk_dfce_vh.dat");
-    sprintf(betaV_name, "%s", "deltaf_coefficients/betaV_dfce_vh.dat");
-    sprintf(betapi_name, "%s", "deltaf_coefficients/betapi_dfce_vh.dat");
+    sprintf(F_name, "%s", "deltaf_coefficients/vh/F_dfce_vh.dat");
+    sprintf(G_name, "%s", "deltaf_coefficients/vh/G_dfce_vh.dat");
+    sprintf(betabulk_name, "%s", "deltaf_coefficients/vh/betabulk_dfce_vh.dat");
+    sprintf(betaV_name, "%s", "deltaf_coefficients/vh/betaV_dfce_vh.dat");
+    sprintf(betapi_name, "%s", "deltaf_coefficients/vh/betapi_dfce_vh.dat");
 
     F_file = fopen(F_name, "r");
     G_file = fopen(G_name, "r");

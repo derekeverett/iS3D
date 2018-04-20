@@ -14,7 +14,7 @@ class EmissionFunctionArray
 private:
   ParameterReader* paraRdr;
 
-  int MODE; //vh or vah , ...
+  int HYDRO_MODE; //vh or vah , ...
   int DF_MODE;  // delta-f type
   int DIMENSION; // hydro d+1 dimensions (2+1 or 3+1)
   int REINFORCE; // reinforce orthogonality, traceless

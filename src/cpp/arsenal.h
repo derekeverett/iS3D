@@ -74,6 +74,12 @@ void get_bin_average_and_count(istream& is, ostream& os, vector<double>* bins, l
 double aL_fit(double pl_peq_ratio);
 double R200(double aL);
 
+
+// for momentum rescaling matrix
+void LUP_decomposition(double ** A, int n, int * pvector);
+void LUP_solve(double ** PA, int n, int pvector[], double b[]);
+void free_2D(double ** M, int n);
+
 #endif
 
 
