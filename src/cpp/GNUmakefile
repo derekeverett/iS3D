@@ -32,8 +32,8 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS3D.e
 endif
 
-SRC   =	main.cpp arsenal.cpp emissionfunction.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp
-INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h
+SRC   =	main.cpp arsenal.cpp emissionfunction.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp
+INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h gaussThermal.h
 
 
 # -------------------------------------------------
@@ -80,9 +80,10 @@ install:	$(TARGET)
 		cp $(TARGET) $(INSTPATH)
 
 # --------------- Dependencies -------------------
-./main.cpp: main.h Table.h readindata.h emissionfunction.h arsenal.h ParameterReader.h
+./main.cpp: main.h Table.h readindata.h emissionfunction.h arsenal.h ParameterReader.h deltafReader.h
 ./arsenal.cpp: arsenal.h
-./emissionfunction.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h
+./emissionfunction.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h deltafReader.h
 ./Table.cpp: Table.h arsenal.h
-./readindata.cpp: main.h readindata.h arsenal.h Table.h ParameterReader.h
+./readindata.cpp: main.h readindata.h arsenal.h Table.h ParameterReader.h gaussThermal.h
 ./ParameterReader.cpp: arsenal.h ParameterReader.h
+./gaussThermal.cpp: gaussThermal.h

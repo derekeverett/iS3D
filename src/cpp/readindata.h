@@ -55,7 +55,7 @@ typedef struct
   int sign; //Bose-Einstein or Dirac-Fermi statistics
 
   // modified particle density info
-  double equilibrium_density;          
+  double equilibrium_density;
   double linearized_density_correction; // w/o bulkPi factor (direct evaluation doesn't take long)
 
 } particle_info;
@@ -69,7 +69,7 @@ typedef struct
    double pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn; //contravariant components of shear stress tensor, or pi_perp^(\mu\nu) in case of VAH
    double bulkPi; //bulk pressure, or residual bulk pressure in case of VAH
    double muB, muS; //baryon chemical potential, strangeness chem. pot.
-   double nB, Vt, Vx, Vy, Vn; //baryon number density, contravariant baryon diffusion current, or in case of VAH transverse baryon diffusion current 
+   double nB, Vt, Vx, Vy, Vn; //baryon number density, contravariant baryon diffusion current, or in case of VAH transverse baryon diffusion current
 
    //quantities exclusive to VAH
    double PL; //longitudinal pressure
@@ -80,7 +80,7 @@ typedef struct
    double upsilonB; //effective baryon chemical potential
    double nBL; //LRF longitudinal baryon diffusion
 
-   double c0,c1,c2,c3,c4; // VAH_PL 14-moment: every FO has different df~ coefficients 
+   double c0,c1,c2,c3,c4; // VAH_PL 14-moment: every FO has different df~ coefficients
 
 } FO_surf;
 
@@ -90,6 +90,7 @@ class FO_data_reader
         ParameterReader* paraRdr;
         string pathToInput;
         int mode; //type of freezeout surface, VH or VAH
+        int df_mode;
         int include_baryon; //switch to turn on/off baryon chemical potential
         int include_bulk_deltaf; //switch to turn on/off (\delta)f correction from bulk viscosity
         int include_shear_deltaf; //switch to turn on/off (\delta)f correction from shear viscosity
@@ -107,7 +108,7 @@ class FO_data_reader
         void read_surf_VH_MUSIC(long length, FO_surf * surf_ptr);
 
 
-        int read_resonances_list(particle_info * particle, FO_surf * surf_ptr, deltaf_coefficients df);  // need to update 
+        int read_resonances_list(particle_info * particle, FO_surf * surf_ptr, deltaf_coefficients df);  // need to update
 };
 
 #endif

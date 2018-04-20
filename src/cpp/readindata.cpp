@@ -21,6 +21,7 @@ FO_data_reader::FO_data_reader(ParameterReader* paraRdr_in, string path_in)
   paraRdr = paraRdr_in;
   pathToInput = path_in;
   mode = paraRdr->getVal("mode"); //this determines whether the file read in has viscous hydro dissipative currents or viscous anisotropic dissipative currents
+  df_mode = paraRdr->getVal("df_mode");
   include_baryon = paraRdr->getVal("include_baryon");
   include_bulk_deltaf = paraRdr->getVal("include_bulk_deltaf");
   include_shear_deltaf = paraRdr->getVal("include_shear_deltaf");
@@ -90,7 +91,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf * surf_ptr)
 
     // file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
     // dissipative quantities at freeze out
-    
+
     surfdat >> dummy;
     surf_ptr[i].pitt = dummy * hbarC; //ten contravariant components of shear stress tensor
     surfdat >> dummy;
@@ -124,7 +125,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf * surf_ptr)
     }
     if (include_baryondiff_deltaf)
     {
-      surfdat >> surf_ptr[i].nB;       // (fm^-3) 
+      surfdat >> surf_ptr[i].nB;       // (fm^-3)
       surfdat >> surf_ptr[i].Vt;
       surfdat >> surf_ptr[i].Vx;
       surfdat >> surf_ptr[i].Vy;
@@ -234,7 +235,7 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
   for(long i = 0; i < FO_length; i++)
   {
     // file format: (x^mu, da_mu, u^mu, E, T, P, pl, pi^munu, W^mu, bulkPi)
-    // don't really need E 
+    // don't really need E
 
     // Make sure all the units are correct
 
@@ -441,9 +442,9 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
       surface_data >> surface[i].nBL;
       // contravariant transverse baryon diffusion (V^mu == V_perp^mu)
       surface_data >> surface[i].Vt;
-      surface_data >> surface[i].Vx; 
-      surface_data >> surface[i].Vy; 
-      surface_data >> surface[i].Vn; 
+      surface_data >> surface[i].Vx;
+      surface_data >> surface[i].Vy;
+      surface_data >> surface[i].Vn;
     }
   } // i
   // close file
@@ -547,15 +548,15 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf * surf
   }
 
   if(df_mode == 3)
-  { 
-    double T = (surf_ptr[0]->T) / hbarC;                         // temperature in fm units
+  {
+    double T = surf_ptr[0].T / hbarC;                         // temperature in fm units
     double alphaB = 0.0;
-    if(include_baryon) alphaB = (surf_ptr[0]->muB) / T;  // alphaB = muB / T 
+    if(include_baryon) alphaB = surf_ptr[0].muB / surf_ptr[0].T;  // alphaB = muB / T
 
-    // Chapman-Enskog coefficients in fm units 
-    double F = df.F / hbarC;                             
-    double G = df.G;                                     
-    double betabulk = df.betabulk / hbarC; 
+    // Chapman-Enskog coefficients in fm units
+    double F = df.F / hbarC;
+    double G = df.G;
+    double betabulk = df.betabulk / hbarC;
 
     FILE * gla_file;
     char header[300];
@@ -583,20 +584,20 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf * surf
       fscanf(gla_file, "%lf\t\t%lf\t\t%lf\t\t%lf\n", &pbar_root1[i], &pbar_weight1[i], &pbar_root2[i], &pbar_weight2[i]);
     }
 
-    // close file 
+    // close file
     fclose(gla_file);
 
 
     // prefactors
     double neq_fact = pow(T,3) / (2.0 * M_PI * M_PI);
-    double N10_fact = neq_fact;
+    double N10_fact = pow(T,3) / (2.0 * M_PI * M_PI);
     double J20_fact = pow(T,4) / (2.0 * M_PI * M_PI);
 
     for(int i = 0; i < Nparticle; i++)
     {
-    
-      // particle info 
-      double degeneracy = (double)particle[i].gspin; 
+
+      // particle info
+      double degeneracy = (double)particle[i].gspin;
       double baryon = (double)particle[i].baryon;
       double sign = (double)particle[i].sign;
       double mbar = particle[i].mass / T;
@@ -605,11 +606,11 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf * surf
       double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
 
       double neq = degeneracy * neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-      double nlinear_correction = neq + (N10 * G) + (J20 * F / pow(T,2)); 
+      double nlinear_correction = neq + (N10 * G) + (J20 * F / pow(T,2));
 
-      // load modified info 
-      particle[i].equilibrium_density = neq; 
-      particle[i].linearized_density_correction = nlinear_correction; 
+      // load modified info
+      particle[i].equilibrium_density = neq;
+      particle[i].linearized_density_correction = nlinear_correction;
    }
   }
 
