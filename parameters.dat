@@ -16,9 +16,10 @@ dimension				  = 2   # hydro dimensions
 								# 2: 2+1d (includes eta integration)
 								# 3: 3+1d
 
-reinforce				  = 1   # switch to reinforce orthogonality and traceless (e.g. u.u = 1, u.pi = 0, Tr(pi) = 0)
+reinforce				  = 1   # switch to reinforce orthogonality and traceless
+								# (e.g. u.u = 1, u.pi = 0, Tr(pi) = 0)
 								# 0: false
-								# 1: true (essential for df_mode = 3,6 to work)
+								# 1: true (needed for df_mode = 3,6)
 
 include_baryon            = 0   # switch to include baryon chemical potential in distribution function
 include_bulk_deltaf       = 0   # switch to include delta f correction from bulk pressure
