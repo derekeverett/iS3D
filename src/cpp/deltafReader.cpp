@@ -371,6 +371,12 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf * surface, long FO_l
 
         for (int i1 = 0; i1 < n1; i1++)  // Lambda
         {
+          fscanf(c0_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1], &aL_array[i2], &c0[i1][i2]);
+          fscanf(c1_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1], &aL_array[i2], &c1[i1][i2]);
+          fscanf(c2_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1], &aL_array[i2], &c2[i1][i2]);
+          fscanf(c3_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1], &aL_array[i2], &c3[i1][i2]);
+          fscanf(c4_file, "%lf\t\t%lf\t\t%lf\n", &L_array[i1], &aL_array[i2], &c4[i1][i2]);
+          
           if( (i1 > 0) && (Lambda < L_array[i1])  && (i2 > 0) && (aL < aL_array[i2]) )
           {
             // bilinear-interpolate w.r.t. Lambda and alpha_L

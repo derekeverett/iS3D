@@ -332,6 +332,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
         double Zt, Zn;          // Z^mu
         if(DF_MODE == 3)
         {
+          // u0 = sqrt(1.0 + ux * ux + uy * uy_)
           double sinhL = tau * un / u0;
           double coshL = ut / u0;
           double uperp = sqrt(ux * ux  +  uy * uy);
@@ -508,7 +509,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
           LUP_decomposition(M, 3, permutation);
 
           // prefactors for modified density and linear density correction
-          nmod_fact = detA * T_mod * T_mod * T_mod / (2.0 * M_PI * M_PI);
+          nmod_fact = detA * T_mod * T_mod * T_mod / (2.0 * M_PI * M_PI * hbarC * hbarC * hbarC);
 
           if(INCLUDE_BULK_DELTAF) nlinear_fact = bulkPi / betabulk;
 
@@ -542,14 +543,13 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
           double renorm = 1.0;
           if(DF_MODE == 3)
           {
-            if(true)
+            if(INCLUDE_BULK_DELTAF)
             {
               double neq = EquilibriumDensity[ipart];
               double nlinear_correction = nlinear_fact * LinearDensityCorrection[ipart];
               double n_linear = neq + nlinear_correction;
 
               double mbar_mod = mass / T_mod;
-
               double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
 
               renorm = n_linear / n_mod;

@@ -550,6 +550,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf * surf
   if(df_mode == 3)
   {
     double T = surf_ptr[0].T / hbarC;                         // temperature in fm units
+    cout << T << endl;
     double alphaB = 0.0;
     if(include_baryon) alphaB = surf_ptr[0].muB / surf_ptr[0].T;  // alphaB = muB / T
 
@@ -587,7 +588,6 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf * surf
     // close file
     fclose(gla_file);
 
-
     // prefactors
     double neq_fact = pow(T,3) / (2.0 * M_PI * M_PI);
     double N10_fact = pow(T,3) / (2.0 * M_PI * M_PI);
@@ -600,7 +600,8 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf * surf
       double degeneracy = (double)particle[i].gspin;
       double baryon = (double)particle[i].baryon;
       double sign = (double)particle[i].sign;
-      double mbar = particle[i].mass / T;
+      double mbar = particle[i].mass / (T * hbarC);   // fixed bug on 4/23
+
 
       double N10 = degeneracy * N10_fact * GaussThermal(N10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
       double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
