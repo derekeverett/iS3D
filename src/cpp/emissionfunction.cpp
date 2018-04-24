@@ -687,10 +687,9 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                       double pZmod2 = p[2] * p[2];
                       // effective LRF energy
                       double E_mod = sqrt(mass2 + pXmod2 + pYmod2 + pZmod2);
-                      // modified equilibrium distribution
-                      double feqmod = renorm / (exp(E_mod / T_mod  -  chem_mod) + sign);
 
-                      f = feqmod;
+                      // modified equilibrium distribution
+                      f = renorm / (exp(E_mod / T_mod  -  chem_mod) + sign);
                       break;
                     } // case 3
                     default:
