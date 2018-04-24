@@ -22,10 +22,10 @@ reinforce				  = 1   # switch to reinforce orthogonality and traceless
 								# 1: true (needed for df_mode = 3,6)
 
 include_baryon            = 0   # switch to include baryon chemical potential in distribution function
-include_bulk_deltaf       = 1   # switch to include delta f correction from bulk pressure
-include_shear_deltaf      = 0   # switch to include delta f correction from shear stress
+include_bulk_deltaf       = 0   # switch to include delta f correction from bulk pressure
+include_shear_deltaf      = 1   # switch to include delta f correction from shear stress
 include_baryondiff_deltaf = 0   # switch to include delta f correction from baryon diffusion current
-regulate_deltaf           = 1   # if on, force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
+regulate_deltaf           = 0   # if on, force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
 
 group_particles           = 0   # group particles with the similar mass and to speed up calculations
 particle_diff_tolerance   = 0.01  # grouping particle mass tolerance

@@ -673,7 +673,12 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                     case 3: // modified distribution
                     {
                       // if feqmod breaks down, go back to case 2 statement (chapman enskog)
-                      if(detA < 0.01) goto chapman_enskog;
+                      if(detA < 0.01)
+                      {
+                        REGULATE_DELTAF = 1; 
+                        goto chapman_enskog;
+                      }
+                      
                       // local momentum
                       double pX = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;  // -x.p
                       double pY = Yx * px  +  Yy * py;                                // -y.p
