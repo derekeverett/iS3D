@@ -298,6 +298,8 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
         double bulkPi = bulkPi_fo[icell_glb];   // bulk pressure
 
+        //cout << fabs(bulkPi / P) << endl;
+
         double muB = 0.0;                       // baryon chemical potential
         double alphaB = 0.0;                    // muB / T
         double nB = 0.0;                        // net baryon density
@@ -555,7 +557,13 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               renorm = n_linear / n_mod;
             }
             else renorm = 1.0 / detA;
+
+            if(detA < 0.01 || renorm < 0.0)
+            {
+              cout << "feqmod breaks down" << endl;
+            }
           }
+          
 
 
 
