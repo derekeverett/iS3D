@@ -1,4 +1,4 @@
-export OMP_NUM_THREADS="$1"
+
 rm iS3D_GPU.e
 cd src
 rm iS3D_GPU.e

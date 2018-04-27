@@ -1,4 +1,4 @@
-export OMP_NUM_THREADS="$1"
+
 
 rm -r results
 mkdir results

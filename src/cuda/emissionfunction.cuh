@@ -41,13 +41,17 @@ public:
                         particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients df_in);
   ~EmissionFunctionArray();
 
-  /*
   void calculate_dN_ptdptdphidy(double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double*, double*);
-  */
+
+  void calculate_dN_ptdptdphidy_VAH_PL(double *, double *, double *,
+  double *, double *, double *, double *, double *,
+  double *, double *, double *, double *, double *,
+  double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
+  double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
   void write_dN_pTdpTdphidy_toFile(); //write 3D spectra to file
   void calculate_spectra();

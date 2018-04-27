@@ -388,7 +388,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
       if(endFO != 0)
       {
         //now perform the reduction over cells
-        #pragma omp parallel for collapse(3)
+        #pragma omp parallel for collapse(4)
         #pragma acc kernels
         for (int ipart = 0; ipart < npart; ipart++)
         {
@@ -651,7 +651,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
       if(endFO != 0)
       {
         //now perform the reduction over cells
-        #pragma omp parallel for collapse(3)
+        #pragma omp parallel for collapse(4)
         #pragma acc kernels
         for (int ipart = 0; ipart < npart; ipart++)
         {
@@ -692,30 +692,9 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy_VAH_PL(double *Mass, double
 
     int npart = number_of_chosen_particles;
     char filename[255] = "";
-    sprintf(filename, "results/dN_pTdpTdphidy_block.dat");
-    ofstream spectraFileBlock(filename, ios_base::app);
 
     int y_pts = y_tab_length;     // default 3+1d pts
     if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
-
-    for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
-    {
-      for (int iy = 0; iy < y_pts; iy++)
-      {
-        for (int iphip = 0; iphip < phi_tab_length; iphip++)
-        {
-          for (int ipT = 0; ipT < pT_tab_length; ipT++)
-          {
-            //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
-            long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
-            if (dN_pTdpTdphidy[iS3D] < 1.0e-40) spectraFileBlock << scientific <<  setw(15) << setprecision(8) << 0.0 << "\t";
-            else spectraFileBlock << scientific <<  setw(15) << setprecision(8) << dN_pTdpTdphidy[iS3D] << "\t";
-          } //ipT
-          spectraFileBlock << "\n";
-        } //iphip
-      } //iy
-    }//ipart
-    spectraFileBlock.close();
 
     sprintf(filename, "results/dN_pTdpTdphidy.dat");
     ofstream spectraFile(filename, ios_base::app);
