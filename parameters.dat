@@ -4,7 +4,7 @@ hydro_mode                = 1   # mode for reading in freeze out information
                                 # 3: reads freezeout file from 3+1D viscous anisotropic hydro (PL,PT matching)
                                 # 4: reads freezeout file from 2+1D viscous hydro (MUSIC boost invariant format)
 
-df_mode			  		  = 3	# mode for type of delta-f correction
+df_mode			  		  = 2	# mode for type of delta-f correction
 			    				# 1: 14-moment approximation viscous hydro
 			  					# 2: Chapman-Enskog expansion viscous hydro
 			  					# 3: Modified equilibrium distribution
