@@ -142,6 +142,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
     double prefactor = pow(2.0 * M_PI * hbarC, -3);
     int FO_chunk = 10000;
 
+    int breakdown = 0; // counts how many times feqmod breaks down
 
     // Set momentum, spacetime rapidity (2+1d) points from tables
 
@@ -500,6 +501,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
           // evaluate detA (only depends on ideal + shear + bulk)
           detA = Mxx * (Myy * Mnn - Myn * Myn)  -  Mxy * (Mxy * Mnn - Myn * Mxn)  +  Mxn * (Mxy * Myn - Myy * Mxn);
+          //if(detA < 1.e-3) detA = 1.e-3;
           //cout << setw(10) << setprecision(8) << piabs << "\t\t" << 2.0 * betapi << "\t\t" << detA << endl;
           //cout << detA << endl;
 
@@ -555,15 +557,18 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
 
               renorm = n_linear / n_mod;
+
+              if(detA < 1.e-3 || n_linear < 0.0)
+              {
+                breakdown++;
+                cout << setw(5) << setprecision(4) << "feqmod breaks down:" << "\t detA = " << detA << "\t" << breakdown << endl;
+              }
             }
             else renorm = 1.0 / detA;
 
-            if(detA < 0.01 || renorm < 0.0)
-            {
-              cout << "feqmod breaks down" << endl;
-            }
+
           }
-          
+
 
 
 
@@ -681,7 +686,7 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                     case 3: // modified distribution
                     {
                       // if feqmod breaks down, go back to case 2 statement (chapman enskog)
-                      if(detA < 0.01)
+                      if(detA < 1.e-3 || renorm < 0.0)
                       {
                         REGULATE_DELTAF = 1;
                         goto chapman_enskog;
