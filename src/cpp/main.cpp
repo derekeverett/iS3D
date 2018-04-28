@@ -63,8 +63,8 @@ int main(int argc, char *argv[])
   Table chosen_particles("PDG/chosen_particles.dat"); // skip others except for these particles
 
   cout << "Number of chosen particles : " << chosen_particles.getNumberOfRows() << endl;
-  Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
-  Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
+  Table pT_tab("tables/pT_bulk_table.dat"); // pT value and weight table
+  Table phi_tab("tables/phi_OptGlb_central_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
   Table eta_tab("tables/eta_trapezoid_table_41pt.dat"); //y values and weights, here just a riemann sum!
 
@@ -75,6 +75,14 @@ int main(int argc, char *argv[])
   delete [] surf_ptr;
   delete [] particle;
   delete paraRdr;
+
+  double n = 0.0;
+
+  for(int i = 0; i < 281; i++)
+  {
+    cout << n << endl;
+    n += 0.01;
+  }
 
   cout << "Done Calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
 
