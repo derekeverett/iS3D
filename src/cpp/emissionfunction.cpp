@@ -688,8 +688,8 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                       // if feqmod breaks down, go back to case 2 statement (chapman enskog)
                       if(detA < 1.e-3 || renorm < 0.0)
                       {
-                        REGULATE_DELTAF = 1;
-                        goto chapman_enskog;
+                       REGULATE_DELTAF = 1;
+                       goto chapman_enskog;
                       }
 
                       // local momentum
