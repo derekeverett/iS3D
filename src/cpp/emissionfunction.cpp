@@ -299,6 +299,9 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
 
         double bulkPi = bulkPi_fo[icell_glb];   // bulk pressure
 
+
+        //bulkPi = -0.1*P; // for renormalization test 
+
         //cout << fabs(bulkPi / P) << endl;
 
         double muB = 0.0;                       // baryon chemical potential
@@ -426,6 +429,8 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               // modified temperature
               dT = F * bulkPi / betabulk;
               T_mod = T + dT;
+
+              //cout << T << "\t" << dT << "\t" << T_mod << endl;
 
               if(INCLUDE_BARYON)
               {
@@ -557,6 +562,10 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
               double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
 
               renorm = n_linear / n_mod;
+
+              // test renormalization with feqmod 
+              //cout << renorm << endl;
+              //exit(-1); 
 
               if(detA < 1.e-3 || n_linear < 0.0)
               {
@@ -705,6 +714,8 @@ void EmissionFunctionArray::calculate_dN_ptdptdphidy(double *Mass, double *Sign,
                       double pZmod2 = p[2] * p[2];
                       // effective LRF energy
                       double E_mod = sqrt(mass2 + pXmod2 + pYmod2 + pZmod2);
+
+                      //cout << T << "\t" << T_mod << endl;
 
                       // modified equilibrium distribution
                       f = renorm / (exp(E_mod / T_mod  -  chem_mod) + sign);
