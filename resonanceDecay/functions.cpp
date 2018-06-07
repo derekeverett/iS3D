@@ -277,7 +277,7 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
 // This function reads in the EdN/d3p spectra calculated by spectra via the HYDRO output.  
 // Set the pt points with the gaussian values given above.  These are the same values 
 // given to the spectra in the azspectra0p0 program. The default filename is phipspectra.dat
-void readspec(char specfile[FILEDIM], int *particlemax, int *decaymax)
+void readSpectra(char specfile[FILEDIM], int *particlemax, int *decaymax)
 {
     FILE *spec;
     char resofile[FILEDIM] = "EOS/pdg.dat";
@@ -377,7 +377,7 @@ void readspec(char specfile[FILEDIM], int *particlemax, int *decaymax)
 // The pt values for each point are saved to specPT_###.dat. The ### corresponds to the 
 // monte carlo value number assigned the resonance table.  The phi data was already stored in
 // angle.dat. (by default)
-void writespec(int particlemax, char outdir[FILEDIM])
+void writeSpectra(int particlemax, char outdir[FILEDIM])
 {
     FILE *out, *out2;
     char filename[FILEDIM];

@@ -19,8 +19,8 @@
 #define FILEDIM         140
 
 void   readin(char filename[FILEDIM], int* particlemax, int* decaymax);
-void   readspec(char  specfile[FILEDIM], int *particlemax, int *decaymax);
-void   writespec(int particlemax, char outdir[FILEDIM]);
+void   readSpectra(char  specfile[FILEDIM], int *particlemax, int *decaymax);
+void   writeSpectra(int particlemax, char outdir[FILEDIM]);
 double Edndp3(double yr, double ptr, double phirin, int res_num);
 
 #endif
