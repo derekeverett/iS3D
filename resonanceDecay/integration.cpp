@@ -20,9 +20,9 @@ main() {
 	}
 
 int	matherr() {		/* for debugging */
-	printf("matherr\n");	
+	printf("matherr\n");
 	}
-	
+
 testgauss() {
 	double	xlo = 0, xhi = 0.99;
 	printf( "quadrature gives exact %10f:\n", asin(xhi) - asin(xlo) );
@@ -38,7 +38,7 @@ testgauss() {
 testgala() {
 	printf( "testing Gauss-Laguerre integration with sin(2x)*exp(-2x)\n" );
 	printf( "quadrature gives exact %10f:\n", 0.25 );
-	printf( "%2dpoints: %10f\n", 4, gala( 4,testgalafunc,0.0,0.5) ); 
+	printf( "%2dpoints: %10f\n", 4, gala( 4,testgalafunc,0.0,0.5) );
 	printf( "%2dpoints: %10f\n", 8, gala( 8,testgalafunc,0.0,0.5) );
 	printf( "%2dpoints: %10f\n",12, gala(12,testgalafunc,0.0,0.5) );
 	}
@@ -117,7 +117,7 @@ static	double
 gala15x[] = {	0.093307812017,         0.492691740302,
 		1.215595412071,         2.269949526204,
 		3.667622721751,         5.425336627414,
-		7.565916226613,        10.120228568019, 
+		7.565916226613,        10.120228568019,
 	       13.130282482176,        16.654407708330,
                20.776478899449,        25.623894226729,
                31.407519169754,        38.530683306486,
@@ -155,7 +155,7 @@ static	double	gahew16[] = {	0.5473752050378,	0.5524419573675,
 static	double	gahep20[] = {	0.2453407083009,	0.7374737285454,
 				1.2340762153953,	1.7385377121166,
 				2.2549740020893,	2.7888060584281,
-				3.3478545673832,	3.9447640401156, 
+				3.3478545673832,	3.9447640401156,
                                 4.6036824495507,        5.3874808900112};
 static	double	gahew20[] = {	0.4909215006677,	0.4938433852721,
 				0.4999208713363,	0.5096790271175,
@@ -163,7 +163,7 @@ static	double	gahew20[] = {	0.4909215006677,	0.4938433852721,
                         	0.5752624428525,        0.6222786961914,
 				0.7043329611769,        0.8985919614532 };
 
-			
+
 /****************************************************************
 *
 *	gaule?x[], gaule?w[]
@@ -177,7 +177,7 @@ static	double	gaulep8[] = {	0.9602898564,	0.7966664774,
 				0.5255324099,	0.1834346424	};
 static	double	gaulew8[] = {	0.1012285362,	0.2223810344,
 				0.3137066458,	0.3626837833	};
-static	double	gaulep10[] = {	0.1488743389,	0.4333953941, 
+static	double	gaulep10[] = {	0.1488743389,	0.4333953941,
 				0.6794095682,	0.8650633666,
 						0.97390652	};
 static	double	gaulew10[] = {	0.2955242247,	0.2692667193,
@@ -244,17 +244,17 @@ static	double	gaulew48[] = {
 *	gauss
 *
 *
-* Gauss-Legendre Quadrature w/ switchable no of points 
+* Gauss-Legendre Quadrature w/ switchable no of points
 * 4 Jun 90, es
 ********************************************************/
 
-double	gauss(int n, double (*f)(double, void*), double xlo, double xhi, void* optvec )
+double gauss(int n, double (*f)(double, void*), double xlo, double xhi, void* optvec )
 	// int	n;		/* number of points must be even */
 	// double	f(double, void *);		/* function of one double parameter */
 	// double	xlo, xhi;	/* limits */
 	// void	*optvec;	/* optional vector, passed to function */
 	{
-	double	xoffs, xdiff; 
+	double	xoffs, xdiff;
 	int	ix;
 	double	s;		/* summing up */
 	double	*p, *w;		/* pointing to active list */
@@ -294,7 +294,7 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 	// double	xlo, xhi;	/* limits */
 	// double	*xvec, *wvec;	/* abszissas and weights	*/
 	{
-	double	xoffs, xdiff; 
+	double	xoffs, xdiff;
 	int	ix;
 	double	s;		/* summing up */
 	double	*p, *w;		/* pointing to active list */
@@ -324,7 +324,7 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 *	gaussn
 *
 *
-* Gauss-Legendre Quadrature w/switchable no of points 
+* Gauss-Legendre Quadrature w/switchable no of points
 * 	subdivisions of region, parameter handover
 * 11 Sep 90, es
 ********************************************************/
@@ -336,7 +336,7 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // 	double	xlo, xhi;	/* limits				*/
 // 	void	*optvec;	/* parameters, hand over to function	*/
 // 	{
-// 	double	xoffs, xdiff; 
+// 	double	xoffs, xdiff;
 // 	int	ix, idiv;
 // 	double	s;		/* summing up */
 // 	double	*p, *w;		/* pointing to active list */
@@ -357,7 +357,7 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // 	for( idiv=1; idiv<=ndiv; idiv++ ) {
 // 		xoffs = xlo + (2*idiv-1) * xdiff;
 // 		for( ix=0; ix<n/2; ix++ ) 	/* n is even */
-// 			s += w[ix] * ( f(xoffs+xdiff*p[ix],optvec) 
+// 			s += w[ix] * ( f(xoffs+xdiff*p[ix],optvec)
 // 				     + f(xoffs-xdiff*p[ix],optvec) );
 // 		}
 // 	return( s * xdiff );
@@ -374,10 +374,10 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // 	int	n;	/* number of points		*/
 // 	double	(*f)();	/* function to integrate	*/
 // 	double	xlo;	/* lower limit of integration	*/
-// 	double	invslope;/* approximate inverse slope of decaying 
+// 	double	invslope;/* approximate inverse slope of decaying
 // 			   function is roughly proportional to the
-// 			   integration region, needed for placing 
-// 			   the points. i.e. =1 for exp(-x), 
+// 			   integration region, needed for placing
+// 			   the points. i.e. =1 for exp(-x),
 // 			   invslope=0.5 for exp(-2), etc	*/
 // 	void	*optvec; /* optional vector, passesd to function f() */
 // 	{
@@ -393,7 +393,7 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // 		printf("\ngala():n=%d not in list\n", n );
 // 		return 0;
 // 		}
-// 	for( i=0; i<n; i++ ) 
+// 	for( i=0; i<n; i++ )
 // 		sum += w[i] * f( invslope*x[i] + xlo, optvec );
 // 	return invslope * sum;	/* make up for transformation */
 // 	}
@@ -403,7 +403,7 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // *	gahe
 // *
 // *
-// * Gauss-Hermite Quadrature w/ switchable no of points 
+// * Gauss-Hermite Quadrature w/ switchable no of points
 // * 19 Sep 90, es
 // ********************************************************/
 // double	gahe( n, f, center, width, optvec )
@@ -441,7 +441,7 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // *	gauche
 // *
 // *
-// * Gauss-Chebyshev Quadrature w/no.points and parameters 
+// * Gauss-Chebyshev Quadrature w/no.points and parameters
 // * weight function is (1-x*x)^{-1/2} with x in [0,1] intervall only
 // * 27 Sep 90, es (see Abramowitz 25.4.38)
 // *************************************************************************/
@@ -452,7 +452,7 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // 	double	pole;			/* other endpoint is a pole	*/
 // 	void	*optvec;		/* just passed on to function	*/
 // 					/* is optional argument		*/
-// 	{	
+// 	{
 // 	static	int	list[16] = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0};
 // 					/* which list has been computed	*/
 // 	static	double	*plist[16];	/* the points where to evaluate	*/
@@ -500,7 +500,7 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // 	sumsum += sum;
 // 	return	dist * sumsum * M_PI / (2*n); /* rest of weight factor */
 // 	}
-		
+
 
 // /******************************************************
 // *
@@ -511,9 +511,9 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 
 // double	gaussp( n, f, xlo, xhi, para )
 // 	int	n;
-// 	double	(*f)();	
+// 	double	(*f)();
 // 	double	xlo, xhi;
-// 	double	para[];	
+// 	double	para[];
 // 	{
 // 	return	gauss( n, f, xlo, xhi, para );
 // 	}
@@ -553,12 +553,12 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // 	double	(*f)();	/* function of two parameters	*/
 // 	double	xlo, xhi, ylo, yhi;	/* limits */
 // 	{
-// 	double	xoffs, xdiff, x; 
+// 	double	xoffs, xdiff, x;
 // 	double	yoffs, ydiff, y;
 // 	int	ix, iy;
 // 	double	wx, sy, s;
 // 	double	*p, *w;		/* pointing to active list */
-// 	static	double	p10list[] = {	0.1488743389,	0.4333953941, 
+// 	static	double	p10list[] = {	0.1488743389,	0.4333953941,
 // 			0.6794095682,	0.8650633666,	0.97390652	};
 // 	static	double	w10list[] = {	0.2955242247,	0.2692667193,
 // 			0.2190863625,	0.1494513491,	0.06667134	};
@@ -567,7 +567,7 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // 		p = p10list;
 // 		w = w10list;
 // 		}
-// 	else  
+// 	else
 // 		printf( "\ngaussnbyn(): this number not in list\n" );
 
 // 	xoffs = 0.5 * ( xlo + xhi );
@@ -585,8 +585,8 @@ void	gausspts(int n, double xlo, double xhi, double* xvec, double* wvec )
 // 			wx = w[n-1-ix];
 // 			}
 // 		sy = 0;
-// 		for( iy=0; iy<n/2; iy++ ) 
-// 			sy += w[iy] * 
+// 		for( iy=0; iy<n/2; iy++ )
+// 			sy += w[iy] *
 // 			( f(x,yoffs+ydiff*p[iy]) + f(x,yoffs-ydiff*p[iy]) );
 // 		s += wx * sy;
 // 		}

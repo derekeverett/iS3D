@@ -223,7 +223,7 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
             //       particleDecay[j].numpart, particleDecay[j].branch, particleDecay[j].part[0],
             //       particleDecay[j].part[1], particleDecay[j].part[2],particleDecay[j].part[3],
             //       particleDecay[j].part[4]);
-            if (h != 8) 
+            if (h != 8)
             {
                 printf("Error in scanf decay \n");
                 printf(" GOOD BYE AND HAVE A NICE DAY! \n");
@@ -274,8 +274,8 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
 }
 
 //*********************************************************************************
-// This function reads in the EdN/d3p spectra calculated by spectra via the HYDRO output.  
-// Set the pt points with the gaussian values given above.  These are the same values 
+// This function reads in the EdN/d3p spectra calculated by spectra via the HYDRO output.
+// Set the pt points with the gaussian values given above.  These are the same values
 // given to the spectra in the azspectra0p0 program. The default filename is phipspectra.dat
 void readSpectra(char specfile[FILEDIM], int *particlemax, int *decaymax)
 {
@@ -342,7 +342,7 @@ void readSpectra(char specfile[FILEDIM], int *particlemax, int *decaymax)
         for(k=0; k<nphi; k++)
         {
            for(j=(npt-1); j>=0; j--)
-           {  
+           {
               if(particle[pn].pt[j] < PTCHANGE)
               {
                   printf("dN matrix is too bad! Bye bye! \n");
@@ -364,7 +364,7 @@ void readSpectra(char specfile[FILEDIM], int *particlemax, int *decaymax)
            }
         }
     }
-    cout << "*****ResoWarning: regulated " << WarningCounter 
+    cout << "*****ResoWarning: regulated " << WarningCounter
          << " dN/pTdpTdphi matrix elements*****" << endl;
 
     fclose(spec);
@@ -372,9 +372,9 @@ void readSpectra(char specfile[FILEDIM], int *particlemax, int *decaymax)
 }
 
 //*********************************************************************************************
-// After calculating the spectra in the decay routines, this routine writes that data to file.  
-// The spectra is written to spec_###.dat in block format for the pt/phi dependence.  
-// The pt values for each point are saved to specPT_###.dat. The ### corresponds to the 
+// After calculating the spectra in the decay routines, this routine writes that data to file.
+// The spectra is written to spec_###.dat in block format for the pt/phi dependence.
+// The pt values for each point are saved to specPT_###.dat. The ### corresponds to the
 // monte carlo value number assigned the resonance table.  The phi data was already stored in
 // angle.dat. (by default)
 void writeSpectra(int particlemax, char outdir[FILEDIM])
@@ -436,109 +436,149 @@ void writeSpectra(int particlemax, char outdir[FILEDIM])
 *   Edndp3
 *
 **************************************************/
-// This function interpolates the needed spectra for a given pt and phi.
+// This function interpolates the needed spectra for a given y, pt and phi.
 
-double  Edndp3(double yr, double ptr, double phirin, int res_num)
+double Edndp3(double yr, double ptr, double phirin, int res_num)
 // double   yr;     /* y  of resonance */
 // double   ptr;        /* pt of resonance */
 // double   phirin;     /* phi angle  of resonance */
 // int  res_num;    /* Montecarlo number of resonance   */
 {
-    double phir, val;
-    double f1, f2;
-    int pn, npt, nphi;
+  // if pseudofreeze flag is set, yr is the *pseudorapidity* of the resonance
+  if (phirin < 0.0) { printf("ERROR: phir %15.8le < 0 !!! \n", phirin); exit(0); }
+  if (phirin > 2.0*PI) { printf("ERROR: phir %15.8le > 2PI !!! \n", phirin); exit(0); }
+  double phir = phirin;
+  int pn = partid[MHALF + res_num];
 
-    if(phirin < 0.0)
-    {
-        printf("ERROR: phir %15.8le < 0 !!! \n", phirin);
-        exit(0);
-    }
-    if(phirin > 2.0*PI)
-    {
-        printf("ERROR: phir %15.8le > 2PI !!! \n", phirin);
-        exit(0);
-    }
-    phir = phirin;
-    pn = partid[MHALF + res_num];
-    npt = 1;
-    while((ptr > particle[pn].pt[npt]) && (npt<(particle[pn].npt - 1))) 
-        npt++;
-    
-    int nphi_max = particle[pn].nphi-1;
-    if(phir < PHI[0])
-    {
-        f1 = lin_int(PHI[nphi_max]-2*M_PI, PHI[0],
-                     particle[pn].dNdptdphi[npt-1][nphi_max],
-                     particle[pn].dNdptdphi[npt-1][0], phir);
-        f2 = lin_int(PHI[nphi_max]-2*M_PI, PHI[0],
-                     particle[pn].dNdptdphi[npt][nphi_max],
-                     particle[pn].dNdptdphi[npt][0], phir);
-    }
-    else if(phir > PHI[nphi_max])
-    {
-        f1 = lin_int(PHI[nphi_max], PHI[0]+2*M_PI,
-                     particle[pn].dNdptdphi[npt-1][nphi_max],
-                     particle[pn].dNdptdphi[npt-1][0], phir);
-        f2 = lin_int(PHI[nphi_max], PHI[0]+2*M_PI,
-                     particle[pn].dNdptdphi[npt][nphi_max],
-                     particle[pn].dNdptdphi[npt][0], phir);
-    }
-    else
-    {
-        nphi = 1;
-        while((phir > PHI[nphi])&&(nphi < nphi_max)) nphi++;
-        /* phi interpolation */
-        f1 = lin_int(PHI[nphi-1], PHI[nphi],
-                     particle[pn].dNdptdphi[npt-1][nphi-1],
-                     particle[pn].dNdptdphi[npt-1][nphi], phir);
-        f2 = lin_int(PHI[nphi-1], PHI[nphi],
-                     particle[pn].dNdptdphi[npt][nphi-1],
-                     particle[pn].dNdptdphi[npt][nphi], phir);
-    }
-    if(f1 < 0) f1 = 0.0;
-    if(f2 < 0) f2 = 0.0;
-    f1 = f1 + 1e-100;
-    f2 = f2 + 1e-100;
-    if(ptr > PTCHANGE)
-    {
-           f1 = log(f1);
-           f2 = log(f2);
-    }
-    val = lin_int(particle[pn].pt[npt-1], particle[pn].pt[npt], f1, f2, ptr);
-    if(isnan(val))
-    {
-        printf("dEdndy3 val \n");
-        printf("f1, %15.8lf f2, %15.8lf  \n", f1, f2);
-        printf("nphi  %i npt %i \n", nphi,npt);
-        printf("f1  %15.8le %15.8le \n", f1, f2);
-        printf("phi  %15.8lf %15.8lf \n", PHI[nphi-1], PHI[nphi]);
-        printf("pt   %15.8lf %15.8lf \n", particle[pn].pt[npt-1],particle[pn].pt[npt]);
-        printf("phi  %15.8lf, pt %15.8lf, val %15.8lf \n", phir, ptr,val);
-        printf("phi %15.8le %15.8le \n", particle[pn].dNdptdphi[npt][nphi-1],
-                                         particle[pn].dNdptdphi[npt][nphi]);
-        printf("pt  %15.8le %15.8le \n", particle[pn].dNdptdphi[npt-1][nphi-1],
-                                         particle[pn].dNdptdphi[npt-1][nphi]);
-        exit(-1);
-    }
-    if(ptr > PTCHANGE)
-        val = exp(val);
-    //printf(" nphi  %i npt %i \n", nphi,npt);
-    //printf(" f1  %15.8le %15.8le  \n", f1, f2);
-    //printf(" phi  %15.8lf %15.8lf  \n", PHI[nphi-1], PHI[nphi]);
-    //printf(" pt   %15.8lf %15.8lf  \n", particle[pn].pt[npt-1],particle[pn].pt[npt]);
-    //printf(" phi  %15.8lf pt %15.8lf    val %15.8lf \n", phir, ptr,val);
-    //printf(" phi %15.8le %15.8le \n",particle[pn].dNdptdphi[npt][nphi-1],
-    //                            particle[pn].dNdptdphi[npt][nphi]);
-    //printf(" pt  %15.8le %15.8le \n",particle[pn].dNdptdphi[npt-1][nphi-1],
-    //                            particle[pn].dNdptdphi[npt-1][nphi]);
+  // If pseudofreeze flag is set,
+  // dNdydptdphi is on a fixed grid in pseudorapidity.
+  // Set yr to the *pseudorapidity* of the resonance,
+  // and then interpolate the yield at that value.
+  if (pseudofreeze)
+  {
+    double yrtemp = yr;
+    yr = PseudoRap(yrtemp, ptr, particleList[pn].mass);
+  }
 
-    //exit(0);
-    return val;
+  if (ptr > particleList[pn].pt[particleList[pn].npt - 1]) return 0.;
+
+  if (fabs(yr) > particleList[pn].ymax && !boost_invariant) return 0.;
+
+  int nphi = 1;
+  while ( (phir > phiArray[nphi]) && ( nphi < (particleList[pn].nphi-1) ) ) nphi++;
+  int npt = 1;
+  while (ptr > particleList[pn].pt[npt] && npt<(particleList[pn].npt - 1)) npt++;
+  int ny = 1;
+  while ( yr > particleList[pn].y[ny] && ny < (particleList[pn].ny - 1) ) ny++;
+
+  /* phi interpolation */
+  double f1 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particleList[pn].dNdydptdphi[ny-1][npt-1][nphi-1], particleList[pn].dNdydptdphi[ny-1][npt-1][nphi], phir);
+  double f2 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particleList[pn].dNdydptdphi[ny-1][npt][nphi-1], particleList[pn].dNdydptdphi[ny-1][npt][nphi], phir);
+
+  // security: if for some reason we got a negative number of particles
+  // (happened in the viscous code at large eta sometimes)
+  if (f1 < 0.) f1 = 1e-30;
+  if (f2 < 0.) f2 = 1e-30;
+
+  double f1s = f1;
+  double f2s = f2;
+
+  if (ptr > PTCHANGE && f1s > 0 && f2s > 0) {
+    f1 = log(f1);
+    f2 = log(f2);
+  }
+  double val1 = util->lin_int(particleList[pn].pt[npt-1], particleList[pn].pt[npt], f1, f2, ptr);
+
+  if (ptr > PTCHANGE && f1s > 0 && f2s > 0) val1 = exp(val1);
+
+  /*
+  if (isnan(val1))
+  {
+  fprintf(stderr,"\n number=%d\n\n",res_num);
+  fprintf(stderr,"val1=%f\n",val1);
+  fprintf(stderr,"f1=%f\n",f1);
+  fprintf(stderr,"f2=%f\n",f2);
+  fprintf(stderr,"f1s=%f\n",f1s);
+  fprintf(stderr,"f2s=%f\n",f2s);
+
+  fprintf(stderr,"pn=%d\n",pn);
+  fprintf(stderr,"ny=%d\n",ny);
+  fprintf(stderr,"npt=%d\n",npt);
+  fprintf(stderr,"nphi=%d\n",nphi);
+  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt-1][nphi-1]);
+  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt-1][nphi-1]);
+  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt][nphi-1]);
+  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt-1][nphi]);
+  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt][nphi-1]);
+  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt][nphi]);
+  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt-1][nphi]);
+  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt][nphi]);
+  fprintf(stderr,"phi1=%f\n",phiArray[nphi-1]);
+  fprintf(stderr,"phi2=%f\n",phiArray[nphi]);
+  fprintf(stderr,"pt1=%f\n",particleList[pn].pt[npt-1]);
+  fprintf(stderr,"pt2=%f\n",particleList[pn].pt[npt]);
+  fprintf(stderr,"y1=%f\n",particleList[pn].y[ny-1]);
+  fprintf(stderr,"y2=%f\n",particleList[pn].y[ny]);
+  }
+  */
+
+  f1 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particleList[pn].dNdydptdphi[ny][npt-1][nphi-1], particleList[pn].dNdydptdphi[ny][npt-1][nphi], phir);
+  f2 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particleList[pn].dNdydptdphi[ny][npt][nphi-1], particleList[pn].dNdydptdphi[ny][npt][nphi], phir);
+
+  // security: if for some reason we got a negative number of particles
+  // (happened in the viscous code at large eta sometimes)
+  if (f1 < 0.) f1 = 1e-30;
+  if (f2 < 0.) f2 = 1e-30;
+  f1s = f1;
+  f2s = f2;
+
+  if (ptr > PTCHANGE && f1s > 0 && f2s > 0)
+  {
+    f1 = log(f1);
+    f2 = log(f2);
+  }
+  double val2 = util->lin_int(particleList[pn].pt[npt-1], particleList[pn].pt[npt], f1, f2, ptr);
+
+  if (ptr > PTCHANGE && f1s > 0 && f2s > 0) val2 = exp(val2);
+
+  double val = util->lin_int(particleList[pn].y[ny-1], particleList[pn].y[ny], val1, val2, yr);
+  /*
+  if (isnan(val))
+  {
+    fprintf(stderr,"val=%f\n",val);
+    fprintf(stderr,"val1=%f\n",val1);
+    fprintf(stderr,"val2=%f\n",val2);
+    fprintf(stderr,"f1=%f\n",f1);
+    fprintf(stderr,"f2=%f\n",f2);
+    fprintf(stderr,"f1s=%f\n",f1s);
+    fprintf(stderr,"f2s=%f\n",f2s);
+    fprintf(stderr,"ny=%d\n",ny);
+    fprintf(stderr,"npt=%d\n",npt);
+    fprintf(stderr,"nphi=%d\n",nphi);
+    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt-1][nphi-1]);
+    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt-1][nphi-1]);
+    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt][nphi-1]);
+    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt-1][nphi]);
+    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt][nphi-1]);
+    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt][nphi]);
+    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt-1][nphi]);
+    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt][nphi]);
+    fprintf(stderr,"phi1=%f\n",phiArray[nphi-1]);
+    fprintf(stderr,"phi2=%f\n",phiArray[nphi]);
+    fprintf(stderr,"pt1=%f\n",particleList[pn].pt[npt-1]);
+    fprintf(stderr,"pt2=%f\n",particleList[pn].pt[npt]);
+    fprintf(stderr,"y1=%f\n",particleList[pn].y[ny-1]);
+    fprintf(stderr,"y2=%f\n",particleList[pn].y[ny]);
+    fprintf(stderr,"yR=%f\n",yr);
+  }
+  */
+
+  return val;
 }
 
 //**********************************************************************************************
 // Requires either a) A definition of the K bessel function
-// or b) the GSL (Gnu Scientific Library) installed.  
+// or b) the GSL (Gnu Scientific Library) installed.
 // Add the flags -lgsl -lgslcblas to the compilation to use the GSL library.
 // Thermal function that simulates most spectra given a finite temperature. Replaced
 // by the output of hydro in the real simulation
@@ -552,4 +592,3 @@ double  Edndp3(double yr, double ptr, double phirin, int res_num)
 //
 //  return spect;
 //}
-
