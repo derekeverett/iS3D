@@ -20,7 +20,6 @@
 #include "decay.h"
 #include "integration.h"
 
-
 #define PTS3 12  /* normalization of 3-body decay */
 #define PTS4 12  /* inv. mass integral 3-body */
 
@@ -32,6 +31,7 @@
 #define NUMPARTICLE 400 /*  size of array for storage of the particles */
 #define MAXINTV 20000000 /* size of arry for Montecarlo numbers */
 #define MHALF (MAXINTV/2)
+#define NY 200
 #define NPT 50 /* size of arry for storage of the pt-spectrum */
 #define NPHI 120 /* size of arry for storage of the y-spectrum */
 #define NPHI1 NPHI + 1
@@ -43,25 +43,30 @@
 
 extern struct par
 {
-  long int 	monval;     /* Montecarlo number according PDG */
+  long int 	mcID;     /* Montecarlo number according PDG */
   char	name[26];
   double	mass;
   double	width;
-  int	gspin;      /* spin degeneracy */
-  int	baryon;
-  int	strange;
-  int	charm;
-  int	bottom;
-  int	gisospin;  /* isospin degeneracy */
-  int	charge;
-  int	decays;    /* amount of decays listed for this resonance */
-  int	stable;     /* defines whether this particle is considered
-  as stable */
+  int	    gspin;      /* spin degeneracy */
+  int	    baryon;
+  int	    strange;
+  int	    charm;
+  int	    bottom;
+  int	    gisospin;  /* isospin degeneracy */
+  int	    charge;
+  int	    decays;    /* amount of decays listed for this resonance */
+  int	    stable;     /* defines whether this particle is considered as stable */
   int     npt;
   int     nphi;
-  double  dNdptdphi[NPT][NPHI];
+  int     ny;
+  double  phimin;
+  double  phimax;
+  double  ymax;
+  double  deltaY;
+  double  dNdypTdpTdphi[NY][NPT][NPHI];
   double	mt[NPT];	/* mt values for spectrum */
   double	pt[NPT];	/* pt values for spectrum */
+  double  y[NY];           // y values for spectrum
   double  slope[NPHI1];		/* assymtotic slope of mt-spectrum */
 }particle[NUMPARTICLE];
 
@@ -108,7 +113,6 @@ double Edndp3_2bodyN (double y, double pt, double phi, double m1, double m2, dou
 double Edndp3_3bodyN (double y, double pt, double phi, double m1, double m2, double m3, double mr, double norm3, int res_num);
 
 
-
 /********************************************************************
 *********************************************************************
 *
@@ -127,12 +131,10 @@ double norm3int (double x, void *paranorm)
 //***********************************************************************
 //The Main integrand for integration.
 
-double dnpir2N (double phi, void *para1)
+double dnpir2N(double phi, void *para1)
 {
   pblockN *para = (pblockN *) para1;
-
   double sume = para->e + para->e0;
-
   double D = para->e * para->e0 + para->pl * para->p0 * para->costh + para->pt * para->p0 * para->sinth * cos (phi) + para->m1 * para->m1;
   double eR = para->mr * (sume * sume / D - 1.0);
   double jac = para->mr + eR;
@@ -155,7 +157,6 @@ double dnpir2N (double phi, void *para1)
       printf (" eR %15.8le plR %15.8le \n", eR, plR);
       printf (" ptR %15.8le jac %15.8le \n", ptR, jac);
       printf (" sume %15.8le costh %15.8le \n", sume, para->costh);
-
       printf (" pt %15.8le \n", para->pt);
       printf (" mt  %15.8le \n", para->mt);
       printf (" y %15.8le \n", para->y);
@@ -164,7 +165,6 @@ double dnpir2N (double phi, void *para1)
       printf (" p0 %15.8le \n", para->p0);
       printf (" pl %15.8le \n", para->pl);
       printf (" phi %15.8le \n", para->phi);
-
       printf (" m1 %15.8le \n", para->m1);
       printf (" m2 %15.8le \n", para->m2);
       printf (" m3 %15.8le \n", para->m3);
@@ -182,27 +182,29 @@ double dnpir2N (double phi, void *para1)
 
   double phiR = acos (cphiR);
   if (sphiR < 0.0) phiR = 2.0 * PI - phiR;
-  double dnr = Edndp3 (yR, ptR, phiR, para->res_num);
+  double dnr = Edndp3(yR, ptR, phiR, para->res_num);
   return dnr * jac * jac / (2.0 * sume * sume);
 }
 
 
-double dnpir1N (double costh, void *para1)
+double dnpir1N(double costh, void *para1)
 {
   pblockN *para = (pblockN *) para1;
   para->costh = costh;
   para->sinth = sqrt (1.0 - para->costh * para->costh);
   //Integrates the "dnpir2N" kernal over phi using gaussian integration
-  return gauss(PTN2, *dnpir2N, 0.0, 2.0 * PI, para);
+  double r = gauss(PTN2, *dnpir2N, 0.0, 2.0 * PI, para);
+  return r;
 }
 
-double dn2ptN (double w2, void *para1)
+double dn2ptN(double w2, void *para1)
 {
   pblockN *para = (pblockN *) para1;
   para->e0 = (para->mr * para->mr + para->m1 * para->m1 - w2) / (2 * para->mr);
   para->p0 = sqrt (para->e0 * para->e0 - para->m1 * para->m1);
   //Integrate the "dnpir1N" kernal over cos(theta) using gaussian integration
-  return gauss (PTN1, *dnpir1N, -1.0, 1.0, para);
+  double r = gauss (PTN1, *dnpir1N, -1.0, 1.0, para);
+  return r;
 }
 
 
@@ -217,7 +219,6 @@ double dn3ptN (double x, void* para1)
   double re = p0 * sqrt ((x - a) * (x - b)) / x * dn2ptN (x, para);
   return re;
 }
-
 
 /********************************************************************
 *
@@ -234,11 +235,8 @@ double Edndp3_2bodyN (double y, double pt, double phi, double m1, double m2, dou
 // double mr;     /* restmass of resonance MeV            */
 // int res_num;   /* Montecarlo number of the Resonance   */
 {
-  double mt = sqrt (pt * pt + m1 * m1);
-  double norm2;			/* 2-body normalization */
+  double mt = sqrt(pt * pt + m1 * m1);
   pblockN para;
-  double res2;
-
   para.pt = pt;
   para.mt = mt;
   para.e = mt * cosh (y);
@@ -248,12 +246,11 @@ double Edndp3_2bodyN (double y, double pt, double phi, double m1, double m2, dou
   para.m1 = m1;
   para.m2 = m2;
   para.mr = mr;
-
   para.res_num = res_num;
 
-  norm2 = 1.0 / (2.0 * PI);
+  double norm2 = 1.0 / (2.0 * PI); /* 2-body normalization */
   //Calls the integration routines for 2-body
-  res2 = norm2 * dn2ptN (m2 * m2, &para);
+  double res2 = norm2 * dn2ptN (m2 * m2, &para);
   if (res2 < 0.0) res2 = 0.0;
   return res2;			/* like Ed3ndp3_2body() */
 }
@@ -267,10 +264,8 @@ double Edndp3_2bodyN (double y, double pt, double phi, double m1, double m2, dou
 double Edndp3_3bodyN (double y, double pt, double phi, double m1, double m2, double m3, double mr, double norm3, int res_num)
 //in units of GeV^-2,includes phase space and volume, does not include degeneracy factors
 {
-  double mt = sqrt (pt * pt + m1 * m1);
+  double mt = sqrt(pt * pt + m1 * m1);
   pblockN para;
-  double wmin, wmax;
-  double res3;
   //double slope;			/* slope of resonance for high mt */
   //int pn;
 
@@ -280,7 +275,6 @@ double Edndp3_3bodyN (double y, double pt, double phi, double m1, double m2, dou
   para.e = mt * cosh(y);
   para.pl = mt * sinh(y);
   para.phi = phi;
-
   para.m1 = m1;
   para.m2 = m2;
   para.m3 = m3;
@@ -290,10 +284,10 @@ double Edndp3_3bodyN (double y, double pt, double phi, double m1, double m2, dou
 
   para.res_num = res_num;
 
-  wmin = (m2 + m3) * (m2 + m3);
-  wmax = (mr - m1) * (mr - m1);
+  double wmin = (m2 + m3) * (m2 + m3);
+  double wmax = (mr - m1) * (mr - m1);
   //Integrates "W" using gaussian
-  res3 = 2.0 * norm3 * gauss (PTS4, *dn3ptN, wmin, wmax, &para) / mr;
+  double res3 = 2.0 * norm3 * gauss (PTS4, *dn3ptN, wmin, wmax, &para) / mr;
   if (res3 < 0.0) res3 = 0.0;
   return res3;
 }
@@ -320,13 +314,13 @@ void add_resonance(int pn, int pnR, int k, int j)
   int pn2, pn3, pn4;		/* internal numbers for resonances */
 
   // this variable stores number of points in rapidity
-  int ny = particleList[pn].ny;
-  int npt = particleList[pn].npt;
-  int nphi = particleList[pn].nphi;
+  int ny = particle[pn].ny;
+  int npt = particle[pn].npt;
+  int nphi = particle[pn].nphi;
   double deltaphi = 2*PI/nphi;
 
   // Determine the number of particles involved in the decay with the switch
-  switch (abs(decay[j].numpart)) {
+  switch (abs(particleDecay[j].numpart)) {
 
     // Only 1 particle, if it gets here, by accident,
     // this prevents any integration for 1 particle chains
@@ -334,67 +328,63 @@ void add_resonance(int pn, int pnR, int k, int j)
 
     case 2:  // 2-body decay
     {
-      if (k == 0) pn2 = partid[MHALF + decay[j].part[1]];
-      else pn2 = partid[MHALF + decay[j].part[0]];
+      if (k == 0) pn2 = partid[MHALF + particleDecay[j].part[1]];
+      else pn2 = partid[MHALF + particleDecay[j].part[0]];
 
-      m1 = particleList[pn].mass;
-      m2 = particleList[pn2].mass;
-      mr = particleList[pnR].mass;
+      m1 = particle[pn].mass;
+      m2 = particle[pn2].mass;
+      mr = particle[pnR].mass;
 
       while ((m1 + m2) > mr) {
-        mr += 0.25*particleList[pnR].width;
-        m1 -= 0.5*particleList[pn].width;
-        m2 -= 0.5*particleList[pn2].width;
+        mr += 0.25*particle[pnR].width;
+        m1 -= 0.5*particle[pn].width;
+        m2 -= 0.5*particle[pn2].width;
       }
 
-      if (boost_invariant)
+      if (BOOST_INV)
       {
         y = 0.0;
-        for (int l = 0; l < npt; l++)
+        for (int ipT = 0; ipT < npt; ipT++)
         {
-          if (pseudofreeze) y = Rap(y, particleList[pn].pt[l], m1);
+          //if (pseudofreeze) y = Rap(y, particle[pn].pt[l], m1);
 
-          for (int i = 0; i < nphi; i++)
+          for (int iphi = 0; iphi < nphi; iphi++)
           {
             double phi = 0.0;
-            if (pseudofreeze) phi = i*deltaphi;
-            else phi = phiArray[i];
-
-            double spectrum = Edndp3_2bodyN(y, particleList[pn].pt[l], phi, m1, m2, mr, particleList[pnR].number);
+            //if (pseudofreeze) phi = i*deltaphi;
+            //else phi = phiArray[i];
+            phi = iphi * deltaphi;
+            double spectrum = Edndp3_2bodyN(y, particle[pn].pt[ipT], phi, m1, m2, mr, particle[pnR].mcID);
             // Call the 2-body decay integral and add its contribution to the daughter
             // particle of interest
-            for (int n = 0; n < ny; n++)
+            for (int iy = 0; iy < ny; iy++)
             {
-              particleList[pn].dNdydptdphi[n][l][i] += ( decay[j].branch * spectrum);
-              if (n == ny/2 && i==0) particleList[pn].resCont[n][l][i] += (decay[j].branch * spectrum);
-
+              particle[pn].dNdypTdpTdphi[iy][ipT][iphi] += ( particleDecay[j].branch * spectrum);
+              //if (iy == ny/2 && iphi == 0) particle[pn].resCont[iy][ipT][iphi] += (particleDecay[j].branch * spectrum);
             }
-
           }
         }
       }
       else
       {
-        for (int n = 0; n < ny; n++)
+        for (int iy = 0; iy < ny; iy++)
         {
-          y = particleList[pn].y[n];
-          for (int l = 0; l < npt; l++)
+          y = particle[pn].y[iy];
+          for (int ipT = 0; ipT < npt; ipT++)
           {
-            if (pseudofreeze) y = Rap(particleList[pn].y[n], particleList[pn].pt[l], m1);
+            //if (pseudofreeze) y = Rap(particle[pn].y[n], particle[pn].pt[l], m1);
 
-            for (int i = 0; i < nphi; i++)
+            for (int iphi = 0; iphi < nphi; iphi++)
             {
               double phi = 0.0;
-              if (pseudofreeze) phi = i * deltaphi;
-              else phi = phiArray[i];
-
-              double spectrum = Edndp3_2bodyN(y, particleList[pn].pt[l], phi, m1, m2, mr, particleList[pnR].number);
+              //if (pseudofreeze) phi = i * deltaphi;
+              //else phi = phiArray[i];
+              phi = iphi * deltaphi;
+              double spectrum = Edndp3_2bodyN(y, particle[pn].pt[ipT], phi, m1, m2, mr, particle[pnR].mcID);
               // Call the 2-body decay integral and add its contribution to the daughter
               // particle of interest
-              particleList[pn].dNdydptdphi[n][l][i] += (decay[j].branch*spectrum);
-              if (n == ny/2 && i==0) particleList[pn].resCont[n][l][i] += (decay[j].branch*spectrum);
-
-
+              particle[pn].dNdypTdpTdphi[iy][ipT][iphi] += (particleDecay[j].branch*spectrum);
+              //if (iy == ny/2 && iphi == 0) particle[pn].resCont[iy][ipT][iphi] += (particleDecay[j].branch*spectrum);
             }
           }
         }
@@ -406,82 +396,79 @@ void add_resonance(int pn, int pnR, int k, int j)
     {
       if (k == 0)
       {
-        pn2 = partid[MHALF + decay[j].part[1]];
-        pn3 = partid[MHALF + decay[j].part[2]];
+        pn2 = partid[MHALF + particleDecay[j].part[1]];
+        pn3 = partid[MHALF + particleDecay[j].part[2]];
       }
       else
       {
         if (k == 1)
         {
-          pn2 = partid[MHALF + decay[j].part[0]];
-          pn3 = partid[MHALF + decay[j].part[2]];
+          pn2 = partid[MHALF + particleDecay[j].part[0]];
+          pn3 = partid[MHALF + particleDecay[j].part[2]];
         }
         else
         {
-          pn2 = partid[MHALF + decay[j].part[0]];
-          pn3 = partid[MHALF + decay[j].part[1]];
+          pn2 = partid[MHALF + particleDecay[j].part[0]];
+          pn3 = partid[MHALF + particleDecay[j].part[1]];
         }
       }
 
-      m1 = particleList[pn].mass;
-      m2 = particleList[pn2].mass;
-      m3 = particleList[pn3].mass;
-      mr = particleList[pnR].mass;
+      m1 = particle[pn].mass;
+      m2 = particle[pn2].mass;
+      m3 = particle[pn3].mass;
+      mr = particle[pnR].mass;
       paranorm.a = (mr + m1)*(mr + m1);
       paranorm.b = (mr - m1)*(mr - m1);
       paranorm.c = (m2 + m3)*(m2 + m3);
       paranorm.d = (m2 - m3)*(m2 - m3);
-      norm3 = mr * mr / ( 2 * PI * gauss(PTS3, &Freeze::norm3int, paranorm.c,paranorm.b, &paranorm) );
+      norm3 = mr * mr / ( 2 * PI * gauss(PTS3, norm3int, paranorm.c,paranorm.b, &paranorm) );
 
-      if (boost_invariant)
+      if (BOOST_INV)
       {
         y = 0.0;
-        for (int l = 0; l < npt; l++)
+        for (int ipT = 0; ipT < npt; ipT++)
         {
-          if (pseudofreeze) y = Rap(y, particleList[pn].pt[l], m1);
+          //if (pseudofreeze) y = Rap(y, particle[pn].pt[l], m1);
 
-          for (int i = 0; i < nphi; i++)
+          for (int iphi = 0; iphi < nphi; iphi++)
           {
             double phi;
-            if (pseudofreeze) phi = i * deltaphi;
-            else phi = phiArray[i];
-
-            double spectrum = Edndp3_3bodyN(y, particleList[pn].pt[l], phi, m1, m2, m3, mr, norm3, particleList[pnR].number);
+            //if (pseudofreeze) phi = i * deltaphi;
+            //else phi = phiArray[i];
+            phi = iphi * deltaphi;
+            double spectrum = Edndp3_3bodyN(y, particle[pn].pt[ipT], phi, m1, m2, m3, mr, norm3, particle[pnR].mcID);
             // Call the 3-body decay integral and
             // add its contribution to the daughter
             // particle of interest
-            for (int n = 0; n < ny; n++)
+            for (int iy = 0; iy < ny; iy++)
             {
-              particleList[pn].dNdydptdphi[n][l][i] += (decay[j].branch*spectrum);
-              if (n == ny/2 && i==0) particleList[pn].resCont[n][l][i]+= (decay[j].branch*spectrum);
-
-
+              particle[pn].dNdypTdpTdphi[iy][ipT][iphi] += (particleDecay[j].branch*spectrum);
+              //if (iy == ny/2 && iphi == 0) particle[pn].resCont[iy][ipT][iphi]+= (particleDecay[j].branch*spectrum);
             }
-
           }
         }
       }
       else
       {
-        for (int n = 0; n < ny; n++)
+        for (int iy = 0; iy < ny; iy++)
         {
-          y = particleList[pn].y[n];
-          for (int l = 0; l < npt; l++)
+          y = particle[pn].y[iy];
+          for (int ipT = 0; ipT < npt; ipT++)
           {
-            if (pseudofreeze) y = Rap(particleList[pn].y[n], particleList[pn].pt[l], m1);
+            //if (pseudofreeze) y = Rap(particle[pn].y[n], particle[pn].pt[l], m1);
 
-            for (int i = 0; i < nphi; i++)
+            for (int iphi = 0; iphi < nphi; iphi++)
             {
               double phi;
-              if (pseudofreeze) phi = i*deltaphi;
-              else phi = phiArray[i];
-
-              double spectrum = Edndp3_3bodyN(y, particleList[pn].pt[l], phi, m1, m2, m3, mr, norm3, particleList[pnR].number);
+              //if (pseudofreeze) phi = i*deltaphi;
+              //else phi = phiArray[i];
+              phi = iphi * deltaphi;
+              double spectrum = Edndp3_3bodyN(y, particle[pn].pt[ipT], phi, m1, m2, m3, mr, norm3, particle[pnR].mcID);
               // Call the 3-body decay integral and
               // add its contribution to the daughter
               // particle of interest
-              particleList[pn].dNdydptdphi[n][l][i] += (decay[j].branch*spectrum);
-              if (n == ny/2 && i==0) particleList[pn].resCont[n][l][i]+= (decay[j].branch*spectrum);
+              particle[pn].dNdypTdpTdphi[iy][ipT][iphi] += (particleDecay[j].branch*spectrum);
+              //if (iy == ny/2 && iphi == 0) particle[pn].resCont[iy][ipT][iphi]+= (particleDecay[j].branch*spectrum);
             }
           }
         }
@@ -493,73 +480,73 @@ void add_resonance(int pn, int pnR, int k, int j)
     {
       if (k == 0)
       {
-        pn2 = partid[MHALF + decay[j].part[1]];
-        pn3 = partid[MHALF + decay[j].part[2]];
-        pn4 = partid[MHALF + decay[j].part[3]];
+        pn2 = partid[MHALF + particleDecay[j].part[1]];
+        pn3 = partid[MHALF + particleDecay[j].part[2]];
+        pn4 = partid[MHALF + particleDecay[j].part[3]];
       }
       else if (k == 1)
       {
-        pn2 = partid[MHALF + decay[j].part[0]];
-        pn3 = partid[MHALF + decay[j].part[2]];
-        pn4 = partid[MHALF + decay[j].part[3]];
+        pn2 = partid[MHALF + particleDecay[j].part[0]];
+        pn3 = partid[MHALF + particleDecay[j].part[2]];
+        pn4 = partid[MHALF + particleDecay[j].part[3]];
       }
       else if (k == 2)
       {
-        pn2 = partid[MHALF + decay[j].part[0]];
-        pn3 = partid[MHALF + decay[j].part[1]];
-        pn4 = partid[MHALF + decay[j].part[3]];
+        pn2 = partid[MHALF + particleDecay[j].part[0]];
+        pn3 = partid[MHALF + particleDecay[j].part[1]];
+        pn4 = partid[MHALF + particleDecay[j].part[3]];
       }
       else
       {
-        pn2 = partid[MHALF + decay[j].part[0]];
-        pn3 = partid[MHALF + decay[j].part[1]];
-        pn4 = partid[MHALF + decay[j].part[2]];
+        pn2 = partid[MHALF + particleDecay[j].part[0]];
+        pn3 = partid[MHALF + particleDecay[j].part[1]];
+        pn4 = partid[MHALF + particleDecay[j].part[2]];
       }
       // approximate the 4-body with a 3-body decay with the 4th particle
       // being the center of mass of 2 particles.
-      m1 = particleList[pn].mass;
-      m2 = particleList[pn2].mass;
-      mr = particleList[pnR].mass;
-      m3 = 0.5*(particleList[pn3].mass + particleList[pn4].mass + mr - m1 - m2);
+      m1 = particle[pn].mass;
+      m2 = particle[pn2].mass;
+      mr = particle[pnR].mass;
+      m3 = 0.5*(particle[pn3].mass + particle[pn4].mass + mr - m1 - m2);
       paranorm.a = (mr + m1)*(mr + m1);
       paranorm.b = (mr - m1)*(mr - m1);
       paranorm.c = (m2 + m3)*(m2 + m3);
       paranorm.d = (m2 - m3)*(m2 - m3);
-      norm3 = mr * mr / ( 2 * PI * gauss(PTS3, &Freeze::norm3int, paranorm.c, paranorm.b, &paranorm));
+      norm3 = mr * mr / ( 2 * PI * gauss(PTS3, norm3int, paranorm.c, paranorm.b, &paranorm));
 
-      if (boost_invariant)
+      if (BOOST_INV)
       {
         y = 0.0;
-        for (int i = 0; i < nphi; i++)
+        for (int iphi = 0; iphi < nphi; iphi++)
         {
           double phi;
-          if (pseudofreeze) phi = i*deltaphi;
-          else phi = phiArray[i];
-
-          for (int l = 0; l < npt; l++)
+          //if (pseudofreeze) phi = i*deltaphi;
+          //else phi = phiArray[i];
+          phi = iphi * deltaphi;
+          for (int ipT = 0; ipT < npt; ipT++)
           {
-            if (pseudofreeze) y = Rap(y, particleList[pn].pt[l], m1);
-            double spectrum = Edndp3_3bodyN(y, particleList[pn].pt[l], phi, m1, m2, m3, mr, norm3, particleList[pnR].number);
-            for (int n = 0; n < ny; n++) particleList[pn].dNdydptdphi[n][l][i] += (decay[j].branch*spectrum);
+            //if (pseudofreeze) y = Rap(y, particle[pn].pt[l], m1);
+            double spectrum = Edndp3_3bodyN(y, particle[pn].pt[ipT], phi, m1, m2, m3, mr, norm3, particle[pnR].mcID);
+            for (int iy = 0; iy < ny; iy++) particle[pn].dNdypTdpTdphi[iy][ipT][iphi] += (particleDecay[j].branch*spectrum);
           }
         }
       }
       else
       {
-        for (int n = 0; n < ny; n++)
+        for (int iy = 0; iy < ny; iy++)
         {
-          y = particleList[pn].y[n];
-          for (int i = 0; i < nphi; i++)
+          y = particle[pn].y[iy];
+          for (int iphi = 0; iphi < nphi; iphi++)
           {
             double phi;
-            if (pseudofreeze) phi = i*deltaphi;
-            else phi = phiArray[i];
-
-            for (int l = 0; l < npt; l++)
+            //if (pseudofreeze) phi = i*deltaphi;
+            //else phi = phiArray[i];
+            phi = iphi * deltaphi;
+            for (int ipT = 0; ipT < npt; ipT++)
             {
-              if (pseudofreeze) y = Rap(particleList[pn].y[n], particleList[pn].pt[l], m1);
-              double spectrum = Edndp3_3bodyN(y, particleList[pn].pt[l], phi, m1, m2, m3, mr, norm3, particleList[pnR].number);
-              particleList[pn].dNdydptdphi[n][l][i] += (decay[j].branch*spectrum);
+              //if (pseudofreeze) y = Rap(particle[pn].y[n], particle[pn].pt[l], m1);
+              double spectrum = Edndp3_3bodyN(y, particle[pn].pt[ipT], phi, m1, m2, m3, mr, norm3, particle[pnR].mcID);
+              particle[pn].dNdypTdpTdphi[iy][ipT][iphi] += (particleDecay[j].branch*spectrum);
             }
           }
         }
@@ -570,13 +557,11 @@ void add_resonance(int pn, int pnR, int k, int j)
     default:
     {
       printf ("ERROR in add_reso! \n");
-      printf ("%i decay not implemented ! \n", abs (decay[j].numpart));
+      printf ("%i decay not implemented ! \n", abs (particleDecay[j].numpart));
       exit (0);
     }
   }
-
 }
-
 
 //try moving around the else if statements to optimize / clean up visually, kind of messy as is
 void calc_reso_decays (int maxpart, int maxdecay, int bound)
@@ -584,13 +569,13 @@ void calc_reso_decays (int maxpart, int maxdecay, int bound)
 // int bound; monte-carlo value of a lower bound in the spectrum of particles taken into account
 {
   int pn = partid[MHALF + bound];
-  int ny = particleList[pn].ny;
-  int npt = particleList[pn].npt;
-  int nphi = particleList[pn].nphi;
+  int ny = particle[pn].ny;
+  int npt = particle[pn].npt;
+  int nphi = particle[pn].nphi;
 
   for (int i = maxpart - 1; i > pn - 1; i--)  //Cycle the particles known from the resoweak.dat input
   {
-    int part = particle[i].monval;
+    int part = particle[i].mcID;
     printf ("Calculating the decays with ");
     printf ("%s \n", particle[i].name);
     printf ("%i ", part);
@@ -604,7 +589,7 @@ void calc_reso_decays (int maxpart, int maxdecay, int bound)
         // to see if the particle was a daughter particle in a decay channel
         for (int j = 0; j < maxdecay; j++)
         {
-          pnR = partid[MHALF + particleDecay[j].reso];
+          int pnR = partid[MHALF + particleDecay[j].reso];
           for (int k = 0; k < abs (particleDecay[j].numpart); k++)
           {
             // Make sure that the particle decay channel isn't trivial and contains the daughter particle
@@ -623,7 +608,7 @@ void calc_reso_decays (int maxpart, int maxdecay, int bound)
         for (int j = 0; j < maxdecay; j++)
         {
           int pnaR = partid[MHALF - particleDecay[j].reso];
-          for (k = 0; k < abs(particleDecay[j].numpart); k++)
+          for (int k = 0; k < abs(particleDecay[j].numpart); k++)
           {
             //Make sure that the decay channel isn't trivial and contains the daughter particle
             if ( (-part == particleDecay[j].part[k]) && (particleDecay[j].numpart != 1) )

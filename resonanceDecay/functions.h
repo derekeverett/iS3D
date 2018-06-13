@@ -4,6 +4,8 @@
 #ifndef function_h
 #define function_h
 
+#include "decay.h" //for boost_invariant
+
 // SB code
 #define	NUMDECAY	1700 /* size of array for storage of the decays */
 #define	NUMPARTICLE	400 /*  size of array for storage of the particles */

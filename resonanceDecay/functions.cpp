@@ -18,6 +18,7 @@
 #define NUMPARTICLE 400 /*  size of array for storage of the particles */
 #define MAXINTV 20000000 /* size of arry for Montecarlo numbers */
 #define MHALF (MAXINTV/2)
+#define NY 200
 #define NPT 50 /* size of arry for storage of the pt-spectrum */
 #define NPHI 120 /* size of arry for storage of the y-spectrum */
 #define NPHI1 NPHI + 1
@@ -29,26 +30,31 @@
 
 extern struct par
 {
-    long int monval;     /* Montecarlo number according PDG */
-    char name[26];
-    double  mass;
-    double  width;
-    int gspin;      /* spin degeneracy */
-    int baryon;
-    int strange;
-    int charm;
-    int bottom;
-    int gisospin;  /* isospin degeneracy */
-    int charge;
-    int decays;    /* amount of decays listed for this resonance */
-    int stable;     /* defines whether this particle is considered
-                as stable */
-    int npt;
-    int nphi;
-    double dNdptdphi[NPT][NPHI];
-    double mt[NPT];    /* mt values for spectrum */
-    double pt[NPT];    /* pt values for spectrum */
-    double slope[NPHI1];       /* assymtotic slope of mt-spectrum */
+  long int 	mcID;     /* Montecarlo number according PDG */
+  char	name[26];
+  double	mass;
+  double	width;
+  int	    gspin;      /* spin degeneracy */
+  int	    baryon;
+  int	    strange;
+  int	    charm;
+  int	    bottom;
+  int	    gisospin;  /* isospin degeneracy */
+  int	    charge;
+  int	    decays;    /* amount of decays listed for this resonance */
+  int	    stable;     /* defines whether this particle is considered as stable */
+  int     npt;
+  int     nphi;
+  int     ny;
+  double  phimin;
+  double  phimax;
+  double  ymax;
+  double  deltaY;
+  double  dNdypTdpTdphi[NY][NPT][NPHI];
+  double	mt[NPT];	/* mt values for spectrum */
+  double	pt[NPT];	/* pt values for spectrum */
+  double  y[NY];           // y values for spectrum
+  double  slope[NPHI1];		/* assymtotic slope of mt-spectrum */
 }particle[NUMPARTICLE];
 
 extern double PHI[NPHI];    /* Array for phi-storage */
@@ -192,7 +198,7 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
     // Read in the particle data from the specified resonance table
     // Save the data is the structure particle[pn]
 
-    while(fscanf(dat,"%li%s%lf%lf%i%i%i%i%i%i%i%i", &particle[i].monval,
+    while(fscanf(dat,"%li%s%lf%lf%i%i%i%i%i%i%i%i", &particle[i].mcID,
           particle[i].name, &particle[i].mass, &particle[i].width,
           &particle[i].gspin, &particle[i].baryon,
           &particle[i].strange, &particle[i].charm,
@@ -201,10 +207,10 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
     {
         // Read in the unused portion of the data file
         //fscanf(dat,"%lf%lf%lf", &dummy1, &dummy1, &dummy1);
-        partid[MHALF + particle[i].monval] = i;
+        partid[MHALF + particle[i].mcID] = i;
         particle[i].stable = 0;
 
-        //printf("%i   %i %s %lf %lf %i %i %i %i %i %i %i %i\n", i, particle[i].monval,
+        //printf("%i   %i %s %lf %lf %i %i %i %i %i %i %i %i\n", i, particle[i].mcID,
         //       particle[i].name, particle[i].mass, particle[i].width,
         //       particle[i].gspin, particle[i].baryon,
         //       particle[i].strange, particle[i].charm,
@@ -239,7 +245,7 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
         {
             i++;// If the particle is a baryon, add a particle for the anti-baryon
             // Add one to the counting variable "i" for the number of particles for the anti-baryon
-            particle[i].monval = -particle[i-1].monval;
+            particle[i].mcID = -particle[i-1].mcID;
             strcpy(particle[i].name, "  Anti-");
             strncat(particle[i].name, particle[i-1].name, 18);
             particle[i].mass     =  particle[i-1].mass;
@@ -252,14 +258,14 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
             particle[i].gisospin =  particle[i-1].gisospin;
             particle[i].charge   = -particle[i-1].charge;
             particle[i].decays   = particle[i-1].decays;
-            partid[MHALF + particle[i].monval] = i;
+            partid[MHALF + particle[i].mcID] = i;
             particle[i].stable =  particle[i-1].stable;
         }
         i++; // Add one to the counting variable "i" for the meson/baryon
     }
     fclose(dat);
 
-    //printf("last particle: %i %s \n",particle[i-1].monval, particle[i-1].name);
+    //printf("last particle: %i %s \n",particle[i-1].mcID, particle[i-1].name);
     //printf("# particle %5i; # decays %5i; \n",i,j);
 
     *particlemax = i;   // Set the maxparticle variable to be the value of "i"
@@ -333,7 +339,7 @@ void readSpectra(char specfile[FILEDIM], int *particlemax, int *decaymax)
             for(j=0;j<npt;j++)
             {
                 fscanf(spec,"%lf",&dum);
-                particle[pn].dNdptdphi[j][k] = dum;
+                particle[pn].dNdypTdpTdphi[j][k] = dum;
             }
         }
 
@@ -346,10 +352,10 @@ void readSpectra(char specfile[FILEDIM], int *particlemax, int *decaymax)
               if(particle[pn].pt[j] < PTCHANGE)
               {
                   printf("dN matrix is too bad! Bye bye! \n");
-                  printf(" %e  %e %e \n", particle[pn].pt[j] , particle[pn].dNdptdphi[j][k], particle[pn].dNdptdphi[j-1][k]);
+                  printf(" %e  %e %e \n", particle[pn].pt[j] , particle[pn].dNdypTdpTdphi[j][k], particle[pn].dNdypTdpTdphi[j-1][k]);
                   exit(1);
               }
-              if(particle[pn].dNdptdphi[j][k] <= particle[pn].dNdptdphi[j-1][k] && particle[pn].dNdptdphi[j][k] >= 0 && particle[pn].dNdptdphi[j-1][k] >= 0)
+              if(particle[pn].dNdypTdpTdphi[j][k] <= particle[pn].dNdypTdpTdphi[j-1][k] && particle[pn].dNdypTdpTdphi[j][k] >= 0 && particle[pn].dNdypTdpTdphi[j-1][k] >= 0)
               {
                  Regulate_point = j;
                  break;
@@ -360,7 +366,7 @@ void readSpectra(char specfile[FILEDIM], int *particlemax, int *decaymax)
               WarningCounter++;
               double dpt23 = particle[pn].pt[j] - particle[pn].pt[j-1];
               double dpt12 = particle[pn].pt[j-1] - particle[pn].pt[j-2];
-              particle[pn].dNdptdphi[j][k] = particle[pn].dNdptdphi[j-1][k]*pow(particle[pn].dNdptdphi[j-1][k]/particle[pn].dNdptdphi[j-2][k], dpt23/dpt12);
+              particle[pn].dNdypTdpTdphi[j][k] = particle[pn].dNdypTdpTdphi[j-1][k]*pow(particle[pn].dNdypTdpTdphi[j-1][k]/particle[pn].dNdypTdpTdphi[j-2][k], dpt23/dpt12);
            }
         }
     }
@@ -394,12 +400,12 @@ void writeSpectra(int particlemax, char outdir[FILEDIM])
             strcpy(filename2,outdir);
             strcat(filename, "/spec_");
             strcat(filename2, "/PT_");
-            if(particle[i].monval < 0)
+            if(particle[i].mcID < 0)
             {
                 strcat(filename,"A");
                 strcat(filename2, "A");
             }
-            convei(abs(particle[i].monval),p);
+            convei(abs(particle[i].mcID),p);
 
             strcat(filename,p);
             strcat(filename2,p);
@@ -414,7 +420,7 @@ void writeSpectra(int particlemax, char outdir[FILEDIM])
             {
                 for(j=0;j<particle[i].npt;j++)
                 {
-                    fprintf(out," %11.4lE", particle[i].dNdptdphi[j][k]);
+                    fprintf(out," %11.4lE", particle[i].dNdypTdpTdphi[j][k]);
                 }
                 fprintf(out,"\n");
             }
@@ -454,26 +460,28 @@ double Edndp3(double yr, double ptr, double phirin, int res_num)
   // dNdydptdphi is on a fixed grid in pseudorapidity.
   // Set yr to the *pseudorapidity* of the resonance,
   // and then interpolate the yield at that value.
+
+  /*
   if (pseudofreeze)
   {
     double yrtemp = yr;
     yr = PseudoRap(yrtemp, ptr, particleList[pn].mass);
   }
+  */
+  if (ptr > particle[pn].pt[particle[pn].npt - 1]) return 0.;
 
-  if (ptr > particleList[pn].pt[particleList[pn].npt - 1]) return 0.;
-
-  if (fabs(yr) > particleList[pn].ymax && !boost_invariant) return 0.;
+  if (fabs(yr) > particle[pn].ymax && !BOOST_INV) return 0.;
 
   int nphi = 1;
-  while ( (phir > phiArray[nphi]) && ( nphi < (particleList[pn].nphi-1) ) ) nphi++;
+  while ( (phir > phiArray[nphi]) && ( nphi < (particle[pn].nphi-1) ) ) nphi++;
   int npt = 1;
-  while (ptr > particleList[pn].pt[npt] && npt<(particleList[pn].npt - 1)) npt++;
+  while (ptr > particle[pn].pt[npt] && npt<(particle[pn].npt - 1)) npt++;
   int ny = 1;
-  while ( yr > particleList[pn].y[ny] && ny < (particleList[pn].ny - 1) ) ny++;
+  while ( yr > particle[pn].y[ny] && ny < (particle[pn].ny - 1) ) ny++;
 
   /* phi interpolation */
-  double f1 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particleList[pn].dNdydptdphi[ny-1][npt-1][nphi-1], particleList[pn].dNdydptdphi[ny-1][npt-1][nphi], phir);
-  double f2 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particleList[pn].dNdydptdphi[ny-1][npt][nphi-1], particleList[pn].dNdydptdphi[ny-1][npt][nphi], phir);
+  double f1 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particle[pn].dNdydptdphi[ny-1][npt-1][nphi-1], particle[pn].dNdydptdphi[ny-1][npt-1][nphi], phir);
+  double f2 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particle[pn].dNdydptdphi[ny-1][npt][nphi-1], particle[pn].dNdydptdphi[ny-1][npt][nphi], phir);
 
   // security: if for some reason we got a negative number of particles
   // (happened in the viscous code at large eta sometimes)
@@ -487,7 +495,7 @@ double Edndp3(double yr, double ptr, double phirin, int res_num)
     f1 = log(f1);
     f2 = log(f2);
   }
-  double val1 = util->lin_int(particleList[pn].pt[npt-1], particleList[pn].pt[npt], f1, f2, ptr);
+  double val1 = util->lin_int(particle[pn].pt[npt-1], particle[pn].pt[npt], f1, f2, ptr);
 
   if (ptr > PTCHANGE && f1s > 0 && f2s > 0) val1 = exp(val1);
 
@@ -522,8 +530,8 @@ double Edndp3(double yr, double ptr, double phirin, int res_num)
   }
   */
 
-  f1 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particleList[pn].dNdydptdphi[ny][npt-1][nphi-1], particleList[pn].dNdydptdphi[ny][npt-1][nphi], phir);
-  f2 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particleList[pn].dNdydptdphi[ny][npt][nphi-1], particleList[pn].dNdydptdphi[ny][npt][nphi], phir);
+  f1 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particle[pn].dNdydptdphi[ny][npt-1][nphi-1], particle[pn].dNdydptdphi[ny][npt-1][nphi], phir);
+  f2 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particle[pn].dNdydptdphi[ny][npt][nphi-1], particle[pn].dNdydptdphi[ny][npt][nphi], phir);
 
   // security: if for some reason we got a negative number of particles
   // (happened in the viscous code at large eta sometimes)
@@ -537,11 +545,11 @@ double Edndp3(double yr, double ptr, double phirin, int res_num)
     f1 = log(f1);
     f2 = log(f2);
   }
-  double val2 = util->lin_int(particleList[pn].pt[npt-1], particleList[pn].pt[npt], f1, f2, ptr);
+  double val2 = util->lin_int(particle[pn].pt[npt-1], particle[pn].pt[npt], f1, f2, ptr);
 
   if (ptr > PTCHANGE && f1s > 0 && f2s > 0) val2 = exp(val2);
 
-  double val = util->lin_int(particleList[pn].y[ny-1], particleList[pn].y[ny], val1, val2, yr);
+  double val = util->lin_int(particle[pn].y[ny-1], particle[pn].y[ny], val1, val2, yr);
   /*
   if (isnan(val))
   {

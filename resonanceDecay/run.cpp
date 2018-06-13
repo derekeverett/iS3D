@@ -38,6 +38,8 @@ int main()
 
    int max, maxdecay, bound;
 
+   int boost_invariant = 0; //this should be read from parameters! FIX
+
    printf("Starting resonance decays \n");
    //Read in the data from parameters.dat, including the results folder and the spectra data
    paramFile = fopen("parameters.dat", "r");
@@ -49,7 +51,7 @@ int main()
    //Read in the spectra and decays using "resoweak.dat" as a database of particles
    readSpectra(specFile, &max, &maxdecay);
    //The main module that calculates the resonance decay feed-down
-   calc_reso_decays(max, maxdecay, bound);
+   calc_reso_decays(max, maxdecay, bound, boost_invariant);
    //Writes the spectra to specified data files.
    writeSpectra(max,outdir);
 

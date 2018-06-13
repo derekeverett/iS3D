@@ -7,7 +7,7 @@
 
 #include	<stdio.h>
 #include	<math.h>
-#include        <stdlib.h>
+#include  <stdlib.h>
 #include	"integration.h"
 
 #ifdef TEST
