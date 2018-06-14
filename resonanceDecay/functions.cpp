@@ -43,7 +43,7 @@ extern struct par
   int	    charge;
   int	    decays;    /* amount of decays listed for this resonance */
   int	    stable;     /* defines whether this particle is considered as stable */
-  int     npt;
+  int     npT;
   int     nphi;
   int     ny;
   double  phimin;
@@ -53,7 +53,8 @@ extern struct par
   double  dNdypTdpTdphi[NY][NPT][NPHI];
   double	mt[NPT];	/* mt values for spectrum */
   double	pt[NPT];	/* pt values for spectrum */
-  double  y[NY];           // y values for spectrum
+  double  y[NY];    // y values for spectrum
+  double  phi[NPHI];
   double  slope[NPHI1];		/* assymtotic slope of mt-spectrum */
 }particle[NUMPARTICLE];
 
@@ -71,10 +72,6 @@ extern struct de
 /* array for converting Montecarlo numbers in internal numbering of the resonances */
 extern int partid[MAXINTV];
 
-#define         PTCHANGE    1.0
-
-//#include<gsl/gsl_sf_bessel.h>
-//double thermalspectra(double pt, double T, double mass, double mu, double degen);
 
 //*******************************************************************************
 // The following arrays are set for specific integration routines and point with
@@ -172,24 +169,22 @@ gala48x[] = { 2.9811235829960e-02,   0.15710799061788,
 
 /**************************************************************************
 *                                     *
-*   readin()                          *
+*   readParticleData()                          *
 *                                     *
 *   reads in the particle data file and stores the datas in the arrays    *
 *   particle.* and decay.* and fills up the rest of data (antibaryons)    *
 ***********************************************************************   *
 **************************************************************************/
 
-void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
+void readParticleData(char filename[FILEDIM], int* particlemax, int* decaymax)
 {
-    int i=0, j=0, k, h;
+    int i = 0, j = 0, k, h;
     FILE *dat;
     double dummy1;
 
-    for(k=0;k<MAXINTV;k++)
-       partid[k] = -1;
-
+    for (k = 0; k < MAXINTV; k++) partid[k] = -1;
     dat = fopen(filename,"r");
-    if(dat == NULL)
+    if (dat == NULL)
     {
         printf(" NO file: %s  available ! \n", filename);
         printf(" GOOD BYE AND HAVE A NICE DAY! \n");
@@ -205,30 +200,17 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
           &particle[i].bottom, &particle[i].gisospin,
           &particle[i].charge, &particle[i].decays)==12)
     {
-        // Read in the unused portion of the data file
-        //fscanf(dat,"%lf%lf%lf", &dummy1, &dummy1, &dummy1);
         partid[MHALF + particle[i].mcID] = i;
         particle[i].stable = 0;
 
-        //printf("%i   %i %s %lf %lf %i %i %i %i %i %i %i %i\n", i, particle[i].mcID,
-        //       particle[i].name, particle[i].mass, particle[i].width,
-        //       particle[i].gspin, particle[i].baryon,
-        //       particle[i].strange, particle[i].charm,
-        //       particle[i].bottom, particle[i].gisospin,
-        //       particle[i].charge, particle[i].decays);
-
         /* read in the decays */
         // These decays are saved in a seperate data set, decay[i].
-        for(k=0;k<particle[i].decays;k++)
+        for (k = 0; k < particle[i].decays; k++)
         {
-            h=fscanf(dat,"%i%i%lf%i%i%i%i%i",
+            h = fscanf(dat,"%i%i%lf%i%i%i%i%i",
              &particleDecay[j].reso, &particleDecay[j].numpart, &particleDecay[j].branch,
              &particleDecay[j].part[0], &particleDecay[j].part[1], &particleDecay[j].part[2],
              &particleDecay[j].part[3], &particleDecay[j].part[4]);
-            //printf("%i %i %lf %i %i %i %i %i\n", particleDecay[j].reso,
-            //       particleDecay[j].numpart, particleDecay[j].branch, particleDecay[j].part[0],
-            //       particleDecay[j].part[1], particleDecay[j].part[2],particleDecay[j].part[3],
-            //       particleDecay[j].part[4]);
             if (h != 8)
             {
                 printf("Error in scanf decay \n");
@@ -238,7 +220,6 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
             if (particleDecay[j].numpart == 1) particle[i].stable = 1;
             j++; // Add one to the decay counting variable "j"
         }
-        //printf("\n");
 
         /* setting of additional parameters */
         if (particle[i].baryon == 1)
@@ -265,15 +246,12 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
     }
     fclose(dat);
 
-    //printf("last particle: %i %s \n",particle[i-1].mcID, particle[i-1].name);
-    //printf("# particle %5i; # decays %5i; \n",i,j);
-
     *particlemax = i;   // Set the maxparticle variable to be the value of "i"
     *decaymax  = j;     // Set the maxdecays variable to be the value of "j"
 
-    if((*particlemax) > NUMPARTICLE)
+    if( (*particlemax) > NUMPARTICLE )
     {
-        printf("Array for particles to small! \n");
+        printf("Array for particles too small! \n");
         printf("GOOD BYE AND HAVE A NICE DAY! \n");
         exit(0);
     }
@@ -285,96 +263,71 @@ void readin(char filename[FILEDIM], int* particlemax, int* decaymax)
 // given to the spectra in the azspectra0p0 program. The default filename is phipspectra.dat
 void readSpectra(char specfile[FILEDIM], int *particlemax, int *decaymax)
 {
-    FILE *spec;
     char resofile[FILEDIM] = "EOS/pdg.dat";
-    int i, j, k, pn, npa = 0;
-    int mon, nphi, npt;
+    int npa = 0;
     double dum, dum1, dum2;
-    spec = fopen(specfile,"r");
+    FILE *spec = fopen(specfile,"r");
     if(spec == NULL)
     {
         printf(" NO file: %s  available ! \n", specfile);
         printf(" GOOD BYE AND HAVE A NICE DAY! \n");
         exit(0);
     }
-    readin(resofile, particlemax, decaymax);
+    readParticleData(resofile, particlemax, decaymax);
 
     Table pT_tab("tables/pT_gauss_table.dat");
     Table phi_tab("tables/phi_gauss_table.dat");
-    npt = pT_tab.getNumberOfRows();
-    nphi = phi_tab.getNumberOfRows();
+    Table y_tab("tables/y_riemann_table_11pt.dat");
+    int npT = pT_tab.getNumberOfRows();
+    int nphi = phi_tab.getNumberOfRows();
+    int ny = y_tab.getNumberOfRows();
 
     int WarningCounter = 0;
-    for (int n=0; n<*particlemax; n++)
+    for (int n = 0; n < *particlemax; n++)
     {
         npa++;
-        pn = n;
-        if(pn == -1)
+        int pn = n;
+        if (pn == -1)
         {
-            printf(" particle %i not in reso table ! \n",mon);
+            printf(" particle %i not in reso table ! \n");
             printf(" GOOD BYE AND HAVE A NICE DAY! \n");
             exit(0);
         }
-        if(npt > NPT)
+        if (npT > NPT)
         {
-            printf(" NPT = %i array to small !\n", npt);
+            printf(" NPT = %i array to small !\n", npT);
             printf(" GOOD BYE AND HAVE A NICE DAY! \n");
             exit(0);
         }
-        if(nphi > NPHI)
+        if (nphi > NPHI)
         {
             printf(" NPHI = %i array to small !\n", nphi);
             printf(" GOOD BYE AND HAVE A NICE DAY! \n");
             exit(0);
         }
 
-        for(i=0;i<npt;i++) particle[pn].pt[i] =  pT_tab.get(1,i+1);
-        for(i=0;i<nphi;i++) PHI[i] = phi_tab.get(1, i+1);
+        for (int ipT = 0; ipT < npT; ipT++) particle[pn].pt[ipT] = pT_tab.get(1,ipT + 1);
+        for (int iy = 0; iy < ny; iy++) particle[pn].y[iy]       =  y_tab.get(1,iy + 1);
+        for (int iphi = 0; iphi < nphi; iphi++) particle[pn].phi[iphi]        = phi_tab.get(1,iphi + 1);
 
-        particle[pn].slope[npt] = 1;
-        particle[pn].nphi = nphi;
-        particle[pn].npt = npt;
-        for(k=0;k<nphi;k++)
+        particle[pn].slope[npT] = 1;
+        particle[pn].nphi       = nphi;
+        particle[pn].npT        = npT;
+
+        for (int iy = 0; iy < ny; iy++)
         {
-            for(j=0;j<npt;j++)
+            for (int ipT = 0; ipT < npT; ipT++)
             {
+              for (int iphi = 0; iphi < nphi; iphi++)
+              {
                 fscanf(spec,"%lf",&dum);
-                particle[pn].dNdypTdpTdphi[j][k] = dum;
+                particle[pn].dNdypTdpTdphi[iy][ipT][iphi] = dum;
+              }
             }
         }
-
-        //Chun Shen: regulate spectra dN/pTdpTdphi matrix to avoid NaN error
-        int Regulate_point;
-        for(k=0; k<nphi; k++)
-        {
-           for(j=(npt-1); j>=0; j--)
-           {
-              if(particle[pn].pt[j] < PTCHANGE)
-              {
-                  printf("dN matrix is too bad! Bye bye! \n");
-                  printf(" %e  %e %e \n", particle[pn].pt[j] , particle[pn].dNdypTdpTdphi[j][k], particle[pn].dNdypTdpTdphi[j-1][k]);
-                  exit(1);
-              }
-              if(particle[pn].dNdypTdpTdphi[j][k] <= particle[pn].dNdypTdpTdphi[j-1][k] && particle[pn].dNdypTdpTdphi[j][k] >= 0 && particle[pn].dNdypTdpTdphi[j-1][k] >= 0)
-              {
-                 Regulate_point = j;
-                 break;
-              }
-           }
-           for(j=(Regulate_point+1);j<npt;j++)
-           {
-              WarningCounter++;
-              double dpt23 = particle[pn].pt[j] - particle[pn].pt[j-1];
-              double dpt12 = particle[pn].pt[j-1] - particle[pn].pt[j-2];
-              particle[pn].dNdypTdpTdphi[j][k] = particle[pn].dNdypTdpTdphi[j-1][k]*pow(particle[pn].dNdypTdpTdphi[j-1][k]/particle[pn].dNdypTdpTdphi[j-2][k], dpt23/dpt12);
-           }
-        }
     }
-    cout << "*****ResoWarning: regulated " << WarningCounter
-         << " dN/pTdpTdphi matrix elements*****" << endl;
-
     fclose(spec);
-    if(npa > 0) printf(" Successful read in of %5i spectra !\n",npa);
+    if (npa > 0) printf(" Successful read in of %5i spectra !\n",npa);
 }
 
 //*********************************************************************************************
@@ -418,13 +371,13 @@ void writeSpectra(int particlemax, char outdir[FILEDIM])
             out2 = fopen(filename2, "w");
             for(k=0;k<particle[i].nphi;k++) //Print out the desired data.
             {
-                for(j=0;j<particle[i].npt;j++)
+                for(j=0;j<particle[i].npT;j++)
                 {
                     fprintf(out," %11.4lE", particle[i].dNdypTdpTdphi[j][k]);
                 }
                 fprintf(out,"\n");
             }
-            for(j=0;j<particle[i].npt;j++)
+            for(j=0;j<particle[i].npT;j++)
             {
                 fprintf(out2," %11.4lE", particle[i].pt[j]);
             }
@@ -456,82 +409,36 @@ double Edndp3(double yr, double ptr, double phirin, int res_num)
   double phir = phirin;
   int pn = partid[MHALF + res_num];
 
-  // If pseudofreeze flag is set,
-  // dNdydptdphi is on a fixed grid in pseudorapidity.
-  // Set yr to the *pseudorapidity* of the resonance,
-  // and then interpolate the yield at that value.
-
-  /*
-  if (pseudofreeze)
-  {
-    double yrtemp = yr;
-    yr = PseudoRap(yrtemp, ptr, particleList[pn].mass);
-  }
-  */
-  if (ptr > particle[pn].pt[particle[pn].npt - 1]) return 0.;
-
+  if (ptr > particle[pn].pt[particle[pn].npT - 1]) return 0.;
   if (fabs(yr) > particle[pn].ymax && !BOOST_INV) return 0.;
 
   int nphi = 1;
-  while ( (phir > phiArray[nphi]) && ( nphi < (particle[pn].nphi-1) ) ) nphi++;
-  int npt = 1;
-  while (ptr > particle[pn].pt[npt] && npt<(particle[pn].npt - 1)) npt++;
+  while ( (phir > PHI[nphi]) && ( nphi < (particle[pn].nphi-1) ) ) nphi++;
+  int npT = 1;
+  while (ptr > particle[pn].pt[npT] && npT<(particle[pn].npT - 1)) npT++;
   int ny = 1;
   while ( yr > particle[pn].y[ny] && ny < (particle[pn].ny - 1) ) ny++;
 
   /* phi interpolation */
-  double f1 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particle[pn].dNdydptdphi[ny-1][npt-1][nphi-1], particle[pn].dNdydptdphi[ny-1][npt-1][nphi], phir);
-  double f2 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particle[pn].dNdydptdphi[ny-1][npt][nphi-1], particle[pn].dNdydptdphi[ny-1][npt][nphi], phir);
+  double f1 = util->lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny-1][npT-1][nphi-1], particle[pn].dNdypTdpTdphi[ny-1][npT-1][nphi], phir);
+  double f2 = util->lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny-1][npT][nphi-1], particle[pn].dNdypTdpTdphi[ny-1][npT][nphi], phir);
 
   // security: if for some reason we got a negative number of particles
   // (happened in the viscous code at large eta sometimes)
   if (f1 < 0.) f1 = 1e-30;
   if (f2 < 0.) f2 = 1e-30;
-
   double f1s = f1;
   double f2s = f2;
-
+  /*
   if (ptr > PTCHANGE && f1s > 0 && f2s > 0) {
     f1 = log(f1);
     f2 = log(f2);
   }
-  double val1 = util->lin_int(particle[pn].pt[npt-1], particle[pn].pt[npt], f1, f2, ptr);
-
-  if (ptr > PTCHANGE && f1s > 0 && f2s > 0) val1 = exp(val1);
-
-  /*
-  if (isnan(val1))
-  {
-  fprintf(stderr,"\n number=%d\n\n",res_num);
-  fprintf(stderr,"val1=%f\n",val1);
-  fprintf(stderr,"f1=%f\n",f1);
-  fprintf(stderr,"f2=%f\n",f2);
-  fprintf(stderr,"f1s=%f\n",f1s);
-  fprintf(stderr,"f2s=%f\n",f2s);
-
-  fprintf(stderr,"pn=%d\n",pn);
-  fprintf(stderr,"ny=%d\n",ny);
-  fprintf(stderr,"npt=%d\n",npt);
-  fprintf(stderr,"nphi=%d\n",nphi);
-  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt-1][nphi-1]);
-  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt-1][nphi-1]);
-  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt][nphi-1]);
-  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt-1][nphi]);
-  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt][nphi-1]);
-  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt][nphi]);
-  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt-1][nphi]);
-  fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt][nphi]);
-  fprintf(stderr,"phi1=%f\n",phiArray[nphi-1]);
-  fprintf(stderr,"phi2=%f\n",phiArray[nphi]);
-  fprintf(stderr,"pt1=%f\n",particleList[pn].pt[npt-1]);
-  fprintf(stderr,"pt2=%f\n",particleList[pn].pt[npt]);
-  fprintf(stderr,"y1=%f\n",particleList[pn].y[ny-1]);
-  fprintf(stderr,"y2=%f\n",particleList[pn].y[ny]);
-  }
   */
-
-  f1 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particle[pn].dNdydptdphi[ny][npt-1][nphi-1], particle[pn].dNdydptdphi[ny][npt-1][nphi], phir);
-  f2 = util->lin_int(phiArray[nphi-1], phiArray[nphi], particle[pn].dNdydptdphi[ny][npt][nphi-1], particle[pn].dNdydptdphi[ny][npt][nphi], phir);
+  double val1 = util->lin_int(particle[pn].pt[npT-1], particle[pn].pt[npT], f1, f2, ptr);
+  //if (ptr > PTCHANGE && f1s > 0 && f2s > 0) val1 = exp(val1);
+  f1 = util->lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny][npT-1][nphi-1], particle[pn].dNdypTdpTdphi[ny][npT-1][nphi], phir);
+  f2 = util->lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny][npT][nphi-1], particle[pn].dNdypTdpTdphi[ny][npT][nphi], phir);
 
   // security: if for some reason we got a negative number of particles
   // (happened in the viscous code at large eta sometimes)
@@ -539,64 +446,15 @@ double Edndp3(double yr, double ptr, double phirin, int res_num)
   if (f2 < 0.) f2 = 1e-30;
   f1s = f1;
   f2s = f2;
-
+  /*
   if (ptr > PTCHANGE && f1s > 0 && f2s > 0)
   {
     f1 = log(f1);
     f2 = log(f2);
   }
-  double val2 = util->lin_int(particle[pn].pt[npt-1], particle[pn].pt[npt], f1, f2, ptr);
-
-  if (ptr > PTCHANGE && f1s > 0 && f2s > 0) val2 = exp(val2);
-
-  double val = util->lin_int(particle[pn].y[ny-1], particle[pn].y[ny], val1, val2, yr);
-  /*
-  if (isnan(val))
-  {
-    fprintf(stderr,"val=%f\n",val);
-    fprintf(stderr,"val1=%f\n",val1);
-    fprintf(stderr,"val2=%f\n",val2);
-    fprintf(stderr,"f1=%f\n",f1);
-    fprintf(stderr,"f2=%f\n",f2);
-    fprintf(stderr,"f1s=%f\n",f1s);
-    fprintf(stderr,"f2s=%f\n",f2s);
-    fprintf(stderr,"ny=%d\n",ny);
-    fprintf(stderr,"npt=%d\n",npt);
-    fprintf(stderr,"nphi=%d\n",nphi);
-    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt-1][nphi-1]);
-    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt-1][nphi-1]);
-    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt][nphi-1]);
-    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt-1][nphi]);
-    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt][nphi-1]);
-    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny-1][npt][nphi]);
-    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt-1][nphi]);
-    fprintf(stderr,"dN..=%e\n",particleList[pn].dNdydptdphi[ny][npt][nphi]);
-    fprintf(stderr,"phi1=%f\n",phiArray[nphi-1]);
-    fprintf(stderr,"phi2=%f\n",phiArray[nphi]);
-    fprintf(stderr,"pt1=%f\n",particleList[pn].pt[npt-1]);
-    fprintf(stderr,"pt2=%f\n",particleList[pn].pt[npt]);
-    fprintf(stderr,"y1=%f\n",particleList[pn].y[ny-1]);
-    fprintf(stderr,"y2=%f\n",particleList[pn].y[ny]);
-    fprintf(stderr,"yR=%f\n",yr);
-  }
   */
-
+  double val2 = util->lin_int(particle[pn].pt[npT-1], particle[pn].pt[npT], f1, f2, ptr);
+  //if (ptr > PTCHANGE && f1s > 0 && f2s > 0) val2 = exp(val2);
+  double val = util->lin_int(particle[pn].y[ny-1], particle[pn].y[ny], val1, val2, yr);
   return val;
 }
-
-//**********************************************************************************************
-// Requires either a) A definition of the K bessel function
-// or b) the GSL (Gnu Scientific Library) installed.
-// Add the flags -lgsl -lgslcblas to the compilation to use the GSL library.
-// Thermal function that simulates most spectra given a finite temperature. Replaced
-// by the output of hydro in the real simulation
-
-//double thermalspectra(double pt, double T, double mass, double mu, double degen)
-//{
-//
-//  double spect = 0.0;
-//  double mT = sqrt(pt*pt + mass * mass);
-//  spect = degen/(4*M_PI*M_PI)*exp(mu/T)*mT *gsl_sf_bessel_K1(mT/T);
-//
-//  return spect;
-//}

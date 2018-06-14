@@ -20,7 +20,7 @@
 #define	HBARC3		(HBARC*HBARC*HBARC)
 #define FILEDIM         140
 
-void   readin(char filename[FILEDIM], int* particlemax, int* decaymax);
+void   readParticleData(char filename[FILEDIM], int* particlemax, int* decaymax);
 void   readSpectra(char  specfile[FILEDIM], int *particlemax, int *decaymax);
 void   writeSpectra(int particlemax, char outdir[FILEDIM]);
 double Edndp3(double yr, double ptr, double phirin, int res_num);
