@@ -420,8 +420,8 @@ double Edndp3(double yr, double ptr, double phirin, int res_num)
   while ( yr > particle[pn].y[ny] && ny < (particle[pn].ny - 1) ) ny++;
 
   /* phi interpolation */
-  double f1 = util->lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny-1][npT-1][nphi-1], particle[pn].dNdypTdpTdphi[ny-1][npT-1][nphi], phir);
-  double f2 = util->lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny-1][npT][nphi-1], particle[pn].dNdypTdpTdphi[ny-1][npT][nphi], phir);
+  double f1 = lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny-1][npT-1][nphi-1], particle[pn].dNdypTdpTdphi[ny-1][npT-1][nphi], phir);
+  double f2 = lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny-1][npT][nphi-1], particle[pn].dNdypTdpTdphi[ny-1][npT][nphi], phir);
 
   // security: if for some reason we got a negative number of particles
   // (happened in the viscous code at large eta sometimes)
@@ -435,10 +435,10 @@ double Edndp3(double yr, double ptr, double phirin, int res_num)
     f2 = log(f2);
   }
   */
-  double val1 = util->lin_int(particle[pn].pt[npT-1], particle[pn].pt[npT], f1, f2, ptr);
+  double val1 = lin_int(particle[pn].pt[npT-1], particle[pn].pt[npT], f1, f2, ptr);
   //if (ptr > PTCHANGE && f1s > 0 && f2s > 0) val1 = exp(val1);
-  f1 = util->lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny][npT-1][nphi-1], particle[pn].dNdypTdpTdphi[ny][npT-1][nphi], phir);
-  f2 = util->lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny][npT][nphi-1], particle[pn].dNdypTdpTdphi[ny][npT][nphi], phir);
+  f1 = lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny][npT-1][nphi-1], particle[pn].dNdypTdpTdphi[ny][npT-1][nphi], phir);
+  f2 = lin_int(PHI[nphi-1], PHI[nphi], particle[pn].dNdypTdpTdphi[ny][npT][nphi-1], particle[pn].dNdypTdpTdphi[ny][npT][nphi], phir);
 
   // security: if for some reason we got a negative number of particles
   // (happened in the viscous code at large eta sometimes)
@@ -453,8 +453,8 @@ double Edndp3(double yr, double ptr, double phirin, int res_num)
     f2 = log(f2);
   }
   */
-  double val2 = util->lin_int(particle[pn].pt[npT-1], particle[pn].pt[npT], f1, f2, ptr);
+  double val2 = lin_int(particle[pn].pt[npT-1], particle[pn].pt[npT], f1, f2, ptr);
   //if (ptr > PTCHANGE && f1s > 0 && f2s > 0) val2 = exp(val2);
-  double val = util->lin_int(particle[pn].y[ny-1], particle[pn].y[ny], val1, val2, yr);
+  double val = lin_int(particle[pn].y[ny-1], particle[pn].y[ny], val1, val2, yr);
   return val;
 }

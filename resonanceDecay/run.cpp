@@ -51,7 +51,7 @@ int main()
    //Read in the spectra and decays using "resoweak.dat" as a database of particles
    readSpectra(specFile, &max, &maxdecay);
    //The main module that calculates the resonance decay feed-down
-   calc_reso_decays(max, maxdecay, bound, boost_invariant);
+   calc_reso_decays(max, maxdecay, bound);
    //Writes the spectra to specified data files.
    writeSpectra(max,outdir);
 
