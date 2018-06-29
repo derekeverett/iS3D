@@ -22,25 +22,25 @@
 
 #define PTS3 12  /* normalization of 3-body decay */
 #define PTS4 12  /* inv. mass integral 3-body */
-
 #define PTN1 8
 #define PTN2 8  /* 2-body between the poles */
 
-// SB code !!!
-#define NUMDECAY 1700 /* size of array for storage of the decays */
-#define NUMPARTICLE 400 /*  size of array for storage of the particles */
-#define MAXINTV 20000000 /* size of arry for Montecarlo numbers */
-#define MHALF (MAXINTV/2)
-#define NY 200
-#define NPT 50 /* size of arry for storage of the pt-spectrum */
-#define NPHI 120 /* size of arry for storage of the y-spectrum */
-#define NPHI1 NPHI + 1
-#define PI 3.14159265358979323 /* any question? */
-#define ALPHA 0.00729735308 /* fine structure constant 1/137.035...*/
-#define HBARC 0.197327054 /* = plank constant times speed of light */
-#define HBARC3 (HBARC*HBARC*HBARC)
-#define FILEDIM 140
 
+//#define NUMDECAY 1700 /* size of array for storage of the decays */
+//#define NUMPARTICLE 400 /*  size of array for storage of the particles */
+//#define MAXINTV 20000000 /* size of arry for Montecarlo numbers */
+//#define MHALF (MAXINTV/2)
+//#define NY 200
+//#define NPT 50 /* size of arry for storage of the pt-spectrum */
+//#define NPHI 120 /* size of arry for storage of the y-spectrum */
+//#define NPHI1 NPHI + 1
+//#define PI 3.14159265358979323 /* any question? */
+//#define ALPHA 0.00729735308 /* fine structure constant 1/137.035...*/
+//#define HBARC 0.197327054 /* = plank constant times speed of light */
+//#define HBARC3 (HBARC*HBARC*HBARC)
+//#define FILEDIM 140
+
+//why is this declared here again??
 extern struct par
 {
   long int 	mcID;     /* Montecarlo number according PDG */
@@ -70,7 +70,7 @@ extern struct par
   double  slope[NPHI1];		/* assymtotic slope of mt-spectrum */
 }particle[NUMPARTICLE];
 
-extern double  PHI[NPHI];    /* Array for phi-storage */
+//extern double  PHI[NPHI];    /* Array for phi-storage */
 
 /* decay array for each decay listed */
 extern struct de

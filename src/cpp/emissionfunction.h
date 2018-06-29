@@ -7,6 +7,8 @@
 #include "main.h"
 #include "ParameterReader.h"
 #include "deltafReader.h"
+#include "particle.h"
+
 using namespace std;
 
 class EmissionFunctionArray
@@ -22,6 +24,7 @@ private:
   int INCLUDE_BARYON;
   int GROUP_PARTICLES;
   double PARTICLE_DIFF_TOLERANCE;
+  int LIGHTEST_PARTICLE; //mcid of lightest resonance to calculate in decay feed-down
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
@@ -41,13 +44,13 @@ public:
                         particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients df_in);
   ~EmissionFunctionArray();
 
-  void calculate_dN_ptdptdphidy(double *, double *, double *, double *,
+  void calculate_dN_pTdpTdphidy(double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double*, double*);
 
-  void calculate_dN_ptdptdphidy_VAH_PL(double *, double *, double *,
+  void calculate_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
   double *, double *, double *, double *, double *,
   double *, double *, double *, double *, double *,
   double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
@@ -55,6 +58,8 @@ public:
 
   void write_dN_pTdpTdphidy_toFile(); //write 3D spectra to file
   void calculate_spectra();
+
+  void do_resonance_decays();
 
 };
 

@@ -38,8 +38,6 @@ int main()
 
    int max, maxdecay, bound;
 
-   int boost_invariant = 0; //this should be read from parameters! FIX
-
    printf("Starting resonance decays \n");
    //Read in the data from parameters.dat, including the results folder and the spectra data
    paramFile = fopen("parameters.dat", "r");
