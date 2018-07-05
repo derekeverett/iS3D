@@ -550,7 +550,10 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf * surf
   if(df_mode == 3)
   {
     double T = surf_ptr[0].T / hbarC;                         // temperature in fm units
-    cout << T << endl;
+
+    //T = 0.155 * 5.067731; // fixed test
+
+    //cout << T << endl;
     double alphaB = 0.0;
     if(include_baryon) alphaB = surf_ptr[0].muB / surf_ptr[0].T;  // alphaB = muB / T
 
@@ -612,7 +615,11 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf * surf
       // load modified info
       particle[i].equilibrium_density = neq;
       particle[i].linearized_density_correction = nlinear_correction;
+
+      //cout << particle[i].mc_id << "\t\t" << setprecision(5) << particle[i].equilibrium_density << endl; 
    }
+
+   //exit(-1); 
   }
 
 
