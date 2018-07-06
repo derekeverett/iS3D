@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
   freeze_out_data.read_surf_switch(FO_length, surf_ptr);
 
   particle_info *particle = new particle_info [Maxparticle];
-  int Nparticle = freeze_out_data.read_resonances_list(particle); //number of resonances in pdf file
+  int Nparticle = freeze_out_data.read_resonances_list(particle); //number of resonances in pdg file
 
   cout << "Finished reading freezeout surface!" << endl;
 
@@ -70,11 +70,11 @@ int main(int argc, char *argv[])
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle, Nparticle, surf_ptr, FO_length, df);
 
   efa.calculate_spectra();
-
   //calculate resonance decays
   //or put this inside calculate_spectra function?
   int do_resonance_decays = paraRdr->getVal("do_resonance_decays");
   if (do_resonance_decays) efa.do_resonance_decays();
+
 
   delete [] surf_ptr;
   delete paraRdr;

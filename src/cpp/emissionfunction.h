@@ -16,6 +16,7 @@ class EmissionFunctionArray
 private:
   ParameterReader* paraRdr;
 
+  int OPERATION; // calculate smooth spectra or sample distributions
   int MODE; //vh or vah , ...
   int DF_MODE;  // delta-f type
   int DIMENSION; // hydro d+1 dimensions (2+1 or 3+1)
@@ -29,7 +30,8 @@ private:
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
   long FO_length;
-  double *dN_pTdpTdphidy; //to hold 3D spectra of all species
+  double *dN_pTdpTdphidy; //to hold smooth CF 3D spectra of all species
+  sampled_particle *particle_list; //to hold sampled particle list 
   int *chosen_particles_01_table; // has length Nparticle, 0 means miss, 1 means include
   int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table
   int Nparticles;
@@ -43,6 +45,19 @@ public:
   EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in,
                         particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients df_in);
   ~EmissionFunctionArray();
+
+  void sample_dN_pTdpTdphidy(double *, double *, double *, double *,
+    double *, double *, double *, double *, double *, double *, double *, double *, double *,
+    double *, double *, double *, double *,
+    double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
+    double *, double *, double *, double *, double *, double *, double *,
+    int, double *, double *, double *, double *);
+
+  void sample_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
+  double *, double *, double *, double *, double *,
+  double *, double *, double *, double *, double *,
+  double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
+  double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
   void calculate_dN_pTdpTdphidy(double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *,

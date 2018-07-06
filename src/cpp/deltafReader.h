@@ -22,11 +22,11 @@ typedef struct
 
   //  Coefficients of Chapman Enskog expansion (vhydro)
   // df ~ ((c0-c2)m^2 + b.c1(u.p) + (4c2-c0)(u.p)^2).Pi + (b.c3 + c4(u.p))p_u.V^u + c5.p_u.p_v.pi^uv
-  // double F;
-  // double G;
-  // double betabulk;
-  // double betaV;
-  // double betapi;
+  double F;
+  double G;
+  double betabulk;
+  double betaV;
+  double betapi;
 
 
 } deltaf_coefficients;

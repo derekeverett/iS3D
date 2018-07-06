@@ -12,7 +12,7 @@ Change logs: see arsenal.h
 #include <cmath>
 #include <iomanip>
 #include <cstdarg>
-
+#include <stdio.h> //for printf
 #include "arsenal.h"
 
 #define OUTPUT_PRECISION 10
@@ -1017,6 +1017,9 @@ void get_bin_average_and_count(istream& is, ostream& os, vector<double>* bins, l
 
 double aL_fit(double pl_peq_ratio)
 {
+  // calculates the anistropic parameter alphaL as a function of PL/Peq
+  // using the conformal factorization approximation
+
   double x = pl_peq_ratio;  // longitudinal pressure / equilibrium pressure
 
   double x2 = x * x;
@@ -1046,6 +1049,8 @@ double aL_fit(double pl_peq_ratio)
 
 double R200(double aL)
 {
+  // calculates the R200 function associated with kinetic energy density
+
   double result;
 
   double x = (1.0 / (aL * aL)) - 1.0;  // same as xi in conformal ahydro
@@ -1077,6 +1082,156 @@ double R200(double aL)
   return result;
 }
 
+
+
+
+
+// For solving matrix equation Mij.pmodj = pi
+
+void LUP_decomposition(double ** A, int n, int * pvector)
+{
+  // takes A and decomposes it into LU (with row permutations P)
+  // A = n x n matrix; function does A -> PA = LU; (L,U) of PA stored in same ** array
+  // n = size of A
+  // pvector = permutation vector; set initial pvector[i] = i (to track implicit partial pivoting)
+  //       function updates pvector if there are any rows exchanges in A (to be used on b in LUP_solve)
+
+  double EPS_MIN = 1.0e-16;
+
+  int i;     // rows
+  int j;     // columns
+  int k;     // dummy matrix index
+  int imax;  // pivot row index
+  double big;
+  double sum;
+  double temp;
+  double implicit_scale[n];
+
+  // Initialize permutation vector
+  // to default no-pivot values
+  for(i = 0; i < n; i++)
+  {
+    pvector[i] = i;
+  }
+  // Implicit scaling info. for A
+  for(i = 0; i < n; i++)
+  {
+    big = 0.0;
+    for(j = 0; j < n; j++)
+    {
+      temp = fabs(A[i][j]);
+      if(temp > big)
+      {
+        big = temp;  // update biggest element in the ith row
+      }
+    }
+    if(big == 0.0)
+    {
+      printf("Singular matrix in the routine");
+      break;
+    }
+    implicit_scale[i] = 1.0 / big;  // store implicit scale of row i (will be used later)
+  }
+  // LU Decomposition
+  for(j = 0; j < n; j++)
+  {
+    // loop rows i = 1 to j - 1
+    for(i = 0; i < j; i++)
+    {
+      sum = A[i][j];
+      for(k = 0; k < i; k++)
+      {
+        sum -= A[i][k] * A[k][j];
+      }
+      A[i][j] = sum;  // update U[i][j] elements
+    }
+
+    big = 0.0;          // initialize search for the largest normalized pivot in j column
+
+    // loop through rows i = j to n-1
+    for(i = j; i < n; i++)
+    {
+      sum = A[i][j];
+      for(k = 0; k < j; k++)
+      {
+        sum -= A[i][k] * A[k][j];
+      }
+      A[i][j] = sum;   // update U[j][j] and L[i][j] elements (no division in L yet until the pivot determined)
+
+      temp = implicit_scale[i] * fabs(sum);
+      if(temp >= big)
+      {
+        big = temp;  // searchs for the biggest normalized member (imax) in column j
+        imax = i;  // implicit scale * A[i][j] normalizes each row entry i in column j before comparing
+      }          // implicit scale different for each i, that's why it's important
+    }
+    if(j != imax)
+    {
+      // then exchange rows j and imax of A
+      for(k = 0; k < n; k++)
+        {
+          temp = A[imax][k];
+          A[imax][k] = A[j][k];
+          A[j][k] = temp;
+        }
+      implicit_scale[imax] = implicit_scale[j];   // interchange scaling
+    }
+
+    pvector[j] = imax;        // update permutation vector keeps track of pivot indices
+
+    if(A[j][j] == 0.0)
+    {
+      A[j][j] = EPS_MIN;        // matrix is singular
+    }
+    if(j != n-1)                  // there is no L[n,n] element
+    {
+      temp = 1.0 / A[j][j];     // divide L[i,j] elements by the pivot
+      for(i = j+1; i < n; i++)
+      {
+        A[i][j] *= temp;
+      }
+    }
+  }
+}
+
+void LUP_solve(double ** PA, int n, int pvector[], double b[])
+{
+  // input vector b is transformed to the solution x  of Ax = b
+  // PA is the input permutated matrix from LUP_decomposition (will not be updated here)
+  // input pvector comes from LUP_decomposition (generally not default); used to switch rows of b
+
+  // Forward substitution routine for Ly = b
+  for(int i = 0; i < n; i++)
+  {
+    int ip = pvector[i];     // permute b accordingly
+    double sum = b[ip];          // starting value given right b[ip]
+    b[ip] = b[i];                // switch value of b[ip] to b[i]
+    for(int j = 0; j < i; j++)
+    {
+      sum -= PA[i][j] * b[j];    // forward iteration
+    }
+    b[i] = sum;                  // update y and store in b
+  }
+
+  // Backward substitution routine for Ux = y
+  for(int i = n-1; i >= 0; i--)
+  {
+    double sum = b[i];
+    for(int j = i+1; j < n; j++)
+    {
+      sum -= PA[i][j] * b[j];       // backward iteration
+    }
+    b[i] = sum / PA[i][i];          // solution 
+  }
+}
+
+// for deallocating momentum matrix
+
+void free_2D(double ** M, int n)
+{
+  for(int i = 0; i < n; i++) free(M[i]);
+  free(M);
+}
 
 
 
