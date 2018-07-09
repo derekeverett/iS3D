@@ -11,6 +11,7 @@ dimension                 = 2     # this switch determines the dimensionality of
                                   # 2: boost invariant 2+1D
                                   # 3: full 3+1D
 
+<<<<<<< HEAD
 df_mode			  		  = 1	  # mode for type of delta-f correction
 			    	  			  # 1: 14-moment approximation viscous hydro
 			  	  				  # 2: Chapman-Enskog expansion viscous hydro
@@ -18,6 +19,15 @@ df_mode			  		  = 1	  # mode for type of delta-f correction
 			  	 				  # 4: 14-moment approximation vahydro (PL matching)
 			  	  				  # 5: Chapman-Enskog expansion vahydro (PL, PT matching)
 				  				  # 6: Modified anisotropic distribution
+=======
+df_mode			  = 4	  # mode for type of delta-f correction
+			    	  # 1: 14-moment approximation viscous hydro
+			  	  # 2: Chapman-Enskog expansion viscous hydro
+			  	  # 3: Modified equilibrium distribution
+			  	  # 4: 14-moment approximation vahydro (PL matching)
+			  	  # 5: Chapman-Enskog expansion vahydro (PL, PT matching)
+				  # 6: Modified anisotropic distribution
+>>>>>>> dc2f3d3450ee65b65414864f869a10b8712afba3
 
 include_baryon            = 0     # switch to include baryon chemical potential in distribution function
 include_bulk_deltaf       = 1     # switch to include delta f correction from bulk pressure (or residual bulk for VAH)
