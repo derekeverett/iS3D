@@ -31,7 +31,7 @@ private:
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
   long FO_length;
   double *dN_pTdpTdphidy; //to hold smooth CF 3D spectra of all species
-  sampled_particle *particle_list; //to hold sampled particle list 
+  sampled_particle *particle_list; //to hold sampled particle list
   int *chosen_particles_01_table; // has length Nparticle, 0 means miss, 1 means include
   int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table
   int Nparticles;
@@ -46,8 +46,8 @@ public:
                         particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients df_in);
   ~EmissionFunctionArray();
 
-  void sample_dN_pTdpTdphidy(double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *, double *, double *, double *,
+  void sample_dN_pTdpTdphidy(double *, double *, double *, double *, int *,
+    double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *,
@@ -72,6 +72,7 @@ public:
   double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
   void write_dN_pTdpTdphidy_toFile(); //write 3D spectra to file
+  void write_particle_list_toFile(); //write sampled particle list 
   void calculate_spectra();
 
   void do_resonance_decays();

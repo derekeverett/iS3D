@@ -29,7 +29,7 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS3D.e
 endif
 
-SRC   =	main.cpp arsenal.cpp emissionfunction.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp
+SRC   =	main.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp
 INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h gaussThermal.h
 
 
@@ -80,6 +80,8 @@ install:	$(TARGET)
 ./main.cpp: main.h Table.h readindata.h emissionfunction.h arsenal.h ParameterReader.h
 ./arsenal.cpp: arsenal.h
 ./emissionfunction.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
+./emissionfunction_smooth_kernels.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
+./emissionfunction_sampling_kernels.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
 ./Table.cpp: Table.h arsenal.h
 ./readindata.cpp: main.h readindata.h arsenal.h Table.h ParameterReader.h
 ./ParameterReader.cpp: arsenal.h ParameterReader.h
