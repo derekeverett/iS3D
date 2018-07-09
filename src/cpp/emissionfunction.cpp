@@ -409,7 +409,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     //for sampling, read in gla roots and weights
     FILE * gla_file;
     char header[300];
-    gla_file = fopen("tables/gla12_roots_weights_64_pts.dat", "r");
+    gla_file = fopen("tables/gla123_roots_weights_32_pts.dat", "r");
     if(gla_file == NULL) printf("Couldn't open Gauss-Laguerre roots/weights file\n");
 
     int pbar_pts;
@@ -422,6 +422,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     double pbar_weight1[pbar_pts];
     double pbar_root2[pbar_pts];
     double pbar_weight2[pbar_pts];
+    double pbar_root3[pbar_pts];
+    double pbar_weight3[pbar_pts];
 
     // skip the next 2 headers
     fgets(header, 100, gla_file);
@@ -483,7 +485,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             dat, dax, day, dan,
             pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
             muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-            pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
+            pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
           }
 
         } //if (MODE == 1)

@@ -35,13 +35,15 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
   double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo,
   double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff,
-  int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2)
+  int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2, double *pbar_root3, double *pbar_weight3)
   {
     printf("Sampling particles from VH \n");
 
     //double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
     int npart = number_of_chosen_particles;
     int particle_index = 0; //runs over all particles in final sampled particle list
+
+    double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
 
     int eta_pts = 1;
     if(DIMENSION == 2) eta_pts = eta_tab_length;
@@ -63,12 +65,50 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
     }
 
-    //get viscous correction coefficients
-    double F        = df_coeff[0];
-    double G        = df_coeff[1];
-    double betabulk = df_coeff[2];
-    double betaV    = df_coeff[3];
-    double betapi   = df_coeff[4];
+    // set df coefficients (viscous corrections)
+    double c0 = 0.0;
+    double c1 = 0.0;
+    double c2 = 0.0;
+    double c3 = 0.0;
+    double c4 = 0.0;
+    double F = 0.0;
+    double G = 0.0;
+    double betabulk = 0.0;
+    double betaV = 0.0;
+    double betapi = 0.0;
+
+    switch(DF_MODE)
+    {
+      case 1: // 14-moment
+      {
+        // bulk coefficients
+        c0 = df_coeff[0];
+        c1 = df_coeff[1];
+        c2 = df_coeff[2];
+        // diffusion coefficients
+        c3 = df_coeff[3];
+        c4 = df_coeff[4];
+        // shear coefficient evaluated later
+        break;
+      }
+      case 2: // Chapman-Enskog
+      {
+        // bulk coefficients
+        F = df_coeff[0];
+        G = df_coeff[1];
+        betabulk = df_coeff[2];
+        // diffusion coefficient
+        betaV = df_coeff[3];
+        // shear coefficient
+        betapi = df_coeff[4];
+        break;
+      }
+      default:
+      {
+        cout << "Please choose df_mode = 1 or 2 in parameters.dat" << endl;
+        exit(-1);
+      }
+    }
 
     //loop over all freezeout cells
     for (int icell = 0; icell < FO_length; icell++)
@@ -123,6 +163,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double Vx = 0.0;
       double Vy = 0.0;
       double Vn = 0.0;
+      double Vdotdsigma = 0.0;
+      double baryon_enthalpy_ratio = 0.0;
 
       if(INCLUDE_BARYON)
       {
@@ -136,13 +178,16 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           Vx = Vx_fo[icell];
           Vy = Vy_fo[icell];
           Vn = Vn_fo[icell];
+          baryon_enthalpy_ratio = nB / (E + P);
+          // V^\mu d^3sigma_\mu
+          Vdotdsigma = dat*Vt + dax*Vx + day*Vy + dan*Vn;
         }
       }
 
       //common prefactor
       double udotdsigma = dat*ut + dax*ux + day*uy + dan*un;
-      double num_factor = 1.0 / 2.0 / M_PI / M_PI / hbarC / hbarC / hbarC;
-      double prefactor = num_factor * udotdsigma * T;
+      //double num_factor = 1.0 / 2.0 / M_PI / M_PI / hbarC / hbarC / hbarC;
+      //double prefactor = num_factor * udotdsigma * T;
 
       //the total mean number of particles (all species) for the FO cell
       double dN_tot = 0.0;
@@ -168,38 +213,100 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           chem = baryon * muB;
         }
 
-        //first calculate thermal equil. number of particles
-        double sum = 0.0;
-        double dN_thermal = 0.0;
+        // first calculate thermal equilibrium particles
+          double neq = 0.0;
+          double dN_thermal = 0.0;
 
-        //for light particles need more than leading order term in BE or FD expansion
-        int sum_max = 2;
-        if ( mass / T < 2.0 ) sum_max = 10;
+          // for light particles need more than leading order term in BE or FD expansion
+          int kmax = 2;
+          if(mass / T < 2.0) kmax = 10;
 
-        for (int kk = 1; kk < sum_max; kk++) //truncate expansion of BE or FD distribution
-        {
-          double k = (double)kk;
-          sum += pow(-sign, kk+1) * exp(k * chem / T) * gsl_sf_bessel_Kn(2, k*mbar) / k;
-        }
-        dN_thermal = prefactor * sum * degeneracy * mass2;
+          double sign_factor = -sign;
 
-        //correction from bulk pressure
-        double dN_bulk = 0.0;
-        if (INCLUDE_BULK_DELTAF)
-        {
-          double N10_fact = pow(T,3) / (2.0 * M_PI * M_PI) / hbarC / hbarC / hbarC;
-          double J20_fact = pow(T,4) / (2.0 * M_PI * M_PI) / hbarC / hbarC / hbarC;
-          double N10 = degeneracy * N10_fact * GaussThermal(N10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-          double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
-          dN_bulk = (bulkPi / betabulk) * ( dN_thermal + (N10 * G) + (J20 * F / pow(T,2)) );
-        }
+          for(int k = 1; k < kmax; k++) // truncate expansion of BE or FD distribution
+          {
+            double m = (double)k;
+            sign_factor *= (-sign);
+            //neq += (pow(-sign, k+1) * exp(n * chem / T) * gsl_sf_bessel_Kn(2, n * mbar) / n);
+            //cout << "Here" << endl;
+            neq += (sign_factor * exp(m * alphaB) * gsl_sf_bessel_Kn(2, m * mbar) / m);
+          }
+          neq *= (degeneracy * mass2 * T / two_pi2_hbarC3);
 
-        //correction from diffusion current
-        double dN_diff = 0.0;
-        if (INCLUDE_BARYONDIFF_DELTAF)
-        {
+          dN_thermal = udotdsigma * neq;
 
-        }
+          // bulk pressure: density correction
+            double dN_bulk = 0.0;
+            if(INCLUDE_BULK_DELTAF)
+            {
+              switch(DF_MODE)
+              {
+                case 1: // 14 moment (not yet finished, work out the code stupid :P)
+                {
+                  double J10_fact = pow(T,3) / two_pi2_hbarC3;
+                  double J20_fact = pow(T,4) / two_pi2_hbarC3;
+                  double J30_fact = pow(T,5) / two_pi2_hbarC3;
+                  double J10 = degeneracy * J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+                  double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+                  double J30 = degeneracy * J30_fact * GaussThermal(J30_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+
+                  dN_bulk = udotdsigma * bulkPi * ((c0 - c2) * mass2 * J10 + (c1 * baryon * J20) + (4.0 * c2 - c0) * J30);
+                  break;
+                }
+                case 2: // Chapman-Enskog
+                {
+                  double J10_fact = pow(T,3) / two_pi2_hbarC3;
+                  double J20_fact = pow(T,4) / two_pi2_hbarC3;
+                  double J10 = degeneracy * J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+                  double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+                  dN_bulk = udotdsigma * (bulkPi / betabulk) * (neq + (baryon * J10 * G) + (J20 * F / T / T));
+
+                  break;
+                }
+                default:
+                {
+                  cout << "Please choose df_mode = 1 or 2 in parameters.dat" << endl;
+                  exit(-1);
+                }
+              }
+
+            }
+
+            // baryon diffusion: density correction
+              double dN_diff = 0.0;
+              if(INCLUDE_BARYONDIFF_DELTAF)
+              {
+                switch(DF_MODE)
+                {
+                  case 1: // 14 moment
+                  {
+                    // it's probably faster to use J31
+                    double J31_fact = pow(T,5) / two_pi2_hbarC3 / 3.0;
+                    double J31 = degeneracy * J31_fact * GaussThermal(J31_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+                    // these coefficients need to be loaded.
+                    // c3 ~ cV / V
+                    // c4 ~ 2cW / V
+                    dN_diff = - (Vdotdsigma / betaV) * ((baryon * c3 * neq * T) + (c4 * J31));
+
+                    break;
+                  }
+                  case 2: // Chapman Enskog
+                  {
+                    double J11_fact = pow(T,3) / two_pi2_hbarC3 / 3.0;
+                    double J11 = degeneracy * J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+                    dN_diff = - (Vdotdsigma / betaV) * (neq * T * baryon_enthalpy_ratio - baryon * J11);
+
+                    break;
+                  }
+                  default:
+                  {
+                    cout << "Please choose df_mode = 1 or 2 in parameters.dat" << endl;
+                    exit(-1);
+                  }
+                }
+              }
+
+
 
         //add them up
         //this is the mean number of particles of species ipart
