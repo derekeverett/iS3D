@@ -80,7 +80,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     //a class member to hold the particle list for sampling
     //how big does this need to be? probably need to make it a vector instead so we can resize it...
-    particle_list[10000];
+    particle_list = new sampled_particle [10000];
 
     for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
 
@@ -141,6 +141,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     delete[] chosen_particles_01_table;
     delete[] chosen_particles_sampling_table;
     delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
+    delete[] particle_list; //for holding particle list of sampled particles
   }
 
   void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
@@ -196,7 +197,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           etaValues[0] = eta_fo[icell];     // spacetime rapidity from surface file
         }
 
-        //FIX THIS
+        //FIX THIS - NEED A LOOP OVER ETA FOR CASE OF 2D SURFACE
         double eta = etaValues[0];
         //FIX THIS
 
@@ -265,6 +266,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         //loop over all species
         for (int ipart = 0; ipart < npart; ipart++)
         {
+          //printf("ipart = %d \n", ipart);
           // set particle properties
           double mass = Mass[ipart];    // (GeV)
           double mass2 = mass * mass;
@@ -298,11 +300,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           double dN_bulk = 0.0;
           if (INCLUDE_BULK_DELTAF)
           {
+            //printf("starting bulk\n");
             double N10_fact = pow(T,3) / (2.0 * M_PI * M_PI) / hbarC / hbarC / hbarC;
             double J20_fact = pow(T,4) / (2.0 * M_PI * M_PI) / hbarC / hbarC / hbarC;
             double N10 = degeneracy * N10_fact * GaussThermal(N10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
             double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
             dN_bulk = (bulkPi / betabulk) * ( dN_thermal + (N10 * G) + (J20 * F / pow(T,2)) );
+            //printf("finished bulk\n");
           }
 
           //correction from diffusion current
@@ -319,7 +323,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           //save to a list to later sample inidividual species
           density_list[ipart] = dN;
 
-          //add this to the total number of hadrons for the FO cell
+          //add this to the total mean number of hadrons for the FO cell
           dN_tot += dN;
 
       }
@@ -342,8 +346,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
       for (int n = 0; n < N_hadrons; n++)
       {
+        //printf("n = %d \n", n);
         int idx_sampled = particle_numbers(gen2); //this gives the index of the sampled particle
-        //printf("idx_sampled = %d\n", idx_sampled);
+        //printf("idx_sampled = %d \n", idx_sampled);
 
         //get the mass of the sampled particle
         double mass = Mass[idx_sampled];  // (GeV)
@@ -355,6 +360,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         //sample the momentum from distribution using Scott Pratt Trick
         //stuff
 
+        //printf("particle_index = %d \n", particle_index);
         //set coordinates of production to FO cell coords
         particle_list[particle_index].tau = tau;
         //TO DO
