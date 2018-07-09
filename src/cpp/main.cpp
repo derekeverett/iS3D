@@ -22,13 +22,14 @@ int main(int argc, char *argv[])
 {
   cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
   cout << "Derek Everett, Sameed Pervaiz, Mike McNelis and Lipei Du (2018)" << endl;
-  cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu" << endl;
+  cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu\n" << endl;
   // Read-in parameters
-  cout << "Reading in Parameters from parameters.dat" << endl;
+  cout << "Reading in parameters from parameters.dat:" << endl;
   ParameterReader *paraRdr = new ParameterReader;
   paraRdr->readFromFile("parameters.dat");
   paraRdr->readFromArguments(argc, argv);
   paraRdr->echo();
+  printline();
 
   string pathToInput = "input";
   //string pathToOutput = "results";
@@ -39,6 +40,7 @@ int main(int argc, char *argv[])
   long FO_length = 0;
   FO_length = freeze_out_data.get_number_cells();
   cout << "Total number of freezeout cells: " <<  FO_length << endl;
+  printline();
 
   FO_surf* surf_ptr = new FO_surf[FO_length];
 
@@ -46,8 +48,6 @@ int main(int argc, char *argv[])
 
   particle_info *particle = new particle_info [Maxparticle];
   int Nparticle = freeze_out_data.read_resonances_list(particle); //number of resonances in pdg file
-
-  cout << "Finished reading freezeout surface!" << endl;
 
   // load delta-f coefficients:
   deltaf_coefficients df;
@@ -57,12 +57,16 @@ int main(int argc, char *argv[])
   DeltafReader deltaf(paraRdr, pathTodeltaf);
   df = deltaf.load_coefficients(surf_ptr, FO_length);
 
+  cout << "\nFinished reading files!" << endl;
+  printline();
+
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
   //perhaps switch to a different method of reading in the chosen_particles.dat file that doesn't
   //have this undesirable feature
   Table chosen_particles("PDG/chosen_particles.dat"); // skip others except for these particles
 
-  cout << "Number of chosen particles : " << chosen_particles.getNumberOfRows() << endl;
+  cout << "Number of chosen particles: " << chosen_particles.getNumberOfRows() << endl;
+  printline(); 
   Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
@@ -79,6 +83,7 @@ int main(int argc, char *argv[])
   delete [] surf_ptr;
   delete paraRdr;
 
-  cout << "Done Calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
+  printline();
+  cout << "Done calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
 
 }

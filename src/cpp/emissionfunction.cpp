@@ -147,7 +147,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
   void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
   {
-    printf("writing to file\n");
+    printf(" -- Writing thermal distributions to file...\n");
     //write 3D spectra in block format, different blocks for different species,
     //different sublocks for different values of rapidity
     //rows corespond to phip and columns correspond to pT
@@ -190,7 +190,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
   void EmissionFunctionArray::write_particle_list_toFile()
   {
-    printf("writing particle list to file\n");
+    printf(" -- Writing sampled particles list to file...\n");
     char filename[255] = "";
     sprintf(filename, "results/particle_list.dat");
     ofstream spectraFile(filename, ios_base::app);
@@ -214,7 +214,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   //*********************************************************************************************
   void EmissionFunctionArray::calculate_spectra()
   {
-    cout << "calculate_spectra() has started... " << endl;
+    cout << "calculate_spectra() has started:" << endl;
     Stopwatch sw;
     sw.tic();
 
@@ -430,7 +430,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     fgets(header, 100, gla_file);
 
     // load roots/weights
-    for (int i = 0; i < pbar_pts; i++) fscanf(gla_file, "%lf\t\t%lf\t\t%lf\t\t%lf\n", &pbar_root1[i], &pbar_weight1[i], &pbar_root2[i], &pbar_weight2[i]);
+    for (int i = 0; i < pbar_pts; i++) fscanf(gla_file, "%lf\t\t%lf\t\t%lf\t\t%lf\t\t%lf\t\t%lf\n", &pbar_root1[i], &pbar_weight1[i], &pbar_root2[i], &pbar_weight2[i], &pbar_root3[i], &pbar_weight3[i]);
 
     // close file
     fclose(gla_file);
@@ -441,159 +441,247 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     double df_coeff[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
-    if(MODE == 1)
+
+    if(MODE == 1) // viscous hydro 
     {
-      // 14-moment vhydro
-      if(DF_MODE == 1)
+      switch(DF_MODE)
       {
-        df_coeff[0] = df.c0;
-        df_coeff[1] = df.c1;
-        df_coeff[2] = df.c2;
-        df_coeff[3] = df.c3;
-        df_coeff[4] = df.c4;
-
-        // print coefficients
-        cout << "c0 = " << df_coeff[0] << "\tc1 = " << df_coeff[1] << "\tc2 = " << df_coeff[2] << "\tc3 = " << df_coeff[3] << "\tc4 = " << df_coeff[4] << endl;
-      }
-      else if (DF_MODE == 2 || DF_MODE == 3)
-
-      {
-        df_coeff[0] = df.F;
-        df_coeff[1] = df.G;
-        df_coeff[2] = df.betabulk;
-        df_coeff[3] = df.betaV;
-        df_coeff[4] = df.betapi;
-
-        // print coefficients
-        cout << "F = " << df_coeff[0] << "\tG = " << df_coeff[1] << "\tbetabulk = " << df_coeff[2] << "\tbetaV = " << df_coeff[3] << "\tbetapi = " << df_coeff[4] << endl;
-      }
-
-      if (OPERATION == 1)
-      {
-        // launch function to perform integrations - this should be readily parallelizable (VH)
-        calculate_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon,
-          T, P, E, tau, eta, ut, ux, uy, un,
-          dat, dax, day, dan,
-          pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-          muB, nB, Vt, Vx, Vy, Vn, df_coeff);
-        }
-
-        else if (OPERATION == 2)
+        case 1: // 14-moment
         {
-          sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
-            T, P, E, tau, x, y, eta, ut, ux, uy, un,
-            dat, dax, day, dan,
-            pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-            muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-            pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
-          }
+          df_coeff[0] = df.c0;
+          df_coeff[1] = df.c1;
+          df_coeff[2] = df.c2;
+          df_coeff[3] = df.c3;
+          df_coeff[4] = df.c4;
 
-        } //if (MODE == 1)
+          // print coefficients
+          //cout << "c0 = " << df_coeff[0] << "\tc1 = " << df_coeff[1] << "\tc2 = " << df_coeff[2] << "\tc3 = " << df_coeff[3] << "\tc4 = " << df_coeff[4] << endl;
 
-        else if(MODE == 2)
-        {
-          if (OPERATION == 1)
+          switch(OPERATION)
           {
-            // launch function to perform integrations (VAH_PL)
-            calculate_dN_pTdpTdphidy_VAH_PL(Mass, Sign, Degen,
+            case 1: // thermal
+            {
+              calculate_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon,
+              T, P, E, tau, eta, ut, ux, uy, un,
+              dat, dax, day, dan,
+              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff);
+              break;
+            }
+            case 2: // sample
+            {
+              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
+              T, P, E, tau, x, y, eta, ut, ux, uy, un,
+              dat, dax, day, dan,
+              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+              break;
+            }
+            default:
+            {
+              cout << "Set operation to 1 or 2" << endl;
+              exit(-1); 
+            }
+          }
+          break;
+        }
+        case 2: // Chapman Enskog
+        {
+          df_coeff[0] = df.F;
+          df_coeff[1] = df.G;
+          df_coeff[2] = df.betabulk;
+          df_coeff[3] = df.betaV;
+          df_coeff[4] = df.betapi;
+
+          // print coefficients
+          //cout << "F = " << df_coeff[0] << "\tG = " << df_coeff[1] << "\tbetabulk = " << df_coeff[2] << "\tbetaV = " << df_coeff[3] << "\tbetapi = " << df_coeff[4] << endl;
+
+          switch(OPERATION)
+          {
+            case 1: // thermal
+            {
+              calculate_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon,
+              T, P, E, tau, eta, ut, ux, uy, un,
+              dat, dax, day, dan,
+              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff);
+              break;
+            }
+            case 2: // sample
+            {
+              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
+              T, P, E, tau, x, y, eta, ut, ux, uy, un,
+              dat, dax, day, dan,
+              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+              break;
+            }
+            default:
+            {
+              cout << "Set operation to 1 or 2" << endl;
+              exit(-1); 
+            }
+          }          
+          break;
+        }
+        case 3: // modified
+        {
+          df_coeff[0] = df.F;
+          df_coeff[1] = df.G;
+          df_coeff[2] = df.betabulk;
+          df_coeff[3] = df.betaV;
+          df_coeff[4] = df.betapi;
+
+          // print coefficients
+          //cout << "F = " << df_coeff[0] << "\tG = " << df_coeff[1] << "\tbetabulk = " << df_coeff[2] << "\tbetaV = " << df_coeff[3] << "\tbetapi = " << df_coeff[4] << endl;
+
+          switch(OPERATION)
+          {
+            case 1: // thermal
+            {
+              calculate_dN_ptdptdphidy_feqmod(Mass, Sign, Degen, Baryon,
+              T, P, E, tau, eta, ux, uy, un,
+              dat, dax, day, dan,
+              pixx, pixy, pixn, piyy, piyn, bulkPi,
+              muB, nB, Vx, Vy, Vn, df_coeff, pbar_pts, pbar_root1, pbar_root2, pbar_weight1, pbar_weight2);
+                break;
+            }
+            case 2: // sample
+            {
+
+              // work out feqmod sampler stupid :P 
+
+              break;
+            }
+            default:
+            {
+              cout << "Set operation to 1 or 2" << endl;
+              exit(-1); 
+            }
+          }
+          break;
+        }
+        default:
+        {
+          cout << "Please specify df_mode = (1,2,3) in parameters.dat..." << endl;
+          exit(-1);
+        }
+      }
+    } //if (MODE == 1)
+    else if(MODE == 2)
+    {
+      switch(OPERATION)
+      {
+        case 1: // thermal
+        {
+          calculate_dN_pTdpTdphidy_VAH_PL(Mass, Sign, Degen,
               tau, eta, ux, uy, un,
               dat, dax, day, dan, T,
               pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
               Wx, Wy, Lambda, aL, c0, c1, c2, c3, c4);
-            }
 
-            else if (OPERATION == 2)
-            {
-              sample_dN_pTdpTdphidy_VAH_PL(Mass, Sign, Degen,
+          break;
+        }
+        case 2: // sample
+        {
+          sample_dN_pTdpTdphidy_VAH_PL(Mass, Sign, Degen,
                 tau, eta, ux, uy, un,
                 dat, dax, day, dan, T,
                 pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
                 Wx, Wy, Lambda, aL, c0, c1, c2, c3, c4);
-              }
+          break;
+        }
+        default:
+        {
+          cout << "Please specify df_mode = (1,2,3) in parameters.dat..." << endl;
+          exit(-1);
+        }
+      }
+    }
 
-            }
+    //write the results to file
+    if (OPERATION == 1) write_dN_pTdpTdphidy_toFile();
+    else if (OPERATION == 2) write_particle_list_toFile();
 
-            //write the results to file
-            if (OPERATION == 1) write_dN_pTdpTdphidy_toFile();
-            else if (OPERATION == 2) write_particle_list_toFile();
+    cout << " -- Freeing memory..." << endl;
+    // free memory
+    free(Mass);
+    free(Sign);
+    free(Baryon);
 
-            cout << "Freeing memory" << endl;
-            // free memory
-            free(Mass);
-            free(Sign);
-            free(Baryon);
+    if(MODE == 1)
+    {
+      free(E);
+      free(T);
+      free(P);
+    }
 
-            if(MODE == 1)
-            {
-              free(E);
-              free(T);
-              free(P);
-            }
+    free(tau);
+    free(eta);
+    free(ut);
+    free(ux);
+    free(uy);
+    free(un);
+    free(dat);
+    free(dax);
+    free(day);
+    free(dan);
+    free(pitt);
+    free(pitx);
+    free(pity);
+    free(pitn);
+    free(pixx);
+    free(pixy);
+    free(pixn);
+    free(piyy);
+    free(piyn);
+    free(pinn);
+    free(bulkPi);
 
-            free(tau);
-            free(eta);
-            free(ut);
-            free(ux);
-            free(uy);
-            free(un);
-            free(dat);
-            free(dax);
-            free(day);
-            free(dan);
-            free(pitt);
-            free(pitx);
-            free(pity);
-            free(pitn);
-            free(pixx);
-            free(pixy);
-            free(pixn);
-            free(piyy);
-            free(piyn);
-            free(pinn);
-            free(bulkPi);
+    if (INCLUDE_BARYON)
+    {
+      free(muB);
+      if (INCLUDE_BARYONDIFF_DELTAF)
+      {
+        free(nB);
+        free(Vt);
+        free(Vx);
+        free(Vy);
+        free(Vn);
+      }
+    }
+    if(MODE == 2)
+    {
+      free(PL);
+      free(Wx);
+      free(Wy);
+      free(Lambda);
+      free(aL);
+      if (DF_MODE == 4)
+      {
+        free(c0);
+        free(c1);
+        free(c2);
+        free(c3);
+        free(c4);
+      }
+    }
+    sw.toc();
+    cout << " -- calculate_spectra() finished " << sw.takeTime() << " seconds." << endl;
+  }
 
-            if (INCLUDE_BARYON)
-            {
-              free(muB);
-              if (INCLUDE_BARYONDIFF_DELTAF)
-              {
-                free(nB);
-                free(Vt);
-                free(Vx);
-                free(Vy);
-                free(Vn);
-              }
-            }
-            if(MODE == 2)
-            {
-              free(PL);
-              free(Wx);
-              free(Wy);
-              free(Lambda);
-              free(aL);
-              if (DF_MODE == 4)
-              {
-                free(c0);
-                free(c1);
-                free(c2);
-                free(c3);
-                free(c4);
-              }
-            }
-            sw.toc();
-            cout << " -- calculate_spectra() finished " << sw.takeTime() << " seconds." << endl;
-          }
+  void EmissionFunctionArray::do_resonance_decays()
+  {
+    printf("Starting resonance decays \n");
 
-          void EmissionFunctionArray::do_resonance_decays()
-          {
-            printf("Starting resonance decays \n");
+    //declare a particle struct to hold all the particle info
+    particle particles[10];
 
-            //declare a particle struct to hold all the particle info
-            particle particles[10];
-
-            //read the in the resonance info
-            //int max, maxdecay;
-            //readParticleData("PDG/pdg.dat", &max, &maxdecay, particles)
-            //calc_reso_decays(max, maxdecay, LIGHTEST_PARTICLE);
-            printf("Resonance decays finished \n");
-          }
+    //read the in the resonance info
+    //int max, maxdecay;
+    //readParticleData("PDG/pdg.dat", &max, &maxdecay, particles)
+    //calc_reso_decays(max, maxdecay, LIGHTEST_PARTICLE);
+    printf("Resonance decays finished \n");
+  }

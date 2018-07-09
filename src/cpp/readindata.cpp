@@ -54,6 +54,7 @@ void FO_data_reader::read_surf_switch(long length, FO_surf* surf_ptr)
 //THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! baryon number, baryon chemical potential at the end...
 void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
 {
+  cout << "Reading in freezeout surface (vhydro)..." << endl;
   ostringstream surfdat_stream;
   double dummy;
   surfdat_stream << pathToInput << "/surface.dat";
@@ -220,6 +221,8 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
 void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
 {
   // vahydro: Dennis' version
+  cout << "Reading in freezeout surface (vahydro 1.0)..." << endl;
+
   ostringstream surface_file;
   surface_file << pathToInput << "/surface.dat";      // stream "input/surface.dat" to surface_file
   ifstream surface_data(surface_file.str().c_str());  // open surface.dat
@@ -464,7 +467,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle)
 {
   double eps = 1e-15;
   int Nparticle=0;
-  cout << " -- Read in particle resonance decay table...";
+  cout << "Reading in particle data group file..." << endl;
   ifstream resofile("PDG/pdg.dat");
   int local_i = 0;
   int dummy_int;

@@ -14,7 +14,8 @@
 #CC = g++-7 #Mac OSX high sierra
 #CC = pgc++
 CC = g++
-CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas -lm
+CFLAGS= -std=c++11 -march=native -O3 -lgsl -lgslcblas -lm
+#CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas -lm
 #CFLAGS= -acc -fast -Minfo -ta=nvidia,time
 #CFLAGS= -acc -fast -ta=tesla:managed #uses unified memory - simplifies copying of dynamic arrays host <-> device
 

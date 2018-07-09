@@ -40,11 +40,11 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
   if(include_baryon) muB_FO = surface[0].muB / hbarC;
 
 
-  printf("Reading in...");
+  printf("Reading in ");
 
   if(df_mode == 1)
   {
-    printf("14-moment coefficients (vhydro)\n");
+    printf("14-moment coefficients (vhydro)...\n");
     // coefficient files and names
     FILE * c0_file;
     FILE * c1_file;
@@ -94,7 +94,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
 
     if(!include_baryon) nB = 1;
 
-    cout << nT << "\t" << nB << endl;
+    //cout << nT << "\t" << nB << endl;
 
     // skip the headers
     fgets(header, 100, c0_file);
@@ -166,7 +166,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
   }
   else if(df_mode == 2 || df_mode == 3)
   {
-    printf("Chapman-Enskog coefficients (vhydro)\n");
+    printf("Chapman-Enskog coefficients (vhydro)...\n");
 
     // coefficient files and names
     FILE * F_file;
@@ -217,7 +217,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
 
     if(!include_baryon) nB = 1;
 
-    cout << nT << "\t" << nB << endl;
+    //cout << nT << "\t" << nB << endl;
 
     // skip the headers
     fgets(header, 100, F_file);
@@ -287,7 +287,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
   }
   else if(df_mode == 4)
   {
-    printf("14-moment coefficients (vahydro PL)\n");
+    printf("14-moment coefficients (vahydro PL)...\n");
 
     // coefficient files and names
     FILE * c0_file;
@@ -333,7 +333,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
     fscanf(c3_file, "%d\n%d\n", &nL, &naL);
     fscanf(c4_file, "%d\n%d\n", &nL, &naL);
 
-    cout << nL << "\t" << naL << endl;
+    //cout << nL << "\t" << naL << endl;
 
     //skip the header with labels and units
     fgets(header, 100, c0_file);
