@@ -5,3 +5,4 @@ input
 tags
 parameters.dat
 *.e
+src/cpp/GNUMakefile
