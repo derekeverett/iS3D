@@ -10,6 +10,7 @@
 
 using namespace std;
 
+void printline(); 
 double sixPoint2dInterp(double x, double y,
     double v00, double v01, double v02, double v10, double v11, double v20);
 
