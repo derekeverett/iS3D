@@ -3,6 +3,5 @@ input
 *.o
 *.out
 tags
-parameters.dat
 *.e
 src/cpp/GNUMakefile
