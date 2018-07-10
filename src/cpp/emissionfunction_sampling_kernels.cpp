@@ -340,21 +340,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     std::random_device gen1;
     std::random_device gen2;
 
-    /*
-    std::random_device r1; //r1,r2,r3 used for sampling momenta w/ Scott Pratt's Trick
-    std::random_device r2;
-    std::random_device r3;
-    */
-    
-    //r1,r2,r3 for sampling momenta w/ Scott Pratt's trick
-    double r1 = rand() / RAND_MAX;
-    double r2 = rand() / RAND_MAX;
-    double r3 = rand() / RAND_MAX;
-
-
-    //deterministic random number generator
-    //std::mt19937 gen(1701);
-
     //FIX
 
     std::poisson_distribution<> poisson_distr(dN_tot);
@@ -380,6 +365,17 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       //sample the momentum from distribution using Scott Pratt Trick
       //sample momenta for the massless case
+
+      /*
+      std::random_device r1; //r1,r2,r3 used for sampling momenta w/ Scott Pratt's Trick
+      std::random_device r2;
+      std::random_device r3;
+      */
+
+      //r1,r2,r3 for sampling momenta w/ Scott Pratt's trick
+      double r1 = rand() / RAND_MAX;
+      double r2 = rand() / RAND_MAX;
+      double r3 = rand() / RAND_MAX;
 
       double p_lrf = -T * log( r1 * r2 * r3 );
       double costh_lrf = ( log(r1) - log(r2) ) / ( log(r1) + log(r2) );
