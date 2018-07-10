@@ -35,19 +35,19 @@ class sampled_particle
 public:
 
   //PDG ID number
-  int mcID;
+  int mcID = 0;
 
   //milne coordinate four vector of particle production point
-  double tau;
-  double x;
-  double y;
-  double eta;
+  double tau = 0.0;
+  double x = 0.0;
+  double y = 0.0;
+  double eta = 0.0;
 
   //cartesian momentum four vector
-  double E;
-  double px;
-  double py;
-  double pz;
+  double E = 0.0;
+  double px = 0.0;
+  double py = 0.0;
+  double pz = 0.0;
 };
 
 #endif
