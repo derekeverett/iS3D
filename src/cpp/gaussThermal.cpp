@@ -1,6 +1,6 @@
 
 #include <stdlib.h>
-#include <math.h>
+#include <cmath>
 #include "gaussThermal.h"
 
 // gauss integration routine

@@ -7,6 +7,8 @@
 #include <vector>
 #include <stdio.h>
 #include <random>
+#include <chrono>
+#include <limits>
 #include <array>
 #ifdef _OMP
 #include <omp.h>
@@ -21,9 +23,9 @@
 #include <gsl/gsl_sf_bessel.h> //for modified bessel functions
 #include "gaussThermal.h"
 #include "particle.h"
-#ifdef _OPENACC
-#include <accelmath.h>
-#endif
+//#ifdef _OPENACC
+//#include <accelmath.h>
+//#endif
 #define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
 
 //#define FORCE_F0
@@ -340,21 +342,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     std::random_device gen1;
     std::random_device gen2;
 
-    /*
-    std::random_device r1; //r1,r2,r3 used for sampling momenta w/ Scott Pratt's Trick
-    std::random_device r2;
-    std::random_device r3;
-    */
-    
-    //r1,r2,r3 for sampling momenta w/ Scott Pratt's trick
-    double r1 = rand() / RAND_MAX;
-    double r2 = rand() / RAND_MAX;
-    double r3 = rand() / RAND_MAX;
-
-
-    //deterministic random number generator
-    //std::mt19937 gen(1701);
-
     //FIX
 
     std::poisson_distribution<> poisson_distr(dN_tot);
@@ -381,15 +368,38 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       //sample the momentum from distribution using Scott Pratt Trick
       //sample momenta for the massless case
 
-      double p_lrf = -T * log( r1 * r2 * r3 );
-      double costh_lrf = ( log(r1) - log(r2) ) / ( log(r1) + log(r2) );
-      double phi_lrf = 2 * M_PI * pow( log(r1 * r2) , 2 ) /  pow( log(r1 * r2 * r3) , 2 );
+      /*
+      std::random_device r1; //r1,r2,r3 used for sampling momenta w/ Scott Pratt's Trick
+      std::random_device r2;
+      std::random_device r3;
+      */
+
+      //r1,r2,r3 for sampling momenta w/ Scott Pratt's trick
+      unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+      std::default_random_engine generator (seed);
+      //generate_canonical gives a number in [0,1) so that we don't accidentally try log(0)
+      double r1 = 1.0 - std::generate_canonical<double,std::numeric_limits<double>::digits>(generator);
+      double r2 = 1.0 - std::generate_canonical<double,std::numeric_limits<double>::digits>(generator);
+      double r3 = 1.0 - std::generate_canonical<double,std::numeric_limits<double>::digits>(generator);
+
+      double l1 = log(r1);
+      double l2 = log(r2);
+      double l3 = log(r3);
+
+      double p_lrf = -T * (l1 + l2 + l3);
+      if ( ::isnan(p_lrf) ) printf("found p_lrf nan!\n");
+      double costh_lrf = ( l1 - l2 ) / ( l1 + l2 );
+      if ( ::isnan(costh_lrf) ) printf("found costh_lrf nan!\n");
+      double phi_lrf = 2 * M_PI * pow( l1 + l2 , 2 ) /  pow( l1 + l2 + l3 , 2 );
+      if ( ::isnan(phi_lrf) ) printf("found phi_lrf nan!\n");
 
       double sinth_lrf = sqrt(1.0 - costh_lrf * costh_lrf);
+      if ( ::isnan(sinth_lrf) ) printf("found sinth_lrf nan!\n");
       double pz_lrf = p_lrf * costh_lrf;
       double px_lrf = p_lrf * sinth_lrf * cos(phi_lrf);
       double py_lrf = p_lrf * sinth_lrf * sin(phi_lrf);
       double p0_lrf = sqrt(mass2 + px_lrf * px_lrf + py_lrf * py_lrf + pz_lrf * pz_lrf);
+      if ( ::isnan(p0_lrf) ) printf("found p0_lrf nan!\n");
 
       //TO DO
       //add finite mass weight term for accept/rejection
@@ -398,6 +408,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       //lorentz boost formula from Jackson (11.19)
       double betadotp = betax * px_lrf + betay * py_lrf + betaz * pz_lrf;
+      if ( ::isnan(betadotp) ) printf("found betadotp nan!\n");
 
       double px = px_lrf + (u0 - 1.0) / beta2 * betadotp * betax - u0 * betax * p0_lrf;
       double py = py_lrf + (u0 - 1.0) / beta2 * betadotp * betay - u0 * betay * p0_lrf;
