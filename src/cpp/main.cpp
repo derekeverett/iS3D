@@ -4,7 +4,7 @@
 #include<fstream>
 #include<string>
 #include<sstream>
-#include<math.h>
+#include<cmath>
 #include<vector>
 #include<sys/time.h>
 
