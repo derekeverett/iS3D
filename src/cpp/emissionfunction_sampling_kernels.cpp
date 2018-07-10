@@ -136,8 +136,18 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       double ux = ux_fo[icell];           // contravariant fluid velocity
       double uy = uy_fo[icell];           // reinforce normalization
-      double un = un_fo[icell];
-      double ut = sqrt(fabs(1.0 + ux*ux + uy*uy + tau2*un*un));
+      double un = un_fo[icell];           // u^\eta
+      double ut = sqrt(fabs(1.0 + ux*ux + uy*uy + tau2*un*un)); //u^\tau
+
+      //get the cartesian components of fluid velocity for the boost LRF -> Lab
+      double u0 = ut * cosh(un);
+      double u3 = ut * sinh(un);
+
+      //beta factors for boost from LRF to Lab
+      double betax = ux/u0;
+      double betay = uy/u0;
+      double betaz = u3/u0;
+      double beta2 = betax * betax + betay * betay + betaz * betaz;
 
       double T = T_fo[icell];             // temperature
       double E = E_fo[icell];             // energy density
@@ -218,18 +228,18 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           double dN_thermal = 0.0;
 
           // for light particles need more than leading order term in BE or FD expansion
-          int kmax = 2;
-          if(mass / T < 2.0) kmax = 10;
+          int jmax = 2;
+          if(mass / T < 2.0) jmax = 10;
 
           double sign_factor = -sign;
 
-          for(int k = 1; k < kmax; k++) // truncate expansion of BE or FD distribution
+          for(int j = 1; j < jmax; j++) // truncate expansion of BE or FD distribution
           {
-            double m = (double)k;
+            double k = (double)j;
             sign_factor *= (-sign);
             //neq += (pow(-sign, k+1) * exp(n * chem / T) * gsl_sf_bessel_Kn(2, n * mbar) / n);
             //cout << "Here" << endl;
-            neq += (sign_factor * exp(m * alphaB) * gsl_sf_bessel_Kn(2, m * mbar) / m);
+            neq += (sign_factor * exp(k * alphaB) * gsl_sf_bessel_Kn(2, k * mbar) / k);
           }
           neq *= (degeneracy * mass2 * T / two_pi2_hbarC3);
 
@@ -321,12 +331,31 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     }
 
     //now sample the number of particles (all species)
+
+    //FIX
+    //move these declarations to beginning of function !
+    //OR does each thread need its own ???
+
     //non-deterministic random number generator
     std::random_device gen1;
     std::random_device gen2;
 
+    /*
+    std::random_device r1; //r1,r2,r3 used for sampling momenta w/ Scott Pratt's Trick
+    std::random_device r2;
+    std::random_device r3;
+    */
+    
+    //r1,r2,r3 for sampling momenta w/ Scott Pratt's trick
+    double r1 = rand() / RAND_MAX;
+    double r2 = rand() / RAND_MAX;
+    double r3 = rand() / RAND_MAX;
+
+
     //deterministic random number generator
     //std::mt19937 gen(1701);
+
+    //FIX
 
     std::poisson_distribution<> poisson_distr(dN_tot);
 
@@ -343,13 +372,39 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       //get the mass of the sampled particle
       double mass = Mass[idx_sampled];  // (GeV)
+      double mass2 = mass * mass;
 
       //get the MC ID of the sampled particle
       int mcid = MCID[idx_sampled];
       particle_list[particle_index].mcID = mcid;
 
       //sample the momentum from distribution using Scott Pratt Trick
-      //stuff
+      //sample momenta for the massless case
+
+      double p_lrf = -T * log( r1 * r2 * r3 );
+      double costh_lrf = ( log(r1) - log(r2) ) / ( log(r1) + log(r2) );
+      double phi_lrf = 2 * M_PI * pow( log(r1 * r2) , 2 ) /  pow( log(r1 * r2 * r3) , 2 );
+
+      double sinth_lrf = sqrt(1.0 - costh_lrf * costh_lrf);
+      double pz_lrf = p_lrf * costh_lrf;
+      double px_lrf = p_lrf * sinth_lrf * cos(phi_lrf);
+      double py_lrf = p_lrf * sinth_lrf * sin(phi_lrf);
+      double p0_lrf = sqrt(mass2 + px_lrf * px_lrf + py_lrf * py_lrf + pz_lrf * pz_lrf);
+
+      //TO DO
+      //add finite mass weight term for accept/rejection
+
+      //boost the momenta from LRF to lab frame
+
+      //lorentz boost formula from Jackson (11.19)
+      double betadotp = betax * px_lrf + betay * py_lrf + betaz * pz_lrf;
+
+      double px = px_lrf + (u0 - 1.0) / beta2 * betadotp * betax - u0 * betax * p0_lrf;
+      double py = py_lrf + (u0 - 1.0) / beta2 * betadotp * betay - u0 * betay * p0_lrf;
+      double pz = pz_lrf + (u0 - 1.0) / beta2 * betadotp * betaz - u0 * betaz * p0_lrf;
+
+      //set energy using on-shell
+      double E = sqrt(mass2 + px * px + py * py + pz * pz);
 
       //set coordinates of production to FO cell coords
       particle_list[particle_index].tau = tau;
@@ -359,10 +414,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       //FIX MOMENTA TO NONTRIVIAL VALUES
       //set particle momentum to sampled values
-      particle_list[particle_index].E = 0.0;
-      particle_list[particle_index].px = 0.0;
-      particle_list[particle_index].py = 0.0;
-      particle_list[particle_index].pz = 0.0;
+      particle_list[particle_index].E = E;
+      particle_list[particle_index].px = px;
+      particle_list[particle_index].py = py;
+      particle_list[particle_index].pz = pz;
       // FIX MOMENTA TO NONTRIVIAL VALUES
 
       particle_index += 1;
