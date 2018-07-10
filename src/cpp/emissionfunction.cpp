@@ -147,7 +147,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
   void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
   {
-    printf(" -- Writing thermal distributions to file...\n");
+    printf("Writing thermal spectra to file...\n");
     //write 3D spectra in block format, different blocks for different species,
     //different sublocks for different values of rapidity
     //rows corespond to phip and columns correspond to pT
@@ -190,7 +190,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
   void EmissionFunctionArray::write_particle_list_toFile()
   {
-    printf(" -- Writing sampled particles list to file...\n");
+    printf("Writing sampled particles list to file...\n");
     char filename[255] = "";
     sprintf(filename, "results/particle_list.dat");
     ofstream spectraFile(filename, ios_base::app);
@@ -214,7 +214,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   //*********************************************************************************************
   void EmissionFunctionArray::calculate_spectra()
   {
-    cout << "calculate_spectra() has started:" << endl;
+    cout << "calculate_spectra() has started ";
     Stopwatch sw;
     sw.tic();
 
@@ -406,7 +406,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
-    //for sampling, read in gla roots and weights
+    // for sampling and modified thermal spectra
+    // read in gauss laguerre roots and weights
+    // for gauss laguerre quadrature
+
     FILE * gla_file;
     char header[300];
     gla_file = fopen("tables/gla123_roots_weights_32_pts.dat", "r");
@@ -442,7 +445,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     double df_coeff[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
 
-    if(MODE == 1) // viscous hydro 
+    if(MODE == 1) // viscous hydro
     {
       switch(DF_MODE)
       {
@@ -481,7 +484,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             default:
             {
               cout << "Set operation to 1 or 2" << endl;
-              exit(-1); 
+              exit(-1);
             }
           }
           break;
@@ -521,9 +524,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             default:
             {
               cout << "Set operation to 1 or 2" << endl;
-              exit(-1); 
+              exit(-1);
             }
-          }          
+          }
           break;
         }
         case 3: // modified
@@ -551,14 +554,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             case 2: // sample
             {
 
-              // work out feqmod sampler stupid :P 
+              // work out feqmod sampler stupid :P
 
               break;
             }
             default:
             {
               cout << "Set operation to 1 or 2" << endl;
-              exit(-1); 
+              exit(-1);
             }
           }
           break;
@@ -601,11 +604,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
+    printline();
+
     //write the results to file
     if (OPERATION == 1) write_dN_pTdpTdphidy_toFile();
     else if (OPERATION == 2) write_particle_list_toFile();
 
-    cout << " -- Freeing memory..." << endl;
+    cout << "Freeing memory..." << endl;
     // free memory
     free(Mass);
     free(Sign);
@@ -669,7 +674,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
     sw.toc();
-    cout << " -- calculate_spectra() finished " << sw.takeTime() << " seconds." << endl;
+    cout << "calculate_spectra() took " << sw.takeTime() << " seconds." << endl;
   }
 
   void EmissionFunctionArray::do_resonance_decays()

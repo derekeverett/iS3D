@@ -54,7 +54,7 @@ void FO_data_reader::read_surf_switch(long length, FO_surf* surf_ptr)
 //THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! baryon number, baryon chemical potential at the end...
 void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
 {
-  cout << "Reading in freezeout surface (vhydro)..." << endl;
+  cout << "Reading in freezeout surface vhydro..." << endl;
   ostringstream surfdat_stream;
   double dummy;
   surfdat_stream << pathToInput << "/surface.dat";
@@ -221,7 +221,7 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
 void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
 {
   // vahydro: Dennis' version
-  cout << "Reading in freezeout surface (vahydro 1.0)..." << endl;
+  cout << "Reading in freezeout surface vahydro PL..." << endl;
 
   ostringstream surface_file;
   surface_file << pathToInput << "/surface.dat";      // stream "input/surface.dat" to surface_file

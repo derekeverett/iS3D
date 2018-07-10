@@ -1226,7 +1226,7 @@ void LUP_solve(double ** PA, int n, int pvector[], double b[])
     {
       sum -= PA[i][j] * b[j];       // backward iteration
     }
-    b[i] = sum / PA[i][i];          // solution 
+    b[i] = sum / PA[i][i];          // solution
   }
 }
 

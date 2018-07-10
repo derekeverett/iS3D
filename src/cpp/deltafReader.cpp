@@ -44,7 +44,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
 
   if(df_mode == 1)
   {
-    printf("14-moment coefficients (vhydro)...\n");
+    printf("14-moment coefficients vhydro...\n");
     // coefficient files and names
     FILE * c0_file;
     FILE * c1_file;
@@ -166,7 +166,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
   }
   else if(df_mode == 2 || df_mode == 3)
   {
-    printf("Chapman-Enskog coefficients (vhydro)...\n");
+    printf("Chapman-Enskog coefficients vhydro...\n");
 
     // coefficient files and names
     FILE * F_file;
@@ -287,7 +287,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
   }
   else if(df_mode == 4)
   {
-    printf("14-moment coefficients (vahydro PL)...\n");
+    printf("14-moment coefficients vahydro PL...\n");
 
     // coefficient files and names
     FILE * c0_file;

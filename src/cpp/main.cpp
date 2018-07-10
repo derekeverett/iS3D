@@ -22,9 +22,10 @@ int main(int argc, char *argv[])
 {
   cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
   cout << "Derek Everett, Sameed Pervaiz, Mike McNelis and Lipei Du (2018)" << endl;
-  cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu\n" << endl;
+  cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu" << endl;
+  printline();
   // Read-in parameters
-  cout << "Reading in parameters from parameters.dat:" << endl;
+  cout << "Reading in parameters:\n" << endl;
   ParameterReader *paraRdr = new ParameterReader;
   paraRdr->readFromFile("parameters.dat");
   paraRdr->readFromArguments(argc, argv);
@@ -39,11 +40,8 @@ int main(int argc, char *argv[])
 
   long FO_length = 0;
   FO_length = freeze_out_data.get_number_cells();
-  cout << "Total number of freezeout cells: " <<  FO_length << endl;
-  printline();
 
   FO_surf* surf_ptr = new FO_surf[FO_length];
-
   freeze_out_data.read_surf_switch(FO_length, surf_ptr);
 
   particle_info *particle = new particle_info [Maxparticle];
@@ -51,13 +49,11 @@ int main(int argc, char *argv[])
 
   // load delta-f coefficients:
   deltaf_coefficients df;
-
   string pathTodeltaf = "deltaf_coefficients";
-
   DeltafReader deltaf(paraRdr, pathTodeltaf);
   df = deltaf.load_coefficients(surf_ptr, FO_length);
 
-  cout << "\nFinished reading files!" << endl;
+  cout << "Finished reading files" << endl;
   printline();
 
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
@@ -65,12 +61,15 @@ int main(int argc, char *argv[])
   //have this undesirable feature
   Table chosen_particles("PDG/chosen_particles.dat"); // skip others except for these particles
 
+  cout << "Total number of freezeout cells: " <<  FO_length << endl;
   cout << "Number of chosen particles: " << chosen_particles.getNumberOfRows() << endl;
-  printline(); 
+
+  printline();
+
   Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
-  Table eta_tab("tables/eta_trapezoid_table_21pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
+  Table eta_tab("tables/eta_trapezoid_table_41pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle, Nparticle, surf_ptr, FO_length, df);
 
   efa.calculate_spectra();
