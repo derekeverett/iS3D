@@ -32,6 +32,71 @@
 
 using namespace std;
 
+
+
+
+local_momentum Sample_Momentum(double mass, double T, double alphaB)
+{
+  local_momentum pLRF; 
+
+  // only need to seed once right?
+  unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+  default_random_engine generator(seed);
+
+  if(mass / T < 0.6)
+  {
+    bool rejected = true;
+    while(rejected)
+    {
+      // do you need different generators for (r1,r2,r3,propose)? 
+      // I'm guessing no... 
+      double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+      double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+      double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      double log1 = log(r1);
+      double log2 = log(r2);
+      double log3 = log(r3);
+
+      double p = - T * (log1 + log2 + log3);
+
+      if(isnan(p)) printf("found p nan!\n");
+
+      double E = sqrt(fabs(p * p + mass * mass)); 
+
+      double weight = exp((p - E) / T);
+
+      double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      // check acceptance
+      if(propose < weight)
+      {
+        rejected = false; 
+
+        // calculate angles and pLRF components
+        double costheta = (log1 - log2) / (log1 + log2);
+        if(isnan(costheta)) printf("found costheta nan!\n");
+
+        double phi = 2.0 * M_PI * pow(log1 + log2, 2) / pow(log1 + log2 + log3, 2);
+        if(isnan(phi)) printf("found phi nan!\n");
+
+        double sintheta = sqrt(1.0 - costheta * costheta);
+        if(isnan(sintheta)) printf("found sintheta nan!\n");
+
+        pLRF.x = p * costheta;
+        pLRF.y = p * sintheta * cos(phi);
+        pLRF.z = p * sintheta * sin(phi);
+      } // acceptance
+    } // while loop
+  } // mass / T < 0.6
+
+  return pLRF; 
+}
+
+
+
+
+
 void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
@@ -374,27 +439,37 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       std::random_device r3;
       */
 
+
       //r1,r2,r3 for sampling momenta w/ Scott Pratt's trick
       unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
       std::default_random_engine generator (seed);
+
+
+      //local_momentum p_LRF = Sample_Momentum(mass,T);
+
+      //double E_LRF = sqrt(mass2 + p_LRF.x * p_LRF.x + p_LRF.y * p_LRF.y + p_LRF.z * p_LRF.z);
+
       //generate_canonical gives a number in [0,1) so that we don't accidentally try log(0)
       double r1 = 1.0 - std::generate_canonical<double,std::numeric_limits<double>::digits>(generator);
       double r2 = 1.0 - std::generate_canonical<double,std::numeric_limits<double>::digits>(generator);
       double r3 = 1.0 - std::generate_canonical<double,std::numeric_limits<double>::digits>(generator);
 
-      double l1 = log(r1);
-      double l2 = log(r2);
-      double l3 = log(r3);
+      double log1 = log(r1);
+      double log2 = log(r2);
+      double log3 = log(r3);
 
-      double p_lrf = -T * (l1 + l2 + l3);
+      double p_lrf = -T * (log1 + log2 + log3);
       if ( ::isnan(p_lrf) ) printf("found p_lrf nan!\n");
-      double costh_lrf = ( l1 - l2 ) / ( l1 + l2 );
+
+      double costh_lrf = ( log1 - log2 ) / ( log1 + log2 );
       if ( ::isnan(costh_lrf) ) printf("found costh_lrf nan!\n");
-      double phi_lrf = 2 * M_PI * pow( l1 + l2 , 2 ) /  pow( l1 + l2 + l3 , 2 );
+
+      double phi_lrf = 2.0 * M_PI * pow( log1 + log2 , 2 ) /  pow( log1 + log2 + log3 , 2 );
       if ( ::isnan(phi_lrf) ) printf("found phi_lrf nan!\n");
 
       double sinth_lrf = sqrt(1.0 - costh_lrf * costh_lrf);
       if ( ::isnan(sinth_lrf) ) printf("found sinth_lrf nan!\n");
+
       double pz_lrf = p_lrf * costh_lrf;
       double px_lrf = p_lrf * sinth_lrf * cos(phi_lrf);
       double py_lrf = p_lrf * sinth_lrf * sin(phi_lrf);
