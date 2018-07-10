@@ -1,0 +1,7 @@
+results
+input
+*.o
+*.out
+tags
+parameters.dat
+*.e
