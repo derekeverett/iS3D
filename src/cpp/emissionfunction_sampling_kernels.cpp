@@ -43,6 +43,7 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   unsigned seed = chrono::system_clock::now().time_since_epoch().count();
   default_random_engine generator(seed);
 
+  //light hadrons
   if(mass / T < 0.6)
   {
     bool rejected = true;
@@ -54,18 +55,16 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
       double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
       double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-      double log1 = log(r1);
-      double log2 = log(r2);
-      double log3 = log(r3);
+      double l1 = log(r1);
+      double l2 = log(r2);
+      double l3 = log(r3);
 
-      double p = - T * (log1 + log2 + log3);
+      double p = - T * (l1 + l2 + l3);
 
       if(::isnan(p)) printf("found p nan!\n");
 
       double E = sqrt(fabs(p * p + mass * mass));
-
       double weight = exp((p - E) / T);
-
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       // check acceptance
@@ -74,12 +73,10 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
         rejected = false;
 
         // calculate angles and pLRF components
-        double costheta = (log1 - log2) / (log1 + log2);
+        double costheta = (l1 - l2) / (l1 + l2);
         if(::isnan(costheta)) printf("found costheta nan!\n");
-
-        double phi = 2.0 * M_PI * pow(log1 + log2, 2) / pow(log1 + log2 + log3, 2);
+        double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
         if(::isnan(phi)) printf("found phi nan!\n");
-
         double sintheta = sqrt(1.0 - costheta * costheta);
         if(::isnan(sintheta)) printf("found sintheta nan!\n");
 
@@ -89,6 +86,68 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
       } // acceptance
     } // while loop
   } // mass / T < 0.6
+
+  //heavy hadrons
+  //use variable transformation described in LongGang's Sampler Notes
+  else
+  {
+    //determine which part of integrand dominates
+    double I1 = 2 * pow(T,3);
+    double I2 = 2 * mass * T * T;
+    double I3 = mass * mass * T;
+    double Itot = I1 + I2 + I3;
+
+    bool rejected = true;
+    while(rejected)
+    {
+      // do you need different generators for (r1,r2,r3,propose)?
+      // I'm guessing no...
+      double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+      double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+      double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      double l1 = log(r1);
+      double l2 = log(r2);
+      double l3 = log(r3);
+      double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      double k = 0.0; //variable transform k = E - m
+      if (propose < I1 / Itot)
+      {
+        k = -T * l1;
+      }
+      else if (propose < (I1 + I2) / Itot)
+      {
+        k = -T * (l1 + l2);
+      }
+      else
+      {
+        k = -T * (l1 + l2 + l3);
+      }
+      double E = k + mass;
+      double p = sqrt( E * E - mass * mass);
+      propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+      double weight = p / E;
+
+      // check acceptance
+      if(propose < weight)
+      {
+        rejected = false;
+
+        // calculate angles and pLRF components
+        double costheta = (l1 - l2) / (l1 + l2);
+        if(::isnan(costheta)) printf("found costheta nan!\n");
+        double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
+        if(::isnan(phi)) printf("found phi nan!\n");
+        double sintheta = sqrt(1.0 - costheta * costheta);
+        if(::isnan(sintheta)) printf("found sintheta nan!\n");
+
+        pLRF.x = p * costheta;
+        pLRF.y = p * sintheta * cos(phi);
+        pLRF.z = p * sintheta * sin(phi);
+      } // acceptance
+    } // while loop
+  } //heavy hadron
 
   return pLRF;
 }
@@ -178,6 +237,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     }
 
     //loop over all freezeout cells
+    #pragma omp parallel for
     for (int icell = 0; icell < FO_length; icell++)
     {
       // set freezeout info to local varibles to reduce(?) memory access outside cache :
@@ -345,9 +405,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                   cout << "Please choose df_mode = 1 or 2 in parameters.dat" << endl;
                   exit(-1);
                 }
-              }
-
-            }
+              } //switch(DF_MODE)
+            } //if(INCLUDE_BULK_DELTAF)
 
             // baryon diffusion: density correction
               double dN_diff = 0.0;
@@ -364,7 +423,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                     // c3 ~ cV / V
                     // c4 ~ 2cW / V
                     dN_diff = - (Vdotdsigma / betaV) * ((baryon * c3 * neq * T) + (c4 * J31));
-
                     break;
                   }
                   case 2: // Chapman Enskog
@@ -372,7 +430,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                     double J11_fact = pow(T,3) / two_pi2_hbarC3 / 3.0;
                     double J11 = degeneracy * J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
                     dN_diff = - (Vdotdsigma / betaV) * (neq * T * baryon_enthalpy_ratio - baryon * J11);
-
                     break;
                   }
                   default:
@@ -380,10 +437,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                     cout << "Please choose df_mode = 1 or 2 in parameters.dat" << endl;
                     exit(-1);
                   }
-                }
-              }
-
-
+                } //switch(DF_MODE)
+              } //if(INCLUDE_BARYONDIFF_DELTAF)
 
         //add them up
         //this is the mean number of particles of species ipart
@@ -408,7 +463,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     std::random_device gen2;
 
     //FIX
-
     std::poisson_distribution<> poisson_distr(dN_tot);
 
     //sample total number of hadrons in FO cell
@@ -430,8 +484,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       int mcid = MCID[idx_sampled];
       particle_list[particle_index].mcID = mcid;
 
-      //sample Momentum with Scott Pratt's Trick
-      lrf_momentum p_LRF = Sample_Momentum(mass,T, alphaB);
+      //sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
+      lrf_momentum p_LRF = Sample_Momentum(mass, T, alphaB);
       double E_LRF = sqrt(mass2 + p_LRF.x * p_LRF.x + p_LRF.y * p_LRF.y + p_LRF.z * p_LRF.z);
       double px_LRF = p_LRF.x;
       double py_LRF = p_LRF.y;
