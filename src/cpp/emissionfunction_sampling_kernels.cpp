@@ -35,9 +35,9 @@ using namespace std;
 
 
 
-local_momentum Sample_Momentum(double mass, double T, double alphaB)
+lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
 {
-  local_momentum pLRF; 
+  lrf_momentum pLRF;
 
   // only need to seed once right?
   unsigned seed = chrono::system_clock::now().time_since_epoch().count();
@@ -48,8 +48,8 @@ local_momentum Sample_Momentum(double mass, double T, double alphaB)
     bool rejected = true;
     while(rejected)
     {
-      // do you need different generators for (r1,r2,r3,propose)? 
-      // I'm guessing no... 
+      // do you need different generators for (r1,r2,r3,propose)?
+      // I'm guessing no...
       double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
       double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
       double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -60,9 +60,9 @@ local_momentum Sample_Momentum(double mass, double T, double alphaB)
 
       double p = - T * (log1 + log2 + log3);
 
-      if(isnan(p)) printf("found p nan!\n");
+      if(::isnan(p)) printf("found p nan!\n");
 
-      double E = sqrt(fabs(p * p + mass * mass)); 
+      double E = sqrt(fabs(p * p + mass * mass));
 
       double weight = exp((p - E) / T);
 
@@ -71,17 +71,17 @@ local_momentum Sample_Momentum(double mass, double T, double alphaB)
       // check acceptance
       if(propose < weight)
       {
-        rejected = false; 
+        rejected = false;
 
         // calculate angles and pLRF components
         double costheta = (log1 - log2) / (log1 + log2);
-        if(isnan(costheta)) printf("found costheta nan!\n");
+        if(::isnan(costheta)) printf("found costheta nan!\n");
 
         double phi = 2.0 * M_PI * pow(log1 + log2, 2) / pow(log1 + log2 + log3, 2);
-        if(isnan(phi)) printf("found phi nan!\n");
+        if(::isnan(phi)) printf("found phi nan!\n");
 
         double sintheta = sqrt(1.0 - costheta * costheta);
-        if(isnan(sintheta)) printf("found sintheta nan!\n");
+        if(::isnan(sintheta)) printf("found sintheta nan!\n");
 
         pLRF.x = p * costheta;
         pLRF.y = p * sintheta * cos(phi);
@@ -90,7 +90,7 @@ local_momentum Sample_Momentum(double mass, double T, double alphaB)
     } // while loop
   } // mass / T < 0.6
 
-  return pLRF; 
+  return pLRF;
 }
 
 
@@ -445,7 +445,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       std::default_random_engine generator (seed);
 
 
-      //local_momentum p_LRF = Sample_Momentum(mass,T);
+      //lrf_momentum p_LRF = Sample_Momentum(mass,T);
 
       //double E_LRF = sqrt(mass2 + p_LRF.x * p_LRF.x + p_LRF.y * p_LRF.y + p_LRF.z * p_LRF.z);
 
