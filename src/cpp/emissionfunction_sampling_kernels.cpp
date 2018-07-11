@@ -430,66 +430,24 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       int mcid = MCID[idx_sampled];
       particle_list[particle_index].mcID = mcid;
 
-      //sample the momentum from distribution using Scott Pratt Trick
-      //sample momenta for the massless case
-
-      /*
-      std::random_device r1; //r1,r2,r3 used for sampling momenta w/ Scott Pratt's Trick
-      std::random_device r2;
-      std::random_device r3;
-      */
-
-
-      //r1,r2,r3 for sampling momenta w/ Scott Pratt's trick
-      unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-      std::default_random_engine generator (seed);
-
-
-      //lrf_momentum p_LRF = Sample_Momentum(mass,T);
-
-      //double E_LRF = sqrt(mass2 + p_LRF.x * p_LRF.x + p_LRF.y * p_LRF.y + p_LRF.z * p_LRF.z);
-
-      //generate_canonical gives a number in [0,1) so that we don't accidentally try log(0)
-      double r1 = 1.0 - std::generate_canonical<double,std::numeric_limits<double>::digits>(generator);
-      double r2 = 1.0 - std::generate_canonical<double,std::numeric_limits<double>::digits>(generator);
-      double r3 = 1.0 - std::generate_canonical<double,std::numeric_limits<double>::digits>(generator);
-
-      double log1 = log(r1);
-      double log2 = log(r2);
-      double log3 = log(r3);
-
-      double p_lrf = -T * (log1 + log2 + log3);
-      if ( ::isnan(p_lrf) ) printf("found p_lrf nan!\n");
-
-      double costh_lrf = ( log1 - log2 ) / ( log1 + log2 );
-      if ( ::isnan(costh_lrf) ) printf("found costh_lrf nan!\n");
-
-      double phi_lrf = 2.0 * M_PI * pow( log1 + log2 , 2 ) /  pow( log1 + log2 + log3 , 2 );
-      if ( ::isnan(phi_lrf) ) printf("found phi_lrf nan!\n");
-
-      double sinth_lrf = sqrt(1.0 - costh_lrf * costh_lrf);
-      if ( ::isnan(sinth_lrf) ) printf("found sinth_lrf nan!\n");
-
-      double pz_lrf = p_lrf * costh_lrf;
-      double px_lrf = p_lrf * sinth_lrf * cos(phi_lrf);
-      double py_lrf = p_lrf * sinth_lrf * sin(phi_lrf);
-      double p0_lrf = sqrt(mass2 + px_lrf * px_lrf + py_lrf * py_lrf + pz_lrf * pz_lrf);
-      if ( ::isnan(p0_lrf) ) printf("found p0_lrf nan!\n");
-
-      //TO DO
-      //add finite mass weight term for accept/rejection
+      //sample Momentum with Scott Pratt's Trick
+      lrf_momentum p_LRF = Sample_Momentum(mass,T, alphaB);
+      double E_LRF = sqrt(mass2 + p_LRF.x * p_LRF.x + p_LRF.y * p_LRF.y + p_LRF.z * p_LRF.z);
+      double px_LRF = p_LRF.x;
+      double py_LRF = p_LRF.y;
+      double pz_LRF = p_LRF.z;
 
       //boost the momenta from LRF to lab frame
-
-      //lorentz boost formula from Jackson (11.19)
-      double betadotp = betax * px_lrf + betay * py_lrf + betaz * pz_lrf;
+      //lorentz boost formula from Jackson (11.19) from LRF to Lab
+      double betadotp = betax * px_LRF + betay * py_LRF + betaz * pz_LRF;
       if ( ::isnan(betadotp) ) printf("found betadotp nan!\n");
 
-      double px = px_lrf + (u0 - 1.0) / beta2 * betadotp * betax - u0 * betax * p0_lrf;
-      double py = py_lrf + (u0 - 1.0) / beta2 * betadotp * betay - u0 * betay * p0_lrf;
-      double pz = pz_lrf + (u0 - 1.0) / beta2 * betadotp * betaz - u0 * betaz * p0_lrf;
+      //momentum in Lab frame
+      double px = px_LRF + (u0 - 1.0) / beta2 * betadotp * betax - u0 * betax * E_LRF;
+      double py = py_LRF + (u0 - 1.0) / beta2 * betadotp * betay - u0 * betay * E_LRF;
+      double pz = pz_LRF + (u0 - 1.0) / beta2 * betadotp * betaz - u0 * betaz * E_LRF;
 
-      //set energy using on-shell
+      //set energy using on-shell condition
       double E = sqrt(mass2 + px * px + py * py + pz * pz);
 
       //set coordinates of production to FO cell coords
