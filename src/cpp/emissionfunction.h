@@ -16,9 +16,9 @@ typedef struct
   double x;   // pLRF.x
   double y;   // pLRF.y
   double z;   // pLRF.z
-} local_momentum;
+} lrf_momentum;
 
-local_momentum Sample_momentum(double mass, double T, double alphaB); 
+lrf_momentum Sample_momentum(double mass, double T, double alphaB);
 
 
 class EmissionFunctionArray
@@ -69,7 +69,7 @@ public:
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
  double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
   double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_root2, double * pbar_weight1, double * pbar_weight2);
-   
+
 
   void sample_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
   double *, double *, double *, double *, double *,
