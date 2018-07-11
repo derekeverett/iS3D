@@ -11,6 +11,16 @@
 
 using namespace std;
 
+typedef struct
+{
+  double x;   // pLRF.x
+  double y;   // pLRF.y
+  double z;   // pLRF.z
+} local_momentum;
+
+local_momentum Sample_momentum(double mass, double T, double alphaB); 
+
+
 class EmissionFunctionArray
 {
 private:
