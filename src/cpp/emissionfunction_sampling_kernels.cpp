@@ -92,9 +92,10 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   else
   {
     //determine which part of integrand dominates
-    double I1 = 2 * pow(T,3);
+    double I1 = mass * mass * T;
     double I2 = 2 * mass * T * T;
-    double I3 = mass * mass * T;
+    double I3 = 2 * pow(T,3);
+
     double Itot = I1 + I2 + I3;
 
     bool rejected = true;
