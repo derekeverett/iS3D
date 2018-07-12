@@ -28,10 +28,7 @@
 //#endif
 #define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
 
-//#define FORCE_F0
-
 using namespace std;
-
 
 lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
 {
@@ -44,6 +41,13 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   default_random_engine generator(seed);
 
   // light hadrons
+
+  //TO DO 
+  //add routine that works for pions!
+  // if (mass / T < 2.0)
+  //stuff
+
+  //light hadrons, but heavier than pions
   if(mass / T < 0.6)
   {
     bool rejected = true;
@@ -255,7 +259,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
     //double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
     int npart = number_of_chosen_particles;
-    int particle_index = 0; //runs over all particles in final sampled particle list
+    //int particle_index = 0; //runs over all particles in final sampled particle list
 
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
 
@@ -594,6 +598,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
     for (int n = 0; n < N_hadrons; n++)
     {
+      //a new particle
+      Sampled_Particle new_particle;
+
       //sample discrete distribution
       int idx_sampled = particle_numbers(gen2); //this gives the index of the sampled particle
 
@@ -603,7 +610,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       //get the MC ID of the sampled particle
       int mcid = MCID[idx_sampled];
-      particle_list[particle_index].mcID = mcid;
+      //particle_list[particle_index].mcID = mcid;
+      new_particle.mcID = mcid;
 
       // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
       // perhap divide this into sample_momentum_from_distribution_x()
@@ -641,20 +649,31 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       //double E = sqrt(mass2 + px * px + py * py + pz * pz);
 
       //set coordinates of production to FO cell coords
-      particle_list[particle_index].tau = tau;
-      particle_list[particle_index].x = x;
-      particle_list[particle_index].y = y;
-      particle_list[particle_index].eta = eta;
+      //particle_list[particle_index].tau = tau;
+      //particle_list[particle_index].x = x;
+      //particle_list[particle_index].y = y;
+      //particle_list[particle_index].eta = eta;
 
-      //FIX MOMENTA TO NONTRIVIAL VALUES
+      new_particle.tau = tau;
+      new_particle.x = x;
+      new_particle.y = y;
+      new_particle.eta = eta;
+
       //set particle momentum to sampled values
-      particle_list[particle_index].E = E;
-      particle_list[particle_index].px = px;
-      particle_list[particle_index].py = py;
-      particle_list[particle_index].pz = pz;
-      // FIX MOMENTA TO NONTRIVIAL VALUES
+      //particle_list[particle_index].E = E;
+      //particle_list[particle_index].px = px;
+      //particle_list[particle_index].py = py;
+      //particle_list[particle_index].pz = pz;
 
-      particle_index += 1;
+      new_particle.E = E;
+      new_particle.px = px;
+      new_particle.py = py;
+      new_particle.pz = pz;
+
+      //particle_index += 1;
+
+      //add to particle list
+      particle_list.push_back(new_particle);
 
     } // for (int n = 0; n < N_hadrons; n++)
   } // for (int icell = 0; icell < FO_length; icell++)
@@ -667,5 +686,5 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_VAH_PL(double *Mass, double *S
   double *bulkPi_fo, double *Wx_fo, double *Wy_fo, double *Lambda_fo, double *aL_fo, double *c0_fo, double *c1_fo, double *c2_fo, double *c3_fo, double *c4_fo)
 {
   printf("Sampling particles from VAH \n");
-
+  printf("NOTHING HERE YET \n");
 }

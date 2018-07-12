@@ -30,7 +30,7 @@ public:
 };
 
 //a class to store basic particle ID, position and momenta for a sampled particle list
-class sampled_particle
+class Sampled_Particle
 {
 public:
 
