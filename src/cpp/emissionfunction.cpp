@@ -69,7 +69,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     //a class member to hold the sampled particle list
     //it is dynamically resized as we sample particles
-    std::vector<Sampled_Particle> particle_list(1);
+    std::vector<Sampled_Particle> temp(1);
+    particle_list = temp;
+    particle_list.erase(particle_list.begin());
 
     //a class member to hold 3D smooth CF spectra for all chosen particles
     dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
