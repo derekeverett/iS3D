@@ -41,7 +41,9 @@ private:
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
   long FO_length;
   double *dN_pTdpTdphidy; //to hold smooth CF 3D spectra of all species
-  sampled_particle *particle_list; //to hold sampled particle list
+
+  std::vector<Sampled_Particle> particle_list; //to hold sampled particle list
+
   int *chosen_particles_01_table; // has length Nparticle, 0 means miss, 1 means include
   int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table
   int Nparticles;

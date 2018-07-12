@@ -26,10 +26,7 @@
 //#endif
 #define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
 
-//#define FORCE_F0
-
 using namespace std;
-
 
 // Class EmissionFunctionArray ------------------------------------------
 EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in,
@@ -70,6 +67,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     chosen_particles_01_table = new int[Nparticles];
 
+    //a class member to hold the sampled particle list
+    //it is dynamically resized as we sample particles
+    std::vector<Sampled_Particle> particle_list(1);
+
     //a class member to hold 3D smooth CF spectra for all chosen particles
     dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
     //zero the array
@@ -80,7 +81,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     //a class member to hold the particle list for sampling
     //how big does this need to be? probably need to make it a vector instead so we can resize it...
-    particle_list = new sampled_particle [10000];
+    //particle_list = new Sampled_Particle [10000];
 
     for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
 
@@ -141,7 +142,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     delete[] chosen_particles_01_table;
     delete[] chosen_particles_sampling_table;
     delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
-    delete[] particle_list; //for holding particle list of sampled particles
+    //delete particle_list; //for holding particle list of sampled particles
   }
 
 
@@ -194,7 +195,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     char filename[255] = "";
     sprintf(filename, "results/particle_list.dat");
     ofstream spectraFile(filename, ios_base::app);
-    for (int ipart = 0; ipart < 10000; ipart++)
+    int num_particles = particle_list.size();
+    for (int ipart = 0; ipart < num_particles; ipart++)
     {
       int mcid = particle_list[ipart].mcID;
       double tau = particle_list[ipart].tau;
