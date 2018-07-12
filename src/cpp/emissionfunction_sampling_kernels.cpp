@@ -34,22 +34,28 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
 {
   lrf_momentum pLRF;
 
+  // Derek: can we fix the seed temporarily we can compare results?
+
   // only need to seed once right?
   unsigned seed = chrono::system_clock::now().time_since_epoch().count();
   default_random_engine generator(seed);
 
-  //TO DO add routine that works for pions!
+  // light hadrons
+
+  //TO DO 
+  //add routine that works for pions!
   // if (mass / T < 2.0)
   //stuff
 
-  //light hadrons, heavier than pions
+  //light hadrons, but heavier than pions
   if(mass / T < 0.6)
   {
     bool rejected = true;
     while(rejected)
     {
-      // do you need different generators for (r1,r2,r3,propose)?
-      // I'm guessing no...
+      // do you need different generators for (r1,r2,r3,propose)? Guess not..
+      // draw (p, phi, costheta) from distribution p^2 * exp[-p/T] by
+      // sampling three variables (r1,r2,r3) uniformly from [0,1)
       double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
       double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
       double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -66,10 +72,10 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
       double weight = exp((p - E) / T);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-      // check acceptance
+      // check p acceptance
       if(propose < weight)
       {
-        rejected = false;
+        rejected = false; // stop while loop
 
         // calculate angles and pLRF components
         double costheta = (l1 - l2) / (l1 + l2);
@@ -82,7 +88,7 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
         pLRF.x = p * costheta;
         pLRF.y = p * sintheta * cos(phi);
         pLRF.z = p * sintheta * sin(phi);
-      } // acceptance
+      } // p acceptance
     } // while loop
   } // mass / T < 0.6
 
@@ -90,64 +96,150 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   //use variable transformation described in LongGang's Sampler Notes
   else
   {
-    //determine which part of integrand dominates
-    double I1 = mass * mass * T;
-    double I2 = 2 * mass * T * T;
-    double I3 = 2 * pow(T,3);
+    // determine which part of integrand dominates
+    double I1 = mass * mass;
+    double I2 = 2.0 * mass * T;
+    double I3 = 2.0 * T * T;
 
     double Itot = I1 + I2 + I3;
 
-    bool rejected = true;
-    while(rejected)
+    double propose_distribution = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+    // accept-reject distributions to sample momentum from based on integrated weights
+    if(propose_distribution < I1 / Itot)
     {
-      // do you need different generators for (r1,r2,r3,propose)?
-      // I'm guessing no...
-      double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-      double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-      double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+      // draw k from distribution exp(-k/T) by sampling
+      // one variable r1 uniformly from [0,1):
+      //    k = -T * log(r1)
 
-      double l1 = log(r1);
-      double l2 = log(r2);
-      double l3 = log(r3);
-      double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
-
-      double k = 0.0; //variable transform k = E - m
-      if (propose < I1 / Itot)
+      bool rejected = true;
+      while(rejected)
       {
-        k = -T * l1;
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        double k = - T * log(r1);
+        if(::isnan(k)) printf("found k nan!\n");
+
+        double E = k + mass;
+        double p = sqrt(fabs(E * E - mass * mass));
+        double weight = p / E;
+        double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        // check k acceptance
+        if(propose < weight)
+        {
+          rejected = false; // stop while loop
+
+          // sample LRF angles costheta = [-1,1] and phi = [0,2pi) uniformly
+          uniform_real_distribution<double> phi_distribution(0.0 , 2.0 * M_PI);
+          uniform_real_distribution<double> costheta_distribution(-1.0 , nextafter(1.0, numeric_limits<double>::max()));
+          double phi = phi_distribution(generator);
+          double costheta = costheta_distribution(generator);
+          double sintheta = sqrt(1.0 - costheta * costheta);
+          if(::isnan(sintheta)) printf("found sintheta nan!\n");
+
+          // evaluate LRF momentum components
+          pLRF.x = p * costheta;
+          pLRF.y = p * sintheta * cos(phi);
+          pLRF.z = p * sintheta * sin(phi);
+        } // k acceptance
+      } // while loop
+    } // distribution 1
+    else if(propose_distribution < (I1 + I2) / Itot)
+    {
+      // draw (k,phi) from distribution k * exp(-k/T) by
+      // sampling two variables (r1,r2) uniformly from [0,1):
+      //    k = -T * log(r1)
+      //    phi = 2 * \pi * log(r1) / (log(r1) + log(r2)); (double check this formula!!)
+
+      // I could have also done costheta instead of phi (I guess it doesn't matter)
+
+      bool rejected = true;
+      while(rejected)
+      {
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        double l1 = log(r1);
+        double l2 = log(r2);
+
+        double k = - T * (l1 + l2);
+        if(::isnan(k)) printf("found k nan!\n");
+
+        double E = k + mass;
+        double p = sqrt(fabs(E * E - mass * mass));
+        double weight = p / E;
+        double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        // check k acceptance
+        if(propose < weight)
+        {
+          rejected = false; // stop while loop
+
+          // need to verify this formula
+          double phi = 2.0 * M_PI * l1 / (l1 + l2);
+          if(::isnan(phi)) printf("found phi nan!\n");
+
+          // sample LRF angle costheta = [-1,1] uniformly
+          uniform_real_distribution<double> costheta_distribution(-1.0 , nextafter(1.0, numeric_limits<double>::max()));
+          double costheta = costheta_distribution(generator);
+          double sintheta = sqrt(1.0 - costheta * costheta);
+          if(::isnan(sintheta)) printf("found sintheta nan!\n");
+
+          // evaluate momentum components
+          pLRF.x = p * costheta;
+          pLRF.y = p * sintheta * cos(phi);
+          pLRF.z = p * sintheta * sin(phi);
+        } // k acceptance
+      } // while loop
+    } // distribution 2
+    else
+    {
+      // draw (k,phi,costheta) from k^2 * exp(-k/T) distribution by
+      // sampling three variables (r1,r2,r3) uniformly from [0,1):
+      //    k = - T * (log(r1) + log(r2) + log(r3))
+      //    phi = 2 * \pi * (log(r1) + log(r2))^2 / (log(r1) + log(r2) + log(r3))^2
+      //    costheta = (log(r1) - log(r2)) / (log(r1) + log(r2))
+
+      bool rejected = true;
+      while(rejected)
+      {
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        double l1 = log(r1);
+        double l2 = log(r2);
+        double l3 = log(r3);
+
+        double k = - T * (l1 + l2 + l3);
+        if(::isnan(k)) printf("found k nan!\n");
+
+        double E = k + mass;
+        double p = sqrt(fabs(E * E - mass * mass));
+        double weight = p / E;
+        double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        if(propose < weight)
+        {
+          rejected = false;
+
+          // calculate angles
+          double costheta = (l1 - l2) / (l1 + l2);
+          if(::isnan(costheta)) printf("found costheta nan!\n");
+          double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
+          if(::isnan(phi)) printf("found phi nan!\n");
+          double sintheta = sqrt(1.0 - costheta * costheta);
+          if(::isnan(sintheta)) printf("found sintheta nan!\n");
+
+          // evaluate momentum components
+          pLRF.x = p * costheta;
+          pLRF.y = p * sintheta * cos(phi);
+          pLRF.z = p * sintheta * sin(phi);
+        } // k acceptance
       }
-      else if (propose < (I1 + I2) / Itot)
-      {
-        k = -T * (l1 + l2);
-      }
-      else
-      {
-        k = -T * (l1 + l2 + l3);
-      }
-      double E = k + mass;
-      double p = sqrt( E * E - mass * mass);
-      propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
-      double weight = p / E;
-
-      // check acceptance
-      if(propose < weight)
-      {
-        rejected = false;
-
-        // calculate angles and pLRF components
-        double costheta = (l1 - l2) / (l1 + l2);
-        if(::isnan(costheta)) printf("found costheta nan!\n");
-        double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
-        if(::isnan(phi)) printf("found phi nan!\n");
-        double sintheta = sqrt(1.0 - costheta * costheta);
-        if(::isnan(sintheta)) printf("found sintheta nan!\n");
-
-        pLRF.x = p * costheta;
-        pLRF.y = p * sintheta * cos(phi);
-        pLRF.z = p * sintheta * sin(phi);
-      } // acceptance
-    } // while loop
-  } //heavy hadron
+    } // distribution 3
+  } // heavy hadron
 
   return pLRF;
 }
@@ -254,6 +346,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       //FIX THIS - NEED A LOOP OVER ETA FOR CASE OF 2D SURFACE
       double eta = etaValues[0];
+      double coshn = cosh(eta);
+      double sinhn = sinh(eta);
       //FIX THIS
 
       double dat = dat_fo[icell];         // covariant normal surface vector
@@ -320,6 +414,37 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           Vdotdsigma = dat*Vt + dax*Vx + day*Vy + dan*Vn;
         }
       }
+
+      // set milne basis vectors:
+      double Xt, Xx, Xy, Xn;  // X^mu
+      double Yx, Yy;          // Y^mu
+      double Zt, Zn;          // Z^mu
+
+      double uperp = sqrt(ux * ux + uy * uy);
+      double utperp = sqrt(1.0 + uperp * uperp);
+      double sinhL = tau * un / utperp;
+      double coshL = ut / utperp;
+
+      Xt = uperp * coshL;
+      Xn = uperp * sinhL / tau;
+      Zt = sinhL;
+      Zn = coshL / tau;
+
+      // stops (ux=0)/(uperp=0) nans
+      if(uperp < 1.e-5)
+      {
+        Xx = 1.0; Xy = 0.0;
+        Yx = 0.0; Yy = 1.0;
+      }
+      else
+      {
+        Xx = utperp * ux / uperp;
+        Xy = utperp * uy / uperp;
+        Yx = - uy / uperp;
+        Yy = ux / uperp;
+      }
+
+      // evaluate particle densities:
 
       //common prefactor
       double udotdsigma = dat*ut + dax*ux + day*uy + dan*un;
@@ -440,8 +565,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 } //switch(DF_MODE)
               } //if(INCLUDE_BARYONDIFF_DELTAF)
 
-        //add them up
-        //this is the mean number of particles of species ipart
+        // add them up
+        // this is the mean number of particles of species ipart
         double dN = dN_thermal + dN_bulk + dN_diff;
 
         //save to a list to later sample inidividual species
@@ -488,25 +613,40 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       //particle_list[particle_index].mcID = mcid;
       new_particle.mcID = mcid;
 
-      //sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
+      // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
+      // perhap divide this into sample_momentum_from_distribution_x()
       lrf_momentum p_LRF = Sample_Momentum(mass, T, alphaB);
-      double E_LRF = sqrt(mass2 + p_LRF.x * p_LRF.x + p_LRF.y * p_LRF.y + p_LRF.z * p_LRF.z);
+
       double px_LRF = p_LRF.x;
       double py_LRF = p_LRF.y;
       double pz_LRF = p_LRF.z;
+      double E_LRF = sqrt(mass2 + px_LRF * px_LRF + py_LRF * py_LRF + pz_LRF * pz_LRF);
+
+      // lab frame milne p^mu
+      double ptau = E_LRF * ut + px_LRF * Xt + pz_LRF * Zt;
+      double px = E_LRF * ux + px_LRF * Xx + py_LRF * Yx;
+      double py = E_LRF * uy + px_LRF * Xy + py_LRF * Yy;
+      double pn = E_LRF * un + px_LRF * Xn + pz_LRF * Zn;
+
+      // lab frame cartesian p^mu
+      // ptau = mT * cosh(y-eta) = E * coshn - pz * sinhn
+      // tau * pn = mT * sinh(y-eta) = pz * coshn - E * sinhn;
+      double E = (ptau * coshn) + (tau * pn * sinhn);
+      double pz = (tau * pn * coshn) + (ptau * sinhn);
+
 
       //boost the momenta from LRF to lab frame
       //lorentz boost formula from Jackson (11.19) from LRF to Lab
-      double betadotp = betax * px_LRF + betay * py_LRF + betaz * pz_LRF;
-      if ( ::isnan(betadotp) ) printf("found betadotp nan!\n");
+      //double betadotp = betax * px_LRF + betay * py_LRF + betaz * pz_LRF;
+      //if ( ::isnan(betadotp) ) printf("found betadotp nan!\n");
 
       //momentum in Lab frame
-      double px = px_LRF + (u0 - 1.0) / beta2 * betadotp * betax - u0 * betax * E_LRF;
-      double py = py_LRF + (u0 - 1.0) / beta2 * betadotp * betay - u0 * betay * E_LRF;
-      double pz = pz_LRF + (u0 - 1.0) / beta2 * betadotp * betaz - u0 * betaz * E_LRF;
+      //double px = px_LRF + (u0 - 1.0) / beta2 * betadotp * betax - u0 * betax * E_LRF;
+      //double py = py_LRF + (u0 - 1.0) / beta2 * betadotp * betay - u0 * betay * E_LRF;
+      //double pz = pz_LRF + (u0 - 1.0) / beta2 * betadotp * betaz - u0 * betaz * E_LRF;
 
       //set energy using on-shell condition
-      double E = sqrt(mass2 + px * px + py * py + pz * pz);
+      //double E = sqrt(mass2 + px * px + py * py + pz * pz);
 
       //set coordinates of production to FO cell coords
       //particle_list[particle_index].tau = tau;
