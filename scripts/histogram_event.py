@@ -3,12 +3,14 @@ import numpy as np
 import pandas as pd
 
 #load the particle list
-#particle_list = pd.read_csv('results/particle_list.dat')
+#dtypes = ['int', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
+particle_list = pd.read_csv('results/particle_list.dat', sep=',')
 #mcid = pd.read_csv('results/particle_list.dat')['mcid']
 
-mcid = np.loadtxt('results/particle_list.dat', delimiter='\t', usecols=(0,) )
+#mcid = np.loadtxt('results/particle_list.dat', delimiter='\t', usecols=(0,) )
 
-#mcid = particle_list['mcid']
+
+mcid = particle_list['mcid']
 
 #histogram of particle yields
 plt.hist(mcid, bins='auto')
