@@ -23,9 +23,7 @@
 #include <gsl/gsl_sf_bessel.h> //for modified bessel functions
 #include "gaussThermal.h"
 #include "particle.h"
-//#ifdef _OPENACC
-//#include <accelmath.h>
-//#endif
+
 #define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
 
 using namespace std;
@@ -152,8 +150,6 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
       //    k = -T * log(r1)
       //    phi = 2 * \pi * log(r1) / (log(r1) + log(r2)); (double check this formula!!)
 
-      // I could have also done costheta instead of phi (I guess it doesn't matter)
-
       bool rejected = true;
       while(rejected)
       {
@@ -244,10 +240,6 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   return pLRF;
 }
 
-
-
-
-
 void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
@@ -257,9 +249,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
   {
     printf("sampling particles from vhydro with df...\n");
 
-    //double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
     int npart = number_of_chosen_particles;
-    //int particle_index = 0; //runs over all particles in final sampled particle list
 
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
 
@@ -333,7 +323,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     for (int icell = 0; icell < FO_length; icell++)
     {
       // set freezeout info to local varibles to reduce(?) memory access outside cache :
-      //get fo cell coordinates
       double tau = tau_fo[icell];         // longitudinal proper time
       double x = x_fo[icell];
       double y = y_fo[icell];
@@ -448,8 +437,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       //common prefactor
       double udotdsigma = dat*ut + dax*ux + day*uy + dan*un;
-      //double num_factor = 1.0 / 2.0 / M_PI / M_PI / hbarC / hbarC / hbarC;
-      //double prefactor = num_factor * udotdsigma * T;
 
       //the total mean number of particles (all species) for the FO cell
       double dN_tot = 0.0;
@@ -503,7 +490,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             {
               switch(DF_MODE)
               {
-                case 1: // 14 moment (not yet finished, work out the code stupid :P)
+                case 1: // 14 moment (not yet finished)
                 {
                   double J10_fact = pow(T,3) / two_pi2_hbarC3;
                   double J20_fact = pow(T,4) / two_pi2_hbarC3;
@@ -574,20 +561,14 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
         //add this to the total mean number of hadrons for the FO cell
         dN_tot += dN;
-
-    }
+    } //for (int ipart ...)
 
     //now sample the number of particles (all species)
 
-    //FIX
-    //move these declarations to beginning of function !
-    //OR does each thread need its own ???
-
-    //non-deterministic random number generator
+    //non-deterministic random number generators
     std::random_device gen1;
     std::random_device gen2;
 
-    //FIX
     std::poisson_distribution<> poisson_distr(dN_tot);
 
     //sample total number of hadrons in FO cell
@@ -610,7 +591,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       //get the MC ID of the sampled particle
       int mcid = MCID[idx_sampled];
-      //particle_list[particle_index].mcID = mcid;
       new_particle.mcID = mcid;
 
       // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
@@ -649,35 +629,21 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       //double E = sqrt(mass2 + px * px + py * py + pz * pz);
 
       //set coordinates of production to FO cell coords
-      //particle_list[particle_index].tau = tau;
-      //particle_list[particle_index].x = x;
-      //particle_list[particle_index].y = y;
-      //particle_list[particle_index].eta = eta;
-
       new_particle.tau = tau;
       new_particle.x = x;
       new_particle.y = y;
       new_particle.eta = eta;
 
       //set particle momentum to sampled values
-      //particle_list[particle_index].E = E;
-      //particle_list[particle_index].px = px;
-      //particle_list[particle_index].py = py;
-      //particle_list[particle_index].pz = pz;
-
       new_particle.E = E;
       new_particle.px = px;
       new_particle.py = py;
       new_particle.pz = pz;
 
-      //particle_index += 1;
-
       //add to particle list
-      //printf("particle list size : %d\n", particle_list.size() );
       //push_back is not thread safe. Should we use an alternative method such as array or something else?
       #pragma omp critical
       particle_list.push_back(new_particle);
-
     } // for (int n = 0; n < N_hadrons; n++)
   } // for (int icell = 0; icell < FO_length; icell++)
 }
