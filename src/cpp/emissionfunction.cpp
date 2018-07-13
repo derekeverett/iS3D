@@ -67,12 +67,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     chosen_particles_01_table = new int[Nparticles];
 
-    //a class member to hold the sampled particle list
-    //it is dynamically resized as we sample particles
-    std::vector<Sampled_Particle> temp(1);
-    particle_list = temp;
-    particle_list.erase(particle_list.begin());
-
     //a class member to hold 3D smooth CF spectra for all chosen particles
     dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
     //zero the array
@@ -198,6 +192,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     sprintf(filename, "results/particle_list.dat");
     ofstream spectraFile(filename, ios_base::app);
     int num_particles = particle_list.size();
+
+    //write a header
+    spectraFile << "mcid" << "," << "tau" << "," << "x" << "," << "y" << "," << "eta" << "," << "E" << "," << "px" << "," << "py" << "," << "pz" << "\n";
     for (int ipart = 0; ipart < num_particles; ipart++)
     {
       int mcid = particle_list[ipart].mcID;
@@ -209,7 +206,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       double px = particle_list[ipart].px;
       double py = particle_list[ipart].py;
       double pz = particle_list[ipart].pz;
-      spectraFile << scientific <<  setw(5) << setprecision(8) << mcid << "\t" << tau << "\t" << x << "\t" << y << "\t" << eta << "\t" << E << "\t" << px << "\t" << py << "\t" << pz << "\n";
+      //spectraFile << scientific <<  setw(5) << setprecision(8) << mcid << "," << tau << "," << x << "," << y << "," << eta << "," << E << "," << px << "," << py << "," << pz << "\n";
+      spectraFile << mcid << "," << tau << "," << x << "," << y << "," << eta << "," << E << "," << px << "," << py << "," << pz << "\n";
     }//ipart
     spectraFile.close();
   }
@@ -221,6 +219,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     cout << "calculate_spectra() has started ";
     Stopwatch sw;
     sw.tic();
+
+    //a vector to hold sampled particle list
+    //std::vector<Sampled_Particle> particle_list(1);
 
     //fill arrays with all particle info and freezeout info to pass to function which will perform the integral
 
