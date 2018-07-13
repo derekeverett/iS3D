@@ -42,7 +42,7 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
 
   // light hadrons
 
-  //TO DO 
+  //TO DO
   //add routine that works for pions!
   // if (mass / T < 2.0)
   //stuff
@@ -673,6 +673,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       //particle_index += 1;
 
       //add to particle list
+      //printf("particle list size : %d\n", particle_list.size() );
+      //push_back is not thread safe. Should we use an alternative method such as array or something else?
+      #pragma omp critical
       particle_list.push_back(new_particle);
 
     } // for (int n = 0; n < N_hadrons; n++)
