@@ -47,9 +47,19 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   // if (mass / T < 2.0)
   //stuff
 
+  // the ARS thing should be worked on after this 
+  // where does in the SPREW code is it employed? 
+
+
+  // I should I put in the r_ideal or r_visc accept/reject conditions
+  // after I drawed all the momentum variables (p,phi,costheta) (build it up tonight; at least for ideal hydro)
+  // note: don't assume that r_ideal/visc is independent of p like LongGong does 
+
+
   // light hadrons, but heavier than pions
   if(T / mass >= 0.6) // fixed bug on 7/12
   {
+    // I should wrap the r_ideal/visc while loop around this stuff here: {}
     bool rejected = true;
     while(rejected)
     {
@@ -622,21 +632,16 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
         for(int n = 0; n < N_hadrons; n++)
         {
-          //a new particle
-          Sampled_Particle new_particle;
-
-          //sample discrete distribution
+          // sample discrete distribution
           int idx_sampled = particle_numbers(gen2); //this gives the index of the sampled particle
 
-          //get the mass of the sampled particle
+          // get the mass of the sampled particle
           double mass = Mass[idx_sampled];  // (GeV)
           double mass2 = mass * mass;
 
-          //get the MC ID of the sampled particle
+          // get the MC ID of the sampled particle
           int mcid = MCID[idx_sampled];
-          //particle_list[particle_index].mcID = mcid;
-          new_particle.mcID = mcid;
-
+          
           // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
           // perhap divide this into sample_momentum_from_distribution_x()
           lrf_momentum p_LRF = Sample_Momentum(mass, T, alphaB);
@@ -677,27 +682,44 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           //particle_list[particle_index].y = y;
           //particle_list[particle_index].eta = eta;
 
-          new_particle.tau = tau;
-          new_particle.x = x;
-          new_particle.y = y;
-          new_particle.eta = eta;
 
-          //set particle momentum to sampled values
-          //particle_list[particle_index].E = E;
-          //particle_list[particle_index].px = px;
-          //particle_list[particle_index].py = py;
-          //particle_list[particle_index].pz = pz;
+          // keep p.dsigma > 0 and throw out p.dsigma < 0 sampled particles
 
-          new_particle.E = E;
-          new_particle.px = px;
-          new_particle.py = py;
-          new_particle.pz = pz;
+          // milne coordinate formula
+          // for case of boost invariance: delta_eta_weight can be factored out 
+          // double pdotdsigma = delta_eta_weight * (ptau * dat + px * dax + py * pday + pn * dan);
+          double pdotdsigma = ptau * dat + px * dax + py * day + pn * dan;
 
-          //particle_index += 1;
+          // add sampled particle to particle_list 
+          if(pdotdsigma >= 0.0)
+          {
+            // a new particle
+            Sampled_Particle new_particle;
 
-          //add to particle list
-          particle_list.push_back(new_particle);
+            //particle_list[particle_index].mcID = mcid;
+            new_particle.mcID = mcid;
 
+            new_particle.tau = tau;
+            new_particle.x = x;
+            new_particle.y = y;
+            new_particle.eta = eta;
+
+            //set particle momentum to sampled values
+            //particle_list[particle_index].E = E;
+            //particle_list[particle_index].px = px;
+            //particle_list[particle_index].py = py;
+            //particle_list[particle_index].pz = pz;
+
+            new_particle.E = E;
+            new_particle.px = px;
+            new_particle.py = py;
+            new_particle.pz = pz;
+
+            //particle_index += 1;
+
+            //add to particle list
+            particle_list.push_back(new_particle);
+          } // if(pdotsigma >= 0)
         } // for (int n = 0; n < N_hadrons; n++)
       } // for(int ieta = 0; ieta < eta_ptsl ieta++)
   } // for (int icell = 0; icell < FO_length; icell++)
@@ -907,9 +929,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
       {
         // Vmu in the LRF: Vi = - Xi.V
-        Vx_LRF = - (Vt*Xt) + (Vx*Xx) + (Vy*Xy) + (tau2*Vn*Xn);
-        Vy_LRF = (Vx*Yx) + (Vy*Yy);
-        Vz_LRF = - (Vt*Zt) + (tau2*Vn*Zn);
+        Vx_LRF = - Vt*Xt + Vx*Xx + Vy*Xy + tau2*Vn*Xn;
+        Vy_LRF = Vx*Yx + Vy*Yy;
+        Vz_LRF = - Vt*Zt + tau2*Vn*Zn;
       }
 
       // loop over eta points [table for 2+1d (eta_trapezoid_table_21pt.dat), no table for 3+1d (eta_pts = 1)]
@@ -1036,9 +1058,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
         for(int n = 0; n < N_hadrons; n++)
         {
-          // a new particle
-          Sampled_Particle new_particle;
-
           //sample discrete distribution
           int idx_sampled = particle_numbers(gen2); // this gives the index of the sampled particle
 
@@ -1049,7 +1068,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           //get the MC ID of the sampled particle
           int mcid = MCID[idx_sampled];
           //particle_list[particle_index].mcID = mcid;
-          new_particle.mcID = mcid;
 
           // sample prime LRF Momentum p' from an "equilibrium" distribution
           // with Scott Pratt's Trick - See LongGang's Sampler Notes
@@ -1110,32 +1128,44 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           double pz = (tau * pn * cosheta) + (ptau * sinheta);
 
 
-          //set coordinates of production to FO cell coords
-          //particle_list[particle_index].tau = tau;
-          //particle_list[particle_index].x = x;
-          //particle_list[particle_index].y = y;
-          //particle_list[particle_index].eta = eta;
+          // keep p.dsigma > 0 sampled particles
+          // throw out p.dsigma < 0 sampled particles
 
-          new_particle.tau = tau;
-          new_particle.x = x;
-          new_particle.y = y;
-          new_particle.eta = eta;
+          // milne coordinate formula
+          // for case of boost invariance: delta_eta_weight can be factored out 
+          // double pdotdsigma = delta_eta_weight * (ptau * dat + px * dax + py * pday + pn * dan);
+          double pdotdsigma = ptau * dat + px * dax + py * day + pn * dan;
 
-          //set particle momentum to sampled values
-          //particle_list[particle_index].E = E;
-          //particle_list[particle_index].px = px;
-          //particle_list[particle_index].py = py;
-          //particle_list[particle_index].pz = pz;
+          // add sampled particle to particle_list 
+          if(pdotdsigma >= 0.0)
+          {
+            // a new particle
+            Sampled_Particle new_particle;
 
-          new_particle.E = E;
-          new_particle.px = px;
-          new_particle.py = py;
-          new_particle.pz = pz;
+            //particle_list[particle_index].mcID = mcid;
+            new_particle.mcID = mcid;
 
-          //particle_index += 1;
+            new_particle.tau = tau;
+            new_particle.x = x;
+            new_particle.y = y;
+            new_particle.eta = eta;
 
-          //add to particle list
-          particle_list.push_back(new_particle);
+            //set particle momentum to sampled values
+            //particle_list[particle_index].E = E;
+            //particle_list[particle_index].px = px;
+            //particle_list[particle_index].py = py;
+            //particle_list[particle_index].pz = pz;
+
+            new_particle.E = E;
+            new_particle.px = px;
+            new_particle.py = py;
+            new_particle.pz = pz;
+
+            //particle_index += 1;
+
+            //add to particle list
+            particle_list.push_back(new_particle);
+          } // if(pdotsigma >= 0)
 
         } // for (int n = 0; n < N_hadrons; n++)
       } // for(int ieta = 0; ieta < eta_ptsl ieta++)

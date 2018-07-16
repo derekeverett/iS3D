@@ -59,6 +59,7 @@ class FO_data_reader
         ParameterReader* paraRdr;
         string pathToInput;
         int mode; //type of freezeout surface, VH or VAH
+        int dimension; // added on 7/16
         int include_baryon; //switch to turn on/off baryon chemical potential
         int include_bulk_deltaf; //switch to turn on/off (\delta)f correction from bulk viscosity
         int include_shear_deltaf; //switch to turn on/off (\delta)f correction from shear viscosity

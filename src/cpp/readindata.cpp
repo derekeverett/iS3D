@@ -20,6 +20,7 @@ FO_data_reader::FO_data_reader(ParameterReader* paraRdr_in, string path_in)
   paraRdr = paraRdr_in;
   pathToInput = path_in;
   mode = paraRdr->getVal("mode"); //this determines whether the file read in has viscous hydro dissipative currents or viscous anisotropic dissipative currents
+  dimension = paraRdr->getVal("dimension");
   include_baryon = paraRdr->getVal("include_baryon");
   include_bulk_deltaf = paraRdr->getVal("include_bulk_deltaf");
   include_shear_deltaf = paraRdr->getVal("include_shear_deltaf");
@@ -73,6 +74,12 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surfdat >> surf_ptr[i].dax;
     surfdat >> surf_ptr[i].day;
     surfdat >> surf_ptr[i].dan;
+    // added safeguard for boost invariant read-ins on 7/16 
+    if(dimension == 2 && surf_ptr[i].dan != 0) 
+    {
+      cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
+      exit(-1);
+    }
 
     // contravariant flow velocity
     surfdat >> surf_ptr[i].ut;
@@ -168,6 +175,11 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
     surf_ptr[i].day = dummy * surf_ptr[i].tau;
     surfdat >> dummy;
     surf_ptr[i].dan = dummy * surf_ptr[i].tau;
+    if(dimension == 2 && surf_ptr[i].dan != 0)
+    {
+      cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
+      exit(-1);
+    }
 
     // contravariant flow velocity
     surfdat >> surf_ptr[i].ut;
@@ -256,6 +268,11 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
     surface_data >> surface[i].dax; // (fm^3)
     surface_data >> surface[i].day; // (fm^3)
     surface_data >> surface[i].dan; // (fm^4)
+    if(dimension == 2 && surf_ptr[i].dan != 0)
+    {
+      cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
+      exit(-1);
+    }
 
     // contravariant fluid velocity
     surface_data >> surface[i].ut;  // (1)
@@ -369,6 +386,11 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
     surface_data >> surface[i].dax; // (fm^3)
     surface_data >> surface[i].day; // (fm^3)
     surface_data >> surface[i].dan; // (fm^4)
+    if(dimension == 2 && surf_ptr[i].dan != 0)
+    {
+      cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
+      exit(-1);
+    }
 
     // contravariant fluid velocity
     surface_data >> surface[i].ut;  // (1)
