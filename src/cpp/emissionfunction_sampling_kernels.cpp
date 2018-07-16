@@ -359,7 +359,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double ux = ux_fo[icell];           // contravariant fluid velocity
       double uy = uy_fo[icell];           // reinforce normalization
       double un = un_fo[icell];           // u^\eta
-      double ut = sqrt(fabs(1.0 + ux*ux + uy*uy + tau2*un*un)); //u^\tau
+      double ux2 = ux * ux;
+      double uy2 = uy * uy;
+      double uperp =  sqrt(ux2 + uy2);
+      double ut = sqrt(fabs(1.0 + uperp * uperp + tau2*un*un)); //u^\tau
+
+      double ut2 = ut * ut;
+      double utperp = sqrt(1.0 + uperp * uperp);
 
       //get the cartesian components of fluid velocity for the boost LRF -> Lab
       //double u0 = ut * cosh(un);
@@ -375,16 +381,21 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double E = E_fo[icell];             // energy density
       double P = P_fo[icell];             // pressure
 
-      double pitt = pitt_fo[icell];       // pi^munu
-      double pitx = pitx_fo[icell];
-      double pity = pity_fo[icell];
-      double pitn = pitn_fo[icell];
+      //double pitt = pitt_fo[icell];     // pi^munu
+      //double pitx = pitx_fo[icell];     // enforce orthogonality and tracelessness
+      //double pity = pity_fo[icell];
+      //double pitn = pitn_fo[icell];
       double pixx = pixx_fo[icell];
       double pixy = pixy_fo[icell];
       double pixn = pixn_fo[icell];
       double piyy = piyy_fo[icell];
       double piyn = piyn_fo[icell];
-      double pinn = pinn_fo[icell];
+      //double pinn = pinn_fo[icell];
+      double pinn = (pixx*(ux2 - ut2) + piyy*(uy2 - ut2) + 2.0*(pixy*ux*uy + tau2*un*(pixn*ux + piyn*uy))) / (tau2 * utperp * utperp);
+      double pitn = (pixn*ux + piyn*uy + tau2*pinn*un) / ut;
+      double pity = (pixy*ux + piyy*uy + tau2*piyn*un) / ut;
+      double pitx = (pixx*ux + pixy*uy + tau2*pixn*un) / ut;
+      double pitt = (pitx*ux + pity*uy + tau2*pitn*un) / ut;
 
       double bulkPi = bulkPi_fo[icell];   // bulk pressure
 
@@ -406,10 +417,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         if(INCLUDE_BARYONDIFF_DELTAF)
         {
           nB = nB_fo[icell];
-          Vt = Vt_fo[icell];
+          // Vt = Vt_fo[icell];
           Vx = Vx_fo[icell];
           Vy = Vy_fo[icell];
           Vn = Vn_fo[icell];
+          Vt = (Vx*ux + Vy*uy + tau2*Vn*un) / ut;
           baryon_enthalpy_ratio = nB / (E + P);
         }
       }
@@ -419,8 +431,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double Yx, Yy;          // Y^mu
       double Zt, Zn;          // Z^mu
 
-      double uperp = sqrt(ux * ux + uy * uy);
-      double utperp = sqrt(1.0 + uperp * uperp);
       double sinhL = tau * un / utperp;
       double coshL = ut / utperp;
 
@@ -485,7 +495,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           if(INCLUDE_BARYON)
           {
             baryon = Baryon[ipart];
-            chem = baryon * muB;
+            chem = baryon * alphaB;
           }
 
           // first calculate thermal equilibrium particles
@@ -504,7 +514,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             sign_factor *= (-sign);
             //neq += (pow(-sign, k+1) * exp(n * chem / T) * gsl_sf_bessel_Kn(2, n * mbar) / n);
             //cout << "Here" << endl;
-            neq += (sign_factor * exp(k * alphaB) * gsl_sf_bessel_Kn(2, k * mbar) / k);
+            neq += (sign_factor * exp(k * chem) * gsl_sf_bessel_Kn(2, k * mbar) / k); // fixed chem term 7/15
           }
           neq *= (degeneracy * mass2 * T / two_pi2_hbarC3);
 
@@ -768,29 +778,39 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       double ux = ux_fo[icell];           // contravariant fluid velocity
       double uy = uy_fo[icell];           // reinforce normalization
       double un = un_fo[icell];           // u^\eta
-      double ut = sqrt(fabs(1.0 + ux*ux + uy*uy + tau2*un*un)); //u^\tau
+      double ux2 = ux * ux;
+      double uy2 = uy * uy;
+      double uperp =  sqrt(ux2 + uy2);
+      double ut = sqrt(fabs(1.0 + uperp * uperp + tau2*un*un)); //u^\tau
+
+      double ut2 = ut * ut;
+      double utperp = sqrt(1.0 + uperp * uperp);
 
       double T = T_fo[icell];             // temperature
       double T_mod = T;                   // modified temperature (default)
       double E = E_fo[icell];             // energy density
       double P = P_fo[icell];             // pressure
 
-      double pitt = pitt_fo[icell];       // pi^munu
-      double pitx = pitx_fo[icell];
-      double pity = pity_fo[icell];
-      double pitn = pitn_fo[icell];
+      //double pitt = pitt_fo[icell];     // pi^munu
+      //double pitx = pitx_fo[icell];     // enforce orthogonality and tracelessness
+      //double pity = pity_fo[icell];
+      //double pitn = pitn_fo[icell];
       double pixx = pixx_fo[icell];
       double pixy = pixy_fo[icell];
       double pixn = pixn_fo[icell];
       double piyy = piyy_fo[icell];
       double piyn = piyn_fo[icell];
-      double pinn = pinn_fo[icell];
-
+      //double pinn = pinn_fo[icell];
+      double pinn = (pixx*(ux2 - ut2) + piyy*(uy2 - ut2) + 2.0*(pixy*ux*uy + tau2*un*(pixn*ux + piyn*uy))) / (tau2 * utperp * utperp);
+      double pitn = (pixn*ux + piyn*uy + tau2*pinn*un) / ut;
+      double pity = (pixy*ux + piyy*uy + tau2*piyn*un) / ut;
+      double pitx = (pixx*ux + pixy*uy + tau2*pixn*un) / ut;
+      double pitt = (pitx*ux + pity*uy + tau2*pitn*un) / ut;
       double bulkPi = bulkPi_fo[icell];   // bulk pressure
 
       double muB = 0.0;
       double alphaB = 0.0;                    // baryon chemical potential
-      double alphaB_mod = alphaB;             // modified chemical potential (default) 
+      double alphaB_mod = alphaB;             // modified chemical potential (default)
       double nB = 0.0;                        // net baryon density
       double Vt = 0.0;                        // baryon diffusion
       double Vx = 0.0;
@@ -807,28 +827,29 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
         if(INCLUDE_BARYONDIFF_DELTAF)
         {
           nB = nB_fo[icell];
-          Vt = Vt_fo[icell];
+          //Vt = Vt_fo[icell];
           Vx = Vx_fo[icell];
           Vy = Vy_fo[icell];
           Vn = Vn_fo[icell];
+          Vt = (Vx*ux + Vy*uy + tau2*Vn*un) / ut;
           baryon_enthalpy_ratio = nB / (E + P);
         }
       }
 
-      // set modified coefficients, temperature, chemical potential 
+      // set modified coefficients, temperature, chemical potential
       double shear_coeff = 0.5 / betapi;
       double bulk_coeff = bulkPi / betabulk / 3.0;
-      double diff_coeff = 0.0; 
+      double diff_coeff = 0.0;
       if(INCLUDE_BULK_DELTAF)
       {
         double dT = F * bulkPi / betabulk;
         double dalphaB = G * bulkPi / betabulk;
         T_mod += dT;
-        alphaB_mod += dalphaB; 
+        alphaB_mod += dalphaB;
       }
       if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
       {
-        diff_coeff = T / betaV; 
+        diff_coeff = T / betaV;
       }
 
       // set milne basis vectors:
@@ -836,8 +857,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       double Yx, Yy;          // Y^mu
       double Zt, Zn;          // Z^mu
 
-      double uperp = sqrt(ux * ux + uy * uy);
-      double utperp = sqrt(1.0 + uperp * uperp);
       double sinhL = tau * un / utperp;
       double coshL = ut / utperp;
 
@@ -866,13 +885,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       double pixz_LRF = 0.0;
       double piyy_LRF = 0.0;
       double piyz_LRF = 0.0;
-      double pizz_LRF = 0.0; 
+      double pizz_LRF = 0.0;
 
       if(INCLUDE_SHEAR_DELTAF)
       {
           // pimunu in the LRF: piij = Xi.pi.Xj
-          double tau4 = tau2 * tau2; 
-          pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau4*pinn*Xn*Xn
+          //double tau4 = tau2 * tau2;
+          pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
                   + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
           pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xy + pixy*Xx + piyy*Xy + tau2*piyn*Xn);
           pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xn - piyn*Xy - tau2*pinn*Xn);
@@ -890,7 +909,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
         // Vmu in the LRF: Vi = - Xi.V
         Vx_LRF = - (Vt*Xt) + (Vx*Xx) + (Vy*Xy) + (tau2*Vn*Xn);
         Vy_LRF = (Vx*Yx) + (Vy*Yy);
-        Vz_LRF = - (Vt*Zt) + (tau2*Vn*Zn); 
+        Vz_LRF = - (Vt*Zt) + (tau2*Vn*Zn);
       }
 
       // loop over eta points [table for 2+1d (eta_trapezoid_table_21pt.dat), no table for 3+1d (eta_pts = 1)]
@@ -934,10 +953,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           if(INCLUDE_BARYON)
           {
             baryon = Baryon[ipart];
-            chem = baryon * muB;
-            // I need to modify the temperature and chemical potential 
-            // how does result change exactly if the sampling has finite chemical potential? 
-            // include more terms in the expansion? 
+            chem = baryon * alphaB;
+            // how does result change exactly if the sampling has finite chemical potential?
+            // include more terms in the expansion?
           }
 
           // first calculate thermal equilibrium particles
@@ -956,7 +974,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
             sign_factor *= (-sign);
             //neq += (pow(-sign, k+1) * exp(n * chem / T) * gsl_sf_bessel_Kn(2, n * mbar) / n);
             //cout << "Here" << endl;
-            neq += (sign_factor * exp(k * alphaB) * gsl_sf_bessel_Kn(2, k * mbar) / k);
+            neq += (sign_factor * exp(k * chem) * gsl_sf_bessel_Kn(2, k * mbar) / k); // fixed on 7/15
           }
           neq *= (degeneracy * mass2 * T / two_pi2_hbarC3);
 
@@ -972,7 +990,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
             double J10 = degeneracy * J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
             double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
             dN_bulk = udotdsigma * (bulkPi / betabulk) * (neq + (baryon * J10 * G) + (J20 * F / T / T));
-          } 
+          }
 
           // baryon diffusion: density correction
           // (~ assumes modified diffusion current of each species is approximately same as linear one)
@@ -982,7 +1000,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
             double J11_fact = pow(T,3) / two_pi2_hbarC3 / 3.0;
             double J11 = degeneracy * J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
             dN_diff = - (Vdotdsigma / betaV) * (neq * T * baryon_enthalpy_ratio - baryon * J11);
-          } 
+          }
 
           // add them up
           // this is the mean number of particles of species ipart
@@ -1022,7 +1040,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           Sampled_Particle new_particle;
 
           //sample discrete distribution
-          int idx_sampled = particle_numbers(gen2); //this gives the index of the sampled particle
+          int idx_sampled = particle_numbers(gen2); // this gives the index of the sampled particle
 
           //get the mass of the sampled particle
           double mass = Mass[idx_sampled]; // (GeV)
@@ -1033,10 +1051,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           //particle_list[particle_index].mcID = mcid;
           new_particle.mcID = mcid;
 
-          // sample prime LRF Momentum p' from an "equilibrium" distribution 
+          // sample prime LRF Momentum p' from an "equilibrium" distribution
           // with Scott Pratt's Trick - See LongGang's Sampler Notes
 
-          // modified version: 
+          // modified version:
           // should not invoke the linear df corrections (make Sample_Momentum a class member)
           lrf_momentum p_LRF_prime = Sample_Momentum(mass, T_mod, alphaB_mod);
 
@@ -1045,7 +1063,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           double pz_LRF_prime = p_LRF_prime.z;
           double E_LRF_prime = sqrt(mass2 + px_LRF_prime * px_LRF_prime + py_LRF_prime * py_LRF_prime + pz_LRF_prime * pz_LRF_prime);
 
-          // default LRF momentum (ideal) 
+          // default LRF momentum (ideal)
           double px_LRF = px_LRF_prime;
           double py_LRF = py_LRF_prime;
           double pz_LRF = pz_LRF_prime;
@@ -1076,8 +1094,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           }
 
           // final LRF energy
-          double E_LRF = sqrt(mass2 + px_LRF * px_LRF + py_LRF * py_LRF + pz_LRF * pz_LRF); 
-          
+          double E_LRF = sqrt(mass2 + px_LRF * px_LRF + py_LRF * py_LRF + pz_LRF * pz_LRF);
+
 
           // lab frame milne p^mu
           double ptau = E_LRF * ut + px_LRF * Xt + pz_LRF * Zt;
