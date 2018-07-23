@@ -105,7 +105,7 @@ public:
   void write_particle_list_toFile(); //write sampled particle list
   void calculate_spectra();
 
-  void do_resonance_decays();
+  void do_resonance_decays(particle_info * particle_data, const int Maxdecaypart);
 
 };
 

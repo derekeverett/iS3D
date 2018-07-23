@@ -710,16 +710,16 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     cout << "calculate_spectra() took " << sw.takeTime() << " seconds." << endl;
   }
 
-  void EmissionFunctionArray::do_resonance_decays()
-  {
-    printf("Starting resonance decays \n");
+  // void EmissionFunctionArray::do_resonance_decays()
+  // {
+  //   printf("Starting resonance decays \n");
 
-    //declare a particle struct to hold all the particle info
-    particle particles[10];
+  //   //declare a particle struct to hold all the particle info
+  //   particle particles[10];
 
-    //read the in the resonance info
-    //int max, maxdecay;
-    //readParticleData("PDG/pdg.dat", &max, &maxdecay, particles)
-    //calc_reso_decays(max, maxdecay, LIGHTEST_PARTICLE);
-    printf("Resonance decays finished \n");
-  }
+  //   //read the in the resonance info
+  //   //int max, maxdecay;
+  //   //readParticleData("PDG/pdg.dat", &max, &maxdecay, particles)
+  //   //calc_reso_decays(max, maxdecay, LIGHTEST_PARTICLE);
+  //   printf("Resonance decays finished \n");
+  // }
