@@ -100,7 +100,8 @@ public:
   double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
   double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
-  void write_dN_pTdpTdphidy_toFile(); //write 3D spectra to file
+  void write_dN_pTdpTdphidy_toFile(); //write invariant 3D spectra to file
+  void write_dN_dpTdphidy_toFile(); //write 3D spectra to file in experimental bins 
   void write_particle_list_toFile(); //write sampled particle list
   void calculate_spectra();
 
