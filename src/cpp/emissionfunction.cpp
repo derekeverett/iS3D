@@ -183,6 +183,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     if (DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
     sprintf(filename, "results/dN_dpTdphidy.dat");
     ofstream spectraFile(filename, ios_base::app);
+    //write the header
+    spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_dpTdphidy" << "\n"; 
     for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
       for (int iy = 0; iy < y_pts; iy++)
