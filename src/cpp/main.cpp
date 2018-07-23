@@ -33,7 +33,6 @@ int main(int argc, char *argv[])
   printline();
 
   string pathToInput = "input";
-  //string pathToOutput = "results";
 
   //load freeze out information
   FO_data_reader freeze_out_data(paraRdr, pathToInput);
@@ -74,7 +73,6 @@ int main(int argc, char *argv[])
 
   efa.calculate_spectra();
   //calculate resonance decays
-  //or put this inside calculate_spectra function?
   int do_resonance_decays = paraRdr->getVal("do_resonance_decays");
   if (do_resonance_decays) efa.do_resonance_decays();
 

@@ -34,9 +34,6 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
 {
   lrf_momentum pLRF;
 
-  // Derek: can we fix the seed temporarily we can compare results?
-
-  // only need to seed once right?
   unsigned seed = chrono::system_clock::now().time_since_epoch().count();
   default_random_engine generator(seed);
 
@@ -47,13 +44,13 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   // if (mass / T < 2.0)
   //stuff
 
-  // the ARS thing should be worked on after this 
-  // where does in the SPREW code is it employed? 
+  // the ARS thing should be worked on after this
+  // where does in the SPREW code is it employed?
 
 
   // I should I put in the r_ideal or r_visc accept/reject conditions
   // after I drawed all the momentum variables (p,phi,costheta) (build it up tonight; at least for ideal hydro)
-  // note: don't assume that r_ideal/visc is independent of p like LongGong does 
+  // note: don't assume that r_ideal/visc is independent of p like LongGong does
 
 
   // light hadrons, but heavier than pions
@@ -61,7 +58,7 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   {
     // I should wrap the r_ideal/visc while loop around this stuff here: {}
     bool rejected = true;
-    while(rejected)
+    while (rejected)
     {
       // do you need different generators for (r1,r2,r3,propose)? Guess not..
       // draw (p, phi, costheta) from distribution p^2 * exp[-p/T] by
@@ -110,7 +107,6 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
     double I1 = mass * mass;
     double I2 = 2.0 * mass * T;
     double I3 = 2.0 * T * T;
-
     double Itot = I1 + I2 + I3;
 
     double propose_distribution = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -155,7 +151,7 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
         } // k acceptance
       } // while loop
     } // distribution 1
-    else if(propose_distribution < (I1 + I2) / Itot)
+    else if (propose_distribution < (I1 + I2) / Itot)
     {
       // draw (k,phi) from distribution k * exp(-k/T) by
       // sampling two variables (r1,r2) uniformly from [0,1):
@@ -165,7 +161,7 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
       // I could have also done costheta instead of phi (I guess it doesn't matter)
 
       bool rejected = true;
-      while(rejected)
+      while (rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
         double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -250,13 +246,8 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
       }
     } // distribution 3
   } // heavy hadron
-
   return pLRF;
 }
-
-
-
-
 
 void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
@@ -266,10 +257,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
   int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2, double *pbar_root3, double *pbar_weight3)
   {
     printf("sampling particles from vhydro with df...\n");
-
-    //double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
     int npart = number_of_chosen_particles;
-    //int particle_index = 0; //runs over all particles in final sampled particle list
 
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
 
@@ -342,7 +330,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     #pragma omp parallel for
     for (int icell = 0; icell < FO_length; icell++)
     {
-      // set freezeout info to local varibles to reduce(?) memory access outside cache :
       //get fo cell coordinates
       double tau = tau_fo[icell];         // longitudinal proper time
       double x = x_fo[icell];
@@ -353,13 +340,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       {
         etaValues[0] = eta_fo[icell];     // spacetime rapidity from surface file
       }
-
-      //FIX THIS - NEED A LOOP OVER ETA FOR CASE OF 2D SURFACE
-      //double eta = etaValues[0];
-
-      //double coshn = cosh(eta);
-      //double sinhn = sinh(eta);
-      //FIX THIS
 
       double dat = dat_fo[icell];         // covariant normal surface vector
       double dax = dax_fo[icell];
@@ -376,16 +356,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       double ut2 = ut * ut;
       double utperp = sqrt(1.0 + uperp * uperp);
-
-      //get the cartesian components of fluid velocity for the boost LRF -> Lab
-      //double u0 = ut * cosh(un);
-      //double u3 = ut * sinh(un);
-
-      //beta factors for boost from LRF to Lab
-      //double betax = ux/u0;
-      //double betay = uy/u0;
-      //double betaz = u3/u0;
-      //double beta2 = betax * betax + betay * betay + betaz * betaz;
 
       double T = T_fo[icell];             // temperature
       double E = E_fo[icell];             // energy density
@@ -469,18 +439,15 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       {
         double eta = etaValues[ieta];
         double delta_eta_weight = etaDeltaWeights[ieta];
-
         double cosheta = cosh(eta);
         double sinheta = sinh(eta);
-
-        double udotdsigma = delta_eta_weight * (dat*ut + dax*ux + day*uy + dan*un);
-
+        double udotdsigma = delta_eta_weight * (dat * ut + dax * ux + day * uy + dan * un);
         double Vdotdsigma = 0.0;
 
         // V^\mu d^3sigma_\mu
-        if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+        if (INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
         {
-          Vdotdsigma = delta_eta_weight * (dat*Vt + dax*Vx + day*Vy + dan*Vn);
+          Vdotdsigma = delta_eta_weight * (dat * Vt + dax * Vx + day * Vy + dan * Vn);
         }
         // evaluate particle densities:
 
@@ -522,8 +489,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           {
             double k = (double)j;
             sign_factor *= (-sign);
-            //neq += (pow(-sign, k+1) * exp(n * chem / T) * gsl_sf_bessel_Kn(2, n * mbar) / n);
-            //cout << "Here" << endl;
             neq += (sign_factor * exp(k * chem) * gsl_sf_bessel_Kn(2, k * mbar) / k); // fixed chem term 7/15
           }
           neq *= (degeneracy * mass2 * T / two_pi2_hbarC3);
@@ -601,10 +566,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           // add them up
           // this is the mean number of particles of species ipart
           double dN = dN_thermal + dN_bulk + dN_diff;
-
           //save to a list to later sample inidividual species
           density_list[ipart] = dN;
-
           //add this to the total mean number of hadrons for the FO cell
           dN_tot += dN;
 
@@ -612,36 +575,25 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
 
         // now sample the number of particles (all species)
-
-        //FIX
-        //move these declarations to beginning of function !
-        //OR does each thread need its own ???
-
-        //non-deterministic random number generator
         std::random_device gen1;
         std::random_device gen2;
-
-        //FIX
         std::poisson_distribution<> poisson_distr(dN_tot);
-
         //sample total number of hadrons in FO cell
         int N_hadrons = poisson_distr(gen1);
 
         //make a discrete distribution with weights according to particle densities
-        std::discrete_distribution<int> particle_numbers (density_list.begin(), density_list.end());
+        std::discrete_distribution<int> particle_numbers(density_list.begin(), density_list.end());
 
-        for(int n = 0; n < N_hadrons; n++)
+        for (int n = 0; n < N_hadrons; n++)
         {
           // sample discrete distribution
           int idx_sampled = particle_numbers(gen2); //this gives the index of the sampled particle
-
           // get the mass of the sampled particle
           double mass = Mass[idx_sampled];  // (GeV)
           double mass2 = mass * mass;
-
           // get the MC ID of the sampled particle
           int mcid = MCID[idx_sampled];
-          
+
           // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
           // perhap divide this into sample_momentum_from_distribution_x()
           lrf_momentum p_LRF = Sample_Momentum(mass, T, alphaB);
@@ -658,75 +610,42 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           double pn = E_LRF * un + px_LRF * Xn + pz_LRF * Zn;
 
           // lab frame cartesian p^mu
-          // ptau = mT * cosh(y-eta) = E * coshn - pz * sinhn
-          // tau * pn = mT * sinh(y-eta) = pz * coshn - E * sinhn;
           double E = (ptau * cosheta) + (tau * pn * sinheta);
           double pz = (tau * pn * cosheta) + (ptau * sinheta);
-
-          //boost the momenta from LRF to lab frame
-          //lorentz boost formula from Jackson (11.19) from LRF to Lab
-          //double betadotp = betax * px_LRF + betay * py_LRF + betaz * pz_LRF;
-          //if ( ::isnan(betadotp) ) printf("found betadotp nan!\n");
-
-          //momentum in Lab frame
-          //double px = px_LRF + (u0 - 1.0) / beta2 * betadotp * betax - u0 * betax * E_LRF;
-          //double py = py_LRF + (u0 - 1.0) / beta2 * betadotp * betay - u0 * betay * E_LRF;
-          //double pz = pz_LRF + (u0 - 1.0) / beta2 * betadotp * betaz - u0 * betaz * E_LRF;
-
-          //set energy using on-shell condition
-          //double E = sqrt(mass2 + px * px + py * py + pz * pz);
-
-          //set coordinates of production to FO cell coords
-          //particle_list[particle_index].tau = tau;
-          //particle_list[particle_index].x = x;
-          //particle_list[particle_index].y = y;
-          //particle_list[particle_index].eta = eta;
-
 
           // keep p.dsigma > 0 and throw out p.dsigma < 0 sampled particles
 
           // milne coordinate formula
-          // for case of boost invariance: delta_eta_weight can be factored out 
+          // for case of boost invariance: delta_eta_weight can be factored out
           // double pdotdsigma = delta_eta_weight * (ptau * dat + px * dax + py * pday + pn * dan);
           double pdotdsigma = ptau * dat + px * dax + py * day + pn * dan;
 
-          // add sampled particle to particle_list 
-          if(pdotdsigma >= 0.0)
+          // add sampled particle to particle_list
+          if (pdotdsigma >= 0.0)
           {
             // a new particle
             Sampled_Particle new_particle;
-
-            //particle_list[particle_index].mcID = mcid;
             new_particle.mcID = mcid;
-
             new_particle.tau = tau;
             new_particle.x = x;
             new_particle.y = y;
             new_particle.eta = eta;
-
-            //set particle momentum to sampled values
-            //particle_list[particle_index].E = E;
-            //particle_list[particle_index].px = px;
-            //particle_list[particle_index].py = py;
-            //particle_list[particle_index].pz = pz;
 
             new_particle.E = E;
             new_particle.px = px;
             new_particle.py = py;
             new_particle.pz = pz;
 
-            //particle_index += 1;
-
             //add to particle list
+            //CAREFUL push_back is not a thread-safe operation
+            //how should we modify for GPU version?
+            #pragma omp critical
             particle_list.push_back(new_particle);
           } // if(pdotsigma >= 0)
         } // for (int n = 0; n < N_hadrons; n++)
       } // for(int ieta = 0; ieta < eta_ptsl ieta++)
   } // for (int icell = 0; icell < FO_length; icell++)
 }
-
-
-
 
 
 void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
@@ -745,8 +664,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
     }
 
     int npart = number_of_chosen_particles;
-    //int particle_index = 0; //runs over all particles in final sampled particle list
-
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
 
     int eta_pts = 1;
@@ -780,7 +697,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
     #pragma omp parallel for
     for (int icell = 0; icell < FO_length; icell++)
     {
-      // set freezeout info to local varibles to reduce(?) memory access outside cache :
       //get fo cell coordinates
       double tau = tau_fo[icell];         // longitudinal proper time
       double x = x_fo[icell];
@@ -912,7 +828,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       if(INCLUDE_SHEAR_DELTAF)
       {
           // pimunu in the LRF: piij = Xi.pi.Xj
-          //double tau4 = tau2 * tau2;
           pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
                   + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
           pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xy + pixy*Xx + piyy*Xy + tau2*piyn*Xn);
@@ -939,12 +854,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       {
         double eta = etaValues[ieta];
         double delta_eta_weight = etaDeltaWeights[ieta];
-
         double cosheta = cosh(eta);
         double sinheta = sinh(eta);
-
         double udotdsigma = delta_eta_weight * (dat*ut + dax*ux + day*uy + dan*un);
-
         double Vdotdsigma = 0.0;
 
         // V^\mu d^3sigma_\mu
@@ -956,7 +868,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
         //the total mean number of particles (all species) for the FO cell
         double dN_tot = 0.0;
-
         //a list with species dependent densities
         std::vector<double> density_list;
         density_list.resize(npart);
@@ -994,8 +905,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           {
             double k = (double)j;
             sign_factor *= (-sign);
-            //neq += (pow(-sign, k+1) * exp(n * chem / T) * gsl_sf_bessel_Kn(2, n * mbar) / n);
-            //cout << "Here" << endl;
             neq += (sign_factor * exp(k * chem) * gsl_sf_bessel_Kn(2, k * mbar) / k); // fixed on 7/15
           }
           neq *= (degeneracy * mass2 * T / two_pi2_hbarC3);
@@ -1027,10 +936,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           // add them up
           // this is the mean number of particles of species ipart
           double dN = dN_thermal + dN_bulk + dN_diff;
-
           //save to a list to later sample inidividual species
           density_list[ipart] = dN;
-
           //add this to the total mean number of hadrons for the FO cell
           dN_tot += dN;
 
@@ -1038,21 +945,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
 
         // now sample the number of particles (all species)
-
-        //FIX
-        //move these declarations to beginning of function !
-        //OR does each thread need its own ???
-
-        //non-deterministic random number generator
         std::random_device gen1;
         std::random_device gen2;
-
-        //FIX
         std::poisson_distribution<> poisson_distr(dN_tot);
-
         //sample total number of hadrons in FO cell
         int N_hadrons = poisson_distr(gen1);
-
         //make a discrete distribution with weights according to particle densities
         std::discrete_distribution<int> particle_numbers (density_list.begin(), density_list.end());
 
@@ -1064,14 +961,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           //get the mass of the sampled particle
           double mass = Mass[idx_sampled]; // (GeV)
           double mass2 = mass * mass;
-
           //get the MC ID of the sampled particle
           int mcid = MCID[idx_sampled];
-          //particle_list[particle_index].mcID = mcid;
 
           // sample prime LRF Momentum p' from an "equilibrium" distribution
           // with Scott Pratt's Trick - See LongGang's Sampler Notes
-
           // modified version:
           // should not invoke the linear df corrections (make Sample_Momentum a class member)
           lrf_momentum p_LRF_prime = Sample_Momentum(mass, T_mod, alphaB_mod);
@@ -1122,48 +1016,36 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           double pn = E_LRF * un + px_LRF * Xn + pz_LRF * Zn;
 
           // lab frame cartesian p^mu
-          // ptau = mT * cosh(y-eta) = E * coshn - pz * sinhn
-          // tau * pn = mT * sinh(y-eta) = pz * coshn - E * sinhn;
           double E = (ptau * cosheta) + (tau * pn * sinheta);
           double pz = (tau * pn * cosheta) + (ptau * sinheta);
-
 
           // keep p.dsigma > 0 sampled particles
           // throw out p.dsigma < 0 sampled particles
 
           // milne coordinate formula
-          // for case of boost invariance: delta_eta_weight can be factored out 
+          // for case of boost invariance: delta_eta_weight can be factored out
           // double pdotdsigma = delta_eta_weight * (ptau * dat + px * dax + py * pday + pn * dan);
           double pdotdsigma = ptau * dat + px * dax + py * day + pn * dan;
 
-          // add sampled particle to particle_list 
-          if(pdotdsigma >= 0.0)
+          // add sampled particle to particle_list
+          if (pdotdsigma >= 0.0)
           {
             // a new particle
             Sampled_Particle new_particle;
-
-            //particle_list[particle_index].mcID = mcid;
             new_particle.mcID = mcid;
-
             new_particle.tau = tau;
             new_particle.x = x;
             new_particle.y = y;
             new_particle.eta = eta;
-
-            //set particle momentum to sampled values
-            //particle_list[particle_index].E = E;
-            //particle_list[particle_index].px = px;
-            //particle_list[particle_index].py = py;
-            //particle_list[particle_index].pz = pz;
-
             new_particle.E = E;
             new_particle.px = px;
             new_particle.py = py;
             new_particle.pz = pz;
 
-            //particle_index += 1;
-
             //add to particle list
+            //CAREFUL push_back is not a thread safe operation
+            //how should we modify for gpu version ?
+            #pragma omp critical
             particle_list.push_back(new_particle);
           } // if(pdotsigma >= 0)
 
@@ -1171,11 +1053,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       } // for(int ieta = 0; ieta < eta_ptsl ieta++)
   } // for (int icell = 0; icell < FO_length; icell++)
 }
-
-
-
-
-
 
 void EmissionFunctionArray::sample_dN_pTdpTdphidy_VAH_PL(double *Mass, double *Sign, double *Degeneracy,
   double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
