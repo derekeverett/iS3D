@@ -268,7 +268,7 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
     surface_data >> surface[i].dax; // (fm^3)
     surface_data >> surface[i].day; // (fm^3)
     surface_data >> surface[i].dan; // (fm^4)
-    if(dimension == 2 && surf_ptr[i].dan != 0)
+    if(dimension == 2 && surface[i].dan != 0)
     {
       cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
       exit(-1);
@@ -386,7 +386,7 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
     surface_data >> surface[i].dax; // (fm^3)
     surface_data >> surface[i].day; // (fm^3)
     surface_data >> surface[i].dan; // (fm^4)
-    if(dimension == 2 && surf_ptr[i].dan != 0)
+    if(dimension == 2 && surface[i].dan != 0)
     {
       cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
       exit(-1);
