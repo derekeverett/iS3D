@@ -29,13 +29,13 @@
 using namespace std;
 
 
-int particle_index(particle_info * resonance, const int number_of_resonances, const int entry_mc_id)
+int particle_index(particle_info * particle_data, const int number_of_particles, const int entry_mc_id)
 {
     // search for index of particle_data array struct by matching mc_id
     int index = 0;
-    for(int ipart = 0; ipart < number_of_resonances; ipart++)
+    for(int ipart = 0; ipart < number_of_particles; ipart++)
     {
-        if(resonance[ipart].mc_id == entry_mc_id)  // I could also use the class object particles
+        if(particle_data[ipart].mc_id == entry_mc_id)  // I could also use the class object particles
         {
             index = ipart;
             break;
@@ -98,68 +98,38 @@ double Edndp3_2bodyN(double y, double pT, double phip, double mass_1, double mas
 }
 
 
-void EmissionFunctionArray::do_resonance_decays(particle_info * resonance)
+void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
   {
     printf("Starting resonance decays: \n");
 
-    // first pass particle_info struct that was read in earlier from the pdg.dat file
-    // I have the number of resonances and light particle id from the class, also passed Maxdecaypart
-    const int number_of_resonances = Nparticles;
-    const int lightest_particle_id = LIGHTEST_PARTICLE;
+    const int number_of_particles = Nparticles;           // total number of particles in pdg.dat (includes leptons, photons, antibaryons)
+    const int lightest_particle_id = LIGHTEST_PARTICLE;   // lightest particle mc_id 
 
 
-    // More from the readspec, readin functions....
-    // the old particle_info struct holds other data:
-    //  - slope: asymptotic slope of mt-spectrum (not sure what it's used for; seems like there is a bug in struct definition)
-    //  - dNdptdphi: holds this distribution for each particle type (I can account for this later)
-    // the resonace decay code also has a separate particle_info struct = particleDecay that holds res. decay info separately
-    //  - I think I can readjust the code by using the full particle_info struct instead
-    //  - or maybe not and I would need to load the decay struct in readindata.cpp
-    //  - it essentially contains the same kind of information so it should be possible
-    //
-    // there's also this regulation thing by Chun that I don't understand so skip for now...
+    // particle index of lightest particle included in decay routine (e.g. pi+'s' is # 9)
+    const int ilight = particle_index(particle_data, number_of_particles, lightest_particle_id);
+
+    // number of resonances included in the decay routine
+    const int included_resonances = number_of_particles - (ilight + 1);
 
 
-    // particleDecay[Ndecays] struct {reso, numpart, branch, part[5]}
-    // decays != 0 is same thing as saying stable = 0 (unstable)
-    // does stable = 1 mean decays = 1? i.e. the daughter is itself?
-    //    - Ndecays = sum_i decays_i
-    //    - decays_i = # decay channels of resonance i
-    //    - reso = MC_ID of decaying resonance i
-    //    - numpart = number of daughter particles in that decay
-    //    - branch = branching ratio of that decay
-    //    - part[5] = MC_ID list of daughter particles in that decay
-
-
-
-    // maxdecay = Ndecays = total # of decay channels
-
-    // index of lightest particle (e.g. pi+'s' is # 9)
-    int ilight = particle_index(resonance, number_of_resonances, lightest_particle_id);
-
-    const int total_resonances_included = number_of_resonances - (ilight + 1);
-
-    if(total_resonances_included != chosen_particles)
+    if(included_resonances != chosen_particles)
     {
         // this is a very crude match. one should check the order of the structs as well
         // everything from mass to charge,etc should be identical 
-        printf("Resonances included in decay routine does not match chosen_particles");
+        printf("Error: resonances included in decay routine does not match chosen_particles");
         exit(-1); 
     }
 
     // start the resonance decay feed-down, starting with the heaviest resonance:
     //---------------------------------------
-    for(int ipart = number_of_resonances - 1; ipart > ilight - 1; ipart--)
+    for(int ipart = number_of_particles - 1; ipart > ilight - 1; ipart--)
     {
-        int resonance_mc_id = resonance[ipart].mc_id;
+        // parent info:
+        int parent_mc_id = particle_data[ipart].mc_id;
+        int parent_decay_channels = particle_data[ipart].decays; 
+        int parent_baryon = particle_data[ipart].baryon; 
 
-
-        
-
-        // couldn't you start with the branching ratio and decay products of each channel for starting resonance?
-        // -- for one thing, I don't have the decay channels of the antibaryon on hand
-        // -- well I mean, I'm sure that could be adjusted (you just need to take the anti of everything)
-        // -- or I could construct a particleDecay struct
 
         // cycle through every decay channel known to see if
         // particle was a daughter particle in a decay channel
