@@ -2,9 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import math
+import sys
 
 #load the particle list
-particle_list = pd.read_csv('results/particle_list.dat', sep=',')
+particle_list = pd.read_csv(sys.argv[1], sep=',')
 
 mcid = particle_list['mcid']
 

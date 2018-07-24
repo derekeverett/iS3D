@@ -13,7 +13,8 @@
 #CC := $(shell ../../crank/configure_compiler_C++.sh)
 #CC = g++-7 #Mac OSX high sierra
 #CC = pgc++
-CC = g++
+#CC = g++
+CC = icc
 #CFLAGS= -std=c++11 -march=native -O3 -lgsl -lgslcblas -lm
 CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas -lm
 #CFLAGS= -acc -fast -Minfo -ta=nvidia,time
