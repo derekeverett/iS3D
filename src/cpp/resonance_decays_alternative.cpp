@@ -56,13 +56,14 @@ double dn2ptN(double w2, void *para1)
 
 typedef struct pblockN
 {
-  double y, pT, phip, mT, E, pz;    // momentum of decay product 1       
+  double y, pT, phip, mT, E, pz;    // momentum of decay product 1
   double mass_1, mass_2, mass_3;    // masses of decay products
-  double mass_parent;               // parent resonance mass     
-  double costh, sinth;              // 
-  double e0, p0;                    // 
-  int parent_mc_id;                 // parent mc_id 
+  double mass_parent;               // parent resonance mass
+  double costh, sinth;              //
+  double e0, p0;                    //
+  int parent_mc_id;                 // parent mc_id
 } pblockN;
+
 
 double Edndp3_2bodyN(double y, double pT, double phip, double mass_1, double mass_2, double mass_parent, int parent_mc_id)
 // in units of GeV^-2, includes phasespace and volume, does not include degeneracy factors
@@ -75,12 +76,12 @@ double Edndp3_2bodyN(double y, double pT, double phip, double mass_1, double mas
 {
   double mT = sqrt(pT * pT + mass_1 * mass_1);
 
-  pblockN parameter; 
+  pblockN parameter;
 
-  parameter.pT = pT;                // basically fix outgoing momentum of particle 1 
+  parameter.pT = pT;                // basically fix outgoing momentum of particle 1
   parameter.mT = mT;
-  parameter.E = mT * cosh(y);   
-  parameter.pz = mT * sinh(y);         
+  parameter.E = mT * cosh(y);
+  parameter.pz = mT * sinh(y);
   parameter.y = y;
   parameter.phi = phip;
   parameter.mass_1 = mass_1;
@@ -88,10 +89,10 @@ double Edndp3_2bodyN(double y, double pT, double phip, double mass_1, double mas
   para.mass_parent = mass_parent;
   para.res_num = parent_mc_id;
 
-  double norm2 = 1.0 / (2.0 * PI);      // 2-body normalization (must be a formula) 
+  double norm2 = 1.0 / (2.0 * PI);      // 2-body normalization (must be a formula)
 
-  // calls the integration routines for 2-body 
-  double res2 = norm2 * dn2ptN(mass_2 * mass_2, &para);     // I'm having a hard time following the nest of integrations 
+  // calls the integration routines for 2-body
+  double res2 = norm2 * dn2ptN(mass_2 * mass_2, &para);     // I'm having a hard time following the nest of integrations
 
   if (res2 < 0.0) res2 = 0.0;
   return res2;          /* like Ed3ndp3_2body() */
@@ -103,8 +104,7 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
     printf("Starting resonance decays: \n");
 
     const int number_of_particles = Nparticles;           // total number of particles in pdg.dat (includes leptons, photons, antibaryons)
-    const int lightest_particle_id = LIGHTEST_PARTICLE;   // lightest particle mc_id 
-
+    const int lightest_particle_id = LIGHTEST_PARTICLE;   // lightest particle mc_id
 
     // particle index of lightest particle included in decay routine (e.g. pi+'s' is # 9)
     const int ilight = particle_index(particle_data, number_of_particles, lightest_particle_id);
@@ -116,51 +116,48 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
     if(included_resonances != chosen_particles)
     {
         // this is a very crude match. one should check the order of the structs as well
-        // everything from mass to charge,etc should be identical 
+        // everything from mass to charge,etc should be identical
         printf("Error: resonances included in decay routine does not match chosen_particles");
-        exit(-1); 
+        exit(-1);
     }
 
+
     // start the resonance decay feed-down, starting with the heaviest resonance:
-    //---------------------------------------
     for(int ipart = number_of_particles - 1; ipart > ilight - 1; ipart--)
     {
-        // parent info:
-        int parent_mc_id = particle_data[ipart].mc_id;
-        int parent_decay_channels = particle_data[ipart].decays; 
-        int parent_baryon = particle_data[ipart].baryon; 
-
-
-        // cycle through every decay channel known to see if
-        // particle was a daughter particle in a decay channel
-        for(int ichannel = 0; ichannel < maxdecay; ichannel++)
+        int stable = particle_data[ipart].stable;
+        // if particle unstable in strong interactions, do resonance decay
+        if(!stable)
         {
-            int parent_mc_id = particleDecay[ichannel].reso;
-            int number_of_daughters = particleDecay[ichannel].numpart;
-            int parent_index = particle_index(resonance, number_of_resonances, parent_mc_id);
-
-            for(int idaughter = 0; idaughter < number_of_daughters; idaughter++)
+            // parent resonance info:
+            int parent_index = ipart;
+            int parent_decay_channels = particle_data[ipart].decays;
+            if(parent_decay_channels == 1)
             {
-                int daughter_mc_id = particleDecay[ichannel].part[idaughter];
-
-                // make sure decay channel isn't trivial and contains the daughter particle
-                // I need to be careful about the anti-baryon...
-                // because the decay products are only baryons and mesons
-                // note: it's probably the reason why it was set up in cases of baryon, antibaryon, meson
-                if((resonance_mc_id == daughter_mc_id) && (number_of_daughters != 1))
-                {
-                    resonance_decay(resonance, ipart, parent_index, idaughter, ichannel, total_resonances_included);  
-                    // alright so what is this?
-                }
-
+              printf("Error: unstable resonance only has trivial decay: exiting..");
+              exit(-1);
             }
-        }
+            int parent_baryon = particle_data[ipart].baryon;  // is this already taken care of in readin or not? if not, adjust it
+
+            // go through each decay channel of the parent resonance
+            for(int ichannel = 0; ichannel < parent_decay_channels; ichannel++)
+            {
+                int decay_products = particle_data[ipart].decays_Npart[ichannel];
+
+                // make an array holding particle indices of the daughters
+                int decay_index[decay_products];
+                for(int idaughter = 0; idaughter < decay_products; idaughter++)
+                {
+                    int daughter_mc_id = particle_data[ipart].decays_part[][];
+                    decay_index[idaughter] = particle_index(particle_data, number_of_particles, daughter_mc_id);
+                }
+                // amend decay product dN produced from decay channel to the thermal spectra
+                resonance_decay(particle_data, parent_index, decay_index, included_resonances);
+            }
+        } //
 
         cout << "\r" << number_of_resonances - ipart - 1 << " / " << number_of_resonances - ilight - 1 << " resonances finished" << flush;
     }
-    //---------------------------------------
-
-
 
     printf("\n\nResonance decays finished \n");
   }
@@ -169,12 +166,12 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
 void EmissionFunctionArray::resonace_decay(particle_info * resonance, int particle_index, int parent_index, int daughter_match_index, int decay_channel, const int total_resonances_included)
 {
 
-    nblock paranorm;      /* for 3body normalization integral */  // I don't know what this is... 
+    nblock paranorm;      /* for 3body normalization integral */  // I don't know what this is...
     double norm3;         /* normalisation of 3-body integral */
 
     double y;
     double m1, m2, m3, mr;
-    int pn2, pn3, pn4;        /* internal numbers for resonances */ 
+    int pn2, pn3, pn4;        /* internal numbers for resonances */
 
 
     // set momentum arrays: (yValues, pTValues, cosphiValues, sinphiValues)
@@ -200,25 +197,25 @@ void EmissionFunctionArray::resonace_decay(particle_info * resonance, int partic
     for(int iphip = 0; iphip < phi_tab_length; iphip++)
     {
       double phip = phi_tab->get(1, iphip + 1);
-      phipValues[iphip] = phip; 
+      phipValues[iphip] = phip;
       cosphipValues[iphip] = cos(phip);
       sinphipValues[iphip] = sin(phip);
     }
     // finished setting momentum arrays
     //---------------------------------------
 
-    //double deltaphi = 2*PI/nphi;  // seems out of place b/c phi table is NOT uniform 
+    //double deltaphi = 2*PI/nphi;  // seems out of place b/c phi table is NOT uniform
 
     // parent info:
     int parent = parent_index;                   // particle index of parent, mc_id
-    int parent_mc_id = resonance[parent].mc_id;  // mc_id of parent 
+    int parent_mc_id = resonance[parent].mc_id;  // mc_id of parent
 
-    int npart = total_resonances_included; 
+    int npart = total_resonances_included;
 
     // number of decay products from decay channel
-    int decay_products = particleDecay[decay_channel].numpart; 
+    int decay_products = particleDecay[decay_channel].numpart;
 
-    switch(decay_products) 
+    switch(decay_products)
     {
         case 1: // stable
         {
@@ -228,9 +225,9 @@ void EmissionFunctionArray::resonace_decay(particle_info * resonance, int partic
         case 2: // 2-body decay
         {
             int particle1 = particle_index;     // particle index of resonance of interest
-            int particle2;                      // particle index of other decay product 
+            int particle2;                      // particle index of other decay product
 
-            if(daughter_match_index == 0)      
+            if(daughter_match_index == 0)
             {
                 particle2 = particle_index(resonance, Nparticles, particleDecay[decay_channel].part[1]);
             }
@@ -239,11 +236,11 @@ void EmissionFunctionArray::resonace_decay(particle_info * resonance, int partic
                 particle2 = particle_index(resonance, Nparticles, particleDecay[decay_channel].part[0]);
             }
 
-            // masses involved in 2-body decay 
+            // masses involved in 2-body decay
             double mass_parent = resonance[parent].mass;
-            double mass1 = resonance[particle1].mass;         
+            double mass1 = resonance[particle1].mass;
             double mass2 = resonance[particle2].mass;
-          
+
             // it wants the parent mass to be heavier obviously
             // but why these fractions?
             while((mass1 + mass2) > mass_parent)
@@ -267,7 +264,7 @@ void EmissionFunctionArray::resonace_decay(particle_info * resonance, int partic
                     for(int iphip = 0; iphip < phi_tab_length; iphip++)
                     {
                         double phip = phiValues[iphip];
-                        // phi = iphi * deltaphi; // I think this is a bug b/c phi table isn't uniform 
+                        // phi = iphi * deltaphi; // I think this is a bug b/c phi table isn't uniform
 
                         for(int iy = 0; iy < y_pts; iy++)
                         {
@@ -280,13 +277,13 @@ void EmissionFunctionArray::resonace_decay(particle_info * resonance, int partic
 
                             // iS3D index of particle1 with momentum (pT,phip,y)
                             // note: chosen_particles = npart should be same as number of resonances involved
-                            
+
                             long long int is3D = particle1 + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
 
-                            dN_pTdpTdphidy[iS3D] += (branch_ratio * spectrum); 
+                            dN_pTdpTdphidy[iS3D] += (branch_ratio * spectrum);
 
                             //particle[pn].dNdypTdpTdphi[iy][ipT][iphi] += (particleDecay[decay_channel].branch * spectrum);
-                        }                   
+                        }
                     }
                 }
             }
