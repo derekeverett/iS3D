@@ -10,15 +10,16 @@
 ##			distclean	remove all objectsfiles and binaries
 ##
 
-#CC := $(shell ../../crank/configure_compiler_C++.sh)
-#CC = g++-7 #Mac OSX high sierra
-#CC = pgc++
+#choose a compiler.
+#CC = pgc++ # pgi compiler for openacc support  
 #CC = g++
-CC = icc
-#CFLAGS= -std=c++11 -march=native -O3 -lgsl -lgslcblas -lm
-CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas -lm
-#CFLAGS= -acc -fast -Minfo -ta=nvidia,time
-#CFLAGS= -acc -fast -ta=tesla:managed #uses unified memory - simplifies copying of dynamic arrays host <-> device
+CC = icpc # intel compiler tends to perform much better than gcc
+
+#choose flags corresponding to compiler  
+#CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas -lm # for g++
+CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas # for icpc
+#CFLAGS= -acc -fast -Minfo -ta=nvidia,time # for pgi 
+#CFLAGS= -acc -fast -ta=tesla:managed # for pgi, also uses unified memory
 
 RM		=	rm -f
 O               =       .o
