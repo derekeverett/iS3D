@@ -259,6 +259,10 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
 
 void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double branch_ratio, int parent, int particle_1, int particle_2, double mass_1, double mass_2, double mass_parent)
 {
+    // original list of decay products
+    int number_of_decay_particles = 2; 
+    int decay_product_list[2] = {particle_1, particle_2}; 
+
     // first select decay products that are part of chosen resonance particles
     // TODO: distinguish resonance table from chosen particles table whose final spectra we're interested in
 
@@ -311,7 +315,7 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     {
         int next_particle = selected_particles[0];
         int current_groups = particle_groups.size();
-        bool next_particle_in_current_groups = false;
+        bool put_next_particle_in_current_groups = false;
 
         // loop through current groups
         for(int igroup = 0; igroup < current_groups; igroup++)
@@ -320,11 +324,11 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
             {
                 // if match, add particle to that group
                 group_members[igroup] += 1;
-                next_particle_in_current_groups = true;
+                put_next_particle_in_current_groups = true;
                 break;
             }
         }
-        if(!next_particle_in_current_groups)
+        if(!put_next_particle_in_current_groups)
         {
             // make a new group
             particle_groups.push_back(next_particle);
@@ -336,14 +340,51 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
     int groups = particle_groups.size();
 
+
+    // set the mass of particle type's mass in group
+    double mass_groups[groups];
+    for(int igroup = 0; igroup < groups; igroup++)
+    {
+        mass_groups[igroup] = particle_data[particle_groups[igroup]].mass;
+    }
+
+    // set invariant mass of second object for each group
+    double invariant_mass_squared[groups];
+
+    for(int igroup = 0; igroup < groups; igroup++)
+    {
+        int particle_index = particle_groups[igroup];
+
+        // make a vector copy of original decay products list 
+        vector<int> decay_products_vector;
+        for(int k = 0; k < number_of_decay_particles; k++)
+        {
+            decay_products_vector.push_back(decay_product_list[k]);
+        }
+        // search for a match and remove the particle from the vector copy 
+        for(int k = 0; k < number_of_decay_particles; k++)
+        {
+            int decay_particle = decay_products_vector[k];
+            if(decay_particle == particle_index)
+            {
+                decay_products_vector.erase(decay_products_vector.begin() + k); 
+                break; 
+            }
+        }
+        // get mass of the second particle 
+        int particle_2 = decay_products_vector[0];
+        double mass_2 = particle_data[particle_2].mass;
+
+        invariant_mass_squared[igroup] = mass_2 * mass_2; 
+    }
+
+
+
     printf("Particle groups: ");
     for(int igroup = 0; igroup < groups; igroup++)
     {
         printf("(%d,%d)\t", particle_data[particle_groups[igroup]].mc_id, group_members[igroup]);
     }
-
-
-
 
 
 
@@ -383,37 +424,109 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
 
 
-    // loop over momentum
-    for(int ipT = 0; ipT < pT_tab_length; ipT++)
+    // two-body decay integration:
+    //---------------------------------------
+
+    // I should probably distinguish between boost-invariant and 3+1d case 
+    // in the 3+1d case I have a finite rapidity window, and the integration
+    // over the parent rapidity may require extrapolation? 
+
+    // loop over particle groups
+    for(int igroup = 0; igroup < groups; igroup++)
     {
-        double pT = pTValues[ipT];
+        // particle of interest and its properties:
+        int particle_index = particle_groups[igroup];
+        double multiplicity = (double)group_members[igroup];
+        double mass = mass_groups[igroup];
+        double mass_squared = mass * mass;
+        
+        // invariant mass squared of second object:
+        double W2 = invariant_mass_squared[igroup];
 
-        for(int iphip = 0; iphip < phi_tab_length; iphip++)
+        // particle's energy and momentum magnitude in the parent rest frame:
+        double Estar = (mass_parent * mass_parent + mass_squared - W2) / (2.0 * mass_parent);
+        double Estar2 = Estar * Estar; 
+        double pstar = sqrt(Estar * Estar - mass_squared); 
+
+
+        // prefactor of the integral:
+        double prefactor = mass_parent * branch_ratio / (4.0 * M_PI * pstar); 
+
+        // loop over momentum
+        // then in that case, I shoud loop over phip last
+        for(int ipT = 0; ipT < pT_tab_length; ipT++)
         {
-            double phip = phipValues[iphip];
-            // phi = iphi * deltaphi; // I think this is a bug b/c phi table isn't uniform
+            double pT = pTValues[ipT];
 
-            for(int iy = 0; iy < y_pts; iy++)
-            {
-                double y = yValues[iy];
+            double pT2 = pT * pT; 
+            double mT2 = pT2 - mass_squared; 
+            double mT = sqrt(mT2);
 
-                // call the 2-body decay integral and add its contribution to particle1
-                //double spectrum = Edndp3_2bodyN(y, pT, phip, mass1, mass2, mass_parent, parent_mc_id);
+            // what other variables can we already calculate?
+            // the y_parent integration limits
+            double y_parent_plus = log((sqrt(Estar2 + pT2) + pstar) / mT); 
+            double y_parent_minus = -y_parent_plus; 
 
-                //double branch_ratio = particleDecay[decay_channel].branch;
+            for(int iphip = 0; iphip < phi_tab_length; iphip++)
+            {   
+                double phip = phipValues[iphip]; 
 
-                // iS3D index of particle1 with momentum (pT,phip,y)
-                // note: chosen_particles = npart should be same as number of resonances involved
+                for(int iy = 0; iy < y_pts; iy++)
+                {
+                    double y = yValues[iy];
 
-                //long long int is3D = particle1 + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+                    double coshy = cosh(y); 
 
-                //dN_pTdpTdphidy[iS3D] += (branch_ratio * spectrum);
+                    // mT_parent integration limits
+                    double mT_parent_plus = 1;
 
-            }
+                    // integration over parent momentum space goes here:
+                    //------------------------
+                    // I need to think carefully about the mass list passed 
+                    double spectrum = EdNdp3_2bodyN(pT, iphip, y, mass, W2, mass_parent, parent); 
+
+                    spectrum = 0.0; 
+
+                    long long int iS3D = particle_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+
+                    dN_pTdpTdphidy[iS3D] += (prefactor * spectrum);
+                }
+            }     
         }
     }
+    //---------------------------------------
     // finished two-body decay routine
 }
+
+
+
+
+
+
+double EmissionFunctionArray::EdNdp3_2bodyN(double pT, double iphip, double y, double mass, double W2, double mass_parent, int parent)
+{
+    double mT = sqrt(mass * mass + pT * pT);
+    double E = mT * cosh(y);
+    double pz = mT * sinh(y);
+
+    double Estar = (mass_parent * mass_parent + mass_squared - W2) / (2.0 * mass_parent);
+    double pstar = sqrt(Estar * Estar - mass_squared); 
+
+
+    double normalization = 1.0 / (2.0 * M_PI); 
+    
+    double result
+
+
+}
+
+
+
+
+
+
+
+
 
 
 
@@ -424,6 +537,10 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
 {
     // first select decay products that are part of chosen resonance particles
     // TODO: distinguish resonance table from chosen particles table whose final spectra we're interested in
+
+     // original list of decay products
+    int number_of_decay_particles = 3; 
+    int decay_product_list[3] = {particle_1, particle_2, particle_3}; 
 
     bool found_particle_1 = false;
     bool found_particle_2 = false;
@@ -479,7 +596,7 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     while(selected_particles.size() > 0)
     {
         int next_particle = selected_particles[0];
-        bool next_particle_in_current_groups = false;
+        bool put_next_particle_in_current_groups = false;
         int current_groups = particle_groups.size();
 
         // loop through current groups
@@ -489,11 +606,11 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
             {
                 // if match, add particle to that group
                 group_members[igroup] += 1;
-                next_particle_in_current_groups = true;
+                put_next_particle_in_current_groups = true;
                 break;
             }
         }
-        if(!next_particle_in_current_groups)
+        if(!put_next_particle_in_current_groups)
         {
             // make a new group
             particle_groups.push_back(next_particle);
@@ -504,6 +621,52 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     }
 
     int groups = particle_groups.size();
+
+
+    // set the mass of particle type's mass in group
+    double mass_groups[groups];
+    for(int igroup = 0; igroup < groups; igroup++)
+    {
+        mass_groups[igroup] = particle_data[particle_groups[igroup]].mass;
+    }
+
+    // set invariant mass of second object for each group
+    double invariant_mass_squared[groups];
+
+    for(int igroup = 0; igroup < groups; igroup++)
+    {
+        int particle_index = particle_groups[igroup];
+
+        // make a vector copy of original decay products list 
+        vector<int> decay_products_vector;
+        for(int k = 0; k < number_of_decay_particles; k++)
+        {
+            decay_products_vector.push_back(decay_product_list[k]);
+        }
+        // search for a match and remove the particle from the vector copy 
+        for(int k = 0; k < number_of_decay_particles; k++)
+        {
+            int decay_particle = decay_products_vector[k];
+            if(decay_particle == particle_index)
+            {
+                decay_products_vector.erase(decay_products_vector.begin() + k);
+                break; 
+            }
+        }
+
+
+        // get mass of the second and third particle (should double check this...)
+        int particle_2 = decay_products_vector[0];
+        int particle_3 = decay_products_vector[1]; 
+        double mass_2 = particle_data[particle_2].mass;
+        double mass_3 = particle_data[particle_3].mass;
+
+        // I don't what to do yet..
+
+        //invariant_mass_squared[igroup] = mass_2 * mass_2; 
+
+
+    }
 
     printf("Particle groups: ");
     for(int igroup = 0; igroup < groups; igroup++)

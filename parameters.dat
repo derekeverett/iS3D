@@ -30,4 +30,4 @@ group_particles           = 0   # group particles with the similar mass and to s
 particle_diff_tolerance   = 0.01  # grouping particle mass tolerance
 
 do_resonance_decays	  = 1 #switch for resonance decays after thermal spectra calculation
-lightest_particle 	  = 211 #PDG MC ID of lightest particle for resonance decay feeddown 
+lightest_particle 	  = 111 #PDG MC ID of lightest particle for resonance decay feeddown 
