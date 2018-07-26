@@ -8,6 +8,7 @@
 #include "ParameterReader.h"
 #include "deltafReader.h"
 #include "particle.h"
+#include "viscous_correction.h"
 
 using namespace std;
 
@@ -18,8 +19,12 @@ typedef struct
   double z;   // pLRF.z
 } lrf_momentum;
 
-lrf_momentum Sample_momentum(double mass, double T, double alphaB);
+//sample momentum with linear viscous correction
+lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double eps, double pressure, double tau2, 
+                            double sign, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF);
 
+//sample momentum with modified equil viscous correction
+lrf_momentum Sample_Momentum_mod(double mass, double T, double alphaB);
 
 class EmissionFunctionArray
 {
@@ -101,7 +106,7 @@ public:
   double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
   void write_dN_pTdpTdphidy_toFile(); //write invariant 3D spectra to file
-  void write_dN_dpTdphidy_toFile(); //write 3D spectra to file in experimental bins 
+  void write_dN_dpTdphidy_toFile(); //write 3D spectra to file in experimental bins
   void write_particle_list_toFile(); //write sampled particle list
   void calculate_spectra();
 

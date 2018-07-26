@@ -23,16 +23,23 @@
 #include <gsl/gsl_sf_bessel.h> //for modified bessel functions
 #include "gaussThermal.h"
 #include "particle.h"
-//#ifdef _OPENACC
-//#include <accelmath.h>
-//#endif
+#include "viscous_correction.h"
+
 #define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
 
 using namespace std;
 
-lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
+lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double eps, double pressure, double tau2,
+                              double sign, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF)
 {
   lrf_momentum pLRF;
+
+  double pixx = pimunu.pixx;
+  double pixy = pimunu.pixy;
+  double pixz = pimunu.pixz;
+  double piyy = pimunu.piyy;
+  double piyz = pimunu.piyz;
+  double pizz = pimunu.pizz;
 
   unsigned seed = chrono::system_clock::now().time_since_epoch().count();
   default_random_engine generator(seed);
@@ -47,11 +54,9 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   // the ARS thing should be worked on after this
   // where does in the SPREW code is it employed?
 
-
   // I should I put in the r_ideal or r_visc accept/reject conditions
   // after I drawed all the momentum variables (p,phi,costheta) (build it up tonight; at least for ideal hydro)
   // note: don't assume that r_ideal/visc is independent of p like LongGong does
-
 
   // light hadrons, but heavier than pions
   if(T / mass >= 0.6) // fixed bug on 7/12
@@ -76,13 +81,14 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
       if(::isnan(p)) printf("found p nan!\n");
 
       double E = sqrt(fabs(p * p + mass * mass));
+
       double weight = exp((p - E) / T);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       // check p acceptance
       if(propose < weight)
       {
-        rejected = false; // stop while loop
+        //rejected = false; // stop while loop
 
         // calculate angles and pLRF components
         double costheta = (l1 - l2) / (l1 + l2);
@@ -92,9 +98,44 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
         double sintheta = sqrt(1.0 - costheta * costheta);
         if(::isnan(sintheta)) printf("found sintheta nan!\n");
 
-        pLRF.x = p * costheta;
-        pLRF.y = p * sintheta * cos(phi);
-        pLRF.z = p * sintheta * sin(phi);
+        double px = p * costheta;
+        double py = p * sintheta * cos(phi);
+        double pz = p * sintheta * sin(phi);
+
+        //viscous corrections
+        double shear_weight = 1.0;
+        double bulk_weight = 1.0;
+        double diff_weight = 1.0;
+
+        //FIX TEMPORARY
+        if (INCLUDE_SHEAR_DELTAF)
+        {
+          double A = 2.0 * T * T * (eps + pressure);
+          double f0 = 1.0 / ( exp(E / T) + sign );
+
+          //check contraction / signs etc...
+          double pmupnupimunu = 2.0 * ( px*px*pixx + px*py*pixy + px*pz*pixz + py*py*piyy + py*pz*piyz + pz*pz*pizz );
+          double num = A + ( 1.0 + sign * f0 ) * pmupnupimunu;
+          double pmupnupimunu_max = E * E * pimunu.compute_max();
+          double den = A + (1.0 + (sign * f0) ) * pmupnupimunu_max;
+          shear_weight = num / den;
+        }
+
+        if (INCLUDE_BULK_DELTAF) bulk_weight = 1.0;
+
+        if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
+
+        double viscous_weight = shear_weight * bulk_weight * diff_weight;
+
+        if (propose < viscous_weight)
+        {
+          pLRF.x = px;
+          pLRF.y = py;
+          pLRF.z = pz;
+          rejected = false; //stop while loop if accepted
+        }
+        //FIX
+
       } // p acceptance
     } // while loop
   } // mass / T < 0.6
@@ -249,6 +290,16 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   return pLRF;
 }
 
+lrf_momentum Sample_Momentum_mod(double mass, double T, double alphaB)
+{
+  //FIX!
+  lrf_momentum pLRF;
+  pLRF.x = 0.0;
+  pLRF.y = 0.0;
+  pLRF.z = 0.0;
+  //FIX
+
+}
 void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
@@ -258,8 +309,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
   {
     printf("sampling particles from vhydro with df...\n");
     int npart = number_of_chosen_particles;
-
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
+
+    //set seed of random devices using clock time to produce nonidentical events
+    unsigned seed1 = chrono::system_clock::now().time_since_epoch().count();
+    unsigned seed2 = chrono::system_clock::now().time_since_epoch().count();
+    default_random_engine gen1(seed1);
+    default_random_engine gen2(seed2);
 
     int eta_pts = 1;
     if(DIMENSION == 2) eta_pts = eta_tab_length;
@@ -573,10 +629,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
         } // for(int ipart = 0; ipart < npart; ipart++))
 
-
         // now sample the number of particles (all species)
-        std::random_device gen1;
-        std::random_device gen2;
         std::poisson_distribution<> poisson_distr(dN_tot);
         //sample total number of hadrons in FO cell
         int N_hadrons = poisson_distr(gen1);
@@ -593,10 +646,29 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           double mass2 = mass * mass;
           // get the MC ID of the sampled particle
           int mcid = MCID[idx_sampled];
+          double sign = Sign[idx_sampled];
+
+          //now we need to boost the shear stress to LRF to compute the vicous sampling weight
+          Shear_Tensor pimunu;
+          pimunu.pitt = pitt;
+          pimunu.pitx = pitx;
+          pimunu.pity = pity;
+          pimunu.pitn = pitn;
+          pimunu.pixx = pixx;
+          pimunu.pixy = pixy;
+          pimunu.pixn = pixn;
+          pimunu.piyy = piyy;
+          pimunu.piyn = piyn;
+          pimunu.pinn = pinn;
+
+          //FIX DUMMY ARGUMENT
+          pimunu.boost_to_lrf(Xt, Xx, Xy, Xn, Yx, Yy, Zt, Zn, tau2);
+          //double pi_max = pimunu.compute_max();
 
           // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
           // perhap divide this into sample_momentum_from_distribution_x()
-          lrf_momentum p_LRF = Sample_Momentum(mass, T, alphaB);
+          lrf_momentum p_LRF = Sample_Momentum_deltaf(mass, T, alphaB, pimunu, E, P, tau2,
+                                              sign, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF);
 
           double px_LRF = p_LRF.x;
           double py_LRF = p_LRF.y;
@@ -968,7 +1040,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           // with Scott Pratt's Trick - See LongGang's Sampler Notes
           // modified version:
           // should not invoke the linear df corrections (make Sample_Momentum a class member)
-          lrf_momentum p_LRF_prime = Sample_Momentum(mass, T_mod, alphaB_mod);
+          lrf_momentum p_LRF_prime = Sample_Momentum_mod(mass, T_mod, alphaB_mod);
 
           double px_LRF_prime = p_LRF_prime.x;
           double py_LRF_prime = p_LRF_prime.y;
