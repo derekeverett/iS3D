@@ -32,20 +32,20 @@ using namespace std;
 int particle_index(particle_info * particle_data, const int number_of_particles, const int entry_mc_id)
 {
     // search for index of particle_data array struct by matching mc_id
-    if(entry_mc_id == 0) 
+    if(entry_mc_id == 0)
     {
-        printf("Error: mc_id of interest is 0 (null particle)\n"); 
+        printf("Error: mc_id of interest is 0 (null particle)\n");
         exit(-1);
     }
 
-    bool found = false;  
-    int index;       
+    bool found = false;
+    int index;
     for(int ipart = 0; ipart < number_of_particles; ipart++)
     {
         if(particle_data[ipart].mc_id == entry_mc_id)  // I could also use the class object particles
         {
             index = ipart;
-            found = true; 
+            found = true;
             break;
         }
     }
@@ -116,13 +116,13 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
     const int number_of_particles = Nparticles;         // total number of particles in pdg.dat (includes leptons, photons, antibaryons)
     //const int light_particle_id = LIGHTEST_PARTICLE;  // lightest particle mc_id
 
-    // note: I moved pion-0 as the lightest hadron in pdg.dat 
+    // note: I moved pion-0 as the lightest hadron in pdg.dat
 
     // start the resonance decay feed-down, starting with the last chosen resonance particle:
     for(int ichosen = (number_of_chosen_particles - 1); ichosen > 0; ichosen--)
     {
         // chosen particle index in particle_data array of structs
-        int ipart = chosen_particles_sampling_table[ichosen];   
+        int ipart = chosen_particles_sampling_table[ichosen];
         int stable = particle_data[ipart].stable;
 
         // if particle unstable under strong interactions, do resonance decay
@@ -135,27 +135,35 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
             // go through each decay channel of the parent resonance
             for(int ichannel = 0; ichannel < parent_decay_channels; ichannel++)
             {
-                // why is this number negative sometimes? 
+                // why is this number negative sometimes?
                 int decay_products = abs(particle_data[ipart].decays_Npart[ichannel]);
 
                 // set up vector that holds particle indices of real daughters
                 vector<int> decays_index_vector;
 
-                int real_daughters = 0; 
-                for(int idaughter = 0; idaughter < Maxdecaypart; idaughter++)
+                for(int idaughter = 0; idaughter < decay_products; idaughter++)
                 {
-                    // caution: some daughter entries have a default mc_id = 0 (fake placeholders)
                     int daughter_mc_id = particle_data[ipart].decays_part[ichannel][idaughter];
-                    if(daughter_mc_id != 0)
-                    {
-                      int daughter_index = particle_index(particle_data, number_of_particles, daughter_mc_id);
-                      decays_index_vector.push_back(daughter_index);
-                      real_daughters++; 
-                    }
-                    
+                    int daughter_index = particle_index(particle_data, number_of_particles, daughter_mc_id);
+                    decays_index_vector.push_back(daughter_index);
+
                 } // finished setting decays_index_vector
 
-                // only do non-trivial resonance decays 
+                // int real_daughters = 0;
+                // for(int idaughter = 0; idaughter < Maxdecaypart; idaughter++)
+                // {
+                //     // caution: some daughter entries have a default mc_id = 0 (fake placeholders)
+                //     int daughter_mc_id = particle_data[ipart].decays_part[ichannel][idaughter];
+                //     if(daughter_mc_id != 0)
+                //     {
+                //       int daughter_index = particle_index(particle_data, number_of_particles, daughter_mc_id);
+                //       decays_index_vector.push_back(daughter_index);
+                //       real_daughters++;
+                //     }
+
+                // } // finished setting decays_index_vector
+
+                // only do non-trivial resonance decays
                 if(decay_products != 1)
                 {
                   resonance_decay_channel(particle_data, ichannel, parent_index, decays_index_vector);
@@ -174,18 +182,17 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
 void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_data, int channel, int parent_index, vector<int> decays_index_vector)
 {
     // decay channel info:
-    int parent = parent_index;                        
-    string parent_name = particle_data[parent].name; 
-    int decay_products = decays_index_vector.size();    
-    double branch_ratio = particle_data[parent].decays_branchratio[channel]; 
+    int parent = parent_index;
+    string parent_name = particle_data[parent].name;
+    int decay_products = decays_index_vector.size();
+    double branch_ratio = particle_data[parent].decays_branchratio[channel];
 
-    // print the decay channel 
+    // print the decay channel
     cout << setprecision(3) << branch_ratio * 100.0 << "% of " << parent_name << "s decays to\t";
     for(int idecay = 0; idecay < decay_products; idecay++)
     {
       cout << particle_data[decays_index_vector[idecay]].mc_id << "\t";
     }
-    
 
     switch(decay_products)
     {
@@ -193,14 +200,14 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
         {
             // particle index of decay products
             int particle_1 = decays_index_vector[0];
-            int particle_2 = decays_index_vector[1];          
+            int particle_2 = decays_index_vector[1];
 
             // masses involved in 2-body decay
             double mass_parent = particle_data[parent].mass;
             double mass_1 = particle_data[particle_1].mass;
             double mass_2 = particle_data[particle_2].mass;
 
-            // adjust the masses to satisfy energy conservation 
+            // adjust the masses to satisfy energy conservation
             while((mass_1 + mass_2) > mass_parent)
             {
                 mass_parent += 0.25 * particle_data[parent].width;
@@ -218,18 +225,18 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
 
             break;
         }
-        case 3: // 3-body decay 
+        case 3: // 3-body decay
         {
             // particle index of decay products
             int particle_1 = decays_index_vector[0];
-            int particle_2 = decays_index_vector[1];  
-            int particle_3 = decays_index_vector[2];         
+            int particle_2 = decays_index_vector[1];
+            int particle_3 = decays_index_vector[2];
 
             // masses involved in 3-body decay
             double mass_parent = particle_data[parent].mass;
             double mass_1 = particle_data[particle_1].mass;
             double mass_2 = particle_data[particle_2].mass;
-            double mass_3 = particle_data[particle_3].mass;       // what do they do with the masses here? 
+            double mass_3 = particle_data[particle_3].mass;       // what do they do with the masses here?
 
             // 3-body decay integration routine
             three_body_decay(particle_data, branch_ratio, parent, particle_1, particle_2, particle_3, mass_1, mass_2, mass_3, mass_parent);
@@ -267,12 +274,10 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
         if((particle_1 == chosen_index) && (!found_particle_1))
         {
-            selected_particles.push_back(particle_1);
             found_particle_1 = true;
         }
         if((particle_2 == chosen_index) && (!found_particle_2))
         {
-            selected_particles.push_back(particle_2);
             found_particle_2 = true;
         }
         if(found_particle_1 && found_particle_2)
@@ -281,54 +286,55 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
         }
     }
 
-    int number_of_selected_particles = selected_particles.size(); 
+    if(found_particle_1) selected_particles.push_back(particle_1);
+    if(found_particle_2) selected_particles.push_back(particle_2);
 
-    if(selected_particles.size() == 0)
+    int number_of_selected_particles = selected_particles.size();
+
+    if(number_of_selected_particles == 0)
     {
         printf("Zero decays particles found in resonance table: skip integration routine");
         return;
     }
 
-     // group selected particles by type 
+    // group selected particles by type
     vector<int> particle_groups;    // group particle indices
-    vector<int> group_members;      // group members 
+    vector<int> group_members;      // group members
 
-    // fill in first selected particle
+    // group first particle and remove it from original list
     particle_groups.push_back(selected_particles[0]);
-    group_members.push_back(1); 
+    group_members.push_back(1);
+    selected_particles.erase(selected_particles.begin());
 
-    // remove first particle from selected list
-    selected_particles.erase(selected_particles.begin()); 
-
-    // group remaining particles if any:
+    // group next remaining particles if any:
     while(selected_particles.size() > 0)
     {
-        int next_particle = selected_particles[0]; 
-        bool next_particle_in_current_groups = false;
+        int next_particle = selected_particles[0];
         int current_groups = particle_groups.size();
+        bool next_particle_in_current_groups = false;
 
-        // loop through current groups 
+        // loop through current groups
         for(int igroup = 0; igroup < current_groups; igroup++)
         {
             if(next_particle == particle_groups[igroup])
             {
                 // if match, add particle to that group
                 group_members[igroup] += 1;
-                next_particle_in_current_groups = true; 
+                next_particle_in_current_groups = true;
                 break;
             }
         }
         if(!next_particle_in_current_groups)
         {
-            // make a new group 
-            particle_groups.push_back(next_particle); 
+            // make a new group
+            particle_groups.push_back(next_particle);
             group_members.push_back(1);
         }
-        // remove particle from original list and look at the next particle 
+        // remove particle from original list and look at the next particle
         selected_particles.erase(selected_particles.begin());
-    }
+    } // while loop until all particles are grouped
 
-    int groups = particle_groups.size(); 
+    int groups = particle_groups.size();
 
     printf("Particle groups: ");
     for(int igroup = 0; igroup < groups; igroup++)
@@ -338,7 +344,7 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
 
 
-  
+
 
 
     // set momentum arrays: (yValues, pTValues, cosphiValues, sinphiValues)
@@ -348,7 +354,7 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
     double yValues[y_pts];
 
-    if(DIMENSION == 2) 
+    if(DIMENSION == 2)
     {
       yValues[0] = 0.0;
     }
@@ -377,7 +383,7 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
 
 
-    // loop over momentum 
+    // loop over momentum
     for(int ipT = 0; ipT < pT_tab_length; ipT++)
     {
         double pT = pTValues[ipT];
@@ -406,7 +412,7 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
             }
         }
     }
-    // finished two-body decay routine 
+    // finished two-body decay routine
 }
 
 
@@ -432,17 +438,14 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
 
         if((particle_1 == chosen_index) && (!found_particle_1))
         {
-            selected_particles.push_back(particle_1);
             found_particle_1 = true;
         }
         if((particle_2 == chosen_index) && (!found_particle_2))
         {
-            selected_particles.push_back(particle_2);
             found_particle_2 = true;
         }
         if((particle_3 == chosen_index) && (!found_particle_3))
         {
-            selected_particles.push_back(particle_3);
             found_particle_3 = true;
         }
         if(found_particle_1 && found_particle_2 && found_particle_3)
@@ -451,7 +454,11 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
         }
     }
 
-    int number_of_selected_particles = selected_particles.size(); 
+    if(found_particle_1) selected_particles.push_back(particle_1);
+    if(found_particle_2) selected_particles.push_back(particle_2);
+    if(found_particle_3) selected_particles.push_back(particle_3);
+
+    int number_of_selected_particles = selected_particles.size();
 
     if(selected_particles.size() == 0)
     {
@@ -459,46 +466,44 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
         return;
     }
 
-     // group selected particles by type 
+     // group selected particles by type
     vector<int> particle_groups;    // group particle indices
-    vector<int> group_members;      // group members 
+    vector<int> group_members;      // group members
 
-    // fill in first selected particle
+    // group first particle and remove it from original list
     particle_groups.push_back(selected_particles[0]);
-    group_members.push_back(1); 
-
-    // remove first particle from selected list
-    selected_particles.erase(selected_particles.begin()); 
+    group_members.push_back(1);
+    selected_particles.erase(selected_particles.begin());
 
     // group remaining particles if any:
     while(selected_particles.size() > 0)
     {
-        int next_particle = selected_particles[0]; 
+        int next_particle = selected_particles[0];
         bool next_particle_in_current_groups = false;
         int current_groups = particle_groups.size();
 
-        // loop through current groups 
+        // loop through current groups
         for(int igroup = 0; igroup < current_groups; igroup++)
         {
             if(next_particle == particle_groups[igroup])
             {
                 // if match, add particle to that group
                 group_members[igroup] += 1;
-                next_particle_in_current_groups = true; 
+                next_particle_in_current_groups = true;
                 break;
             }
         }
         if(!next_particle_in_current_groups)
         {
-            // make a new group 
-            particle_groups.push_back(next_particle); 
+            // make a new group
+            particle_groups.push_back(next_particle);
             group_members.push_back(1);
         }
-        // remove particle from original list and look at the next particle 
+        // remove particle from original list and look at the next particle
         selected_particles.erase(selected_particles.begin());
     }
 
-    int groups = particle_groups.size(); 
+    int groups = particle_groups.size();
 
     printf("Particle groups: ");
     for(int igroup = 0; igroup < groups; igroup++)
@@ -508,7 +513,7 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
 
 
 
-  
+
 
 
     // set momentum arrays: (yValues, pTValues, cosphiValues, sinphiValues)
@@ -518,7 +523,7 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
 
     double yValues[y_pts];
 
-    if(DIMENSION == 2) 
+    if(DIMENSION == 2)
     {
       yValues[0] = 0.0;
     }
@@ -547,7 +552,7 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
 
 
 
-    // loop over momentum 
+    // loop over momentum
     for(int ipT = 0; ipT < pT_tab_length; ipT++)
     {
         double pT = pTValues[ipT];
@@ -576,7 +581,7 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
             }
         }
     }
-    // finished three-body decay routine 
+    // finished three-body decay routine
 }
 
 
