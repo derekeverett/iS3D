@@ -105,7 +105,13 @@ public:
   void write_particle_list_toFile(); //write sampled particle list
   void calculate_spectra();
 
-  void do_resonance_decays(particle_info * resonance, const int Maxdecaypart);
+  void do_resonance_decays(particle_info * particle_data);
+
+  void resonance_decay_channel(particle_info * particle_data, int parent_index, int channel, vector<int> decays_index_vector);
+
+  void two_body_decay(particle_info * particle_data, double branch_ratio, int parent, int particle_1, int particle_2, double mass_1, double mass_2, double mass_parent);
+
+  void three_body_decay(particle_info * particle_data, double branch_ratio, int parent, int particle_1, int particle_2, int particle_3, double mass_1, double mass_2, double mass_3, double mass_parent);
 
 };
 

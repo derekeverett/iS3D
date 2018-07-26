@@ -530,7 +530,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle)
       local_i++;
       particle[local_i].mc_id = -particle[local_i-1].mc_id;
       ostringstream antiname;
-      antiname << "Anti-" << particle[local_i-1].name;
+      antiname << "Anti-baryon-" << particle[local_i-1].name;
       particle[local_i].name = antiname.str();
       particle[local_i].mass = particle[local_i-1].mass;
       particle[local_i].width = particle[local_i-1].width;
