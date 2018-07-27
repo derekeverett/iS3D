@@ -260,8 +260,8 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
 void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double branch_ratio, int parent, int particle_1, int particle_2, double mass_1, double mass_2, double mass_parent)
 {
     // original list of decay products
-    int number_of_decay_particles = 2; 
-    int decay_product_list[2] = {particle_1, particle_2}; 
+    int number_of_decay_particles = 2;
+    int decay_product_list[2] = {particle_1, particle_2};
 
     // first select decay products that are part of chosen resonance particles
     // TODO: distinguish resonance table from chosen particles table whose final spectra we're interested in
@@ -355,27 +355,27 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     {
         int particle_index = particle_groups[igroup];
 
-        // make a vector copy of original decay products list 
+        // make a vector copy of original decay products list
         vector<int> decay_products_vector;
         for(int k = 0; k < number_of_decay_particles; k++)
         {
             decay_products_vector.push_back(decay_product_list[k]);
         }
-        // search for a match and remove the particle from the vector copy 
+        // search for a match and remove the particle from the vector copy
         for(int k = 0; k < number_of_decay_particles; k++)
         {
             int decay_particle = decay_products_vector[k];
             if(decay_particle == particle_index)
             {
-                decay_products_vector.erase(decay_products_vector.begin() + k); 
-                break; 
+                decay_products_vector.erase(decay_products_vector.begin() + k);
+                break;
             }
         }
-        // get mass of the second particle 
+        // get mass of the second particle
         int particle_2 = decay_products_vector[0];
         double mass_2 = particle_data[particle_2].mass;
 
-        invariant_mass_squared[igroup] = mass_2 * mass_2; 
+        invariant_mass_squared[igroup] = mass_2 * mass_2;
     }
 
 
@@ -427,9 +427,9 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     // two-body decay integration:
     //---------------------------------------
 
-    // I should probably distinguish between boost-invariant and 3+1d case 
+    // I should probably distinguish between boost-invariant and 3+1d case
     // in the 3+1d case I have a finite rapidity window, and the integration
-    // over the parent rapidity may require extrapolation? 
+    // over the parent rapidity may require extrapolation?
 
     // loop over particle groups
     for(int igroup = 0; igroup < groups; igroup++)
@@ -439,18 +439,18 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
         double multiplicity = (double)group_members[igroup];
         double mass = mass_groups[igroup];
         double mass_squared = mass * mass;
-        
+
         // invariant mass squared of second object:
         double W2 = invariant_mass_squared[igroup];
 
         // particle's energy and momentum magnitude in the parent rest frame:
         double Estar = (mass_parent * mass_parent + mass_squared - W2) / (2.0 * mass_parent);
-        double Estar2 = Estar * Estar; 
-        double pstar = sqrt(Estar * Estar - mass_squared); 
+        double Estar2 = Estar * Estar;
+        double pstar = sqrt(Estar * Estar - mass_squared);
 
 
         // prefactor of the integral:
-        double prefactor = mass_parent * branch_ratio / (4.0 * M_PI * pstar); 
+        double prefactor = mass_parent * branch_ratio / (4.0 * M_PI * pstar);
 
         // loop over momentum
         // then in that case, I shoud loop over phip last
@@ -458,40 +458,40 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
         {
             double pT = pTValues[ipT];
 
-            double pT2 = pT * pT; 
-            double mT2 = pT2 - mass_squared; 
+            double pT2 = pT * pT;
+            double mT2 = pT2 - mass_squared;
             double mT = sqrt(mT2);
 
             // what other variables can we already calculate?
             // the y_parent integration limits
-            double y_parent_plus = log((sqrt(Estar2 + pT2) + pstar) / mT); 
-            double y_parent_minus = -y_parent_plus; 
+            double y_parent_plus = log((sqrt(Estar2 + pT2) + pstar) / mT);
+            double y_parent_minus = -y_parent_plus;
 
             for(int iphip = 0; iphip < phi_tab_length; iphip++)
-            {   
-                double phip = phipValues[iphip]; 
+            {
+                double phip = phipValues[iphip];
 
                 for(int iy = 0; iy < y_pts; iy++)
                 {
                     double y = yValues[iy];
 
-                    double coshy = cosh(y); 
+                    double coshy = cosh(y);
 
                     // mT_parent integration limits
                     double mT_parent_plus = 1;
 
                     // integration over parent momentum space goes here:
                     //------------------------
-                    // I need to think carefully about the mass list passed 
-                    double spectrum = EdNdp3_2bodyN(pT, iphip, y, mass, W2, mass_parent, parent); 
+                    // I need to think carefully about the mass list passed
+                    double spectrum = EdNdp3_2bodyN(pT, iphip, y, mass, W2, mass_parent, parent);
 
-                    spectrum = 0.0; 
+                    spectrum = 0.0;
 
                     long long int iS3D = particle_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
 
                     dN_pTdpTdphidy[iS3D] += (prefactor * spectrum);
                 }
-            }     
+            }
         }
     }
     //---------------------------------------
@@ -510,13 +510,81 @@ double EmissionFunctionArray::EdNdp3_2bodyN(double pT, double iphip, double y, d
     double pz = mT * sinh(y);
 
     double Estar = (mass_parent * mass_parent + mass_squared - W2) / (2.0 * mass_parent);
-    double pstar = sqrt(Estar * Estar - mass_squared); 
+    double pstar = sqrt(Estar * Estar - mass_squared);
 
 
-    double normalization = 1.0 / (2.0 * M_PI); 
-    
-    double result
+    double normalization = 1.0 / (2.0 * M_PI);
 
+    double integral = normalization * dn2ptN;
+
+    if(integral < 0.0) integral = 0.0;
+
+    return integral;
+
+
+    // parent rapidity integration:
+    // dn2ptN(w2, para1) = gauss(PTN1, *dnpir1N, -1.0, 1.0, para);(what does it mean?)
+    // it's a gauss integral over cos(theta) from -1 to 1 (is this the rapdity integral?)
+    // so what kind of gauss routine is it? hermite? legrende?
+    // PTN1 = 8 (not sure what this means...)
+    // dnpir1N = integrand of cos(theta) integral
+
+    // parent phi integration?:
+    // dnpirN(costh, para1) = gaus(PTN2, *dnpir2N, 0, 2pi, para)
+    // costh = cos(theta) is I guess the root of the cos(theta) gauss integral
+    // dnpir: gauss integral over phi (of particle 1?)
+    // PTN2 = 8  (2-body between the poles; I don't know what this means)
+
+
+
+    // now we arrive at the dnpir2N...
+    // dnpir2N(phi, para) =
+
+
+    // there must be some meaning behind these PTN1, PTN2 (the number sounds like gauss points)
+    // but the PTN1, PTN2 must be different gauss routines
+
+    double dn2ptN(double w2, void *para1)
+    {
+      Estar = (mass_parent * mass_parent + mass * mass - W2) / (2.0 * mass_parent);
+      pstar = sqrt(Estar * Estar - mass * mass);
+      //Integrate the "dnpir1N" kernal over cos(theta) using gaussian integration
+      double r = gauss(PTN1, *dnpir1N, -1.0, 1.0, para);
+      return r;
+    }
+
+
+    double dnpir2N(double phi, void *para1)
+    {
+      double sume = E + Estar;
+
+      double D = E * Estar  +  pz * pstar * costheta  +  pT * pstar * sintheta * cos(phi_gauss)  +  mass * mass;
+
+      double eR = mass_parent * (sume * sume / D - 1.0);
+
+      double jacobian = mass_parent + eR;
+
+      double plR = mass_parent * sume * (pz - pstar * costheta) / D;        // longitudinal momentum of parent?
+      double ptR = sqrt(eR * eR - plR * plR - mass_parent * mass_parent);   // transverse momentum of parent?
+
+      if(std::isnan(ptR)) ptR = 0.0;
+
+      // well this looks familiar
+      double yR = 0.5 * log ((eR + plR) / (eR - plR));
+
+      // I have no idea what this means...
+      // it doesn't look familiar at all...
+      double cosphiR = - jacobian * (pstar * sintheta * cos(phi_gauss + phi) - pT * cos(phi)) / (sume * ptR);
+      double sinphiR = - jacobian * (pstar * sintheta * sin(phi_gauss + phi) - pT * sin(phi)) / (sume * ptR);
+
+      double phiR = acos(cosphiR);
+
+      if (sphiR < 0.0) phiR = 2.0 * PI - phiR;
+
+      double dnr = Edndp3(yR, ptR, phiR, para->res_num);  // then this is the dN/pTdpTdphipdy of parent resonance
+
+      return dnr * jac * jac / (2.0 * sume * sume); /* dn/mtdmt of resonance */
+    }
 
 }
 
@@ -539,8 +607,8 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     // TODO: distinguish resonance table from chosen particles table whose final spectra we're interested in
 
      // original list of decay products
-    int number_of_decay_particles = 3; 
-    int decay_product_list[3] = {particle_1, particle_2, particle_3}; 
+    int number_of_decay_particles = 3;
+    int decay_product_list[3] = {particle_1, particle_2, particle_3};
 
     bool found_particle_1 = false;
     bool found_particle_2 = false;
@@ -637,33 +705,33 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     {
         int particle_index = particle_groups[igroup];
 
-        // make a vector copy of original decay products list 
+        // make a vector copy of original decay products list
         vector<int> decay_products_vector;
         for(int k = 0; k < number_of_decay_particles; k++)
         {
             decay_products_vector.push_back(decay_product_list[k]);
         }
-        // search for a match and remove the particle from the vector copy 
+        // search for a match and remove the particle from the vector copy
         for(int k = 0; k < number_of_decay_particles; k++)
         {
             int decay_particle = decay_products_vector[k];
             if(decay_particle == particle_index)
             {
                 decay_products_vector.erase(decay_products_vector.begin() + k);
-                break; 
+                break;
             }
         }
 
 
         // get mass of the second and third particle (should double check this...)
         int particle_2 = decay_products_vector[0];
-        int particle_3 = decay_products_vector[1]; 
+        int particle_3 = decay_products_vector[1];
         double mass_2 = particle_data[particle_2].mass;
         double mass_3 = particle_data[particle_3].mass;
 
         // I don't what to do yet..
 
-        //invariant_mass_squared[igroup] = mass_2 * mass_2; 
+        //invariant_mass_squared[igroup] = mass_2 * mass_2;
 
 
     }
