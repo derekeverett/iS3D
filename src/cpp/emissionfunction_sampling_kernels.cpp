@@ -29,8 +29,8 @@
 
 using namespace std;
 
-lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double eps, double pressure, double tau2,
-                              double sign, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF)
+lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double bulkPi, double eps, double pressure, double tau2,
+                              double sign, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE)
 {
   lrf_momentum pLRF;
 
@@ -40,6 +40,53 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
   double piyy = pimunu.piyy;
   double piyz = pimunu.piyz;
   double pizz = pimunu.pizz;
+
+  // set df coefficients (viscous corrections)
+  double c0 = 0.0;
+  double c1 = 0.0;
+  double c2 = 0.0;
+  double c3 = 0.0;
+  double c4 = 0.0;
+  double F = 0.0;
+  double G = 0.0;
+  double betabulk = 0.0;
+  double betaV = 0.0;
+  double betapi = 0.0;
+
+  /*
+  switch(DF_MODE)
+  {
+    case 1: // 14-moment
+    {
+      // bulk coefficients
+      c0 = df_coeff[0];
+      c1 = df_coeff[1];
+      c2 = df_coeff[2];
+      // diffusion coefficients
+      c3 = df_coeff[3];
+      c4 = df_coeff[4];
+      // shear coefficient evaluated later
+      break;
+    }
+    case 2: // Chapman-Enskog
+    {
+      // bulk coefficients
+      F = df_coeff[0];
+      G = df_coeff[1];
+      betabulk = df_coeff[2];
+      // diffusion coefficient
+      betaV = df_coeff[3];
+      // shear coefficient
+      betapi = df_coeff[4];
+      break;
+    }
+    default:
+    {
+      cout << "Please choose df_mode = 1 or 2 in parameters.dat" << endl;
+      exit(-1);
+    }
+  }
+  */
 
   unsigned seed = chrono::system_clock::now().time_since_epoch().count();
   default_random_engine generator(seed);
@@ -121,7 +168,15 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           shear_weight = num / den;
         }
 
-        if (INCLUDE_BULK_DELTAF) bulk_weight = 1.0;
+        if (INCLUDE_BULK_DELTAF)
+        {
+          double H = 1.0;
+          double f0 = 1.0 / ( exp(E / T) + sign );
+          double num = 1.0 + ( 1.0 + sign * f0 ) * H * bulkPi;
+          double Hmax = 1.0;
+          double den = 1.0 + ( 1.0 + sign * f0 ) * Hmax * bulkPi;
+          bulk_weight = num / den;
+        }
 
         if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
 
@@ -667,8 +722,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
           // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
           // perhap divide this into sample_momentum_from_distribution_x()
-          lrf_momentum p_LRF = Sample_Momentum_deltaf(mass, T, alphaB, pimunu, E, P, tau2,
-                                              sign, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF);
+          lrf_momentum p_LRF = Sample_Momentum_deltaf(mass, T, alphaB, pimunu, bulkPi, E, P, tau2,
+                                              sign, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DF_MODE);
 
           double px_LRF = p_LRF.x;
           double py_LRF = p_LRF.y;
