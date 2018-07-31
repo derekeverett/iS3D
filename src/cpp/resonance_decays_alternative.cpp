@@ -53,6 +53,51 @@ int particle_index(particle_info * particle_data, const int number_of_particles,
     else {printf("Error: couldn't find mc_id in particle data\n"); exit(-1);}
 }
 
+double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iphi, int parent_index, double mass_parent)
+{
+    double mT_slope;
+
+    double pTValues[pT_tab_length];
+    for(int ipT = 0; ipT < pT_tab_length; ipT++) pTValues[ipT] = pT_tab->get(1, ipT + 1);
+
+    // get the coordinates (mT_points, log_dNdydpT) when the distribution is positive 
+    vector<double> mT_points;
+    vector<double> log_dNdypTdpTdphi; 
+    for(int ipT = 0; ipT < pT_tab_length; ipT++)
+    {
+        long long int iS3D = parent_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+
+        double dN_dymTdmTdphi = dN_pTdpTdphidy[iS3D]; 
+
+        if(dN_dymTdmTdphi <= 0.0)
+        {
+            break;
+        }
+        else
+        {
+            double pT = pTValues[ipT];
+            double mT = sqrt(mass_parent * mass_parent + pT * pT);
+
+            mT_points.push_back(mT);
+            log_dNdypTdpTdphi.push_back(log(dN_dymTdmTdphi));
+        }
+    }
+
+    // I need at least two points for a fit
+    if(mT_points.size() < 2)
+    {
+        printf("Error: not enough points to construct a fit for the mT_slope");
+        exit(-1); 
+    }
+
+
+    // now I have to solve the least squares equation 
+    
+
+
+    return mT_slope;  
+}
+
 // double dn2ptN(double w2, void *para1)
 // {
 //   pblockN *para = (pblockN *) para1;
@@ -425,6 +470,36 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     //---------------------------------------
 
 
+    // fix the roots/weights for the decay integral
+
+    // Gauss Legendre quadrature for v integral:
+    double v_gauss_legendre_roots[12] = {-0.98156063424672, -0.90411725637048, -0.76990267419431, -0.58731795428662, -0.3678314989982, -0.12523340851147, 
+   0.12523340851147, 0.36783149899818, 0.58731795428662, 0.76990267419431, 0.90411725637048, 0.98156063424672};
+
+    double v_gauss_legendre_weights[12] = {0.04717533638651, 0.1069393259953, 0.16007832854335, 0.20316742672307, 0.23349253653836, 0.2491470458134, 
+   0.2491470458134, 0.23349253653836, 0.20316742672307, 0.1600783285433, 0.10693932599532, 0.04717533638651};
+
+
+    // Gauss Laguerre quadrature for zeta integral (a = 1) 
+
+
+    // Estimate the mT_slope of the parent dN_dymTdmTdphi distribution using a least-squares fit
+    // temporary array
+    double mT_slope[y_pts][phi_tab_length];     // approximately the effective temperature 
+
+    for(int iphi = 0; iphi < phi_tab_length; iphi++)
+    {
+        for(int iy = 0; iy < y_pts; iy++)
+        {
+            mT_slope[iy][iphi] = estimate_mT_slope_of_dNdypTdpTdphi(iy, iphi, parent); 
+        }
+    }
+
+
+
+
+
+
 
     // two-body decay integration:
     //---------------------------------------
@@ -469,7 +544,7 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
             double Estar_M_mT = Estar_M * mT; 
             double Estar2_plus_pT2 = Estar2 + pT2; 
          
-            // parent rapdity intervals
+            // parent rapdity interval
             double deltaY = log((pstar + sqrt(Estar2_plus_pT2)) / mT);
 
             for(int iphip = 0; iphip < phi_tab_length; iphip++)
@@ -485,13 +560,13 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                     double spectrum = 0.0;
 
 
-                    // since I've already calculated , I might as well put the parent momentum integration 
-                    // or I could pass a lot of variables 
+                    // since I've already calculated a lot of things, I might as well put the parent momentum integration directly
+
 
                     // integration over parent momentum space goes here:
-                    double spectrum = EdNdp3_2bodyN(pT, iphip, y, mass, W2, mass_parent, parent); 
+                    //double spectrum = EdNdp3_2bodyN(pT, iphip, y, mass, W2, mass_parent, parent); 
 
-                    spectrum = 0.0; 
+                    //spectrum = 0.0; 
 
                     long long int iS3D = particle_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
 
