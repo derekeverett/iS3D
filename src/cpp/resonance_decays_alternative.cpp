@@ -34,7 +34,7 @@ int particle_index(particle_info * particle_data, const int number_of_particles,
     // search for index of particle_data array struct by matching mc_id
     if(entry_mc_id == 0)
     {
-        printf("Error: mc_id of interest is 0 (null particle)\n");
+        printf("Error: interested particle's mc_id is 0 (null particle in pdg.dat)\n");
         exit(-1);
     }
 
@@ -55,22 +55,26 @@ int particle_index(particle_info * particle_data, const int number_of_particles,
 
 double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iphi, int parent_index, double mass_parent)
 {
+    // mT_slope ~ effective temperature in GeV
     double mT_slope;
 
+    // set pT array
     double pTValues[pT_tab_length];
     for(int ipT = 0; ipT < pT_tab_length; ipT++) pTValues[ipT] = pT_tab->get(1, ipT + 1);
 
-    // get the coordinates (mT_points, log_dNdydpT) when the distribution is positive 
+    // get the coordinates (mT_points, log_dNdydpT) when the distribution is dN_pTdpTdphidy positive
     vector<double> mT_points;
-    vector<double> log_dNdypTdpTdphi; 
+    vector<double> log_dNdypTdpTdphi;
     for(int ipT = 0; ipT < pT_tab_length; ipT++)
     {
         long long int iS3D = parent_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
 
-        double dN_dymTdmTdphi = dN_pTdpTdphidy[iS3D]; 
+        double dN_dymTdmTdphi = dN_pTdpTdphidy[iS3D];
 
         if(dN_dymTdmTdphi <= 0.0)
         {
+            // dN_pTdpTdphidy is negative / zero
+            // stop collecting coordinates
             break;
         }
         else
@@ -79,78 +83,93 @@ double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iph
             double mT = sqrt(mass_parent * mass_parent + pT * pT);
 
             mT_points.push_back(mT);
-            log_dNdypTdpTdphi.push_back(log(dN_dymTdmTdphi));
+            log_dNdypTdpTdphi.push_back(log(dN_dymTdmTdphi));   // called y below
         }
     }
 
-    // I need at least two points for a fit
+    // need at least two points for linear fit
     if(mT_points.size() < 2)
     {
-        printf("Error: not enough points to construct a fit for the mT_slope");
-        exit(-1); 
+        printf("Error: not enough points to construct a least squares fit\n");
+        exit(-1);
     }
 
+    // set up least squares matrix equation to solve for
+    // the coefficients of a straight line: A^Ty = A^TAx
 
-    // now I have to solve the least squares equation 
-    
+    // number of points we're fitting a line through
+    const int length = mT_points.size();
+
+    // coefficients of a straight line = (constant, mT_slope)
+    double x[2] = {0.0, 0.0};
+
+    // matrix A
+    double A[length][2];
+
+    for(int i = 0; i < length; i++)
+    {
+        A[i][0] = 1.0;          // first column
+        A[i][1] = mT_points[i]; // second column
+    }
+
+    // transpose of A
+    double A_transpose[2][length];
+
+    for(int i = 0; i < 2; i++)
+    {
+        for(int j = 0; j < length; j++)
+        {
+            A_transpose[i][j] = A[j][i];
+        }
+    }
+
+    // square matrix M = AT * A
+    double M[2][2];
+
+    for(int i = 0; i < 2; i++)
+    {
+        for(int j = 0; j < 2; j++)
+        {
+            double sum = 0.0; // default sum zero
+
+            for(int k = 0; k < length; ++)
+            {
+                / /M_ij = A_ik B_kj
+                sum += (A_transpose[i][k] * A[k][j]);
+            }
+            M[i][j] = sum;
+        }
+    }
+
+    // f = AT * y (y = log_dNdypTdpTdphi)
+    double f[2] = {0.0, 0.0};
+
+    for(int i = 0; i < 2; i++)
+    {
+        double sum = 0.0;
+
+        for(int k = 0; k < length; k++)
+        {
+            sum += (A_transpose[i][k] * log_dNdypTdpTdphi[k]);
+        }
+        f[i] = sum;
+    }
+
+    // now ready to solve Mx = f
 
 
-    return mT_slope;  
+
+
+    // I would like to learn how to set up a test for an example fit
+    // like an exact line, a scattered graph and a dN_dypTdpTdphi distribution
+
+    // do I need a separate test function???
+
+
+    mT_slope = x[1];    // get the slope
+
+    return mT_slope;
 }
-
-// double dn2ptN(double w2, void *para1)
-// {
-//   pblockN *para = (pblockN *) para1;
-//   para->e0 = (para->mr * para->mr + para->m1 * para->m1 - w2) / (2 * para->mr);
-//   para->p0 = sqrt (para->e0 * para->e0 - para->m1 * para->m1);
-//   //Integrate the "dnpir1N" kernal over cos(theta) using gaussian integration
-//   double r = gauss (PTN1, *dnpir1N, -1.0, 1.0, para);
-//   return r;
-// }
-
-// typedef struct pblockN
-// {
-//   double y, pT, phip, mT, E, pz;    // momentum of decay product 1
-//   double mass_1, mass_2, mass_3;    // masses of decay products
-//   double mass_parent;               // parent resonance mass
-//   double costh, sinth;              //
-//   double e0, p0;                    //
-//   int parent_mc_id;                 // parent mc_id
-// } pblockN;
-
-
-// double Edndp3_2bodyN(double y, double pT, double phip, double mass_1, double mass_2, double mass_parent, int parent_mc_id)
-// // in units of GeV^-2, includes phasespace and volume, does not include degeneracy factors
-// // double y;  /* rapidity of particle 1 */
-// // double pt; /* transverse momentum of particle 1 */
-// // double phi; /* phi angle of particle 1 */
-// // double m1, m2; /* restmasses of decay particles in MeV */
-// // double mr;     /* restmass of resonance MeV            */
-// // int res_num;   /* Montecarlo number of the Resonance   */
-// {
-//   double mT = sqrt(pT * pT + mass_1 * mass_1);
-
-//   pblockN parameter;
-
-//   parameter.pT = pT;                // basically fix outgoing momentum of particle 1
-//   parameter.mT = mT;
-//   parameter.E = mT * cosh(y);
-//   parameter.pz = mT * sinh(y);
-//   parameter.y = y;
-//   parameter.phi = phip;
-//   parameter.mass_1 = mass_1;
-//   parameter.mass_2 = mass_2;
-//   para.mass_parent = mass_parent;
-//   para.res_num = parent_mc_id;
-
-//   double norm2 = 1.0 / (2.0 * PI);      // 2-body normalization (must be a formula)
-
-//   // calls the integration routines for 2-body
-//   double res2 = norm2 * dn2ptN(mass_2 * mass_2, &para);     // I'm having a hard time following the nest of integrations
-
-//   if (res2 < 0.0) res2 = 0.0;
-//   return res2;          /* like Ed3ndp3_2body() */
-// }
 
 
 void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
@@ -306,8 +325,8 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
 void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double branch_ratio, int parent, int particle_1, int particle_2, double mass_1, double mass_2, double mass_parent)
 {
     // original list of decay products
-    int number_of_decay_particles = 2; 
-    int decay_product_list[2] = {particle_1, particle_2}; 
+    int number_of_decay_particles = 2;
+    int decay_product_list[2] = {particle_1, particle_2};
 
     // first select decay products that are part of chosen resonance particles
     // TODO: distinguish resonance table from chosen particles table whose final spectra we're interested in
@@ -392,42 +411,42 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     double energy_star[groups];
 
     for(int igroup = 0; igroup < groups; igroup++)
-    {   
+    {
         // set the mass
         double mass = particle_data[particle_groups[igroup]].mass;
 
-        mass_squared[igroup] = mass * mass; 
+        mass_squared[igroup] = mass * mass;
 
         int particle_index = particle_groups[igroup];
 
-        // make a vector copy of original decay products list 
+        // make a vector copy of original decay products list
         vector<int> decay_products_vector;
         for(int k = 0; k < number_of_decay_particles; k++)
         {
             decay_products_vector.push_back(decay_product_list[k]);
         }
-        // search for a match and remove the particle from the vector copy 
+        // search for a match and remove the particle from the vector copy
         for(int k = 0; k < number_of_decay_particles; k++)
         {
             int decay_particle = decay_products_vector[k];
             if(decay_particle == particle_index)
             {
-                decay_products_vector.erase(decay_products_vector.begin() + k); 
-                break; 
+                decay_products_vector.erase(decay_products_vector.begin() + k);
+                break;
             }
         }
-        // get W2 = invariant mass squared of the secondary particle 
+        // get W2 = invariant mass squared of the secondary particle
         int particle_secondary = decay_products_vector[0];
         double mass_secondary = particle_data[particle_2].mass;
-        double W2 = mass_secondary * mass_secondary; 
+        double W2 = mass_secondary * mass_secondary;
 
         // set the energy_star and momentum_star of particle of interest
         double Estar = (mass_parent * mass_parent + mass * mass - W2) / (2.0 * mass_parent);
         energy_star[igroup] = Estar;
-        momentum_star[igroup] = sqrt(Estar * Estar - mass * mass); 
+        momentum_star[igroup] = sqrt(Estar * Estar - mass * mass);
     }
 
-    // print the groups (to test grouping) 
+    // print the groups (to test grouping)
     printf("Particle groups: ");
     for(int igroup = 0; igroup < groups; igroup++)
     {
@@ -473,25 +492,25 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     // fix the roots/weights for the decay integral
 
     // Gauss Legendre quadrature for v integral:
-    double v_gauss_legendre_roots[12] = {-0.98156063424672, -0.90411725637048, -0.76990267419431, -0.58731795428662, -0.3678314989982, -0.12523340851147, 
+    double v_gauss_legendre_roots[12] = {-0.98156063424672, -0.90411725637048, -0.76990267419431, -0.58731795428662, -0.3678314989982, -0.12523340851147,
    0.12523340851147, 0.36783149899818, 0.58731795428662, 0.76990267419431, 0.90411725637048, 0.98156063424672};
 
-    double v_gauss_legendre_weights[12] = {0.04717533638651, 0.1069393259953, 0.16007832854335, 0.20316742672307, 0.23349253653836, 0.2491470458134, 
+    double v_gauss_legendre_weights[12] = {0.04717533638651, 0.1069393259953, 0.16007832854335, 0.20316742672307, 0.23349253653836, 0.2491470458134,
    0.2491470458134, 0.23349253653836, 0.20316742672307, 0.1600783285433, 0.10693932599532, 0.04717533638651};
 
 
-    // Gauss Laguerre quadrature for zeta integral (a = 1) 
+    // Gauss Laguerre quadrature for zeta integral (a = 1)
 
 
     // Estimate the mT_slope of the parent dN_dymTdmTdphi distribution using a least-squares fit
     // temporary array
-    double mT_slope[y_pts][phi_tab_length];     // approximately the effective temperature 
+    double mT_slope[y_pts][phi_tab_length];     // approximately the effective temperature
 
     for(int iphi = 0; iphi < phi_tab_length; iphi++)
     {
         for(int iy = 0; iy < y_pts; iy++)
         {
-            mT_slope[iy][iphi] = estimate_mT_slope_of_dNdypTdpTdphi(iy, iphi, parent); 
+            mT_slope[iy][iphi] = estimate_mT_slope_of_dNdypTdpTdphi(iy, iphi, parent);
         }
     }
 
@@ -504,10 +523,10 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     // two-body decay integration:
     //---------------------------------------
 
-    // I should probably distinguish between boost-invariant and 3+1d case 
+    // I should probably distinguish between boost-invariant and 3+1d case
     // in the 3+1d case I have a finite rapidity window, and the integration
-    // over the parent rapidity may require extrapolation? 
-    // it looks like in the old code: they truncated rapidity regions out of usual window 
+    // over the parent rapidity may require extrapolation?
+    // it looks like in the old code: they truncated rapidity regions out of usual window
 
     //double prefactor_common =  mass_parent * branch_ratio / (4.0 * M_PI);
 
@@ -517,46 +536,46 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
         // particle index and multiplicity
         int particle_index = particle_groups[igroup];
         double multiplicity = (double)group_members[igroup];
-       
+
         // particle mass, energy_star and momentum_star in parent rest frame:
         double mass2 = mass_squared[igroup];
         double Estar = energy_star[igroup];
-        double Estar2 = Estar * Estar; 
+        double Estar2 = Estar * Estar;
         double pstar = momentum_star[igroup];
 
         // useful expression
-        double Estar_M = Estar * mass_parent; 
+        double Estar_M = Estar * mass_parent;
 
         // prefactor of the integral
         double prefactor = multiplicity * mass_parent * branch_ratio / (4.0 * M_PI * pstar);
 
-        // loop over momentum 
+        // loop over momentum
         for(int ipT = 0; ipT < pT_tab_length; ipT++)
         {
             double pT = pTValues[ipT];
 
-            double pT2 = pT * pT; 
-            double mT2 = pT2 - mass2; 
+            double pT2 = pT * pT;
+            double mT2 = pT2 - mass2;
             double mT = sqrt(mT2);
 
             // useful expressions
             double M_pT = mass_parent * pT;
-            double Estar_M_mT = Estar_M * mT; 
-            double Estar2_plus_pT2 = Estar2 + pT2; 
-         
+            double Estar_M_mT = Estar_M * mT;
+            double Estar2_plus_pT2 = Estar2 + pT2;
+
             // parent rapdity interval
             double deltaY = log((pstar + sqrt(Estar2_plus_pT2)) / mT);
 
             for(int iphip = 0; iphip < phi_tab_length; iphip++)
-            {   
-                double phip = phipValues[iphip]; 
+            {
+                double phip = phipValues[iphip];
 
                 for(int iy = 0; iy < y_pts; iy++)
                 {
                     double y = yValues[iy];
 
-                    // I know Y = y + v * deltaY: I can determine the maximum window I need to call the parent spectra 
-                    // as for MT, I need to loop over v first 
+                    // I know Y = y + v * deltaY: I can determine the maximum window I need to call the parent spectra
+                    // as for MT, I need to loop over v first
                     double spectrum = 0.0;
 
 
@@ -564,15 +583,15 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
 
                     // integration over parent momentum space goes here:
-                    //double spectrum = EdNdp3_2bodyN(pT, iphip, y, mass, W2, mass_parent, parent); 
+                    //double spectrum = EdNdp3_2bodyN(pT, iphip, y, mass, W2, mass_parent, parent);
 
-                    //spectrum = 0.0; 
+                    //spectrum = 0.0;
 
                     long long int iS3D = particle_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
 
                     dN_pTdpTdphidy[iS3D] += (prefactor * spectrum);
                 }
-            }     
+            }
         }
     }
     //---------------------------------------
@@ -591,11 +610,11 @@ double EmissionFunctionArray::EdNdp3_2bodyN(double pT, double iphip, double y, d
     double pz = mT * sinh(y);
 
     double Estar = (mass_parent * mass_parent + mass_squared - W2) / (2.0 * mass_parent);
-    double pstar = sqrt(Estar * Estar - mass_squared); 
+    double pstar = sqrt(Estar * Estar - mass_squared);
 
 
-    double normalization = 1.0 / (2.0 * M_PI); 
-    
+    double normalization = 1.0 / (2.0 * M_PI);
+
     double result
 
 
@@ -620,8 +639,8 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     // TODO: distinguish resonance table from chosen particles table whose final spectra we're interested in
 
      // original list of decay products
-    int number_of_decay_particles = 3; 
-    int decay_product_list[3] = {particle_1, particle_2, particle_3}; 
+    int number_of_decay_particles = 3;
+    int decay_product_list[3] = {particle_1, particle_2, particle_3};
 
     bool found_particle_1 = false;
     bool found_particle_2 = false;
@@ -718,33 +737,33 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     {
         int particle_index = particle_groups[igroup];
 
-        // make a vector copy of original decay products list 
+        // make a vector copy of original decay products list
         vector<int> decay_products_vector;
         for(int k = 0; k < number_of_decay_particles; k++)
         {
             decay_products_vector.push_back(decay_product_list[k]);
         }
-        // search for a match and remove the particle from the vector copy 
+        // search for a match and remove the particle from the vector copy
         for(int k = 0; k < number_of_decay_particles; k++)
         {
             int decay_particle = decay_products_vector[k];
             if(decay_particle == particle_index)
             {
                 decay_products_vector.erase(decay_products_vector.begin() + k);
-                break; 
+                break;
             }
         }
 
 
         // get mass of the second and third particle (should double check this...)
         int particle_2 = decay_products_vector[0];
-        int particle_3 = decay_products_vector[1]; 
+        int particle_3 = decay_products_vector[1];
         double mass_2 = particle_data[particle_2].mass;
         double mass_3 = particle_data[particle_3].mass;
 
         // I don't what to do yet..
 
-        //invariant_mass_squared[igroup] = mass_2 * mass_2; 
+        //invariant_mass_squared[igroup] = mass_2 * mass_2;
 
 
     }
