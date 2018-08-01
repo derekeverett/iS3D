@@ -31,8 +31,6 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
   double *wtx_fo, double *wty_fo, double *wtn_fo, double *wxy_fo, double *wxn_fo, double *wyn_fo)
   {
-
-    double prefactor = pow(2.0 * M_PI * hbarC, -3);
     int FO_chunk = 10000;
 
     double trig_phi_table[phi_tab_length][2]; // 2: 0,1-> cos,sin
@@ -83,10 +81,18 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
     }
 
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
-    //to hold the spectra for each surface cell in a chunk, for all particle species
+    //to hold the spin polarization vector for each surface cell in a chunk, for all particle species
     int npart = number_of_chosen_particles;
-    double *dN_pTdpTdphidy_all;
-    dN_pTdpTdphidy_all = (double*)calloc(npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
+
+    //four components of spin polarization vector for each FO element
+    double *St_all, *Sx_all, *Sy_all, *Sn_all;
+    //normalization of the spin polzn vector
+    double *Snorm_all;
+    St_all = (double*)calloc(npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
+    Sx_all = (double*)calloc(npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
+    Sy_all = (double*)calloc(npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
+    Sn_all = (double*)calloc(npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
+    Snorm_all = (double*)calloc(npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
 
     //loop over bite size chunks of FO surface
     for (int n = 0; n < (FO_length / FO_chunk) + 1; n++)
@@ -157,10 +163,13 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
 
               for (int iy = 0; iy < y_pts; iy++)
               {
-                //all vector components are CONTRAVARIANT EXCEPT the surface normal vector dat, dax, day, dan, which are COVARIANT
                 double y = yValues[iy];
 
-                double pdotdsigma_f_eta_sum = 0.0;
+                double St_eta_sum = 0.0;
+                double Sx_eta_sum = 0.0;
+                double Sy_eta_sum = 0.0;
+                double Sn_eta_sum = 0.0;
+                double Snorm_eta_sum = 0.0;
 
                 // sum over eta
                 for (int ieta = 0; ieta < eta_pts; ieta++)
@@ -179,16 +188,30 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
                   // u.p LRF energy
                   double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
                   // thermal distribution
-                  double f = 1.0 / (exp(pdotu / T) + sign);
+                  double f0 = 1.0 / (exp(pdotu / T) + sign);
 
+                  //the components of the covariant polarization vector S_\mu (x,p)
+                  double prefactor = -(1.0 / 8.0 / mass ) * (1.0 - sign * f0);
+                  double spin_t = prefactor * 2.0 * ( wxy * pn - wxn * py + wyn * px);
+                  double spin_x = prefactor * 2.0 * ( wyn * pt - wtn * py + wty * pn);
+                  double spin_y = prefactor * 2.0 * ( -wxn * pt + wtn * px - wtx * pn);
+                  double spin_n = prefactor * 2.0 * ( wtx * py + wxy * pt - wty * px);
 
-                  pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
+                  St_eta_sum += (delta_eta_weight * pdotdsigma * f0 * spin_t);
+                  Sx_eta_sum += (delta_eta_weight * pdotdsigma * f0 * spin_x);
+                  Sy_eta_sum += (delta_eta_weight * pdotdsigma * f0 * spin_y);
+                  Sn_eta_sum += (delta_eta_weight * pdotdsigma * f0 * spin_n);
+                  Snorm_eta_sum += (delta_eta_weight * pdotdsigma * f0);
 
                 } // ieta
 
                 long long int iSpectra = icell + endFO * (ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy)));
 
-                dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma_f_eta_sum);
+                St_all[iSpectra] = St_eta_sum;
+                Sx_all[iSpectra] = Sx_eta_sum;
+                Sy_all[iSpectra] = Sy_eta_sum;
+                Sn_all[iSpectra] = Sn_eta_sum;
+                Snorm_all[iSpectra] = Snorm_eta_sum;
 
               } //iy
             } //iphip
@@ -209,15 +232,29 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
               {
                 //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
                 long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
-                double dN_pTdpTdphidy_tmp = 0.0; //reduction variable
-                #pragma omp simd reduction(+:dN_pTdpTdphidy_tmp)
+                double St_tmp = 0.0; //reduction variable
+                double Sx_tmp = 0.0; //reduction variable
+                double Sy_tmp = 0.0; //reduction variable
+                double Sn_tmp = 0.0; //reduction variable
+                double Snorm_tmp = 0.0; //reduction variable
+                //#pragma omp simd reduction(+:St_tmp)
                 for (int icell = 0; icell < endFO; icell++)
                 {
                   //long long int iSpectra = icell + (endFO * ipart) + (endFO * npart * ipT) + (endFO * npart * pT_tab_length * iphip) + (endFO * npart * pT_tab_length * phi_tab_length * iy);
                   long long int iSpectra = icell + endFO * iS3D;
-                  dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[iSpectra];
+                  St_tmp += St_all[iSpectra];
+                  Sx_tmp += Sx_all[iSpectra];
+                  Sy_tmp += Sy_all[iSpectra];
+                  Sn_tmp += Sn_all[iSpectra];
+                  Snorm_tmp += Snorm_all[iSpectra];
                 }//icell
-                dN_pTdpTdphidy[iS3D] += dN_pTdpTdphidy_tmp; //sum over all chunks
+
+                St[iS3D] += St_tmp; //sum over all chunks
+                Sx[iS3D] += Sx_tmp; //sum over all chunks
+                Sy[iS3D] += Sy_tmp; //sum over all chunks
+                Sn[iS3D] += Sn_tmp; //sum over all chunks
+                Snorm[iS3D] += Snorm_tmp; //sum over all chunks
+
               }//iy
             }//iphip
           }//ipT
@@ -226,5 +263,8 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
     }//n FO chunk
 
     //free memory
-    free(dN_pTdpTdphidy_all);
+    free(St_all);
+    free(Sx_all);
+    free(Sy_all);
+    free(Sn_all);
   }

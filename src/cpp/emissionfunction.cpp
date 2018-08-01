@@ -72,6 +72,26 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       dN_pTdpTdphidy[iSpectra] = 0.0;
     }
 
+    if (MODE == 5)
+    {
+      //class member to hold polarization vector of chosen particles
+      St = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sx = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sn = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+
+      Snorm = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+
+      for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
+      {
+        St[iSpectra] = 0.0;
+        Sx[iSpectra] = 0.0;
+        Sy[iSpectra] = 0.0;
+        Sn[iSpectra] = 0.0;
+        Snorm[iSpectra] = 0.0;
+      }
+    } // if (MODE == 5)
+
     for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
 
     //only grab chosen particles from the table
