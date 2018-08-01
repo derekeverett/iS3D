@@ -99,6 +99,11 @@ public:
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double*, double*);
 
+  void calculate_spin_polzn(double *Mass, double *Sign, double *Degeneracy,
+    double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
+    double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
+    double *wtx_fo, double *wty_fo, double *wtn_fo, double *wxy_fo, double *wxn_fo, double *wyn_fo);
+
   void calculate_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
   double *, double *, double *, double *, double *,
   double *, double *, double *, double *, double *,

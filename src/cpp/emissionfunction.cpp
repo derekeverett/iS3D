@@ -184,7 +184,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     sprintf(filename, "results/dN_dpTdphidy.dat");
     ofstream spectraFile(filename, ios_base::app);
     //write the header
-    spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_dpTdphidy" << "\n"; 
+    spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_dpTdphidy" << "\n";
     for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
       for (int iy = 0; iy < y_pts; iy++)
@@ -270,7 +270,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // freezeout surface info exclusive for VH
     double *E, *T, *P;
-    if(MODE == 1)
+    if(MODE == 1 || MODE == 5)
     {
       E = (double*)calloc(FO_length, sizeof(double));
       P = (double*)calloc(FO_length, sizeof(double));
@@ -326,6 +326,18 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
+    //thermal vorticity tensor for polarization studies
+    double *wtx, *wty, *wtn, *wxy, *wxn, *wyn;
+    if (MODE == 5)
+    {
+      wtx = (double*)calloc(FO_length, sizeof(double));
+      wty = (double*)calloc(FO_length, sizeof(double));
+      wtn = (double*)calloc(FO_length, sizeof(double));
+      wxy = (double*)calloc(FO_length, sizeof(double));
+      wxn = (double*)calloc(FO_length, sizeof(double));
+      wyn = (double*)calloc(FO_length, sizeof(double));
+    }
+
     // freezeout surface info exclusive for VAH_PL
     double *PL, *Wx, *Wy;
     double *Lambda, *aL;
@@ -359,7 +371,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       //reading info from surface
       surf = &surf_ptr[icell];
 
-      if(MODE == 1)
+      if(MODE == 1 || MODE == 5)
       {
         E[icell] = surf->E;
         P[icell] = surf->P;
@@ -408,6 +420,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         }
       }
 
+      if (MODE == 5)
+      {
+        wtx[icell] = surf->wtx;
+        wty[icell] = surf->wty;
+        wtn[icell] = surf->wtn;
+        wxy[icell] = surf->wxy;
+        wxn[icell] = surf->wxn;
+        wyn[icell] = surf->wyn;
+      }
       if(MODE == 2)
       {
         PL[icell] = surf->PL;
@@ -592,15 +613,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               cout << "Set operation to 1 or 2" << endl;
               exit(-1);
             }
-          }
+          } //switch(OPERATION)
           break;
-        }
+        } //case 3
         default:
         {
           cout << "Please specify df_mode = (1,2,3) in parameters.dat..." << endl;
           exit(-1);
         }
-      }
+      } //switch(DF_MODE)
     } //if (MODE == 1)
     else if(MODE == 2)
     {
@@ -630,8 +651,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           cout << "Please specify df_mode = (1,2,3) in parameters.dat..." << endl;
           exit(-1);
         }
-      }
-    }
+      } //switch(OPERATION)
+    } //else if(MODE == 2)
+
+    else if (MODE == 5) calculate_spin_polzn(Mass, Sign, Degen,
+      T, P, E, tau, eta, ut, ux, uy, un,
+      dat, dax, day, dan,
+      wtx, wty, wtn, wxy, wxn, wyn);
+
 
     printline();
 
@@ -649,7 +676,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     free(Sign);
     free(Baryon);
 
-    if(MODE == 1)
+    if(MODE == 1 || MODE == 5)
     {
       free(E);
       free(T);
@@ -677,6 +704,16 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     free(piyn);
     free(pinn);
     free(bulkPi);
+
+    if (MODE == 5)
+    {
+      free(wtx);
+      free(wty);
+      free(wtn);
+      free(wxy);
+      free(wxn);
+      free(wyn);
+    }
 
     if (INCLUDE_BARYON)
     {
