@@ -48,7 +48,7 @@ private:
   double *dN_pTdpTdphidy; //to hold smooth CF 3D spectra of all species
 
   double *St, *Sx, *Sy, *Sn; //to hold the polarization vector of all species
-  double *Snorm; //the normalization of the polarization vector of all species 
+  double *Snorm; //the normalization of the polarization vector of all species
 
   std::vector<Sampled_Particle> particle_list; //to hold sampled particle list
 
@@ -114,6 +114,7 @@ public:
   double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
   void write_dN_pTdpTdphidy_toFile(); //write invariant 3D spectra to file
+  void write_polzn_vector_toFile(); //write components of spin polarization vector to file
   void write_dN_dpTdphidy_toFile(); //write 3D spectra to file in experimental bins
   void write_particle_list_toFile(); //write sampled particle list
   void calculate_spectra();

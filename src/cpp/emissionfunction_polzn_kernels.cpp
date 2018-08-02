@@ -206,13 +206,11 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
                 } // ieta
 
                 long long int iSpectra = icell + endFO * (ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy)));
-
                 St_all[iSpectra] = St_eta_sum;
                 Sx_all[iSpectra] = Sx_eta_sum;
                 Sy_all[iSpectra] = Sy_eta_sum;
                 Sn_all[iSpectra] = Sn_eta_sum;
                 Snorm_all[iSpectra] = Snorm_eta_sum;
-
               } //iy
             } //iphip
           } //ipT
@@ -248,13 +246,11 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
                   Sn_tmp += Sn_all[iSpectra];
                   Snorm_tmp += Snorm_all[iSpectra];
                 }//icell
-
                 St[iS3D] += St_tmp; //sum over all chunks
                 Sx[iS3D] += Sx_tmp; //sum over all chunks
                 Sy[iS3D] += Sy_tmp; //sum over all chunks
                 Sn[iS3D] += Sn_tmp; //sum over all chunks
                 Snorm[iS3D] += Snorm_tmp; //sum over all chunks
-
               }//iy
             }//iphip
           }//ipT
@@ -267,4 +263,5 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
     free(Sx_all);
     free(Sy_all);
     free(Sn_all);
+    free(Snorm_all);
   }

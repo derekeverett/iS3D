@@ -79,7 +79,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       Sx = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
       Sy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
       Sn = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
-
+      //holds the normalization of the polarization vector of chosen particles
       Snorm = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
 
       for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
@@ -227,6 +227,60 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       } //iy
     }//ipart
     spectraFile.close();
+  }
+
+  void EmissionFunctionArray::write_polzn_vector_toFile()
+  {
+    printf("Writing polarization vector to file...\n");
+    int npart = number_of_chosen_particles;
+    char filename_t[255] = "";
+    char filename_x[255] = "";
+    char filename_y[255] = "";
+    char filename_n[255] = "";
+    sprintf(filename_t, "results/St.dat");
+    sprintf(filename_x, "results/Sx.dat");
+    sprintf(filename_y, "results/Sy.dat");
+    sprintf(filename_n, "results/Sn.dat");
+    ofstream StFile(filename_t, ios_base::app);
+    ofstream SxFile(filename_x, ios_base::app);
+    ofstream SyFile(filename_y, ios_base::app);
+    ofstream SnFile(filename_n, ios_base::app);
+
+    int y_pts = y_tab_length;     // default 3+1d pts
+    if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
+
+    for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    {
+      for (int iy = 0; iy < y_pts; iy++)
+      {
+        double y;
+        if (DIMENSION == 2) y = 0.0;
+        else y = y_tab->get(1,iy + 1);
+
+        for (int iphip = 0; iphip < phi_tab_length; iphip++)
+        {
+          double phip = phi_tab->get(1,iphip + 1);
+          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          {
+            double pT = pT_tab->get(1,ipT + 1);
+            long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+            StFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (St[iS3D] / Snorm[iS3D]) << "\n";
+            SxFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (Sx[iS3D] / Snorm[iS3D]) << "\n";
+            SyFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (Sy[iS3D] / Snorm[iS3D]) << "\n";
+            SnFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (Sn[iS3D] / Snorm[iS3D]) << "\n";
+
+          } //ipT
+          StFile << "\n";
+          SxFile << "\n";
+          SyFile << "\n";
+          SnFile << "\n";
+        } //iphip
+      } //iy
+    }//ipart
+    StFile.close();
+    SxFile.close();
+    SyFile.close();
+    SnFile.close();
   }
 
   void EmissionFunctionArray::write_particle_list_toFile()
@@ -689,6 +743,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       write_dN_dpTdphidy_toFile();
     }
     else if (OPERATION == 2) write_particle_list_toFile();
+
+    if (MODE == 5) write_polzn_vector_toFile();
 
     cout << "Freeing memory..." << endl;
     // free memory
