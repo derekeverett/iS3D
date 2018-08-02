@@ -53,7 +53,7 @@ int particle_index(particle_info * particle_data, const int number_of_particles,
     else {printf("Error: couldn't find mc_id in particle data\n"); exit(-1);}
 }
 
-double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iphi, int parent_index, double mass_parent)
+double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iphip, int parent_index, double mass_parent)
 {
     // mT_slope ~ effective temperature in GeV
     double mT_slope;
@@ -82,15 +82,18 @@ double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iph
             double pT = pTValues[ipT];
             double mT = sqrt(mass_parent * mass_parent + pT * pT);
 
-            mT_points.push_back(mT);
-            log_dNdypTdpTdphi.push_back(log(dN_dymTdmTdphi));   // called y below
+            if(mT > sqrt(2.0) * mass_parent)    // mT in relativistic region
+            {
+                mT_points.push_back(mT);
+                log_dNdypTdpTdphi.push_back(log(dN_dymTdmTdphi));   // called y below
+            }   
         }
     }
 
     // need at least two points for linear fit
     if(mT_points.size() < 2)
     {
-        printf("Error: not enough points to construct a least squares fit\n");
+        printf("\nError: not enough points to construct a least squares fit\n");
         exit(-1);
     }
 
@@ -98,46 +101,32 @@ double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iph
     // the coefficients of a straight line: A^Ty = A^TAx
 
     // number of points we're fitting a line through
-    const int length = mT_points.size();
+    const int n = mT_points.size();
 
     // coefficients of a straight line = (constant, mT_slope)
     double x[2] = {0.0, 0.0};
 
     // matrix A
-    double A[length][2];
+    double A[n][2];
 
-    for(int i = 0; i < length; i++)
+    for(int i = 0; i < n; i++)
     {
         A[i][0] = 1.0;          // first column
         A[i][1] = mT_points[i]; // second column
+        //      [ 1    mT_0   ]
+        //      [ 1    mT_1   ]
+        // A =  [ ..    ..    ]
+        //      [ 1    mT_n-1 ]
     }
 
     // transpose of A
-    double A_transpose[2][length];
+    double A_transpose[2][n];
 
     for(int i = 0; i < 2; i++)
     {
-        for(int j = 0; j < length; j++)
+        for(int j = 0; j < n; j++)
         {
             A_transpose[i][j] = A[j][i];
-        }
-    }
-
-    // square matrix M = AT * A
-    double M[2][2];
-
-    for(int i = 0; i < 2; i++)
-    {
-        for(int j = 0; j < 2; j++)
-        {
-            double sum = 0.0; // default sum zero
-
-            for(int k = 0; k < length; ++)
-            {
-                / /M_ij = A_ik B_kj
-                sum += (A_transpose[i][k] * A[k][j]);
-            }
-            M[i][j] = sum;
         }
     }
 
@@ -147,24 +136,42 @@ double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iph
     for(int i = 0; i < 2; i++)
     {
         double sum = 0.0;
-
-        for(int k = 0; k < length; k++)
+        for(int k = 0; k < n; k++)
         {
             sum += (A_transpose[i][k] * log_dNdypTdpTdphi[k]);
         }
         f[i] = sum;
     }
 
+    // square matrix M = AT * A
+    double ** M = (double**)calloc(2, sizeof(double*));
+    for(int i = 0; i < 2; i++) M[i] = (double*)calloc(2, sizeof(double));
+
+    for(int i = 0; i < 2; i++)
+    {
+        for(int j = 0; j < 2; j++)
+        {
+            double sum = 0.0; // default sum zero
+            for(int k = 0; k < n; k++)
+            {
+                // M_ij = A_ik B_kj
+                sum += (A_transpose[i][k] * A[k][j]);
+            }
+            M[i][j] = sum;
+        }
+    }
+
     // now ready to solve Mx = f
-
-
-
+    int permutation[2];                     // permutation vector
+    LUP_decomposition(M, 2, permutation);   // LUP decompose M
+    LUP_solve(M, 2, permutation, f);        // solve matrix equation 
+    for(int i = 0; i < 2; i++) x[i] = f[i]; // solution x stored in f
+    free_2D(M,2);                           // free memory 
+    //----------------------------------
 
     // I would like to learn how to set up a test for an example fit
     // like an exact line, a scattered graph and a dN_dypTdpTdphi distribution
-
     // do I need a separate test function???
-
 
     mT_slope = x[1];    // get the slope
 
@@ -181,6 +188,12 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
     //const int light_particle_id = LIGHTEST_PARTICLE;  // lightest particle mc_id
 
     // note: I moved pion-0 as the lightest hadron in pdg.dat
+
+    if(number_of_chosen_particles - 1 <= 0)
+    {
+        printf("\nError: need at least two chosen particles for resonance decay routine..\n");
+        exit(-1); 
+    }
 
     // start the resonance decay feed-down, starting with the last chosen resonance particle:
     for(int ichosen = (number_of_chosen_particles - 1); ichosen > 0; ichosen--)
@@ -510,7 +523,7 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     {
         for(int iy = 0; iy < y_pts; iy++)
         {
-            mT_slope[iy][iphi] = estimate_mT_slope_of_dNdypTdpTdphi(iy, iphi, parent);
+            //mT_slope[iy][iphi] = estimate_mT_slope_of_dNdypTdpTdphi(iy, iphi, parent, mass_parent);
         }
     }
 
@@ -597,36 +610,6 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     //---------------------------------------
     // finished two-body decay routine
 }
-
-
-
-
-
-
-double EmissionFunctionArray::EdNdp3_2bodyN(double pT, double iphip, double y, double mass, double W2, double mass_parent, int parent)
-{
-    double mT = sqrt(mass * mass + pT * pT);
-    double E = mT * cosh(y);
-    double pz = mT * sinh(y);
-
-    double Estar = (mass_parent * mass_parent + mass_squared - W2) / (2.0 * mass_parent);
-    double pstar = sqrt(Estar * Estar - mass_squared);
-
-
-    double normalization = 1.0 / (2.0 * M_PI);
-
-    double result
-
-
-}
-
-
-
-
-
-
-
-
 
 
 
