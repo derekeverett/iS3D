@@ -643,7 +643,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     }
     else if (OPERATION == 2) write_particle_list_toFile();
 
-    cout << "Freeing memory..." << endl;
+    cout << "Freeing freezeout surface memory.." << endl;
     // free memory
     free(Mass);
     free(Sign);

@@ -77,7 +77,6 @@ int main(int argc, char *argv[])
   int do_resonance_decays = paraRdr->getVal("do_resonance_decays");
   if (do_resonance_decays) efa.do_resonance_decays(particle_data);
 
-
   delete [] surf_ptr;
   delete paraRdr;
 

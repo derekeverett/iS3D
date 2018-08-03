@@ -25,7 +25,7 @@ typedef struct
   // for the resonance decay integration routines
   double constant;  
   double slope;   
-} mT_fit_parameters;
+} MT_fit_parameters;
 
 
 lrf_momentum Sample_momentum(double mass, double T, double alphaB);
@@ -124,7 +124,9 @@ public:
 
   void three_body_decay(particle_info * particle_data, double branch_ratio, int parent, int parent_chosen_index, int particle_1, int particle_2, int particle_3, double mass_1, double mass_2, double mass_3, double mass_parent);
 
-  mT_fit_parameters estimate_mT_function_of_dNdypTdpTdphi(int iy, int iphip, int parent_chosen_index, double mass_parent);
+  MT_fit_parameters estimate_MT_function_of_dNdypTdpTdphi(int iy, int iphip, int parent_chosen_index, double mass_parent);
+
+  double dN_dYMTdMTdPhi_non_boost_invariant(int parent_chosen_index, double MTValues[], double phipValues[], double yValues[], double MT, double Phip_1, double Phip_2, double Y, double MTmax, MT_fit_parameters ** MT_params);
 
 };
 
