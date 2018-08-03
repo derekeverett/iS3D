@@ -53,10 +53,11 @@ int particle_index(particle_info * particle_data, const int number_of_particles,
     else {printf("Error: couldn't find mc_id in particle data\n"); exit(-1);}
 }
 
-double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iphip, int parent_index, double mass_parent)
+mT_fit_parameters EmissionFunctionArray::estimate_mT_function_of_dNdypTdpTdphi(int iy, int iphip, int parent_chosen_index, double mass_parent)
 {
-    // mT_slope ~ effective temperature in GeV
-    double mT_slope;
+    // get parameters for the fit y = exp(constant + slope * mT) of the distribution dN_dymTdmTdphi at large mT 
+    // mT_const ~ logy-intercept, mT_slope ~ -effective temperature in GeV
+    mT_fit_parameters mT_params; 
 
     // set pT array
     double pTValues[pT_tab_length];
@@ -67,9 +68,12 @@ double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iph
     vector<double> log_dNdypTdpTdphi;
     for(int ipT = 0; ipT < pT_tab_length; ipT++)
     {
-        long long int iS3D = parent_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+        // I need the parent's chosen index (it's place in the chosen particles list) 
+        long long int iS3D = parent_chosen_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
 
         double dN_dymTdmTdphi = dN_pTdpTdphidy[iS3D];
+
+        //cout << pTValues[ipT] << "\t\t" << dN_dymTdmTdphi << endl;
 
         if(dN_dymTdmTdphi <= 0.0)
         {
@@ -82,7 +86,7 @@ double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iph
             double pT = pTValues[ipT];
             double mT = sqrt(mass_parent * mass_parent + pT * pT);
 
-            if(mT > sqrt(2.0) * mass_parent)    // mT in relativistic region
+            if(mT > sqrt(2.73) * mass_parent)   // mT in relativistic region (~ threshold for 2 points for Omega2250)
             {
                 mT_points.push_back(mT);
                 log_dNdypTdpTdphi.push_back(log(dN_dymTdmTdphi));   // called y below
@@ -90,12 +94,15 @@ double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iph
         }
     }
 
+
     // need at least two points for linear fit
     if(mT_points.size() < 2)
     {
         printf("\nError: not enough points to construct a least squares fit\n");
         exit(-1);
     }
+
+    //exit(-1); 
 
     // set up least squares matrix equation to solve for
     // the coefficients of a straight line: A^Ty = A^TAx
@@ -173,9 +180,10 @@ double EmissionFunctionArray::estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iph
     // like an exact line, a scattered graph and a dN_dypTdpTdphi distribution
     // do I need a separate test function???
 
-    mT_slope = x[1];    // get the slope
+    mT_params.constant = x[0];     // get the const and slope of the fit function 
+    mT_params.slope = x[1];    
 
-    return mT_slope;
+    return mT_params;
 }
 
 
@@ -198,8 +206,11 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
     // start the resonance decay feed-down, starting with the last chosen resonance particle:
     for(int ichosen = (number_of_chosen_particles - 1); ichosen > 0; ichosen--)
     {
+        // index in chosen particles list 
+        int parent_chosen_index = ichosen; 
+
         // chosen particle index in particle_data array of structs
-        int ipart = chosen_particles_sampling_table[ichosen];
+        int ipart = chosen_particles_sampling_table[parent_chosen_index];
         int stable = particle_data[ipart].stable;
 
         // if particle unstable under strong interactions, do resonance decay
@@ -243,7 +254,7 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
                 // only do non-trivial resonance decays
                 if(decay_products != 1)
                 {
-                  resonance_decay_channel(particle_data, ichannel, parent_index, decays_index_vector);
+                  resonance_decay_channel(particle_data, ichannel, parent_index, parent_chosen_index, decays_index_vector);
                 }
             }
             printf("\n");
@@ -256,7 +267,7 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
   }
 
 
-void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_data, int channel, int parent_index, vector<int> decays_index_vector)
+void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_data, int channel, int parent_index, int parent_chosen_index, vector<int> decays_index_vector)
 {
     // decay channel info:
     int parent = parent_index;
@@ -298,7 +309,7 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
             }
 
             // 2-body decay integration routine
-            two_body_decay(particle_data, branch_ratio, parent, particle_1, particle_2, mass_1, mass_2, mass_parent);
+            two_body_decay(particle_data, branch_ratio, parent, parent_chosen_index, particle_1, particle_2, mass_1, mass_2, mass_parent);
 
             break;
         }
@@ -316,7 +327,7 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
             double mass_3 = particle_data[particle_3].mass;       // what do they do with the masses here?
 
             // 3-body decay integration routine
-            three_body_decay(particle_data, branch_ratio, parent, particle_1, particle_2, particle_3, mass_1, mass_2, mass_3, mass_parent);
+            three_body_decay(particle_data, branch_ratio, parent, parent_chosen_index, particle_1, particle_2, particle_3, mass_1, mass_2, mass_3, mass_parent);
 
             break;
         }
@@ -335,7 +346,7 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
 
 
 
-void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double branch_ratio, int parent, int particle_1, int particle_2, double mass_1, double mass_2, double mass_parent)
+void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double branch_ratio, int parent, int parent_chosen_index, int particle_1, int particle_2, double mass_1, double mass_2, double mass_parent)
 {
     // original list of decay products
     int number_of_decay_particles = 2;
@@ -488,15 +499,15 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     for(int ipT = 0; ipT < pT_tab_length; ipT++) pTValues[ipT] = pT_tab->get(1, ipT + 1);
 
     double phipValues[phi_tab_length];
-    double cosphipValues[phi_tab_length];
-    double sinphipValues[phi_tab_length];
+    //double cosphipValues[phi_tab_length];
+    //double sinphipValues[phi_tab_length];
 
     for(int iphip = 0; iphip < phi_tab_length; iphip++)
     {
       double phip = phi_tab->get(1, iphip + 1);
       phipValues[iphip] = phip;
-      cosphipValues[iphip] = cos(phip);
-      sinphipValues[iphip] = sin(phip);
+      //cosphipValues[iphip] = cos(phip);
+      //sinphipValues[iphip] = sin(phip);
     }
     // finished setting momentum arrays
     //---------------------------------------
@@ -504,33 +515,42 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
     // fix the roots/weights for the decay integral
 
-    // Gauss Legendre quadrature for v integral:
-    double v_gauss_legendre_roots[12] = {-0.98156063424672, -0.90411725637048, -0.76990267419431, -0.58731795428662, -0.3678314989982, -0.12523340851147,
+    // Gauss Legendre roots / weights for (v,zeta) integrals:
+    const int gauss_pts = 12; 
+    double gaussLegendre_root[gauss_pts] = {-0.98156063424672, -0.90411725637048, -0.76990267419431, -0.58731795428662, -0.3678314989982, -0.12523340851147,
    0.12523340851147, 0.36783149899818, 0.58731795428662, 0.76990267419431, 0.90411725637048, 0.98156063424672};
 
-    double v_gauss_legendre_weights[12] = {0.04717533638651, 0.1069393259953, 0.16007832854335, 0.20316742672307, 0.23349253653836, 0.2491470458134,
+    double gaussLegendre_weight[gauss_pts] = {0.04717533638651, 0.1069393259953, 0.16007832854335, 0.20316742672307, 0.23349253653836, 0.2491470458134,
    0.2491470458134, 0.23349253653836, 0.20316742672307, 0.1600783285433, 0.10693932599532, 0.04717533638651};
 
 
-    // Gauss Laguerre quadrature for zeta integral (a = 1)
+    double v_root[gauss_pts];
+    double v_weight[gauss_pts];
+    double coszeta_root[gauss_pts];
+    double zeta_weight[gauss_pts];
+
+    for(int i = 0; i < gauss_pts; i++)
+    {
+        v_root[i] = gaussLegendre_root[i];
+        v_weight[i] = gaussLegendre_weight[i];
+        // since domain of zeta = [0,pi] use coordinate transform zeta = (1+x)pi/2, where x = [-1,1]
+        coszeta_root[i] = cos((M_PI / 2.0) * (1.0 + gaussLegendre_root[i]));    // cos(zeta)
+        zeta_weight[i] = gaussLegendre_weight[i];
+    }
 
 
-    // Estimate the mT_slope of the parent dN_dymTdmTdphi distribution using a least-squares fit
-    // temporary array
-    double mT_slope[y_pts][phi_tab_length];     // approximately the effective temperature
+    // Extrapolate the parent dN_dymTdmTdphi distribution at large mT
+    // using the fit function y = exp(constant + slope * mT) 
+    // The constant and slope parameters are estimated using a least squares fit 
+    mT_fit_parameters mT_params[y_pts][phi_tab_length];     
 
     for(int iphi = 0; iphi < phi_tab_length; iphi++)
     {
         for(int iy = 0; iy < y_pts; iy++)
         {
-            //mT_slope[iy][iphi] = estimate_mT_slope_of_dNdypTdpTdphi(iy, iphi, parent, mass_parent);
+             mT_params[iy][iphi] = estimate_mT_function_of_dNdypTdpTdphi(iy, iphi, parent_chosen_index, mass_parent);
         }
     }
-
-
-
-
-
 
 
     // two-body decay integration:
@@ -550,11 +570,16 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
         int particle_index = particle_groups[igroup];
         double multiplicity = (double)group_members[igroup];
 
+        double parent_mass2 = parent_mass * parent_mass;
+
         // particle mass, energy_star and momentum_star in parent rest frame:
         double mass2 = mass_squared[igroup];
         double Estar = energy_star[igroup];
         double Estar2 = Estar * Estar;
         double pstar = momentum_star[igroup];
+
+        //cout << setprecision(5) << Estar << "\t" << pstar << "\t" << mass2 << endl;
+        //exit(-1); 
 
         // useful expression
         double Estar_M = Estar * mass_parent;
@@ -577,7 +602,15 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
             double Estar2_plus_pT2 = Estar2 + pT2;
 
             // parent rapdity interval
-            double deltaY = log((pstar + sqrt(Estar2_plus_pT2)) / mT);
+            double DeltaY = log((pstar + sqrt(Estar2_plus_pT2)) / mT);
+
+            // make cosh_vDeltaY table
+            double cosh_vDeltaY_table[gauss_pts];
+            for(int k = 0; k < gauss_pts; k++)
+            {
+                double v = v_root[k];
+                cosh_vDeltaY_table[k] = cosh(v * DeltaY);
+            }
 
             for(int iphip = 0; iphip < phi_tab_length; iphip++)
             {
@@ -587,9 +620,64 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                 {
                     double y = yValues[iy];
 
-                    // I know Y = y + v * deltaY: I can determine the maximum window I need to call the parent spectra
-                    // as for MT, I need to loop over v first
                     double spectrum = 0.0;
+
+                    // integral over parent rapidity, transverse mass space (v, zeta)
+                    for(int iv = 0; iv < gauss_pts; iv++)
+                    {
+                        double v = v_root[iv];
+
+                        double Y = y + v * DeltaY;  // parent rapidity 
+
+                        double cosh_vDeltaY = cosh_vDeltaY_table[iv]; 
+                        double cosh_vDeltaY2 = cosh_vDeltaY * cosh_vDeltaY; 
+
+                        double mT2_coshvDeltaY2_minus_pT2 = mT2 * cosh_vDeltaY2 - pT2; 
+
+                        double sqrt_mT2_coshvDeltaY2_minus_pT2 = sqrt(fabs(mT2_coshvDeltaY2_minus_pT2)); 
+
+                        double MT_bar = Estar_M_mT * M * cosh_vDeltaY / mT2_coshvDeltaT2_minus_pT2;
+
+                        double DeltaMT = M_pT * sqrt(fabs(Estar2_plus_pT2 - mT2 * cosh_vDeltaY2)) / mT2_coshvDeltaT2_minus_pT2;
+
+                        double zeta_integral = 0.0;
+
+                        for(izeta = 0; izeta < gauss_pts; izeta++)
+                        {
+                            double coszeta = coszeta_root[izeta];
+                            
+                            double MT = MT_bar + DeltaMT * coszeta;     // parent MT 
+                            double PT = sqrt(MT * MT - parent_mass2);   // parent PT 
+
+                            double cosPhip_tilde = (mT * MT * cosh_vDeltaY - Estar_M) / (pT * PT); 
+                            // because of the kinematic limits in Y, MT 
+                            // no error occur but just in case...
+                            if(fabs(cosPhip_tilde) > 0.99999)
+                            {
+
+                                printf("\nError: parent azimuthal angle out of bounds\n");
+                                exit(-1);
+                            }
+
+                            double Phip_tilde = arcos(cosPhip_tilde); 
+
+                            // I should review this carefully to make sure
+                            // these angles are between 0 and 2pi...(it's just trig stuff)
+                            double Phip1 = Phip_tilde + phip; 
+                            double Phip2 = -Phip_tilde + phip;  
+
+
+                            double integrand = (MT / sqrt_mT2_coshvDeltaY2_minus_pT2) * dN_function(0); 
+
+                            double zeta_gauss_weight = zeta_weight[izeta];
+
+                            zeta_integral += (zeta_gauss_weight * integrand);
+                        }
+
+                        double v_gauss_weight = v_weight[iv];
+
+                        spectrum += (v_gauss_weight * (zeta_integral));
+                    }
 
 
                     // since I've already calculated a lot of things, I might as well put the parent momentum integration directly
@@ -600,9 +688,11 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
                     //spectrum = 0.0;
 
-                    long long int iS3D = particle_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+                    int particle_chosen_index = 0;  // fix this... (this is a bug..) 
 
-                    dN_pTdpTdphidy[iS3D] += (prefactor * spectrum);
+                    long long int iS3D = particle_chosen_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+
+                    dN_pTdpTdphidy[iS3D] += (prefactor * DeltaY * spectrum);
                 }
             }
         }
@@ -616,7 +706,7 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
 
 
-void EmissionFunctionArray::three_body_decay(particle_info * particle_data, double branch_ratio, int parent, int particle_1, int particle_2, int particle_3, double mass_1, double mass_2, double mass_3, double mass_parent)
+void EmissionFunctionArray::three_body_decay(particle_info * particle_data, double branch_ratio, int parent, int parent_chosen_index, int particle_1, int particle_2, int particle_3, double mass_1, double mass_2, double mass_3, double mass_parent)
 {
     // first select decay products that are part of chosen resonance particles
     // TODO: distinguish resonance table from chosen particles table whose final spectra we're interested in

@@ -176,6 +176,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double ut2 = ut * ut;
         double u0 = sqrt(fabs(1.0 + ux2 + uy2));
 
+
+
         double T = T_fo[icell_glb];             // temperature
         double E = E_fo[icell_glb];             // energy density
         double P = P_fo[icell_glb];             // pressure

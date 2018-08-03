@@ -18,8 +18,17 @@ typedef struct
   double z;   // pLRF.z
 } lrf_momentum;
 
-lrf_momentum Sample_momentum(double mass, double T, double alphaB);
+typedef struct
+{
+  // fit parameters of y = exp(constant + slope * mT)
+  // purpose is to extrapolate the distribution dN_dymTdmTdphi at large mT
+  // for the resonance decay integration routines
+  double constant;  
+  double slope;   
+} mT_fit_parameters;
 
+
+lrf_momentum Sample_momentum(double mass, double T, double alphaB);
 
 class EmissionFunctionArray
 {
@@ -109,13 +118,13 @@ public:
   // resonance decay functions:
   void do_resonance_decays(particle_info * particle_data);
 
-  void resonance_decay_channel(particle_info * particle_data, int parent_index, int channel, vector<int> decays_index_vector);
+  void resonance_decay_channel(particle_info * particle_data, int parent_index, int parent_chosen_index, int channel, vector<int> decays_index_vector);
 
-  void two_body_decay(particle_info * particle_data, double branch_ratio, int parent, int particle_1, int particle_2, double mass_1, double mass_2, double mass_parent);
+  void two_body_decay(particle_info * particle_data, double branch_ratio, int parent, int parent_chosen_index, int particle_1, int particle_2, double mass_1, double mass_2, double mass_parent);
 
-  void three_body_decay(particle_info * particle_data, double branch_ratio, int parent, int particle_1, int particle_2, int particle_3, double mass_1, double mass_2, double mass_3, double mass_parent);
+  void three_body_decay(particle_info * particle_data, double branch_ratio, int parent, int parent_chosen_index, int particle_1, int particle_2, int particle_3, double mass_1, double mass_2, double mass_3, double mass_parent);
 
-  double estimate_mT_slope_of_dNdypTdpTdphi(int iy, int iphip, int parent_index, double mass_parent);
+  mT_fit_parameters estimate_mT_function_of_dNdypTdpTdphi(int iy, int iphip, int parent_chosen_index, double mass_parent);
 
 };
 
