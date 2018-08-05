@@ -23,8 +23,8 @@ typedef struct
   // fit parameters of y = exp(constant + slope * mT)
   // purpose is to extrapolate the distribution dN_dymTdmTdphi at large mT
   // for the resonance decay integration routines
-  double constant;  
-  double slope;   
+  double constant;
+  double slope;
 } MT_fit_parameters;
 
 
@@ -45,6 +45,7 @@ private:
   int GROUP_PARTICLES;
   double PARTICLE_DIFF_TOLERANCE;
   int LIGHTEST_PARTICLE; //mcid of lightest resonance to calculate in decay feed-down
+  int DO_RESONANCE_DECAYS; // smooth resonance decays option
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
@@ -53,11 +54,11 @@ private:
 
   std::vector<Sampled_Particle> particle_list; //to hold sampled particle list
 
-  int *chosen_particles_01_table; // has length Nparticle, 0 means miss, 1 means include
+  int *chosen_particles_01_table;       // has length Nparticle, 0 means miss, 1 means include
   int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table
   int Nparticles;
   int number_of_chosen_particles;
-  particle_info* particles;
+  particle_info* particles;       // contains all the particle info from pdg.dat
   FO_surf* surf_ptr;
   deltaf_coefficients df;
   bool particles_are_the_same(int, int);
@@ -109,14 +110,17 @@ public:
   double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
   double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
-  void write_dN_pTdpTdphidy_toFile(); //write invariant 3D spectra to file
-  void write_dN_dpTdphidy_toFile(); //write 3D spectra to file in experimental bins
-  void write_particle_list_toFile(); //write sampled particle list
+  void write_dN_pTdpTdphidy_toFile(); // write invariant 3D spectra to file
+  void write_dN_dpTdphidy_toFile();   // write 3D spectra to file in experimental bins
+  void write_dN_pTdpTdphidy_with_resonance_decays_toFile(); // write invariant 3D spectra to file (w/ resonance decay effects)
+  void write_dN_dpTdphidy_with_resonance_decays_toFile();   // write 3D spectra to file in experimental bins (w/ resonance decay effects)
+  void write_particle_list_toFile();  // write sampled particle list
   void calculate_spectra();
-
 
   // resonance decay functions:
   void do_resonance_decays(particle_info * particle_data);
+
+  int particle_chosen_index(int particle_index);
 
   void resonance_decay_channel(particle_info * particle_data, int parent_index, int parent_chosen_index, int channel, vector<int> decays_index_vector);
 
@@ -126,7 +130,9 @@ public:
 
   MT_fit_parameters estimate_MT_function_of_dNdypTdpTdphi(int iy, int iphip, int parent_chosen_index, double mass_parent);
 
-  double dN_dYMTdMTdPhi_non_boost_invariant(int parent_chosen_index, double MTValues[], double phipValues[], double yValues[], double MT, double Phip_1, double Phip_2, double Y, double MTmax, MT_fit_parameters ** MT_params);
+  double dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_index, double MTValues[], double PhipValues[], double MT, double Phip1, double Phip2, double MTmax, MT_fit_parameters ** MT_params);
+
+  double dN_dYMTdMTdPhi_non_boost_invariant(int parent_chosen_index, double MTValues[], double phipValues[], double yValues[], double MT, double Phip1, double Phip2, double Y, double MTmax, MT_fit_parameters ** MT_params);
 
 };
 

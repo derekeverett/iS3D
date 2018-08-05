@@ -71,11 +71,13 @@ int main(int argc, char *argv[])
   Table eta_tab("tables/eta_trapezoid_table_21pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
 
-  //efa.calculate_spectra();
-  cout << "Currently skip calculate_spectra() to test resonance decays" << endl;
+  efa.do_resonance_decays(particle_data);
+  exit(-1);
+  efa.calculate_spectra();
+  //cout << "Currently skip calculate_spectra() to test resonance decays" << endl;
   //calculate resonance decays
-  int do_resonance_decays = paraRdr->getVal("do_resonance_decays");
-  if (do_resonance_decays) efa.do_resonance_decays(particle_data);
+  //int do_resonance_decays = paraRdr->getVal("do_resonance_decays");
+  //if (do_resonance_decays) efa.do_resonance_decays(particle_data);
 
   delete [] surf_ptr;
   delete paraRdr;

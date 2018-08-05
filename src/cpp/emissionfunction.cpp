@@ -55,6 +55,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     LIGHTEST_PARTICLE = paraRdr->getVal("lightest_particle");
 
+    DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
+
     particles = particles_in;
     Nparticles = Nparticles_in;
     surf_ptr = surf_ptr_in;
@@ -172,6 +174,44 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
+    void EmissionFunctionArray::write_dN_pTdpTdphidy_with_resonance_decays_toFile()
+  {
+    printf("Writing thermal + resonance decays spectra to file...\n");
+    //write 3D spectra in block format, different blocks for different species,
+    //different sublocks for different values of rapidity
+    //rows corespond to phip and columns correspond to pT
+    int npart = number_of_chosen_particles;
+    char filename[255] = "";
+
+    int y_pts = y_tab_length;     // default 3+1d pts
+    if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
+
+    sprintf(filename, "results/dN_pTdpTdphidy_resonance_decays.dat");
+    ofstream spectraFile(filename, ios_base::app);
+    for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    {
+      for (int iy = 0; iy < y_pts; iy++)
+      {
+        double y;
+        if (DIMENSION == 2) y = 0.0;
+        else y = y_tab->get(1,iy + 1);
+
+        for (int iphip = 0; iphip < phi_tab_length; iphip++)
+        {
+          double phip = phi_tab->get(1,iphip + 1);
+          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          {
+            double pT = pT_tab->get(1,ipT + 1);
+            long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[iS3D] << "\n";
+          } //ipT
+          spectraFile << "\n";
+        } //iphip
+      } //iy
+    }//ipart
+    spectraFile.close();
+  }
+
   void EmissionFunctionArray::write_dN_dpTdphidy_toFile()
   {
     //write 3D spectra in block format, different blocks for different species,
@@ -184,7 +224,44 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     sprintf(filename, "results/dN_dpTdphidy.dat");
     ofstream spectraFile(filename, ios_base::app);
     //write the header
-    spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_dpTdphidy" << "\n"; 
+    spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_dpTdphidy" << "\n";
+    for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    {
+      for (int iy = 0; iy < y_pts; iy++)
+      {
+        double y;
+        if (DIMENSION == 2) y = 0.0;
+        else y = y_tab->get(1,iy + 1);
+        for (int iphip = 0; iphip < phi_tab_length; iphip++)
+        {
+          double phip = phi_tab->get(1,iphip + 1);
+          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          {
+            double pT = pT_tab->get(1,ipT + 1);
+            long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+            double value = dN_pTdpTdphidy[iS3D] * pT;
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << value << "\n";
+          } //ipT
+          spectraFile << "\n";
+        } //iphip
+      } //iy
+    }//ipart
+    spectraFile.close();
+  }
+
+    void EmissionFunctionArray::write_dN_dpTdphidy_with_resonance_decays_toFile()
+  {
+    //write 3D spectra in block format, different blocks for different species,
+    //different sublocks for different values of rapidity
+    //rows corespond to phip and columns correspond to pT
+    int npart = number_of_chosen_particles;
+    char filename[255] = "";
+    int y_pts = y_tab_length;     // default 3+1d pts
+    if (DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
+    sprintf(filename, "results/dN_dpTdphidy_resonance_decays.dat");
+    ofstream spectraFile(filename, ios_base::app);
+    //write the header
+    spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_dpTdphidy" << "\n";
     for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
       for (int iy = 0; iy < y_pts; iy++)
@@ -635,11 +712,24 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     printline();
 
+
     //write the results to file
     if (OPERATION == 1)
     {
       write_dN_pTdpTdphidy_toFile();
       write_dN_dpTdphidy_toFile();
+
+      // option to do resonance decays option
+      if(DO_RESONANCE_DECAYS)
+      {
+        // call resonance decays routine
+        do_resonance_decays(particles);
+
+        // write amended spectra from resonance decays to file
+        // currently, unstable particles are still included (should change)
+        write_dN_pTdpTdphidy_with_resonance_decays_toFile();
+        write_dN_dpTdphidy_with_resonance_decays_toFile();
+      }
     }
     else if (OPERATION == 2) write_particle_list_toFile();
 
