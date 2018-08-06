@@ -107,7 +107,7 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
 
         double dN_dymTdmTdphi = dN_pTdpTdphidy[iS3D];
 
-        //cout << pTValues[ipT] << "\t\t" << dN_dymTdmTdphi << endl;
+
 
         if(dN_dymTdmTdphi <= 0.0)
         {
@@ -122,6 +122,7 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
 
             if(mT > sqrt(2.73) * mass_parent)   // mT in relativistic region (~ threshold for 2 points for Omega2250)
             {
+                cout << setprecision(8) << mT << "\t\t" << dN_dymTdmTdphi << endl;
                 mT_points.push_back(mT);
                 log_dNdypTdpTdphi.push_back(log(dN_dymTdmTdphi));   // called y below
             }
@@ -129,11 +130,16 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
     }
 
 
+
     // need at least two points for linear fit
     if(mT_points.size() < 2)
     {
         printf("\nError: not enough points to construct a least squares fit\n");
         exit(-1);
+    }
+
+       {
+      printf("Fitting a line through %lu points\n",mT_points.size());
     }
 
     // set up least squares matrix equation to solve for
@@ -926,10 +932,10 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     {
         for(int iy = 0; iy < y_pts; iy++)
         {
-            //MT_params[iy][iphi] = estimate_MT_function_of_dNdypTdpTdphi(iy, iphi, parent_chosen_index, mass_parent);
+            MT_params[iy][iphi] = estimate_MT_function_of_dNdypTdpTdphi(iy, iphi, parent_chosen_index, mass_parent);
 
-            //printf("\n\n");
-            //cout << MT_params[iy][iphi].constant << "\t" << MT_params[iy][iphi].slope << endl;
+            printf("\n\n");
+            cout << MT_params[iy][iphi].constant << "\t" << MT_params[iy][iphi].slope << endl;
         }
     }
 
@@ -1068,8 +1074,8 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                             decay2D_integral += (vintegrand_weight * zeta_integral);
                         }
 
-                        //cout << setprecision(6) << decay2D_integral << endl;
-                       // exit(-1);
+                        cout << "Decay integral = " << setprecision(6) << decay2D_integral << endl;
+                        exit(-1);
 
                         long long int iS3D = particle_chosen_index + number_of_chosen_particles * (ipT + pT_tab_length * iphip);
 
