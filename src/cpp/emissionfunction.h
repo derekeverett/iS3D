@@ -130,9 +130,9 @@ public:
 
   MT_fit_parameters estimate_MT_function_of_dNdypTdpTdphi(int iy, int iphip, int parent_chosen_index, double mass_parent);
 
-  double dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_index, double MTValues[], double PhipValues[], double MT, double Phip1, double Phip2, double MTmax, MT_fit_parameters ** MT_params);
+  double dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_index, double * MTValues, double * PhipValues, double MT, double Phip1, double Phip2, double MTmax, MT_fit_parameters ** MT_params);
 
-  double dN_dYMTdMTdPhi_non_boost_invariant(int parent_chosen_index, double MTValues[], double phipValues[], double yValues[], double MT, double Phip1, double Phip2, double Y, double MTmax, MT_fit_parameters ** MT_params);
+  double dN_dYMTdMTdPhi_non_boost_invariant(int parent_chosen_index, double * MTValues, double * PhipValues, double * YValues, double MT, double Phip1, double Phip2, double Y, double MTmax, MT_fit_parameters ** MT_params);
 
 };
 
