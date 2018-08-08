@@ -38,8 +38,9 @@ int particle_index(particle_info * particle_data, const int number_of_particles,
         exit(-1);
     }
 
-    bool found = false;
     int index;
+    bool found = false;
+
     for(int ipart = 0; ipart < number_of_particles; ipart++)
     {
         if(particle_data[ipart].mc_id == entry_mc_id) // I could also use the class object particles
@@ -63,9 +64,9 @@ int particle_index(particle_info * particle_data, const int number_of_particles,
 int EmissionFunctionArray::particle_chosen_index(int particle_index)
 {
     // search for index of particle of interest in chosen_particles.dat by particle's pdg.dat index
-
-    bool found = false;
     int chosen_index;
+    bool found = false;
+
     for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
         if(chosen_particles_sampling_table[ipart] == particle_index)  // I could also use the class object particles
@@ -86,22 +87,16 @@ int EmissionFunctionArray::particle_chosen_index(int particle_index)
     }
 }
 
-
 MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(int iy, int iphip, int parent_chosen_index, double mass_parent)
 {
     // get parameters for the fit y = exp(constant + slope * mT) of the distribution dN_dymTdmTdphi at large mT
     // mT_const ~ logy-intercept, mT_slope ~ -effective temperature in GeV
     MT_fit_parameters MT_params;
 
-    // 4.88706 - 2.04108 
-
     // temporary test:
     // MT_params.constant = 4.88706;
     // MT_params.slope = -2.04108;
     // return MT_params;
-
-
-
 
     // set pT array
     double pTValues[pT_tab_length];
@@ -117,12 +112,9 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
 
         double dN_dymTdmTdphi = dN_pTdpTdphidy[iS3D];
 
-
-
         if(dN_dymTdmTdphi <= 0.0)
         {
-            // dN_pTdpTdphidy is negative / zero
-            // stop collecting coordinates
+            // dN_pTdpTdphidy is negative / zero, stop collecting coordinates
             break;
         }
         else
@@ -132,14 +124,11 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
 
             if(mT > sqrt(2.73) * mass_parent)   // mT in relativistic region (~ threshold for 2 points for Omega2250)
             {
-                //cout << setprecision(8) << mT << "\t\t" << dN_dymTdmTdphi << endl;
                 mT_points.push_back(mT);
                 log_dNdypTdpTdphi.push_back(log(dN_dymTdmTdphi));   // called y below
             }
         }
     }
-
-
 
     // need at least two points for linear fit
     if(mT_points.size() < 2)
@@ -147,10 +136,6 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
         printf("\nError: not enough points to construct a least squares fit\n");
         exit(-1);
     }
-    // else
-    // {
-    //   printf("Fitting a line through %lu points\n",mT_points.size());
-    // }
 
     // set up least squares matrix equation to solve for
     // the coefficients of a straight line: A^Ty = A^TAx
@@ -215,7 +200,6 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
             M[i][j] = sum;
         }
     }
-
     // now ready to solve Mx = f
     int permutation[2];                     // permutation vector
     LUP_decomposition(M, 2, permutation);   // LUP decompose M
@@ -238,6 +222,9 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
     // two contributions: parent 1 (w/ Phip1) and parent 2 (w/ Phip2)
     double logdN1 = 0.0;
     double logdN2 = 0.0;
+
+    // I think I ironed out the bugs here and the
+    // simplified 2-body integration test works
 
     if(MT <= MTmax)
     {
@@ -271,11 +258,10 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
             iPhip1R = 0;
             Phip1L = PhipValues[iPhip1L] - 2.0 * M_PI; // small negative angle
             Phip1R = PhipValues[iPhip1R];              // small positive angle
-            // put angle between interpolation points
+            // put Phip1 in between interpolation points
             Phip1 -= floor(Phip1 / M_PI) * (2.0 * M_PI);
         }
         //----------------------------------------
-
 
         // repeat for Phip2:
         //----------------------------------------
@@ -298,13 +284,13 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
             iPhip2R = 0;
             Phip2L = PhipValues[iPhip2L] - 2.0 * M_PI;
             Phip2R = PhipValues[iPhip2R];
-            // put angle between interpolation points
+            // put Phip2 in between interpolation points
             Phip2 -= floor(Phip2 / M_PI) * (2.0 * M_PI);
         }
         //----------------------------------------
 
 
-        // MT interpolation indices / points:
+        // MT interpolation points:
         //----------------------------------------
         int iMTR = 1;
         // because of MT if statement, loop will terminate:
@@ -325,11 +311,6 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
         double dMT = MTR - MTL;
         //----------------------------------------
 
-        //cout << setprecision(5) << iMTL << "\t" << MTL << "\t" << iMTR << "\t" << MTR << endl;
-        //cout << setprecision(5) << iPhip1L << "\t" << Phip1L << "\t" << iPhip1R << "\t" << Phip1R << endl;
-        //cout << setprecision(5) << iPhip2L << "\t" << Phip2L << "\t" << iPhip2R << "\t" << Phip2R << endl;
-        //cout << setprecision(5) << dPhip1 << "\n" << dPhip2 << "\n" << dMT << endl;
-        //exit(-1);
 
         // temporary (for precision test)
         // iPhip1L = 0;
@@ -353,9 +334,6 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
         //----------------------------------------
 
 
-        //cout << setprecision(6) << scientific << dN_pTdpTdphidy[iS3D1_LL] << "\t" << dN_pTdpTdphidy[iS3D1_RL] << "\t" << dN_pTdpTdphidy[iS3D1_LR] << dN_pTdpTdphidy[iS3D1_RR] << endl;
-
-
         // evaluate interpolation function points for parent 2 (LL, etc ordered in (Phip2, MT))
         //----------------------------------------
         long long int iS3D2_LL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * iPhip2L);
@@ -369,11 +347,6 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
         double logdN2_LR = log(dN_pTdpTdphidy[iS3D2_LR]);
         double logdN2_RR = log(dN_pTdpTdphidy[iS3D2_RR]);
         //----------------------------------------
-
-
-        //cout << setprecision(6) << scientific << dN_pTdpTdphidy[iS3D2_LL] << "\t" << dN_pTdpTdphidy[iS3D2_RL] << "\t" << dN_pTdpTdphidy[iS3D2_LR] << "\t" << dN_pTdpTdphidy[iS3D2_RR] << endl;
-
-        //exit(-1);
 
 
         // bi-linear interpolation for log parent 1
@@ -400,8 +373,8 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
         //logdN2 = 4.88706 - 2.04108 * MT;
         //return (exp(logdN1) + exp(logdN2));
 
-        // linear interpolation in Phip
-        // using exponential fit in MT direction
+        // linear interpolation in Phip using
+        // exponential fit in MT direction
 
         // search for left/right (L/R) interpolation points
         int iPhip1L, iPhip1R ;  // Phip1 interpolation indices
@@ -435,14 +408,13 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
         }
         //----------------------------------------
 
-
         // repeat for Phip2:
         //----------------------------------------
         if(Phip2 >= Phip_min && Phip2 <= Phip_max)
         {
             iPhip2R = 1;
             while(Phip2 > PhipValues[iPhip2R])
-            {   
+            {
                 iPhip2R++;
             }
             iPhip2L = iPhip2R - 1;
@@ -467,18 +439,6 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
         double dPhip1 = Phip1R - Phip1L;
         double dPhip2 = Phip2R - Phip2L;
         //----------------------------------------
-
-        //if(dPhip1 == 0.0) printf("\nFound dPhip1 = 0\n");
-        //if(dPhip2 == 0.0) printf("\nFound dPhip2 = 0\n");
-
-
-        //printf("\n\n");
-        //cout << setprecision(5) << iPhip1L << "\t" << Phip1L << "\t" << iPhip1R << "\t" << Phip1R << "\t" << Phip1 << endl;
-        //cout << setprecision(5) << iPhip2L << "\t" << Phip2L << "\t" << iPhip2R << "\t" << Phip2R  << "\t" << Phip2 << endl;
-        //cout << setprecision(5) << dPhip1 << "\n" << dPhip2 << endl;
-        //exit(-1);
-
-
 
 
         // fit parameters for parent 1 (L/R)
@@ -516,23 +476,12 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
         // linear interpolation for log parent 1 and 2
         //----------------------------------------
         logdN1 = (logdN1_L * (Phip1R - Phip1) + logdN1_R * (Phip1 - Phip1L)) / dPhip1;
-    
+
         logdN2 = (logdN2_L * (Phip2R - Phip2) + logdN2_R * (Phip2 - Phip2L)) / dPhip2;
         //----------------------------------------
-
-        // if(std::isnan(logdN1))
-        // {
-        //     printf("\nFound logdN1 nan\n");
-        //     exit(-1);
-        // }
-        // if(std::isnan(logdN2)) 
-        // {
-        //     printf("\nFound logdN2 nan\n");
-        //     exit(-1);
-        // }
     }
-    
-    return exp(logdN1) + exp(logdN2);     // undo the log
+
+    return (exp(logdN1) + exp(logdN2));   // undo the log
 }
 
 
@@ -546,51 +495,117 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_non_boost_invariant(int parent_chos
     double logdN1 = 0.0;
     double logdN2 = 0.0;
 
+    // this hasn't been tested fully yet...
+    // I could run the 2+1d surface with more y-rapidity points
+    // I would have to change the yTable settings though..
+    // the midrapidity points should agree with the boost invariant case to some degree
 
 
-    // this hasn't been tested fully yet... 
+    // need to double check the L,R are corrects
+    // double debug this, it's very mesmerising..
 
-
-
-
-    if(MT < MTmax)
+    if(MT <= MTmax)
     {
         // tri-linear interpolation in (Y, Phip, MT)
 
-        // first search for the right-side (R) interpolation points
+        // first search for left/right (L/R) interpolation points
+        int iPhip1L, iPhip1R;   // Phip1 interpolation indices
+        int iPhip2L, iPhip2R;   // Phip2 interpolation indices
+        double Phip1R, Phip1L;  // Phip1 interpolation points
+        double Phip2R, Phip2L;  // Phip2 interpolation points
+
+        // determine whether Phip1 in phi_gauss_table.dat range:
+        //----------------------------------------
+        if(Phip1 >= Phip_min && Phip1 <= Phip_max)  // fixed logic statement bug || -> && on 8/7
+        {
+            iPhip1R = 1;
+            while(Phip1 > PhipValues[iPhip1R])
+            {
+                iPhip1R++;
+            }
+            iPhip1L = iPhip1R - 1;
+            // Phip1 interpolation points
+            Phip1L = PhipValues[iPhip1L];
+            Phip1R = PhipValues[iPhip1R];
+        }
+        else
+        {
+            // settings for outside of range
+            iPhip1L = phi_tab_length - 1;
+            iPhip1R = 0;
+            Phip1L = PhipValues[iPhip1L] - 2.0 * M_PI; // small negative angle
+            Phip1R = PhipValues[iPhip1R];              // small positive angle
+            // put Phip1 in between interpolation points
+            Phip1 -= floor(Phip1 / M_PI) * (2.0 * M_PI);
+        }
+        //----------------------------------------
+
+        // repeat for Phip2:
+        //----------------------------------------
+        if(Phip2 >= Phip_min && Phip2 <= Phip_max)
+        {
+            iPhip2R = 1;
+            while(Phip2 > PhipValues[iPhip2R])
+            {
+                iPhip2R++;
+            }
+            iPhip2L = iPhip2R - 1;
+            // Phip2 interpolation points
+            Phip2L = PhipValues[iPhip2L];
+            Phip2R = PhipValues[iPhip2R];
+        }
+        else
+        {
+            // settings for outside of range
+            iPhip2L = phi_tab_length - 1;
+            iPhip2R = 0;
+            Phip2L = PhipValues[iPhip2L] - 2.0 * M_PI;
+            Phip2R = PhipValues[iPhip2R];
+            // put Phip2 in between interpolation points
+            Phip2 -= floor(Phip2 / M_PI) * (2.0 * M_PI);
+        }
+        //----------------------------------------
+
+
+        // MT interpolation points:
+        //----------------------------------------
         int iMTR = 1;
-        int iPhip1R = 1;
-        int iPhip2R = 1;
-        int iYR = 1;
-
-        while(Y > YValues[iYR]) iYR++;
-        while(Phip1 > PhipValues[iPhip1R]) iPhip1R++;
-        while(Phip2 > PhipValues[iPhip2R]) iPhip2R++;
-        while(MT > MTValues[iMTR]) iMTR++;
-
-        // left-side (L) interpolation points
-        int iYL = iYR - 1;
-        int iPhip1L = iPhip1R - 1;
-        int iPhip2L = iPhip2R - 1;
+        // because of MT if statement, loop will terminate:
+        while(MT > MTValues[iMTR])
+        {
+            iMTR++;
+        }
         int iMTL = iMTR - 1;
-
-
-        double YL = YValues[iYL];
-        double YR = YValues[iYR];
-        double Phip1L = PhipValues[iPhip1L];
-        double Phip1R = PhipValues[iPhip1R];
-        double Phip2L = PhipValues[iPhip2L];
-        double Phip2R = PhipValues[iPhip2R];
         double MTL = MTValues[iMTL];
         double MTR = MTValues[iMTR];
+        //----------------------------------------
+
+
+        // Y interpolation points:
+        //----------------------------------------
+        int iYR = 1;
+        // should terminate due to prior break statement
+        while(Y > YValues[iYR])
+        {
+            iYR++;
+        }
+        int iYL = iYR - 1;
+        double YL = YValues[iYL];
+        double YR = YValues[iYR];
+        //----------------------------------------
+
 
         // intervals
+        //----------------------------------------
         double dY = YR - YL;
         double dPhip1 = Phip1R - Phip1L;
         double dPhip2 = Phip2R - Phip2L;
         double dMT = MTR - MTL;
+        //----------------------------------------
+
 
         // evaluate interpolation points for parent 1  (LLL, etc ordered in (Y, Phip, MT))
+        //----------------------------------------
         long long int iS3D1_LLL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip1L + phi_tab_length * iYL));
         long long int iS3D1_RLL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip1L + phi_tab_length * iYR));
         long long int iS3D1_LRL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip1R + phi_tab_length * iYL));
@@ -609,9 +624,11 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_non_boost_invariant(int parent_chos
         double logdN1_RLR = log(dN_pTdpTdphidy[iS3D1_RLR]);
         double logdN1_LRR = log(dN_pTdpTdphidy[iS3D1_LRR]);
         double logdN1_RRR = log(dN_pTdpTdphidy[iS3D1_RRR]);
+        //----------------------------------------
 
 
         // evaluate interpolation points for parent 2
+        //----------------------------------------
         long long int iS3D2_LLL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip2L + phi_tab_length * iYL));
         long long int iS3D2_RLL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip2L + phi_tab_length * iYR));
         long long int iS3D2_LRL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip2R + phi_tab_length * iYL));
@@ -630,9 +647,11 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_non_boost_invariant(int parent_chos
         double logdN2_RLR = log(dN_pTdpTdphidy[iS3D2_RLR]);
         double logdN2_LRR = log(dN_pTdpTdphidy[iS3D2_LRR]);
         double logdN2_RRR = log(dN_pTdpTdphidy[iS3D2_RRR]);
+        //----------------------------------------
 
 
         // tri-linear interpolation for log parent 1
+        //----------------------------------------
         logdN1 = (MTR - MT) * ((logdN1_LLL * (YR - Y) + logdN1_RLL * (Y - YL)) * (Phip1R - Phip1) +
                  (logdN1_LRL * (YR - Y) + logdN1_RRL * (Y - YL)) * (Phip1 - Phip1L))
 
@@ -642,9 +661,11 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_non_boost_invariant(int parent_chos
                  (logdN1_LRR * (YR - Y) + logdN1_RRR * (Y - YL)) * (Phip1 - Phip1L));
 
         logdN1 /= (dY * dPhip1 * dMT);
+        //----------------------------------------
 
 
         // tri-linear interpolation for log parent 2
+        //----------------------------------------
         logdN2 = (MTR - MT) * ((logdN2_LLL * (YR - Y) + logdN2_RLL * (Y - YL)) * (Phip2R - Phip2) +
                  (logdN2_LRL * (YR - Y) + logdN2_RRL * (Y - YL)) * (Phip2 - Phip2L))
 
@@ -654,39 +675,95 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_non_boost_invariant(int parent_chos
                  (logdN2_LRR * (YR - Y) + logdN2_RRR * (Y - YL)) * (Phip2 - Phip2L));
 
         logdN2 /= (dY * dPhip2 * dMT);
+        //----------------------------------------
     }
     else
     {
         // bi-linear interpolation in (Y,Phip)
         // use exponential fit in MT direction
+        // first search for left/right (L/R) interpolation points
+        int iPhip1L, iPhip1R;   // Phip1 interpolation indices
+        int iPhip2L, iPhip2R;   // Phip2 interpolation indices
+        double Phip1R, Phip1L;  // Phip1 interpolation points
+        double Phip2R, Phip2L;  // Phip2 interpolation points
+
+        // determine whether Phip1 in phi_gauss_table.dat range:
+        //----------------------------------------
+        if(Phip1 >= Phip_min && Phip1 <= Phip_max)  // fixed logic statement bug || -> && on 8/7
+        {
+            iPhip1R = 1;
+            while(Phip1 > PhipValues[iPhip1R])
+            {
+                iPhip1R++;
+            }
+            iPhip1L = iPhip1R - 1;
+            // Phip1 interpolation points
+            Phip1L = PhipValues[iPhip1L];
+            Phip1R = PhipValues[iPhip1R];
+        }
+        else
+        {
+            // settings for outside of range
+            iPhip1L = phi_tab_length - 1;
+            iPhip1R = 0;
+            Phip1L = PhipValues[iPhip1L] - 2.0 * M_PI; // small negative angle
+            Phip1R = PhipValues[iPhip1R];              // small positive angle
+            // put Phip1 in between interpolation points
+            Phip1 -= floor(Phip1 / M_PI) * (2.0 * M_PI);
+        }
+        //----------------------------------------
+
+        // repeat for Phip2:
+        //----------------------------------------
+        if(Phip2 >= Phip_min && Phip2 <= Phip_max)
+        {
+            iPhip2R = 1;
+            while(Phip2 > PhipValues[iPhip2R])
+            {
+                iPhip2R++;
+            }
+            iPhip2L = iPhip2R - 1;
+            // Phip2 interpolation points
+            Phip2L = PhipValues[iPhip2L];
+            Phip2R = PhipValues[iPhip2R];
+        }
+        else
+        {
+            // settings for outside of range
+            iPhip2L = phi_tab_length - 1;
+            iPhip2R = 0;
+            Phip2L = PhipValues[iPhip2L] - 2.0 * M_PI;
+            Phip2R = PhipValues[iPhip2R];
+            // put Phip2 in between interpolation points
+            Phip2 -= floor(Phip2 / M_PI) * (2.0 * M_PI);
+        }
+        //----------------------------------------
+
+
+        // Y interpolation points:
+        //----------------------------------------
         int iYR = 1;
-        int iPhip1R = 1;
-        int iPhip2R = 1;
-
-        // search for right side (R) interpolation points
-        while(Y > YValues[iYR]) iYR++;
-        while(Phip1 > PhipValues[iPhip1R]) iPhip1R++;
-        while(Phip2 > PhipValues[iPhip2R]) iPhip2R++;
-
-        // left-side (L) interpolation points
+        // should terminate due to prior break statement
+        while(Y > YValues[iYR])
+        {
+            iYR++;
+        }
         int iYL = iYR - 1;
-        int iPhip1L = iPhip1R - 1;
-        int iPhip2L = iPhip2R - 1;
-
-        // coordinates
         double YL = YValues[iYL];
         double YR = YValues[iYR];
-        double Phip1L = PhipValues[iPhip1L];
-        double Phip1R = PhipValues[iPhip1R];
-        double Phip2L = PhipValues[iPhip2L];
-        double Phip2R = PhipValues[iPhip2R];
+        //----------------------------------------
+
 
         // intervals
+        //----------------------------------------
         double dY = YR - YL;
         double dPhip1 = Phip1R - Phip1L;
         double dPhip2 = Phip2R - Phip2L;
+        //----------------------------------------
+
 
         // fit parameters for parent 1 (LL, etc ordered in (Y, Phip))
+        //----------------------------------------
         MT_fit_parameters MT_params1_LL = MT_params[iYL][iPhip1L];
         MT_fit_parameters MT_params1_RL = MT_params[iYR][iPhip1L];
         MT_fit_parameters MT_params1_LR = MT_params[iYL][iPhip1R];
@@ -700,8 +777,11 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_non_boost_invariant(int parent_chos
         double slope1_LR = MT_params1_LR.slope;
         double const1_RR = MT_params1_RR.constant;
         double slope1_RR = MT_params1_RR.slope;
+        //----------------------------------------
+
 
         // fit parameters for parent 2
+        //----------------------------------------
         MT_fit_parameters MT_params2_LL = MT_params[iYL][iPhip2L];
         MT_fit_parameters MT_params2_RL = MT_params[iYR][iPhip2L];
         MT_fit_parameters MT_params2_LR = MT_params[iYL][iPhip2R];
@@ -715,33 +795,45 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_non_boost_invariant(int parent_chos
         double slope2_LR = MT_params2_LR.slope;
         double const2_RR = MT_params2_RR.constant;
         double slope2_RR = MT_params2_RR.slope;
+        //----------------------------------------
+
 
         // evaluate interpolation points for parent 1
+        //----------------------------------------
         double logdN1_LL = const1_LL + slope1_LL * MT;
         double logdN1_LR = const1_LR + slope1_LR * MT;
         double logdN1_RL = const1_RL + slope1_RL * MT;
         double logdN1_RR = const1_RR + slope1_RR * MT;
+        //----------------------------------------
+
 
         // evaluate interpolation points for parent 2
+        //----------------------------------------
         double logdN2_LL = const2_LL + slope2_LL * MT;
         double logdN2_LR = const2_LR + slope2_LR * MT;
         double logdN2_RL = const2_RL + slope2_RL * MT;
         double logdN2_RR = const2_RR + slope2_RR * MT;
+        //----------------------------------------
+
 
         // bi-linear interpolation for log parent 1
+        //----------------------------------------
         logdN1 = (logdN1_LL * (YR - Y) + logdN1_RL * (Y - YL)) * (Phip1R - Phip1) +
                  (logdN1_LR * (YR - Y) + logdN1_RR * (Y - YL)) * (Phip1 - Phip1L);
 
         logdN1 /= (dY * dPhip1);
+        //----------------------------------------
+
 
         // bi-linear interpolation for log parent 2
+        //----------------------------------------
         logdN2 = (logdN2_LL * (YR - Y) + logdN2_RL * (Y - YL)) * (Phip2R - Phip2) +
                  (logdN2_LR * (YR - Y) + logdN2_RR * (Y - YL)) * (Phip2 - Phip2L);
 
         logdN2 /= (dY * dPhip2);
+        //----------------------------------------
     }
-    // undo the log
-    return (exp(logdN1) + exp(logdN2));
+    return (exp(logdN1) + exp(logdN2));    // undo the log
 }
 
 
@@ -751,7 +843,6 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
   {
     printline();
     printf("Starting resonance decays: \n\n");
-
     Stopwatch sw;
     sw.tic();
 
@@ -762,15 +853,11 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
         printf("\nError: need at least two chosen particles for resonance decay routine..\n");
         exit(-1);
     }
-
     // start the resonance decay feed-down, starting with the last chosen resonance particle:
     for(int ichosen = (number_of_chosen_particles - 1); ichosen > 0; ichosen--)
     {
-
-
         // chosen particle index in particle_data array of structs
         int ipart = chosen_particles_sampling_table[ichosen];
-        //cout << ipart << endl;
         int stable = particle_data[ipart].stable;
 
         // if particle unstable under strong interactions, do resonance decay
@@ -857,7 +944,7 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
             double mass_1 = particle_data[particle_1].mass;
             double mass_2 = particle_data[particle_2].mass;
 
-            // adjust the masses to satisfy energy conservation (I need to move this in two_body)
+            // adjust the masses to satisfy energy conservation (I need to move this in two_body_decay)
             while((mass_1 + mass_2) > mass_parent)
             {
                 mass_parent += 0.25 * particle_data[parent].width;
@@ -1190,15 +1277,13 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                         DeltaMT_table[k] = M_pT * sqrt(fabs(Estar2_plus_pT2 - mT2 * coshvDeltaY2)) / mT2_coshvDeltaY2_minus_pT2;
                         mT_coshvDeltaY_over_pT_table[k] = mT * coshvDeltaY / pT;
                         vintegrand_weight_table[k] = prefactor * DeltaY * v_weight[k] / sqrt(fabs(mT2_coshvDeltaY2_minus_pT2));
-                    }
-                    double decay2D_integral = 0.0;
+                    } // tables
 
-                    for(int iphip = 0; iphip < 1; iphip++)
+                    for(int iphip = 0; iphip < phi_tab_length; iphip++)
                     {
-
                         double phip = phipValues[iphip];    // particle azimuthal angle
 
-                       
+                        double decay2D_integral = 0.0;
 
                         // do the decay2D_integral over parent rapidity, transverse mass space (v, zeta)
                         for(int iv = 0; iv < gauss_pts; iv++)
@@ -1216,11 +1301,6 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                                 double zeta_gauss_weight = zeta_weight[izeta];
 
                                 double MT = MTbar + (DeltaMT * coszeta);    // parent MT
-                                // if(MT < mass_parent)
-                                // {
-                                //     printf("\nError: MT less than rest mass..");
-                                //     exit(-1);
-                                // }
                                 double PT = sqrt(MT * MT - parent_mass2);
                                 double cosPhip_tilde = (MT * mT_coshvDeltaY_over_pT - Estar_M_over_pT) / PT;
 
@@ -1239,30 +1319,19 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                                 if(Phip_1 < 0.0) Phip_1 += two_Pi;
                                 if(Phip_2 < 0.0) Phip_2 += two_Pi;
 
-                                // if(!(Phip_2 > 0.0 && Phip_2 < 360.0))
-                                // {
-                                //     exit(-1);
-                                // }
-
                                 double integrand = MT * dN_dYMTdMTdPhi_boost_invariant(parent_chosen_index, MTValues, phipValues, MT, Phip_1, Phip_2, Phip_min, Phip_max, MTmax, MT_params);
 
-                                // do something easy
-                                //double integrand = 2.0 * MT * exp(4.88706 - 2.04108 * MT);    // this worked
-
-                                //zeta_integral += (zeta_gauss_weight * integrand);
+                                // do something easy:
+                                //double integrand = 2.0 * MT * exp(4.88706 - 2.04108 * MT); // this worked
                                 zeta_integral += (zeta_gauss_weight * integrand);
                             }
 
-
                             decay2D_integral += (vintegrand_weight * zeta_integral);
                         }
-
+                        // amend the spectra:
                         long long int iS3D = particle_chosen_index + number_of_chosen_particles * (ipT + pT_tab_length * iphip);
-
                         dN_pTdpTdphidy[iS3D] += decay2D_integral;
                     } // iphip
-                    cout << "\nDecay integral = " << setprecision(6) << decay2D_integral;
-
                 } // ipT
             } // igroups
             break;
@@ -1329,7 +1398,7 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                         DeltaMT_table[k] = M_pT * sqrt(fabs(Estar2_plus_pT2 - mT2 * coshvDeltaY2)) / mT2_coshvDeltaY2_minus_pT2;
                         mT_coshvDeltaY_over_pT_table[k] = mT * coshvDeltaY / pT;
                         vintegrand_weight_table[k] = prefactor * DeltaY * v_weight[k] / sqrt(fabs(mT2_coshvDeltaY2_minus_pT2));
-                    }
+                    } // tables
 
                     for(int iphip = 0; iphip < phi_tab_length; iphip++)
                     {
@@ -1352,14 +1421,11 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                                 double mT_coshvDeltaY_over_pT = mT_coshvDeltaY_over_pT_table[iv];
                                 double vintegrand_weight = vintegrand_weight_table[iv];
 
-                                //cout << "\n" << setprecision(5) << pT << "\t" << DeltaY << "\t" << mT2_coshvDeltaY2_minus_pT2 << "\t" << MT_bar << "\t" << DeltaMT << endl;
-                                //exit(-1);
-
                                 double zeta_integral = 0.0;
 
                                 for(int izeta = 0; izeta < gauss_pts; izeta++)
                                 {
-                                    if(fabs(Y) > Ymax) break;   // cutoff of parent distribution in Y
+                                    if(fabs(Y) > Ymax) break;   // parent distribution cutoff in Y
 
                                     double coszeta = coszeta_root[izeta];
                                     double zeta_gauss_weight = zeta_weight[izeta];
@@ -1368,12 +1434,12 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                                     double PT = sqrt(MT * MT - parent_mass2);
                                     double cosPhip_tilde = (MT * mT_coshvDeltaY_over_pT - Estar_M_over_pT) / PT;
 
-                                    // if(fabs(cosPhip_tilde) >= 1.0)
-                                    // {
+                                    if(fabs(cosPhip_tilde) >= 1.0)
+                                    {
 
-                                    //     printf("\nError: parent azimuthal angle has no solution\n");
-                                    //     exit(-1);
-                                    // }
+                                        printf("\nError: parent azimuthal angle has no solution\n");
+                                        exit(-1);
+                                    }
 
                                     double Phip_tilde = acos(cosPhip_tilde);
 
