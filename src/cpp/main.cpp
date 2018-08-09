@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
   Table eta_tab("tables/eta_trapezoid_table_21pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
 
-  //efa.do_resonance_decays(particle_data);
+  efa.do_resonance_decays(particle_data);
   //exit(-1);
   efa.calculate_spectra();
   //cout << "Currently skip calculate_spectra() to test resonance decays" << endl;
