@@ -25,6 +25,32 @@
 using namespace std;
 
 
+double calculate_Q_factor(double mass_parent, double mass_1, double mass_2, double mass_3)
+{   
+    double Q = 0; 
+
+    double a = (mass_parent + mass_1) * (mass_parent + mass_1);
+    double b = (mass_parent - mass_1) * (mass_parent - mass_1);     // s+
+    double c = (mass_2 + mass_3) * (mass_2 + mass_3);               // s-
+    double d = (mass_2 - mass_3) * (mass_2 - mass_3);
+
+    /// 24 gauss-legendre points for accurate Q-factor calculation 
+    const int x_pts = 24;
+    double x_root[x_pts] = {-0.99518721999702,-0.97472855597131,-0.93827455200273,-0.8864155270044,-0.8200019859739,-0.74012419157855,-0.64809365193698,-0.54542147138884,-0.43379350762605,-0.31504267969616,-0.19111886747362,-0.064056892862606,0.06405689286261,0.19111886747362,0.31504267969616,0.43379350762605,0.54542147138884,0.64809365193698,0.74012419157855,0.8200019859739,0.8864155270044,0.93827455200273,0.97472855597131,0.99518721999702};
+
+    double x_weight[x_pts] = {0.01234122979999,0.02853138862893,0.0442774388174,0.059298584915437,0.0733464814111,0.08619016153195,0.0976186521041,0.107444270116,0.11550566805373,0.1216704729278,0.12583745634683,0.1279381953468,0.1279381953468,0.1258374563468,0.1216704729278,0.1155056680537,0.107444270116,0.09761865210411,0.08619016153195,0.07334648141108,0.05929858491544,0.04427743881742,0.02853138862893,0.01234122979999};
+
+    for(int i = 0; i < x_pts; i++)
+    {
+        // coordinate transformation of s = [s-,s+]:  s = s- + (s+ - s-)(1+x)/2, where x = [-1,1]
+        // substitution rule prefactor = (s+ - s-) / 2
+        double s = c + (b - c) * (1.0 + x_root[i]) / 2.0;
+        Q += x_weight[i] * (b - c) * sqrt(fabs((a - s) * (b - s) * (s - c) * (s - d))) / (2.0 * s);
+    }
+    return Q; 
+}
+
+
 int particle_index(particle_info * particle_data, const int number_of_particles, const int entry_mc_id)
 {
     // search for index of particle of interest in pdg.dat by matching mc_id
@@ -221,6 +247,8 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
 
     // I think I ironed out the bugs here and the
     // simplified 2-body integration test works
+
+    // I could move the Y search outside the zeta loop later (to save time) 
 
     if(MT <= MTmax)
     {
@@ -980,58 +1008,6 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
             double mass_2 = particle_data[particle_2].mass;
             double mass_3 = particle_data[particle_3].mass;
 
-            double a = (mass_parent + mass_1) * (mass_parent + mass_1);
-            double b = (mass_parent - mass_1) * (mass_parent - mass_1);     // s+
-            double c = (mass_2 + mass_3) * (mass_2 + mass_3);               // s-
-            double d = (mass_2 - mass_3) * (mass_2 - mass_3);
-
-
-            // I should test a 3-body normalization factor using mathematica:
-
-            // later this should be moved to the groups section (I could be more precise with the norm factor)
-
-            const int gauss_pts = 12;
-            double gaussLegendre_root[gauss_pts] = {-0.98156063424672, -0.90411725637048, -0.76990267419431, -0.58731795428662, -0.3678314989982, -0.12523340851147,
-           0.12523340851147, 0.36783149899818, 0.58731795428662, 0.76990267419431, 0.90411725637048, 0.98156063424672};
-
-            double gaussLegendre_weight[gauss_pts] = {0.04717533638651, 0.1069393259953, 0.16007832854335, 0.20316742672307, 0.23349253653836, 0.2491470458134,
-           0.2491470458134, 0.23349253653836, 0.20316742672307, 0.1600783285433, 0.10693932599532, 0.04717533638651};
-
-            double s_root[gauss_pts];
-            double s_weight[gauss_pts];
-
-            cout << "b = " << b << "\t" << "c = " << c << endl;
-
-            for(int i = 0; i < gauss_pts; i++)
-            {
-                // coordinate transformation of s = [s-,s+]:  s = s- + (s+ - s-)(1+x)/2, where x = [-1,1]
-                // substitution rule prefactor = (s+ - s-) / 2
-                s_root[i] = c + (b - c) * (1.0 + gaussLegendre_root[i]) / 2.0;
-                s_weight[i] = gaussLegendre_weight[i];
-            }
-
-            double Q_norm = 0.0;
-
-            // do the normalization integral:
-            for(int is = 0; is < gauss_pts; is++)
-            {
-                double s = s_root[is];
-                double weight = s_weight[is];
-
-                double argument = (a - s) * (b - s) * (c - s) * (d - s);
-                // if(argument <= 0.0)
-                // {
-                //     printf("Error: square root argument out of bounds");
-                //     exit(-1);
-                // }
-
-                Q_norm += (weight * sqrt(fabs(argument)) / s);
-            }
-
-            double normalization = (mass_parent * mass_parent * branch_ratio) / (2.0 * M_PI * Q_norm);
-
-            exit(-1);
-
             // 3-body decay integration routine
             three_body_decay(particle_data, branch_ratio, parent, parent_chosen_index, particle_1, particle_2, particle_3, mass_1, mass_2, mass_3, mass_parent);
 
@@ -1543,6 +1519,7 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
 {
     // first select decay products that are part of chosen resonance particles
     // TODO: distinguish resonance table from chosen particles table whose final spectra we're interested in
+    double two_Pi = 2.0 * M_PI; 
 
      // original list of decay products
     int number_of_decay_particles = 3;
@@ -1557,17 +1534,17 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     // loop through the chosen resonance particles table and check for decay product matches
     for(int ichosen = 0; ichosen < number_of_chosen_particles; ichosen++)
     {
-        int chosen_index = chosen_particles_sampling_table[ichosen];
+        int chosen_pdg_index = chosen_particles_sampling_table[ichosen];    
 
-        if((particle_1 == chosen_index) && (!found_particle_1))
+        if((particle_1 == chosen_pdg_index) && (!found_particle_1))
         {
             found_particle_1 = true;
         }
-        if((particle_2 == chosen_index) && (!found_particle_2))
+        if((particle_2 == chosen_pdg_index) && (!found_particle_2))
         {
             found_particle_2 = true;
         }
-        if((particle_3 == chosen_index) && (!found_particle_3))
+        if((particle_3 == chosen_pdg_index) && (!found_particle_3))
         {
             found_particle_3 = true;
         }
@@ -1593,55 +1570,61 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     vector<int> particle_groups;    // group particle indices
     vector<int> group_members;      // group members
 
-    // group first particle and remove it from original list
-    particle_groups.push_back(selected_particles[0]);
-    group_members.push_back(1);
-    selected_particles.erase(selected_particles.begin());
+    // // group first particle and remove it from original list
+    // particle_groups.push_back(selected_particles[0]);
+    // group_members.push_back(1);
+    // selected_particles.erase(selected_particles.begin());
 
-    // group remaining particles if any:
     while(selected_particles.size() > 0)
     {
-        int next_particle = selected_particles[0];
-        bool put_next_particle_in_current_groups = false;
+        int particle = selected_particles[0];
         int current_groups = particle_groups.size();
+        bool put_particle_in_current_groups = false;
 
         // loop through current groups
         for(int igroup = 0; igroup < current_groups; igroup++)
         {
-            if(next_particle == particle_groups[igroup])
+            if(particle == particle_groups[igroup])
             {
                 // if match, add particle to that group
                 group_members[igroup] += 1;
-                put_next_particle_in_current_groups = true;
+                put_particle_in_current_groups = true;
                 break;
             }
         }
-        if(!put_next_particle_in_current_groups)
+        if(!put_particle_in_current_groups)
         {
             // make a new group
-            particle_groups.push_back(next_particle);
+            particle_groups.push_back(particle);
             group_members.push_back(1);
         }
         // remove particle from original list and look at the next particle
         selected_particles.erase(selected_particles.begin());
-    }
+    } // while loop until all particles are grouped
 
     int groups = particle_groups.size();
 
 
-    // set the mass of particle type's mass in group
-    double mass_groups[groups];
+    // set particle's chosen particle index and mass_1
+    // and masses of remaining particles 2 and 3, and the Q factor 
+    int chosen_index[groups];
+    double mass_1_group[groups];
+    double mass_2_group[groups];
+    double mass_3_group[groups];
+    double Q_group[groups];
+
+    
+
     for(int igroup = 0; igroup < groups; igroup++)
     {
-        mass_groups[igroup] = particle_data[particle_groups[igroup]].mass;
-    }
+        // set the pdg index 
+        int pdg_index = particle_groups[igroup];  
 
-    // set invariant mass of second object for each group
-    double invariant_mass_squared[groups];
+        // set the chosen particle index (for iS3D index)
+        chosen_index[igroup] = particle_chosen_index(pdg_index);
 
-    for(int igroup = 0; igroup < groups; igroup++)
-    {
-        int particle_index = particle_groups[igroup];
+        // set the mass of particle type's mass in group
+        mass_1_group[igroup] = particle_data[pdg_index].mass;
 
         // make a vector copy of original decay products list
         vector<int> decay_products_vector;
@@ -1653,36 +1636,35 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
         for(int k = 0; k < number_of_decay_particles; k++)
         {
             int decay_particle = decay_products_vector[k];
-            if(decay_particle == particle_index)
+            if(decay_particle == pdg_index)
             {
                 decay_products_vector.erase(decay_products_vector.begin() + k);
                 break;
             }
         }
+        // get masses of second and third particle
+        int particle_2_pdg_index = decay_products_vector[0];
+        int particle_3_pdg_index = decay_products_vector[1];
 
+        mass_2_group[igroup] = particle_data[particle_2_pdg_index].mass;
+        mass_3_group[igroup] = particle_data[particle_3_pdg_index].mass;
 
-        // get mass of the second and third particle (should double check this...)
-        int particle_2 = decay_products_vector[0];
-        int particle_3 = decay_products_vector[1];
-        double mass_2 = particle_data[particle_2].mass;
-        double mass_3 = particle_data[particle_3].mass;
+        double mass_1 = mass_1_group[igroup];
+        double mass_2 = mass_2_group[igroup];
+        double mass_3 = mass_3_group[igroup];
 
-        // I don't what to do yet..
-
-        //invariant_mass_squared[igroup] = mass_2 * mass_2;
-
-
+        Q_group[igroup] = calculate_Q_factor(mass_parent, mass_1, mass_2, mass_3); 
     }
 
-    printf("Particle groups: ");
+
+    // I need to test whether the 3 particle masses are right for each group... 
+
+
+    printf("Selected particle groups: ");
     for(int igroup = 0; igroup < groups; igroup++)
     {
-        printf("(%d,%d)\t", particle_data[particle_groups[igroup]].mc_id, group_members[igroup]);
+        printf("(%d, %d, %f, %f, %f, %f)\t", particle_data[particle_groups[igroup]].mc_id, group_members[igroup], mass_1_group[igroup], mass_2_group[igroup], mass_3_group[igroup], Q_group[igroup]);
     }
-
-
-
-
 
 
     // set momentum arrays:
@@ -1726,6 +1708,53 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     // finished setting momentum arrays
 
 
+
+    // Gauss Legendre roots / weights for (s,v,zeta) integrals:
+    const int gauss_pts = 12;
+    double gaussLegendre_root[gauss_pts] = {-0.98156063424672, -0.90411725637048, -0.76990267419431, -0.58731795428662, -0.3678314989982, -0.12523340851147,
+   0.12523340851147, 0.36783149899818, 0.58731795428662, 0.76990267419431, 0.90411725637048, 0.98156063424672};
+
+    double gaussLegendre_weight[gauss_pts] = {0.04717533638651, 0.1069393259953, 0.16007832854335, 0.20316742672307, 0.23349253653836, 0.2491470458134,
+   0.2491470458134, 0.23349253653836, 0.20316742672307, 0.1600783285433, 0.10693932599532, 0.04717533638651};
+
+    double v_root[gauss_pts];
+    double v_weight[gauss_pts];
+    double coszeta_root[gauss_pts];
+    double zeta_weight[gauss_pts];
+
+    double s_root[gauss_pts];
+    double s_weight[gauss_pts];
+
+    for(int i = 0; i < gauss_pts; i++)
+    {
+        v_root[i] = gaussLegendre_root[i];
+        v_weight[i] = gaussLegendre_weight[i];
+        // since domain of zeta = [0,pi] use coordinate transform zeta = (1+x)pi/2, where x = [-1,1]
+        coszeta_root[i] = cos((M_PI / 2.0) * (1.0 + gaussLegendre_root[i]));    // cos(zeta)
+        zeta_weight[i] = gaussLegendre_weight[i];
+
+        // s roots / weights
+        s_weight[i] = gaussLegendre_weight[i]; 
+    }
+
+
+    // Extrapolate the parent dN_dymTdmTdphi distribution at large mT
+    // using the fit function y = exp(constant + slope * mT)
+    // The constant and slope parameters are estimated using a least squares fit
+    // Alternative #2: extrapolate with last 2 MT points
+
+    MT_fit_parameters ** MT_params = (MT_fit_parameters**)calloc(y_pts,sizeof(MT_fit_parameters*));
+    for(int iy = 0; iy < y_pts; iy++) MT_params[iy] = (MT_fit_parameters*)calloc(phi_tab_length,sizeof(MT_fit_parameters));
+
+    for(int iphip = 0; iphip < phi_tab_length; iphip++)
+    {
+        for(int iy = 0; iy < y_pts; iy++)
+        {
+            MT_params[iy][iphip] = estimate_MT_function_of_dNdypTdpTdphi(iy, iphip, parent_chosen_index, mass_parent);
+        }
+    }
+
+
     // three-body decay integration:
     // need to add the s loop, also requires more thought
     // about the other variables that depend on s
@@ -1737,32 +1766,36 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
             // loop over particle groups
             for(int igroup = 0; igroup < groups; igroup++)
             {
-                // particle index, chosen index, and multiplicity
-                int particle_index = particle_groups[igroup];
+                // particle of interest's chosen index and multiplicity:
                 int particle_chosen_index = chosen_index[igroup];
                 double multiplicity = (double)group_members[igroup];
 
+                // parent info: 
                 double parent_mass2 = mass_parent * mass_parent;
 
-                // particle mass, energy_star and momentum_star in parent rest frame:
-                double mass2 = mass_squared[igroup];
-                double Estar = energy_star[igroup];
-                double Estar2 = Estar * Estar;
-                double pstar = momentum_star[igroup];
+                // mass of the particles:
+                double mass_1 = mass_1_group[igroup];   // particle of interest
+                double mass_1_squared = mass_1 * mass_1; 
+                double mass_2 = mass_2_group[igroup];   // remaining particles
+                double mass_3 = mass_3_group[igroup];
 
-                // useful expression
-                double Estar_M = Estar * mass_parent;
+                // Q_norm info: 
+                double s_plus = (mass_parent - mass_1) * (mass_parent - mass_1);    // b
+                double s_minus = (mass_2 + mass_3) * (mass_2 + mass_3);             // c
+                double Q_norm = Q_group[igroup];
 
-                // prefactor of the integral (factor of pi/2 from the zeta -> x coordinate transformation built in)
-                double prefactor = multiplicity * mass_parent * branch_ratio / (8.0 * pstar);
 
-                // loop over momentum
+                // prefactor of the integral:
+                // contains factors of (s+ - s-)/2 from s -> x1 and pi/2 from zeta -> x2 transformations
+                double prefactor = multiplicity * parent_mass2 * (s_plus - s_minus) * branch_ratio / (8.0 * Q_norm);
+
+                // loop over momentum:
                 for(int ipT = 0; ipT < pT_tab_length; ipT++)
                 {
                     double pT = pTValues[ipT];  // particle transverse momentum
 
                     double pT2 = pT * pT;
-                    double mT2 = pT2 + mass2;
+                    double mT2 = pT2 + mass_1_squared;
                     double mT = sqrt(mT2);
 
                     // useful expressions
@@ -1800,54 +1833,80 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
                     {
                         double phip = phipValues[iphip];    // particle azimuthal angle
 
-                        double decay2D_integral = 0.0;
+                        double decay3D_integral = 0.0;
 
-                        // do the decay2D_integral over parent rapidity, transverse mass space (v, zeta)
-                        for(int iv = 0; iv < gauss_pts; iv++)
+                        for(int is = 0; is < gauss_pts; is++)   // I'm assuming they used GL as well 
                         {
-                            double MTbar = MTbar_table[iv];
-                            double DeltaMT = DeltaMT_table[iv];
-                            double mT_coshvDeltaY_over_pT = mT_coshvDeltaY_over_pT_table[iv];
-                            double vintegrand_weight = vintegrand_weight_table[iv];
+                            double s = s_root[is];
+                            double sweight = s_weight[is];
 
-                            double zeta_integral = 0.0;
 
-                            for(int izeta = 0; izeta < gauss_pts; izeta++)
+                            // s dependent stuff goes here: 
+
+                            // particle of interest's energy and momentum 
+                            // magnitude in parent rest frame 
+                            double Estar =  (parent_mass2 + mass_1_squared - s) / (2.0 * mass_parent);    
+                            double Estar2 = Estar * Estar;
+                            double pstar = sqrt(Estar2 - mass_1_squared);  
+
+
+                            // useful expression
+                            double Estar_M = Estar * mass_parent;
+
+
+
+                            // there's no point in making tables here (unless they are independent of s) 
+
+
+                            double v_integral = 0.0;
+                            // do the decay2D_integral over parent rapidity, transverse mass space (v, zeta)
+                            for(int iv = 0; iv < gauss_pts; iv++)
                             {
-                                double coszeta = coszeta_root[izeta];
-                                double zeta_gauss_weight = zeta_weight[izeta];
+                                double MTbar = MTbar_table[iv];
+                                double DeltaMT = DeltaMT_table[iv];
+                                double mT_coshvDeltaY_over_pT = mT_coshvDeltaY_over_pT_table[iv];
+                                double vintegrand_weight = vintegrand_weight_table[iv];
 
-                                double MT = MTbar + (DeltaMT * coszeta);    // parent MT
-                                double PT = sqrt(MT * MT - parent_mass2);
-                                double cosPhip_tilde = (MT * mT_coshvDeltaY_over_pT - Estar_M_over_pT) / PT;
+                                double zeta_integral = 0.0;
 
-                                if(fabs(cosPhip_tilde) >= 1.0)
+                                for(int izeta = 0; izeta < gauss_pts; izeta++)
                                 {
+                                    double coszeta = coszeta_root[izeta];
+                                    double zeta_gauss_weight = zeta_weight[izeta];
 
-                                    printf("\nError: parent azimuthal angle has no solution\n");
-                                    exit(-1);
+                                    double MT = MTbar + (DeltaMT * coszeta);    // parent MT
+                                    double PT = sqrt(MT * MT - parent_mass2);
+                                    double cosPhip_tilde = (MT * mT_coshvDeltaY_over_pT - Estar_M_over_pT) / PT;
+
+                                    if(fabs(cosPhip_tilde) >= 1.0)
+                                    {
+
+                                        printf("\nError: parent azimuthal angle has no solution\n");
+                                        exit(-1);
+                                    }
+
+                                    double Phip_tilde = acos(cosPhip_tilde);
+
+                                    // two solutions for the parent azimuthal angle = [0,2pi)
+                                    double Phip_1 = fmod(Phip_tilde + phip, two_Pi);
+                                    double Phip_2 = fmod(-Phip_tilde + phip, two_Pi);
+                                    if(Phip_1 < 0.0) Phip_1 += two_Pi;
+                                    if(Phip_2 < 0.0) Phip_2 += two_Pi;
+
+                                    double integrand = MT * dN_dYMTdMTdPhi_boost_invariant(parent_chosen_index, MTValues, phipValues, MT, Phip_1, Phip_2, Phip_min, Phip_max, MTmax, MT_params);
+
+                                    // do something easy:
+                                    //double integrand = 2.0 * MT * exp(4.88706 - 2.04108 * MT); // this worked
+                                    zeta_integral += (zeta_gauss_weight * integrand);
                                 }
 
-                                double Phip_tilde = acos(cosPhip_tilde);
-
-                                // two solutions for the parent azimuthal angle = [0,2pi)
-                                double Phip_1 = fmod(Phip_tilde + phip, two_Pi);
-                                double Phip_2 = fmod(-Phip_tilde + phip, two_Pi);
-                                if(Phip_1 < 0.0) Phip_1 += two_Pi;
-                                if(Phip_2 < 0.0) Phip_2 += two_Pi;
-
-                                double integrand = MT * dN_dYMTdMTdPhi_boost_invariant(parent_chosen_index, MTValues, phipValues, MT, Phip_1, Phip_2, Phip_min, Phip_max, MTmax, MT_params);
-
-                                // do something easy:
-                                //double integrand = 2.0 * MT * exp(4.88706 - 2.04108 * MT); // this worked
-                                zeta_integral += (zeta_gauss_weight * integrand);
+                                v_integral += (vintegrand_weight * zeta_integral);
                             }
-
-                            decay2D_integral += (vintegrand_weight * zeta_integral);
+                            decay3D_integral += s_weight * v_integral;
                         }
                         // amend the spectra:
                         long long int iS3D = particle_chosen_index + number_of_chosen_particles * (ipT + pT_tab_length * iphip);
-                        dN_pTdpTdphidy[iS3D] += decay2D_integral;
+                        dN_pTdpTdphidy[iS3D] += decay3D_integral;
                     } // iphip
                 } // ipT
             } // igroups
@@ -1866,10 +1925,10 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
                 double parent_mass2 = mass_parent * mass_parent;
 
                 // particle mass, energy_star and momentum_star in parent rest frame:
-                double mass2 = mass_squared[igroup];
-                double Estar = energy_star[igroup];
+                double mass_1 = mass_1_group[igroup];
+                double Estar = 1.0;                 // temporary 
                 double Estar2 = Estar * Estar;
-                double pstar = momentum_star[igroup];
+                double pstar = 1.0;                 // temporary
 
                 // useful expression
                 double Estar_M = Estar * mass_parent;
@@ -1883,7 +1942,7 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
                     double pT = pTValues[ipT];  // particle transverse momentum
 
                     double pT2 = pT * pT;
-                    double mT2 = pT2 + mass2;
+                    double mT2 = pT2 + mass_1 * mass_1;
                     double mT = sqrt(mT2);
 
                     // useful expressions

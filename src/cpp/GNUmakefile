@@ -30,7 +30,7 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS3D.e
 endif
 
-SRC   =	main.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp resonance_decays_alternative.cpp
+SRC   =	main.cpp arsenal.cpp emissionfunction.cpp smooth_kernels.cpp sampling_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp resonance_decays.cpp
 INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h gaussThermal.h
 
 
