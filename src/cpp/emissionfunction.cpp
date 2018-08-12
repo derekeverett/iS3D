@@ -66,12 +66,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     chosen_particles_01_table = new int[Nparticles];
 
-    //a class member to hold 3D smooth CF spectra for all chosen particles
+    //a class member to hold 3D smooth CF spectra (and the log) for all chosen particles
     dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+    logdN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+
     //zero the array
     for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
     {
       dN_pTdpTdphidy[iSpectra] = 0.0;
+      logdN_pTdpTdphidy[iSpectra] = 0.0; // is it harmful to have a y_tab_length =/= 1 if DIMENSION = 2 (waste of memory?)
     }
 
     for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
@@ -133,6 +136,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     delete[] chosen_particles_01_table;
     delete[] chosen_particles_sampling_table;
     delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
+    delete[] logdN_pTdpTdphidy;
   }
 
 
