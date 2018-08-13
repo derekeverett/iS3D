@@ -2,6 +2,13 @@
 // Date: 8/11/18
 
 
+// Differences from the old resonance decay code (so far):
+// 1) top down approach: loop over parents instead of daughters
+// 2) decay grouping: group decay products by type (~10% speedup)
+// 3) mT extrapolation instead of high mT cutoff (for modified)
+// 4) linear interpolation of log(dN_pTdpTdphidy) instead of dN_pTdpTdphidy
+
+
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -28,12 +35,26 @@
 //#endif
 using namespace std;
 
-// with grouping it took 190s for the boost invariant calculation
-// it's because the majority of decays are two-body
-// without grouping it takes 210s (not significanty slower...)
+// grouping:
+//  - 2-body decays take 62.6s
+//  - 3-body decays take 122.9s
+//  - 0 decays takes 4ms (good)
 
-// ~ 9.5% faster...(well some kind of speed would be appreciated...)
+// without grouping:
+//  - 2-body decays take 63.78s (no difference)
+//  - 3-body decays take 141.4s (main benefit)
 
+
+
+// with grouping it took 185s for the boost invariant calculation
+// without grouping it takes 204s (not significanty slower...)
+// it's because the majority of decays are two-body (pairs are generally not same type)
+
+// ~ 10% faster...(well some kind of speed up would be appreciated...)
+// also the old code takes about 4 minutes, this one takes about 3 minutes (147s without mt extrapolation)
+
+// the other idea is to do parallelization from the top down
+// organize 3 body decay and 2 body decay channels
 
 double calculate_Q_factor(double mass_parent, double mass_1, double mass_2, double mass_3)
 {
@@ -119,7 +140,7 @@ int EmissionFunctionArray::particle_chosen_index(int particle_index)
     }
 }
 
-MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(int iy, int iphip, int parent_chosen_index, double mass_parent)
+MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(int iy, int iphip, double mass_parent)
 {
     // get parameters for the fit y = exp(constant + slope * mT) of the distribution dN_dymTdmTdphi at large mT
     // mT_const ~ logy-intercept, mT_slope ~ -effective temperature in GeV
@@ -131,27 +152,21 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
     MT_params.slope = -2.04108;
     return MT_params;
 
-
     // set pT array
     double pTValues[pT_tab_length];
     for(int ipT = 0; ipT < pT_tab_length; ipT++) pTValues[ipT] = pT_tab->get(1, ipT + 1);
 
     // get the coordinates (mT_points, log_dNdydpT) when the distribution is dN_pTdpTdphidy positive
     vector<double> mT_points;
-    vector<double> log_dNdypTdpTdphi;
+    vector<double> logdN_points;
+
     for(int ipT = 0; ipT < pT_tab_length; ipT++)
     {
-        // I need the parent's chosen index (it's place in the chosen particles list)
-        long long int iS3D = parent_chosen_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+        long int iS_parent = ipT + pT_tab_length * (iphip + phi_tab_length * iy);
 
-        double dN_dymTdmTdphi = dN_pTdpTdphidy[iS3D];
+        double logdN = logdN_PTdPTdPhidY[iS_parent];
 
-        if(dN_dymTdmTdphi <= 0.0)
-        {
-            // dN_pTdpTdphidy is negative / zero, stop collecting coordinates
-            break;
-        }
-        else
+        if(std::isfinite(logdN))
         {
             double pT = pTValues[ipT];
             double mT = sqrt(mass_parent * mass_parent + pT * pT);
@@ -159,8 +174,13 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
             if(mT > sqrt(2.73) * mass_parent)   // mT in relativistic region (~ threshold for 2 points for Omega2250)
             {
                 mT_points.push_back(mT);
-                log_dNdypTdpTdphi.push_back(log(dN_dymTdmTdphi));   // called y below
+                logdN_points.push_back(logdN);   // called y below
             }
+        }
+        else
+        {
+            // dN_PTdPTdPhidY is negative / zero, stop collecting coordinates
+            break;
         }
     }
 
@@ -212,7 +232,7 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
         double sum = 0.0;
         for(int k = 0; k < n; k++)
         {
-            sum += (A_transpose[i][k] * log_dNdypTdpTdphi[k]);
+            sum += (A_transpose[i][k] * logdN_points[k]);
         }
         f[i] = sum;
     }
@@ -357,31 +377,31 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_i
 
         // evaluate interpolation function points for parent 1  (LL, etc ordered in (Phip1, MT))
         //----------------------------------------
-        long long int iS3D1_LL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * iPhip1L);
-        long long int iS3D1_RL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * iPhip1R);
-        long long int iS3D1_LR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * iPhip1L);
-        long long int iS3D1_RR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * iPhip1R); // fixed bug 8/6
+        int iS1_LL = iMTL + pT_tab_length * iPhip1L;
+        int iS1_RL = iMTL + pT_tab_length * iPhip1R;
+        int iS1_LR = iMTR + pT_tab_length * iPhip1L;
+        int iS1_RR = iMTR + pT_tab_length * iPhip1R; // fixed bug 8/6
 
         // log of parent 1 distribution
-        double logdN1_LL = logdN_pTdpTdphidy[iS3D1_LL];
-        double logdN1_RL = logdN_pTdpTdphidy[iS3D1_RL];
-        double logdN1_LR = logdN_pTdpTdphidy[iS3D1_LR];
-        double logdN1_RR = logdN_pTdpTdphidy[iS3D1_RR];
+        double logdN1_LL = logdN_PTdPTdPhidY[iS1_LL];
+        double logdN1_RL = logdN_PTdPTdPhidY[iS1_RL];
+        double logdN1_LR = logdN_PTdPTdPhidY[iS1_LR];
+        double logdN1_RR = logdN_PTdPTdPhidY[iS1_RR];
         //----------------------------------------
 
 
         // evaluate interpolation function points for parent 2 (LL, etc ordered in (Phip2, MT))
         //----------------------------------------
-        long long int iS3D2_LL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * iPhip2L);
-        long long int iS3D2_RL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * iPhip2R);
-        long long int iS3D2_LR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * iPhip2L);
-        long long int iS3D2_RR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * iPhip2R);
+        int iS2_LL = iMTL + pT_tab_length * iPhip2L;
+        int iS2_RL = iMTL + pT_tab_length * iPhip2R;
+        int iS2_LR = iMTR + pT_tab_length * iPhip2L;
+        int iS2_RR = iMTR + pT_tab_length * iPhip2R;
 
         // log of parent 2 distribution
-        double logdN2_LL = logdN_pTdpTdphidy[iS3D2_LL];
-        double logdN2_RL = logdN_pTdpTdphidy[iS3D2_RL];
-        double logdN2_LR = logdN_pTdpTdphidy[iS3D2_LR];
-        double logdN2_RR = logdN_pTdpTdphidy[iS3D2_RR];
+        double logdN2_LL = logdN_PTdPTdPhidY[iS2_LL];
+        double logdN2_RL = logdN_PTdPTdPhidY[iS2_RL];
+        double logdN2_LR = logdN_PTdPTdPhidY[iS2_LR];
+        double logdN2_RR = logdN_PTdPTdPhidY[iS2_RR];
         //----------------------------------------
 
 
@@ -635,47 +655,47 @@ double EmissionFunctionArray::dN_dYMTdMTdPhi_non_boost_invariant(int parent_chos
 
         // evaluate interpolation points for parent 1  (LLL, etc ordered in (Y, Phip, MT))
         //----------------------------------------
-        long long int iS3D1_LLL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip1L + phi_tab_length * iYL));
-        long long int iS3D1_RLL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip1L + phi_tab_length * iYR));
-        long long int iS3D1_LRL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip1R + phi_tab_length * iYL));
-        long long int iS3D1_RRL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip1R + phi_tab_length * iYR));
-        long long int iS3D1_LLR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * (iPhip1L + phi_tab_length * iYL));
-        long long int iS3D1_RLR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * (iPhip1L + phi_tab_length * iYR));
-        long long int iS3D1_LRR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * (iPhip1R + phi_tab_length * iYL));
-        long long int iS3D1_RRR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * (iPhip1R + phi_tab_length * iYR));
+        long int iS1_LLL = iMTL + pT_tab_length * (iPhip1L + phi_tab_length * iYL);
+        long int iS1_RLL = iMTL + pT_tab_length * (iPhip1L + phi_tab_length * iYR);
+        long int iS1_LRL = iMTL + pT_tab_length * (iPhip1R + phi_tab_length * iYL);
+        long int iS1_RRL = iMTL + pT_tab_length * (iPhip1R + phi_tab_length * iYR);
+        long int iS1_LLR = iMTR + pT_tab_length * (iPhip1L + phi_tab_length * iYL);
+        long int iS1_RLR = iMTR + pT_tab_length * (iPhip1L + phi_tab_length * iYR);
+        long int iS1_LRR = iMTR + pT_tab_length * (iPhip1R + phi_tab_length * iYL);
+        long int iS1_RRR = iMTR + pT_tab_length * (iPhip1R + phi_tab_length * iYR);
 
         // log of parent 1 distribution
-        double logdN1_LLL = logdN_pTdpTdphidy[iS3D1_LLL];
-        double logdN1_RLL = logdN_pTdpTdphidy[iS3D1_RLL];
-        double logdN1_LRL = logdN_pTdpTdphidy[iS3D1_LRL];
-        double logdN1_RRL = logdN_pTdpTdphidy[iS3D1_RRL];
-        double logdN1_LLR = logdN_pTdpTdphidy[iS3D1_LLR];
-        double logdN1_RLR = logdN_pTdpTdphidy[iS3D1_RLR];
-        double logdN1_LRR = logdN_pTdpTdphidy[iS3D1_LRR];
-        double logdN1_RRR = logdN_pTdpTdphidy[iS3D1_RRR];
+        double logdN1_LLL = logdN_PTdPTdPhidY[iS1_LLL];
+        double logdN1_RLL = logdN_PTdPTdPhidY[iS1_RLL];
+        double logdN1_LRL = logdN_PTdPTdPhidY[iS1_LRL];
+        double logdN1_RRL = logdN_PTdPTdPhidY[iS1_RRL];
+        double logdN1_LLR = logdN_PTdPTdPhidY[iS1_LLR];
+        double logdN1_RLR = logdN_PTdPTdPhidY[iS1_RLR];
+        double logdN1_LRR = logdN_PTdPTdPhidY[iS1_LRR];
+        double logdN1_RRR = logdN_PTdPTdPhidY[iS1_RRR];
         //----------------------------------------
 
 
         // evaluate interpolation points for parent 2
         //----------------------------------------
-        long long int iS3D2_LLL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip2L + phi_tab_length * iYL));
-        long long int iS3D2_RLL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip2L + phi_tab_length * iYR));
-        long long int iS3D2_LRL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip2R + phi_tab_length * iYL));
-        long long int iS3D2_RRL = parent_chosen_index + number_of_chosen_particles * (iMTL + pT_tab_length * (iPhip2R + phi_tab_length * iYR));
-        long long int iS3D2_LLR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * (iPhip2L + phi_tab_length * iYL));
-        long long int iS3D2_RLR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * (iPhip2L + phi_tab_length * iYR));
-        long long int iS3D2_LRR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * (iPhip2R + phi_tab_length * iYL));
-        long long int iS3D2_RRR = parent_chosen_index + number_of_chosen_particles * (iMTR + pT_tab_length * (iPhip2R + phi_tab_length * iYR));
+        long int iS2_LLL = iMTL + pT_tab_length * (iPhip2L + phi_tab_length * iYL);
+        long int iS2_RLL = iMTL + pT_tab_length * (iPhip2L + phi_tab_length * iYR);
+        long int iS2_LRL = iMTL + pT_tab_length * (iPhip2R + phi_tab_length * iYL);
+        long int iS2_RRL = iMTL + pT_tab_length * (iPhip2R + phi_tab_length * iYR);
+        long int iS2_LLR = iMTR + pT_tab_length * (iPhip2L + phi_tab_length * iYL);
+        long int iS2_RLR = iMTR + pT_tab_length * (iPhip2L + phi_tab_length * iYR);
+        long int iS2_LRR = iMTR + pT_tab_length * (iPhip2R + phi_tab_length * iYL);
+        long int iS2_RRR = iMTR + pT_tab_length * (iPhip2R + phi_tab_length * iYR);
 
         // log of parent 2 distribution
-        double logdN2_LLL = logdN_pTdpTdphidy[iS3D2_LLL];
-        double logdN2_RLL = logdN_pTdpTdphidy[iS3D2_RLL];
-        double logdN2_LRL = logdN_pTdpTdphidy[iS3D2_LRL];
-        double logdN2_RRL = logdN_pTdpTdphidy[iS3D2_RRL];
-        double logdN2_LLR = logdN_pTdpTdphidy[iS3D2_LLR];
-        double logdN2_RLR = logdN_pTdpTdphidy[iS3D2_RLR];
-        double logdN2_LRR = logdN_pTdpTdphidy[iS3D2_LRR];
-        double logdN2_RRR = logdN_pTdpTdphidy[iS3D2_RRR];
+        double logdN2_LLL = logdN_PTdPTdPhidY[iS2_LLL];
+        double logdN2_RLL = logdN_PTdPTdPhidY[iS2_RLL];
+        double logdN2_LRL = logdN_PTdPTdPhidY[iS2_LRL];
+        double logdN2_RRL = logdN_PTdPTdPhidY[iS2_RRL];
+        double logdN2_LLR = logdN_PTdPTdPhidY[iS2_LLR];
+        double logdN2_RLR = logdN_PTdPTdPhidY[iS2_RLR];
+        double logdN2_LRR = logdN_PTdPTdPhidY[iS2_LRR];
+        double logdN2_RRR = logdN_PTdPTdPhidY[iS2_RRR];
         //----------------------------------------
 
 
@@ -884,30 +904,30 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
     }
 
 
-    int y_pts = y_tab_length;
-    if(DIMENSION == 2) y_pts = 1;
-    // first set the log of dN_pTdpTdphidy for easy access in linear interpolation call
-    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
-    {
-        for(int ipT = 0; ipT < pT_tab_length; ipT++)
-        {
-            for(int iphip = 0; iphip < phi_tab_length; iphip++)
-            {
-                for(int iy = 0; iy < y_pts; iy++)
-                {
-                    long long int iS3D = ipart + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
-                    // don't worry about log nans, skip over them with MT fit
-                    //logdN_pTdpTdphidy[iS3D] = log(dN_pTdpTdphidy[iS3D]);
-                    logdN_pTdpTdphidy[iS3D] = 0.0;
+    // int y_pts = y_tab_length;
+    // if(DIMENSION == 2) y_pts = 1;
+    // // first set the log of dN_pTdpTdphidy for easy access in linear interpolation call
+    // for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    // {
+    //     for(int ipT = 0; ipT < pT_tab_length; ipT++)
+    //     {
+    //         for(int iphip = 0; iphip < phi_tab_length; iphip++)
+    //         {
+    //             for(int iy = 0; iy < y_pts; iy++)
+    //             {
+    //                 long long int iS3D = ipart + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+    //                 // don't worry about log nans, skip over them with MT fit
+    //                 //logdN_pTdpTdphidy[iS3D] = log(dN_pTdpTdphidy[iS3D]);
+    //                 logdN_pTdpTdphidy[iS3D] = 0.0;
 
 
 
 
-                    // I could make a test and do a simple spectra (formula in the paper)
-                }
-            }
-        }
-    }
+    //                 // I could make a test and do a simple spectra (formula in the paper)
+    //             }
+    //         }
+    //     }
+    // }
 
 
 
@@ -926,6 +946,25 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
             int parent_chosen_index = ichosen;
             int parent_decay_channels = particle_data[ipart].decays;
 
+            // set parent's log distribution for linear interpolation
+            int y_pts = y_tab_length;
+            if(DIMENSION == 2) y_pts = 1;
+            for(int ipT = 0; ipT < pT_tab_length; ipT++)
+            {
+                for(int iphip = 0; iphip < phi_tab_length; iphip++)
+                {
+                    for(int iy = 0; iy < y_pts; iy++)
+                    {
+                        long long int iS3D = parent_chosen_index + number_of_chosen_particles * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+
+                        long int iS_parent = ipT + pT_tab_length * (iphip + phi_tab_length * iy); // should be large enough...
+                        // don't worry about log nans, skip over them with MT fit
+                        //logdN_PTdPTdPhidY[iS_parent] = log(dN_pTdpTdphidy[iS3D]);
+                        logdN_PTdPTdPhidY[iS_parent] = 0.0;
+                    }
+                }
+            }
+
             // go through each decay channel of parent resonance
             for(int ichannel = 0; ichannel < parent_decay_channels; ichannel++)
             {
@@ -942,20 +981,6 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
                     decays_index_vector.push_back(daughter_index);
 
                 } // finished setting decays_index_vector
-
-                // int real_daughters = 0;
-                // for(int idaughter = 0; idaughter < Maxdecaypart; idaughter++)
-                // {
-                //     // caution: some daughter entries have a default mc_id = 0 (fake placeholders)
-                //     int daughter_mc_id = particle_data[ipart].decays_part[ichannel][idaughter];
-                //     if(daughter_mc_id != 0)
-                //     {
-                //       int daughter_index = particle_index(particle_data, number_of_particles, daughter_mc_id);
-                //       decays_index_vector.push_back(daughter_index);
-                //       real_daughters++;
-                //     }
-
-                // } // finished setting decays_index_vector
 
                 // only do non-trivial resonance decays
                 if(decay_products != 1)
@@ -1120,8 +1145,8 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
         // loop through current groups
         for(int igroup = 0; igroup < current_groups; igroup++)
         {
-            //if(false)
-            if(particle == particle_groups[igroup])
+            if(false)
+            //if(particle == particle_groups[igroup])
             {
                 // if match, add particle to that group
                 group_members[igroup] += 1;
@@ -1129,8 +1154,8 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                 break;
             }
         }
-        //if(true)
-        if(!put_particle_in_current_groups)
+        if(true)
+        //if(!put_particle_in_current_groups)
         {
             // make a new group
             particle_groups.push_back(particle);
@@ -1273,11 +1298,10 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
     {
         for(int iy = 0; iy < y_pts; iy++)
         {
-            MT_params[iy][iphip] = estimate_MT_function_of_dNdypTdpTdphi(iy, iphip, parent_chosen_index, mass_parent);
+            MT_params[iy][iphip] = estimate_MT_function_of_dNdypTdpTdphi(iy, iphip, mass_parent);
         }
     }
 
-   // printf("\n\nTemporary test: MT_params = (%f,%f) slightly fluctuates, and set iphip pts from 1 to phi_tab_length\n",MT_params[0][0].constant,MT_params[0][0].slope);
 
     // two-body decay integration:
     //---------------------------------------
@@ -1337,12 +1361,12 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                     {
                         double v = v_root[k];
                         double coshvDeltaY = cosh(v * DeltaY);
-                        double coshvDeltaY2 = coshvDeltaY * coshvDeltaY;
-                        double mT2_coshvDeltaY2_minus_pT2 = (mT2 * coshvDeltaY2) - pT2;
+                        double mT2_coshvDeltaY2 = mT2 * coshvDeltaY * coshvDeltaY;
+                        double mT2_coshvDeltaY2_minus_pT2 = mT2_coshvDeltaY2 - pT2;
 
                         // set tables:
                         MTbar_table[k] = Estar_M_mT * coshvDeltaY / mT2_coshvDeltaY2_minus_pT2;
-                        DeltaMT_table[k] = M_pT * sqrt(fabs(Estar2_plus_pT2 - mT2 * coshvDeltaY2)) / mT2_coshvDeltaY2_minus_pT2;
+                        DeltaMT_table[k] = M_pT * sqrt(fabs(Estar2_plus_pT2 - mT2_coshvDeltaY2)) / mT2_coshvDeltaY2_minus_pT2;
                         mT_coshvDeltaY_over_pT_table[k] = mT * coshvDeltaY / pT;
                         vintegrand_weight_table[k] = DeltaY * v_weight[k] / sqrt(fabs(mT2_coshvDeltaY2_minus_pT2));
                     } // tables
@@ -1357,6 +1381,17 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                         // do the decay2D_integral over parent rapidity, transverse mass space (v, zeta)
                         for(int iv = 0; iv < gauss_pts; iv++)
                         {
+                            // double v = v_root[iv];
+                            // double coshvDeltaY = cosh(v * DeltaY);
+                            // double coshvDeltaY2 = coshvDeltaY * coshvDeltaY;
+                            // double mT2_coshvDeltaY2_minus_pT2 = (mT2 * coshvDeltaY2) - pT2;
+
+
+                            // double MTbar = Estar_M_mT * coshvDeltaY / mT2_coshvDeltaY2_minus_pT2;
+                            // double DeltaMT = M_pT * sqrt(fabs(Estar2_plus_pT2 - mT2 * coshvDeltaY2)) / mT2_coshvDeltaY2_minus_pT2;
+                            // double mT_coshvDeltaY_over_pT = mT * coshvDeltaY / pT;
+                            // double vintegrand_weight = DeltaY * v_weight[iv] / sqrt(fabs(mT2_coshvDeltaY2_minus_pT2));
+
                             double MTbar = MTbar_table[iv];
                             double DeltaMT = DeltaMT_table[iv];
                             double mT_coshvDeltaY_over_pT = mT_coshvDeltaY_over_pT_table[iv];
@@ -1460,12 +1495,12 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
                     {
                         double v = v_root[k];
                         double coshvDeltaY = cosh(v * DeltaY);
-                        double coshvDeltaY2 = coshvDeltaY * coshvDeltaY;
-                        double mT2_coshvDeltaY2_minus_pT2 = (mT2 * coshvDeltaY2) - pT2;
+                        double mT2_coshvDeltaY2 = mT2 * coshvDeltaY * coshvDeltaY;
+                        double mT2_coshvDeltaY2_minus_pT2 = mT2_coshvDeltaY2 - pT2;
 
                         // set tables:
                         MTbar_table[k] = Estar_M_mT * coshvDeltaY / mT2_coshvDeltaY2_minus_pT2;
-                        DeltaMT_table[k] = M_pT * sqrt(fabs(Estar2_plus_pT2 - mT2 * coshvDeltaY2)) / mT2_coshvDeltaY2_minus_pT2;
+                        DeltaMT_table[k] = M_pT * sqrt(fabs(Estar2_plus_pT2 - mT2_coshvDeltaY2)) / mT2_coshvDeltaY2_minus_pT2;
                         mT_coshvDeltaY_over_pT_table[k] = mT * coshvDeltaY / pT;
                         vintegrand_weight_table[k] = DeltaY * v_weight[k] / sqrt(fabs(mT2_coshvDeltaY2_minus_pT2));
                     } // tables
@@ -1640,8 +1675,8 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
         // loop through current groups
         for(int igroup = 0; igroup < current_groups; igroup++)
         {
-            //if(false)
-            if(particle == particle_groups[igroup])
+            if(false)
+            //if(particle == particle_groups[igroup])
             {
                 // if match, add particle to that group
                 group_members[igroup] += 1;
@@ -1649,8 +1684,8 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
                 break;
             }
         }
-        //if(true)
-        if(!put_particle_in_current_groups)
+        if(true)
+        //if(!put_particle_in_current_groups)
         {
             // make a new group
             particle_groups.push_back(particle);
@@ -1804,7 +1839,7 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     {
         for(int iy = 0; iy < y_pts; iy++)
         {
-            MT_params[iy][iphip] = estimate_MT_function_of_dNdypTdpTdphi(iy, iphip, parent_chosen_index, mass_parent);
+            MT_params[iy][iphip] = estimate_MT_function_of_dNdypTdpTdphi(iy, iphip, mass_parent);
         }
     }
 
@@ -1815,6 +1850,9 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
     {
         case 2: // boost invariant case
         {
+            // i could make an array that holds constant and slope separately
+
+
             // loop over particle groups
             for(int igroup = 0; igroup < groups; igroup++)
             {
@@ -1839,9 +1877,19 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
 
                 // set up s-roots:
                 double s_root[gauss_pts];
+                double Estar_table[gauss_pts];
+                double pstar_table[gauss_pts];
+                double s_integrand_weight_table[gauss_pts];
+
                 for(int k = 0; k < gauss_pts; k++)
                 {
-                    s_root[k] = s_minus + (s_plus - s_minus) * (1.0 + gaussLegendre_root[k]) / 2.0;
+                    double s = s_minus + (s_plus - s_minus) * (1.0 + gaussLegendre_root[k]) / 2.0;
+                    double weight = s_weight[k];
+                    double Estar = (parent_mass2 + mass_1_squared - s) / (2.0 * mass_parent);
+                    s_root[k] = s;
+                    Estar_table[k] = Estar;
+                    s_integrand_weight_table[k] = weight * sqrt(fabs((s - s_minus) * (s - d))) / s;
+                    pstar_table[k] = sqrt(Estar * Estar - mass_1_squared);
                 }
 
                 // prefactor of the integral:
@@ -1864,6 +1912,15 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
                     double M_over_pT = mass_parent / pT;
                     double mT_over_pT = mT / pT;
 
+                    // DeltaY(s) table
+                    double DeltaY_table[gauss_pts];
+                    for(int k = 0; k < gauss_pts; k++)
+                    {
+                        double pstar = pstar_table[k];
+                        double Estar = Estar_table[k];
+                        DeltaY_table[k] = log((pstar + sqrt(Estar * Estar + pT2)) / mT);
+                    }
+
                     for(int iphip = 0; iphip < phi_tab_length; iphip++)
                     //for(int iphip = 0; iphip < 1; iphip++)
                     {
@@ -1878,13 +1935,16 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
                             double s = s_root[is];
 
                             // total s weight
-                            double s_integrand_weight = s_weight[is] * sqrt(fabs((s - s_minus) * (s - d))) / s;
+                            //double s_integrand_weight = s_weight[is] * sqrt(fabs((s - s_minus) * (s - d))) / s;
+                            double s_integrand_weight = s_integrand_weight_table[is];
 
                             // particle of interest's energy and momentum
                             // magnitude in parent rest frame
-                            double Estar =  (parent_mass2 + mass_1_squared - s) / (2.0 * mass_parent);
+                            //double Estar =  (parent_mass2 + mass_1_squared - s) / (2.0 * mass_parent);
+                            double Estar = Estar_table[is];
                             double Estar2 = Estar * Estar;
-                            double pstar = sqrt(Estar2 - mass_1_squared);
+                            //double pstar = sqrt(Estar2 - mass_1_squared);
+                            double pstar = pstar_table[is];
 
                             // useful expressions
                             double Estar_M_mT = Estar * M_mT;
@@ -1892,7 +1952,8 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
                             double Estar_M_over_pT = Estar * M_over_pT;
 
                             // parent rapidity interval
-                            double DeltaY = log((pstar + sqrt(Estar2_plus_pT2)) / mT);
+                            //double DeltaY = log((pstar + sqrt(Estar2_plus_pT2)) / mT);
+                            double DeltaY = DeltaY_table[is];
 
                             double v_integral = 0.0;
 
@@ -1902,13 +1963,13 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
 
                                 // useful expressions
                                 double coshvDeltaY = cosh(v * DeltaY);
-                                double coshvDeltaY2 = coshvDeltaY * coshvDeltaY;
-                                double mT2_coshvDeltaY2_minus_pT2 = mT2 * coshvDeltaY2 - pT2;
+                                double mT2_coshvDeltaY2 = mT2 * coshvDeltaY * coshvDeltaY;
+                                double mT2_coshvDeltaY2_minus_pT2 = mT2_coshvDeltaY2 - pT2;
                                 double mT_coshvDeltaY_over_pT = mT_over_pT * coshvDeltaY;
 
                                 // MT terms
                                 double MTbar = Estar_M_mT * coshvDeltaY / mT2_coshvDeltaY2_minus_pT2;;
-                                double DeltaMT =  M_pT * sqrt(fabs(Estar2_plus_pT2 - mT2 * coshvDeltaY2)) / mT2_coshvDeltaY2_minus_pT2;
+                                double DeltaMT =  M_pT * sqrt(fabs(Estar2_plus_pT2 - mT2_coshvDeltaY2)) / mT2_coshvDeltaY2_minus_pT2;
 
                                 // total v weight
                                 double v_integrand_weight = DeltaY * v_weight[iv] / sqrt(fabs(mT2_coshvDeltaY2_minus_pT2));
@@ -1920,7 +1981,7 @@ void EmissionFunctionArray::three_body_decay(particle_info * particle_data, doub
                                     double coszeta = coszeta_root[izeta];
                                     double zeta_gauss_weight = zeta_weight[izeta];
 
-                                    double MT = MTbar + (DeltaMT * coszeta);    // parent MT
+                                    double MT = MTbar + DeltaMT * coszeta;    // parent MT
                                     double PT = sqrt(MT * MT - parent_mass2);
                                     double cosPhip_tilde = (MT * mT_coshvDeltaY_over_pT - Estar_M_over_pT) / PT;
 

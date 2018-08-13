@@ -51,7 +51,7 @@ private:
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
   long FO_length;
   double *dN_pTdpTdphidy; //to hold smooth CF 3D spectra of all species
-  double *logdN_pTdpTdphidy; // hold log of smooth CF 3D spectra of all species (set in res decay for linear interpolation)
+  double *logdN_PTdPTdPhidY; // hold log of smooth CF 3D spectra of parent (set in res decay for linear interpolation)
 
   std::vector<Sampled_Particle> particle_list; //to hold sampled particle list
 
@@ -129,7 +129,7 @@ public:
 
   void three_body_decay(particle_info * particle_data, double branch_ratio, int parent, int parent_chosen_index, int particle_1, int particle_2, int particle_3, double mass_parent);
 
-  MT_fit_parameters estimate_MT_function_of_dNdypTdpTdphi(int iy, int iphip, int parent_chosen_index, double mass_parent);
+  MT_fit_parameters estimate_MT_function_of_dNdypTdpTdphi(int iy, int iphip, double mass_parent);
 
   double dN_dYMTdMTdPhi_boost_invariant(int parent_chosen_index, double * MTValues, double PhipValues[], double MT, double Phip1, double Phip2, double Phip_min, double Phip_max, double MTmax, MT_fit_parameters ** MT_params);
 
