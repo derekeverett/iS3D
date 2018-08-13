@@ -14,8 +14,8 @@
 #CC = g++-7 #Mac OSX high sierra
 #CC = pgc++
 CC = g++
-CFLAGS= -std=c++11 -march=native -O3 -lgsl -lgslcblas -lm
-#CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas -lm
+#CFLAGS= -std=c++11 -march=native -O3 -lgsl -lgslcblas -lm
+CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas -lm
 #CFLAGS= -acc -fast -Minfo -ta=nvidia,time
 #CFLAGS= -acc -fast -ta=tesla:managed #uses unified memory - simplifies copying of dynamic arrays host <-> device
 
@@ -30,7 +30,7 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS3D.e
 endif
 
-SRC   =	main.cpp arsenal.cpp emissionfunction.cpp smooth_kernels.cpp sampling_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp resonance_decays.cpp
+SRC   =	main.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp emissionfunction_resonance_decays.cpp
 INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h gaussThermal.h
 
 
