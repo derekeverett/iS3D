@@ -173,7 +173,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           {
             double pT = pT_tab->get(1,ipT + 1);
             long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
-            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[iS3D] << "\n";
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t{" << pT << ",\t" << dN_pTdpTdphidy[iS3D] << "},\n";
           } //ipT
           spectraFile << "\n";
         } //iphip
