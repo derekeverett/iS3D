@@ -308,6 +308,78 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
+  //write particle list in OSC1997A format for UrQMD/SMASH afterburner
+  void EmissionFunctionArray::write_particle_list_OSC1997A()
+  {
+    printf("Writing sampled particles list to OSC1997A File...\n");
+    char filename[255] = "";
+    sprintf(filename, "results/particle_list_osc97.dat");
+    ofstream spectraFile(filename, ios_base::app);
+    int num_particles = particle_list.size();
+    //write the header
+    spectraFile << "OSC1997A" << "\n";
+    spectraFile << "final_id_p_x" << "\n";
+    //not sure the purpose of this part of header, it is filled with dummy info
+    spectraFile << "iS3D v1.0 (208,82)+(208,82) CM, 2.760, 1" << "\n";
+    //event header
+    spectraFile << "1" << " " << num_particles << " " << 0.0 << " " << 0.0 << "\n";
+    for (int ipart = 0; ipart < num_particles; ipart++)
+    {
+      int mcid = particle_list[ipart].mcID;
+      double x = particle_list[ipart].x;
+      double y = particle_list[ipart].y;
+      double t = particle_list[ipart].t;
+      double z = particle_list[ipart].z;
+
+      double mass = particle_list[ipart].mass;
+      double E = particle_list[ipart].E;
+      double px = particle_list[ipart].px;
+      double py = particle_list[ipart].py;
+      double pz = particle_list[ipart].pz;
+      spectraFile << ipart << "," << mcid << "," << px << "," << py << "," << pz << "," << E << "," << mass << "," << x << "," << y << "," << z << "," << t << "\n";
+    }//ipart
+    spectraFile.close();
+  }
+
+/*
+  void EmissionFunctionArray::synchronize_particle_list_and_write()
+  {
+    printf("Synchronizing sampled particles for afterburner and writing to file...\n");
+    char filename[255] = "";
+    sprintf(filename, "results/synchronized_particle_list.dat");
+    ofstream spectraFile(filename, ios_base::app);
+    int num_particles = particle_list.size();
+    //write the header
+    //spectraFile << "OSC1997A" << "\n";
+    //spectraFile << "final_id_p_x" << "\n";
+    //not sure the purpose of this part of header, it is filled with dummy info
+    //spectraFile << "iS3D v1.0 (208,82)+(208,82) CM, 2.760, 1" << "\n";
+    //event header
+    //spectraFile << "1" << " " << num_particles << " " << 0.0 << " " << 0.0 << "\n";
+    for (int ipart = 0; ipart < num_particles; ipart++)
+    {
+      int mcid = particle_list[ipart].mcID;
+      double x = particle_list[ipart].x;
+      double y = particle_list[ipart].y;
+      double t = particle_list[ipart].t;
+      double z = particle_list[ipart].z;
+
+      double mass = particle_list[ipart].mass;
+      double E = particle_list[ipart].E;
+      double px = particle_list[ipart].px;
+      double py = particle_list[ipart].py;
+      double pz = particle_list[ipart].pz;
+
+      //propagate particles back to starting time and assign formation time = production time
+      double x_old = x - (px / E) * t;
+      double y_old = y - (py / E) * t;
+      double z_old = z - (pz / E) * t;
+
+      spectraFile << ipart << "," << mcid << "," << px << "," << py << "," << pz << "," << E << "," << mass << "," << x << "," << y << "," << z << "," << t << "\n";
+    }//ipart
+    spectraFile.close();
+  }
+*/
 
   //*********************************************************************************************
   void EmissionFunctionArray::calculate_spectra()
@@ -742,7 +814,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       write_dN_pTdpTdphidy_toFile();
       write_dN_dpTdphidy_toFile();
     }
-    else if (OPERATION == 2) write_particle_list_toFile();
+    else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC1997A();}
 
     if (MODE == 5) write_polzn_vector_toFile();
 

@@ -91,28 +91,13 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
   unsigned seed = chrono::system_clock::now().time_since_epoch().count();
   default_random_engine generator(seed);
 
-  // light hadrons
-
-  //TO DO
-  //add routine that works for pions!
-  // if (mass / T < 2.0)
-  //stuff
-
-  // the ARS thing should be worked on after this
-  // where does in the SPREW code is it employed?
-
-  // I should I put in the r_ideal or r_visc accept/reject conditions
-  // after I drawed all the momentum variables (p,phi,costheta) (build it up tonight; at least for ideal hydro)
-  // note: don't assume that r_ideal/visc is independent of p like LongGong does
-
-  // light hadrons, but heavier than pions
-  if(T / mass >= 0.6) // fixed bug on 7/12
+  //pion routine
+  //not Adaptive Rejection Sampling, but the naive method here...
+  if (mass / T < 1.5)
   {
-    // I should wrap the r_ideal/visc while loop around this stuff here: {}
     bool rejected = true;
     while (rejected)
     {
-      // do you need different generators for (r1,r2,r3,propose)? Guess not..
       // draw (p, phi, costheta) from distribution p^2 * exp[-p/T] by
       // sampling three variables (r1,r2,r3) uniformly from [0,1)
       double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -129,14 +114,15 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
 
       double E = sqrt(fabs(p * p + mass * mass));
 
-      double weight = exp((p - E) / T);
+      //here the pion weight should include the Bose enhancement factor
+      //this formula assumes zero chemical potential mu = 0
+      //TO DO - generalize for nonzero chemical potential
+      double weight = exp(p/T) / ( exp(E/T) - 1.0 );
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       // check p acceptance
       if(propose < weight)
       {
-        //rejected = false; // stop while loop
-
         // calculate angles and pLRF components
         double costheta = (l1 - l2) / (l1 + l2);
         if(::isnan(costheta)) printf("found costheta nan!\n");
@@ -190,7 +176,97 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           rejected = false; //stop while loop if accepted
         }
         //FIX
+      } // p acceptance
+    } // while loop
+  } //if (mass / T < 1.5)
 
+
+  // I should I put in the r_ideal or r_visc accept/reject conditions
+  // after I drawed all the momentum variables (p,phi,costheta) (build it up tonight; at least for ideal hydro)
+  // note: don't assume that r_ideal/visc is independent of p like LongGong does
+
+  // light hadrons, but heavier than pions
+  else if (mass / T < 2.0) // fixed bug on 7/12
+  {
+    // I should wrap the r_ideal/visc while loop around this stuff here: {}
+    bool rejected = true;
+    while (rejected)
+    {
+      // draw (p, phi, costheta) from distribution p^2 * exp[-p/T] by
+      // sampling three variables (r1,r2,r3) uniformly from [0,1)
+      double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+      double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+      double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      double l1 = log(r1);
+      double l2 = log(r2);
+      double l3 = log(r3);
+
+      double p = - T * (l1 + l2 + l3);
+
+      if(::isnan(p)) printf("found p nan!\n");
+
+      double E = sqrt(fabs(p * p + mass * mass));
+
+      double weight = exp((p - E) / T);
+      double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      // check p acceptance
+      if(propose < weight)
+      {
+        // calculate angles and pLRF components
+        double costheta = (l1 - l2) / (l1 + l2);
+        if(::isnan(costheta)) printf("found costheta nan!\n");
+        double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
+        if(::isnan(phi)) printf("found phi nan!\n");
+        double sintheta = sqrt(1.0 - costheta * costheta);
+        if(::isnan(sintheta)) printf("found sintheta nan!\n");
+
+        double px = p * costheta;
+        double py = p * sintheta * cos(phi);
+        double pz = p * sintheta * sin(phi);
+
+        //viscous corrections
+        double shear_weight = 1.0;
+        double bulk_weight = 1.0;
+        double diff_weight = 1.0;
+
+        //FIX TEMPORARY
+        if (INCLUDE_SHEAR_DELTAF)
+        {
+          double A = 2.0 * T * T * (eps + pressure);
+          double f0 = 1.0 / ( exp(E / T) + sign );
+
+          //check contraction / signs etc...
+          double pmupnupimunu = 2.0 * ( px*px*pixx + px*py*pixy + px*pz*pixz + py*py*piyy + py*pz*piyz + pz*pz*pizz );
+          double num = A + ( 1.0 + sign * f0 ) * pmupnupimunu;
+          double pmupnupimunu_max = E * E * pimunu.compute_max();
+          double den = A + (1.0 + (sign * f0) ) * pmupnupimunu_max;
+          shear_weight = num / den;
+        }
+
+        if (INCLUDE_BULK_DELTAF)
+        {
+          double H = 1.0;
+          double f0 = 1.0 / ( exp(E / T) + sign );
+          double num = 1.0 + ( 1.0 + sign * f0 ) * H * bulkPi;
+          double Hmax = 1.0;
+          double den = 1.0 + ( 1.0 + sign * f0 ) * Hmax * bulkPi;
+          bulk_weight = num / den;
+        }
+
+        if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
+
+        double viscous_weight = shear_weight * bulk_weight * diff_weight;
+
+        if (propose < viscous_weight)
+        {
+          pLRF.x = px;
+          pLRF.y = py;
+          pLRF.z = pz;
+          rejected = false; //stop while loop if accepted
+        }
+        //FIX
       } // p acceptance
     } // while loop
   } // mass / T < 0.6
@@ -758,7 +834,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             new_particle.y = y;
             new_particle.eta = eta;
 
+            new_particle.t = tau * cosh(eta);
+            new_particle.z = tau * sinh(eta);
+
             new_particle.E = E;
+            new_particle.mass = mass;
             new_particle.px = px;
             new_particle.py = py;
             new_particle.pz = pz;

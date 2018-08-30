@@ -1,15 +1,15 @@
-operation		  = 1	  # operation
+operation		  = 2	  # operation
 			    	  # 1 : performs smooth cooper frye resulting in dN/pTdpTdphidy
 				  # 2 : performs sampling of particle distribution resulting in particle list 
 
-mode                      = 5     # mode for reading in freeze out information
+mode                      = 1     # mode for reading in freeze out information
                                   # 1: reads freezeout file from 3+1D viscous hydro (gpu-vh format)
                                   # 2: reads freezeout file from 3+1D viscous anisotropic hydro (PL matching)
                                   # 3: reads freezeout file from 3+1D viscous anisotropic hydro (PL,PT matching)
                                   # 4: reads freezeout file from 3+1D viscous hydro (MUSIC boost invariant format)
 				  # 5: reads freezeout file from 3+1D viscous hydro with thermal vorticity terms (gpu-vh format)
 
-dimension                 = 3     # this switch determines the dimensionality of the freezeout surface
+dimension                 = 2     # this switch determines the dimensionality of the freezeout surface
                                   # 2: boost invariant
                                   # 3: full 3+1D
 

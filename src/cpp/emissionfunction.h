@@ -117,6 +117,7 @@ public:
   void write_polzn_vector_toFile(); //write components of spin polarization vector to file
   void write_dN_dpTdphidy_toFile(); //write 3D spectra to file in experimental bins
   void write_particle_list_toFile(); //write sampled particle list
+  void write_particle_list_OSC1997A(); //write sampled particle list in OSC1997A format for UrQMD/SMASH
   void calculate_spectra();
 
   void do_resonance_decays();

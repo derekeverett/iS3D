@@ -1,5 +1,5 @@
 
-for i in {1..1000}
+for i in {1..200}
 do
     rm -r results
     mkdir results
