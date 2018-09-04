@@ -223,17 +223,17 @@ E^*(s) = \frac{M^2 + m_1^2 - s}{2M} \idd\idd p^*(s)=  \sqrt{(E^*(s))^2 - m_1^2}
 \nn
 \textbf{particle\_index(..)}
 \nn
-Given a particle's Monte Carlo ID, returns its index in the PDG table
+Given a particle's Monte Carlo ID, returns its index in the PDG table \textbf{pdg.dat}
 \nn
 \nn
 \textbf{particle\_chosen\_index(..)}
 \nn
-Given a particle's Monte Carlo ID, returns its index in the chosen particle table
+Given a particle's PDG index, returns the index in \textbf{chosen\_particles.dat}
 \nn
 \nn
 \textbf{calculate\_Q\_factor(..)}
 \nn
-Computes the following integral with Gaussian quadrature: 
+Computes the following integral with Gauss Legendre quadrature: 
 \be
 Q =  \int_{s_-}^{s_+} \frac{ds}{s} g(s) = \int_{s_-}^{s_+} \frac{ds}{s} \sqrt{a - s}\, \sqrt{s_+ - s}\, \sqrt{s - s_-} \, \sqrt{s - d}
 \ee

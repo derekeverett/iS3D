@@ -7,6 +7,7 @@ mode                      = 1   # mode for reading in freeze out information
                                 # 2: reads freezeout file from 3+1D viscous anisotropic hydro (PL matching)
                                 # 3: reads freezeout file from 3+1D viscous anisotropic hydro (PL,PT matching)
                                 # 4: reads freezeout file from 3+1D viscous hydro (MUSIC boost invariant format)
+                                # 5: reads freezeout file from 3+1D viscous hydro with thermal vorticity terms (gpu-vh format)
 
 dimension                 = 2   # this switch determines the dimensionality of the freezeout surface
                                 #2 : boost invariant

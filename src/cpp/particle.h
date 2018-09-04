@@ -36,12 +36,17 @@ public:
 
   //PDG ID number
   int mcID = 0;
-
+  //mass
+  double mass = 0.0;
   //milne coordinate four vector of particle production point
   double tau = 0.0;
   double x = 0.0;
   double y = 0.0;
   double eta = 0.0;
+
+  //cartesian coordinates
+  double t = 0.0;
+  double z = 0.0;
 
   //cartesian momentum four vector
   double E = 0.0;

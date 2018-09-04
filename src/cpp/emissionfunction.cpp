@@ -81,6 +81,26 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       logdN_PTdPTdPhidY[iS_parent] = 0.0; // is it harmful to have a y_tab_length =/= 1 if DIMENSION = 2 (waste of memory?)
     }
 
+    if (MODE == 5)
+    {
+      //class member to hold polarization vector of chosen particles
+      St = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sx = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sn = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      //holds the normalization of the polarization vector of chosen particles
+      Snorm = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+
+      for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
+      {
+        St[iSpectra] = 0.0;
+        Sx[iSpectra] = 0.0;
+        Sy[iSpectra] = 0.0;
+        Sn[iSpectra] = 0.0;
+        Snorm[iSpectra] = 0.0;
+      }
+    } // if (MODE == 5)
+
     for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
 
     //only grab chosen particles from the table
@@ -294,6 +314,62 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
+
+    void EmissionFunctionArray::write_polzn_vector_toFile()
+  {
+    printf("Writing polarization vector to file...\n");
+    int npart = number_of_chosen_particles;
+    char filename_t[255] = "";
+    char filename_x[255] = "";
+    char filename_y[255] = "";
+    char filename_n[255] = "";
+    sprintf(filename_t, "results/St.dat");
+    sprintf(filename_x, "results/Sx.dat");
+    sprintf(filename_y, "results/Sy.dat");
+    sprintf(filename_n, "results/Sn.dat");
+    ofstream StFile(filename_t, ios_base::app);
+    ofstream SxFile(filename_x, ios_base::app);
+    ofstream SyFile(filename_y, ios_base::app);
+    ofstream SnFile(filename_n, ios_base::app);
+
+    int y_pts = y_tab_length;     // default 3+1d pts
+    if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
+
+    for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    {
+      for (int iy = 0; iy < y_pts; iy++)
+      {
+        double y;
+        if (DIMENSION == 2) y = 0.0;
+        else y = y_tab->get(1,iy + 1);
+
+        for (int iphip = 0; iphip < phi_tab_length; iphip++)
+        {
+          double phip = phi_tab->get(1,iphip + 1);
+          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          {
+            double pT = pT_tab->get(1,ipT + 1);
+            long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+            StFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (St[iS3D] / Snorm[iS3D]) << "\n";
+            SxFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (Sx[iS3D] / Snorm[iS3D]) << "\n";
+            SyFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (Sy[iS3D] / Snorm[iS3D]) << "\n";
+            SnFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (Sn[iS3D] / Snorm[iS3D]) << "\n";
+
+          } //ipT
+          StFile << "\n";
+          SxFile << "\n";
+          SyFile << "\n";
+          SnFile << "\n";
+        } //iphip
+      } //iy
+    }//ipart
+    StFile.close();
+    SxFile.close();
+    SyFile.close();
+    SnFile.close();
+  }
+
+
   void EmissionFunctionArray::write_particle_list_toFile()
   {
     printf("Writing sampled particles list to file...\n");
@@ -319,11 +395,87 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
+  // write particle list in OSC1997A format for UrQMD/SMASH afterburner
+  void EmissionFunctionArray::write_particle_list_OSC1997A()
+  {
+    printf("Writing sampled particles list to OSC1997A File...\n");
+    char filename[255] = "";
+    sprintf(filename, "results/particle_list_osc97.dat");
+    ofstream spectraFile(filename, ios_base::app);
+    int num_particles = particle_list.size();
+    //write the header
+    spectraFile << "OSC1997A" << "\n";
+    spectraFile << "final_id_p_x" << "\n";
+    //not sure the purpose of this part of header, it is filled with dummy info
+    spectraFile << "iS3D v1.0 (208,82)+(208,82) CM, 2.760, 1" << "\n";
+    //event header
+    spectraFile << "1" << " " << num_particles << " " << 0.0 << " " << 0.0 << "\n";
+    for (int ipart = 0; ipart < num_particles; ipart++)
+    {
+      int mcid = particle_list[ipart].mcID;
+      double x = particle_list[ipart].x;
+      double y = particle_list[ipart].y;
+      double t = particle_list[ipart].t;
+      double z = particle_list[ipart].z;
+
+      double mass = particle_list[ipart].mass;
+      double E = particle_list[ipart].E;
+      double px = particle_list[ipart].px;
+      double py = particle_list[ipart].py;
+      double pz = particle_list[ipart].pz;
+      spectraFile << ipart << "," << mcid << "," << px << "," << py << "," << pz << "," << E << "," << mass << "," << x << "," << y << "," << z << "," << t << "\n";
+    }//ipart
+    spectraFile.close();
+  }
+
+  /*
+  void EmissionFunctionArray::synchronize_particle_list_and_write()
+  {
+    printf("Synchronizing sampled particles for afterburner and writing to file...\n");
+    char filename[255] = "";
+    sprintf(filename, "results/synchronized_particle_list.dat");
+    ofstream spectraFile(filename, ios_base::app);
+    int num_particles = particle_list.size();
+    //write the header
+    //spectraFile << "OSC1997A" << "\n";
+    //spectraFile << "final_id_p_x" << "\n";
+    //not sure the purpose of this part of header, it is filled with dummy info
+    //spectraFile << "iS3D v1.0 (208,82)+(208,82) CM, 2.760, 1" << "\n";
+    //event header
+    //spectraFile << "1" << " " << num_particles << " " << 0.0 << " " << 0.0 << "\n";
+    for (int ipart = 0; ipart < num_particles; ipart++)
+    {
+      int mcid = particle_list[ipart].mcID;
+      double x = particle_list[ipart].x;
+      double y = particle_list[ipart].y;
+      double t = particle_list[ipart].t;
+      double z = particle_list[ipart].z;
+
+      double mass = particle_list[ipart].mass;
+      double E = particle_list[ipart].E;
+      double px = particle_list[ipart].px;
+      double py = particle_list[ipart].py;
+      double pz = particle_list[ipart].pz;
+
+      //propagate particles back to starting time and assign formation time = production time
+      double x_old = x - (px / E) * t;
+      double y_old = y - (py / E) * t;
+      double z_old = z - (pz / E) * t;
+
+      spectraFile << ipart << "," << mcid << "," << px << "," << py << "," << pz << "," << E << "," << mass << "," << x << "," << y << "," << z << "," << t << "\n";
+    }//ipart
+    spectraFile.close();
+  }
+*/
+
 
   //*********************************************************************************************
   void EmissionFunctionArray::calculate_spectra()
   {
     cout << "calculate_spectra() has started ";
+    #ifdef _OPENMP
+    //double sec = omp_get_wtime();
+    #endif
     Stopwatch sw;
     sw.tic();
 
@@ -355,7 +507,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // freezeout surface info exclusive for VH
     double *E, *T, *P;
-    if(MODE == 1)
+    if(MODE == 1 || MODE == 5)
     {
       E = (double*)calloc(FO_length, sizeof(double));
       P = (double*)calloc(FO_length, sizeof(double));
@@ -411,6 +563,18 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
+    //thermal vorticity tensor for polarization studies
+    double *wtx, *wty, *wtn, *wxy, *wxn, *wyn;
+    if (MODE == 5)
+    {
+      wtx = (double*)calloc(FO_length, sizeof(double));
+      wty = (double*)calloc(FO_length, sizeof(double));
+      wtn = (double*)calloc(FO_length, sizeof(double));
+      wxy = (double*)calloc(FO_length, sizeof(double));
+      wxn = (double*)calloc(FO_length, sizeof(double));
+      wyn = (double*)calloc(FO_length, sizeof(double));
+    }
+
     // freezeout surface info exclusive for VAH_PL
     double *PL, *Wx, *Wy;
     double *Lambda, *aL;
@@ -444,7 +608,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       //reading info from surface
       surf = &surf_ptr[icell];
 
-      if(MODE == 1)
+      if(MODE == 1 || MODE == 5)
       {
         E[icell] = surf->E;
         P[icell] = surf->P;
@@ -493,6 +657,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         }
       }
 
+      if (MODE == 5)
+      {
+        wtx[icell] = surf->wtx;
+        wty[icell] = surf->wty;
+        wtn[icell] = surf->wtn;
+        wxy[icell] = surf->wxy;
+        wxn[icell] = surf->wxn;
+        wyn[icell] = surf->wyn;
+      }
       if(MODE == 2)
       {
         PL[icell] = surf->PL;
@@ -677,15 +850,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               cout << "Set operation to 1 or 2" << endl;
               exit(-1);
             }
-          }
+          } //switch(OPERATION)
           break;
-        }
+        } //case 3
         default:
         {
           cout << "Please specify df_mode = (1,2,3) in parameters.dat..." << endl;
           exit(-1);
         }
-      }
+      } //switch(DF_MODE)
     } //if (MODE == 1)
     else if(MODE == 2)
     {
@@ -715,8 +888,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           cout << "Please specify df_mode = (1,2,3) in parameters.dat..." << endl;
           exit(-1);
         }
-      }
-    }
+      } //switch(OPERATION)
+    } //else if(MODE == 2)
+
+    else if (MODE == 5) calculate_spin_polzn(Mass, Sign, Degen,
+    T, P, E, tau, eta, ut, ux, uy, un,
+    dat, dax, day, dan,
+    wtx, wty, wtn, wxy, wxn, wyn);
 
     printline();
 
@@ -739,7 +917,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         write_dN_dpTdphidy_with_resonance_decays_toFile();
       }
     }
-    else if (OPERATION == 2) write_particle_list_toFile();
+    else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC1997A();}
+
+    if (MODE == 5) write_polzn_vector_toFile();
 
     cout << "Freeing freezeout surface memory.." << endl;
     // free memory
@@ -747,7 +927,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     free(Sign);
     free(Baryon);
 
-    if(MODE == 1)
+    if(MODE == 1 || MODE == 5)
     {
       free(E);
       free(T);
@@ -775,6 +955,16 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     free(piyn);
     free(pinn);
     free(bulkPi);
+
+    if (MODE == 5)
+    {
+      free(wtx);
+      free(wty);
+      free(wtn);
+      free(wxy);
+      free(wxn);
+      free(wyn);
+    }
 
     if (INCLUDE_BARYON)
     {
@@ -804,20 +994,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         free(c4);
       }
     }
+    #ifdef _OPENMP
+    //sec = omp_get_wtime() - sec;
+    #endif
     sw.toc();
     cout << "calculate_spectra() took " << sw.takeTime() << " seconds." << endl;
   }
-
-  // void EmissionFunctionArray::do_resonance_decays()
-  // {
-  //   printf("Starting resonance decays \n");
-
-  //   //declare a particle struct to hold all the particle info
-  //   particle particles[10];
-
-  //   //read the in the resonance info
-  //   //int max, maxdecay;
-  //   //readParticleData("PDG/pdg.dat", &max, &maxdecay, particles)
-  //   //calc_reso_decays(max, maxdecay, LIGHTEST_PARTICLE);
-  //   printf("Resonance decays finished \n");
-  // }

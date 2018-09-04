@@ -2,9 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import math
+import sys
 
 #load the particle spectra file
-particle_list = pd.read_csv('results/dN_dpTdphidy.dat', sep='\t')
+particle_list = pd.read_csv(sys.argv[1], sep='\t')
 y = particle_list['y']
 phip = particle_list['phip']
 pT = particle_list['pT']

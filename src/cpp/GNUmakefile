@@ -10,14 +10,17 @@
 ##			distclean	remove all objectsfiles and binaries
 ##
 
-#CC := $(shell ../../crank/configure_compiler_C++.sh)
-#CC = g++-7 #Mac OSX high sierra
-#CC = pgc++
-CC = g++
-#CFLAGS= -std=c++11 -march=native -O3 -lgsl -lgslcblas -lm
-CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas -lm
-#CFLAGS= -acc -fast -Minfo -ta=nvidia,time
-#CFLAGS= -acc -fast -ta=tesla:managed #uses unified memory - simplifies copying of dynamic arrays host <-> device
+#choose a compiler.
+#CC = pgc++ # pgi compiler for openacc support
+#CC = g++
+CC = icpc # intel compiler tends to perform much better than gcc
+
+#choose flags corresponding to compiler
+#CFLAGS= -std=c++11 -march=native -O3 -lgsl -lgslcblas # for icpc
+#CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas -lm # for g++
+CFLAGS= -std=c++11 -qopenmp -march=native -O3 -lgsl -lgslcblas # for icpc
+#CFLAGS= -acc -fast -Minfo -ta=nvidia,time # for pgi
+#CFLAGS= -acc -fast -ta=tesla:managed # for pgi, also uses unified memory
 
 RM		=	rm -f
 O               =       .o
@@ -30,8 +33,8 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS3D.e
 endif
 
-SRC   =	main.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp emissionfunction_resonance_decays.cpp
-INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h gaussThermal.h
+SRC   =	main.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp emissionfunction_polzn_kernels.cpp emissionfunction_resonance_decays.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp viscous_correction.cpp
+INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h gaussThermal.h viscous_correction.h
 
 
 # -------------------------------------------------
@@ -82,7 +85,9 @@ install:	$(TARGET)
 ./arsenal.cpp: arsenal.h
 ./emissionfunction.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
 ./emissionfunction_smooth_kernels.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
-./emissionfunction_sampling_kernels.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
+./emissionfunction_polzn_kernels.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
+./emissionfunction_resonance_decays.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h ParameterReader.h
+./emissionfunction_sampling_kernels.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h viscous_correction.h
 ./Table.cpp: Table.h arsenal.h
 ./readindata.cpp: main.h readindata.h arsenal.h Table.h ParameterReader.h
 ./ParameterReader.cpp: arsenal.h ParameterReader.h

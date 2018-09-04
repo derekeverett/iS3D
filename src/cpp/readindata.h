@@ -40,6 +40,8 @@ typedef struct
    double muB, muS; //baryon chemical potential, strangeness chem. pot.
    double nB, Vt, Vx, Vy, Vn; //baryon number density, contravariant baryon diffusion current, or in case of VAH transverse baryon diffusion vector
 
+   double wtx, wty, wtn, wxy, wxn, wyn; //the 6 components of the antisymmetric thermal vorticity with contravariant components w^\mu\nu
+
    //quantities exclusive to VAH
    double PL; //longitudinal pressure
    double PT; //transverse pressure
@@ -72,6 +74,7 @@ class FO_data_reader
         int get_number_cells();
         void read_surf_switch(long length, FO_surf* surf_ptr);
         void read_surf_VH(long length, FO_surf* surf_ptr);
+        void read_surf_VH_Vorticity(long length, FO_surf* surf_ptr);
         void read_surf_VAH_PLMatch(long length, FO_surf* surf_ptr);
         void read_surf_VAH_PLPTMatch(long length, FO_surf* surf_ptr);
         void read_surf_VH_MUSIC(long length, FO_surf* surf_ptr);
