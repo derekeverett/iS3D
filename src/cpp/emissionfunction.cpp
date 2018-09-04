@@ -385,8 +385,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::calculate_spectra()
   {
     cout << "calculate_spectra() has started ";
-    Stopwatch sw;
-    sw.tic();
+    #ifdef _OPENMP
+    //double sec = omp_get_wtime();
+    #endif
 
     //fill arrays with all particle info and freezeout info to pass to function which will perform the integral
 
@@ -891,8 +892,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         free(c4);
       }
     }
-    sw.toc();
-    cout << "calculate_spectra() took " << sw.takeTime() << " seconds." << endl;
+    #ifdef _OPENMP
+    //sec = omp_get_wtime() - sec;
+    #endif
+    //cout << "calculate_spectra() took " << sec << " seconds." << endl;
   }
 
   void EmissionFunctionArray::do_resonance_decays()

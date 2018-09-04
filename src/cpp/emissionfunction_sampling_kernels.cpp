@@ -167,8 +167,8 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
 
         double viscous_weight = shear_weight * bulk_weight * diff_weight;
-
-        if (propose < viscous_weight)
+        double propose_visc = generate_canonical<double, numeric_limits<double>::digits>(generator);
+        if (propose_visc < viscous_weight)
         {
           pLRF.x = px;
           pLRF.y = py;
@@ -258,8 +258,8 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
 
         double viscous_weight = shear_weight * bulk_weight * diff_weight;
-
-        if (propose < viscous_weight)
+        double propose_visc = generate_canonical<double, numeric_limits<double>::digits>(generator);
+        if (propose_visc < viscous_weight)
         {
           pLRF.x = px;
           pLRF.y = py;
@@ -306,8 +306,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         // check k acceptance
         if(propose < weight)
         {
-          rejected = false; // stop while loop
-
           // sample LRF angles costheta = [-1,1] and phi = [0,2pi) uniformly
           uniform_real_distribution<double> phi_distribution(0.0 , 2.0 * M_PI);
           uniform_real_distribution<double> costheta_distribution(-1.0 , nextafter(1.0, numeric_limits<double>::max()));
@@ -316,10 +314,49 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           double sintheta = sqrt(1.0 - costheta * costheta);
           if(::isnan(sintheta)) printf("found sintheta nan!\n");
 
-          // evaluate LRF momentum components
-          pLRF.x = p * costheta;
-          pLRF.y = p * sintheta * cos(phi);
-          pLRF.z = p * sintheta * sin(phi);
+          double px = p * costheta;
+          double py = p * sintheta * cos(phi);
+          double pz = p * sintheta * sin(phi);
+
+          //viscous corrections
+          double shear_weight = 1.0;
+          double bulk_weight = 1.0;
+          double diff_weight = 1.0;
+
+          //FIX TEMPORARY
+          if (INCLUDE_SHEAR_DELTAF)
+          {
+            double A = 2.0 * T * T * (eps + pressure);
+            double f0 = 1.0 / ( exp(E / T) + sign );
+            //check contraction / signs etc...
+            double pmupnupimunu = 2.0 * ( px*px*pixx + px*py*pixy + px*pz*pixz + py*py*piyy + py*pz*piyz + pz*pz*pizz );
+            double num = A + ( 1.0 + sign * f0 ) * pmupnupimunu;
+            double pmupnupimunu_max = E * E * pimunu.compute_max();
+            double den = A + (1.0 + (sign * f0) ) * pmupnupimunu_max;
+            shear_weight = num / den;
+          }
+
+          if (INCLUDE_BULK_DELTAF)
+          {
+            double H = 1.0;
+            double f0 = 1.0 / ( exp(E / T) + sign );
+            double num = 1.0 + ( 1.0 + sign * f0 ) * H * bulkPi;
+            double Hmax = 1.0;
+            double den = 1.0 + ( 1.0 + sign * f0 ) * Hmax * bulkPi;
+            bulk_weight = num / den;
+          }
+
+          if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
+
+          double viscous_weight = shear_weight * bulk_weight * diff_weight;
+          double propose_visc = generate_canonical<double, numeric_limits<double>::digits>(generator);
+          if (propose_visc < viscous_weight)
+          {
+            pLRF.x = px;
+            pLRF.y = py;
+            pLRF.z = pz;
+            rejected = false; //stop while loop if accepted
+          }
         } // k acceptance
       } // while loop
     } // distribution 1
@@ -352,8 +389,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         // check k acceptance
         if(propose < weight)
         {
-          rejected = false; // stop while loop
-
           // need to verify this formula
           double phi = 2.0 * M_PI * l1 / (l1 + l2);
           if(::isnan(phi)) printf("found phi nan!\n");
@@ -364,10 +399,49 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           double sintheta = sqrt(1.0 - costheta * costheta);
           if(::isnan(sintheta)) printf("found sintheta nan!\n");
 
-          // evaluate momentum components
-          pLRF.x = p * costheta;
-          pLRF.y = p * sintheta * cos(phi);
-          pLRF.z = p * sintheta * sin(phi);
+          double px = p * costheta;
+          double py = p * sintheta * cos(phi);
+          double pz = p * sintheta * sin(phi);
+
+          //viscous corrections
+          double shear_weight = 1.0;
+          double bulk_weight = 1.0;
+          double diff_weight = 1.0;
+
+          //FIX TEMPORARY
+          if (INCLUDE_SHEAR_DELTAF)
+          {
+            double A = 2.0 * T * T * (eps + pressure);
+            double f0 = 1.0 / ( exp(E / T) + sign );
+            //check contraction / signs etc...
+            double pmupnupimunu = 2.0 * ( px*px*pixx + px*py*pixy + px*pz*pixz + py*py*piyy + py*pz*piyz + pz*pz*pizz );
+            double num = A + ( 1.0 + sign * f0 ) * pmupnupimunu;
+            double pmupnupimunu_max = E * E * pimunu.compute_max();
+            double den = A + (1.0 + (sign * f0) ) * pmupnupimunu_max;
+            shear_weight = num / den;
+          }
+
+          if (INCLUDE_BULK_DELTAF)
+          {
+            double H = 1.0;
+            double f0 = 1.0 / ( exp(E / T) + sign );
+            double num = 1.0 + ( 1.0 + sign * f0 ) * H * bulkPi;
+            double Hmax = 1.0;
+            double den = 1.0 + ( 1.0 + sign * f0 ) * Hmax * bulkPi;
+            bulk_weight = num / den;
+          }
+
+          if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
+
+          double viscous_weight = shear_weight * bulk_weight * diff_weight;
+          double propose_visc = generate_canonical<double, numeric_limits<double>::digits>(generator);
+          if (propose_visc < viscous_weight)
+          {
+            pLRF.x = px;
+            pLRF.y = py;
+            pLRF.z = pz;
+            rejected = false; //stop while loop if accepted
+          }
         } // k acceptance
       } // while loop
     } // distribution 2
@@ -400,8 +474,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
 
         if(propose < weight)
         {
-          rejected = false;
-
           // calculate angles
           double costheta = (l1 - l2) / (l1 + l2);
           if(::isnan(costheta)) printf("found costheta nan!\n");
@@ -410,10 +482,48 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           double sintheta = sqrt(1.0 - costheta * costheta);
           if(::isnan(sintheta)) printf("found sintheta nan!\n");
 
-          // evaluate momentum components
-          pLRF.x = p * costheta;
-          pLRF.y = p * sintheta * cos(phi);
-          pLRF.z = p * sintheta * sin(phi);
+          double px = p * costheta;
+          double py = p * sintheta * cos(phi);
+          double pz = p * sintheta * sin(phi);
+
+          //viscous corrections
+          double shear_weight = 1.0;
+          double bulk_weight = 1.0;
+          double diff_weight = 1.0;
+
+          //FIX TEMPORARY
+          if (INCLUDE_SHEAR_DELTAF)
+          {
+            double A = 2.0 * T * T * (eps + pressure);
+            double f0 = 1.0 / ( exp(E / T) + sign );
+            //check contraction / signs etc...
+            double pmupnupimunu = 2.0 * ( px*px*pixx + px*py*pixy + px*pz*pixz + py*py*piyy + py*pz*piyz + pz*pz*pizz );
+            double num = A + ( 1.0 + sign * f0 ) * pmupnupimunu;
+            double pmupnupimunu_max = E * E * pimunu.compute_max();
+            double den = A + (1.0 + (sign * f0) ) * pmupnupimunu_max;
+            shear_weight = num / den;
+          }
+
+          if (INCLUDE_BULK_DELTAF)
+          {
+            double H = 1.0;
+            double f0 = 1.0 / ( exp(E / T) + sign );
+            double num = 1.0 + ( 1.0 + sign * f0 ) * H * bulkPi;
+            double Hmax = 1.0;
+            double den = 1.0 + ( 1.0 + sign * f0 ) * Hmax * bulkPi;
+            bulk_weight = num / den;
+          }
+
+          if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
+          double viscous_weight = shear_weight * bulk_weight * diff_weight;
+          double propose_visc = generate_canonical<double, numeric_limits<double>::digits>(generator);
+          if (propose_visc < viscous_weight)
+          {
+            pLRF.x = px;
+            pLRF.y = py;
+            pLRF.z = pz;
+            rejected = false; //stop while loop if accepted
+          }
         } // k acceptance
       }
     } // distribution 3
@@ -862,7 +972,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
   double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff,
   int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2)
   {
-    printf("sampling particles from vhydro with df...\n");
+    printf("sampling particles from vhydro with feqmod...\n");
 
     if((MODE != 1) || (DF_MODE != 3))
     {
