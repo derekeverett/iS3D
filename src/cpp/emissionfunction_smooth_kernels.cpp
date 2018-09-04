@@ -149,7 +149,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       if (n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); //don't go out of array bounds
       #pragma omp parallel for
       #pragma acc kernels
-      //#pragma acc loop independent0
+      //#pragma acc loop independent
       for (int icell = 0; icell < endFO; icell++) // cell index inside each chunk
       {
         int icell_glb = n * FO_chunk + icell;     // global FO cell index
@@ -175,8 +175,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double ut = sqrt(fabs(1.0 + ux2 + uy2 + tau2*un*un));
         double ut2 = ut * ut;
         double u0 = sqrt(fabs(1.0 + ux2 + uy2));
-
-        double udotdsigma = ut * dat + ux * dax + uy * day + un * dan;
 
 
 
@@ -268,12 +266,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         //now loop over all particle species and momenta
         for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
         {
-          // skip particle and momentum loops for cells with u.dsigma < 0
-          if(udotdsigma <= 0.0)
-          {
-              break;
-          }
-
           // set particle properties
           double mass = Mass[ipart];    // (GeV)
           double mass2 = mass * mass;
@@ -400,10 +392,9 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       exit(-1);
                     } // default error
                   } // df_mode
-                  if(pdotdsigma > 0.0)
-                  {
-                    pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
-                  }
+
+                  pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
+
                 } // ieta
 
                 long long int iSpectra = icell + endFO * (ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy)));
@@ -573,8 +564,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double ut = sqrt(u0 * u0 +  tau2 * un * un);
         double ut2 = ut * ut;
 
-        double udotdsigma = ut * dat + ux * dax + uy * day + un * dan; // 2+1: delta_eta factor dropped out
-
         double T = T_fo[icell_glb];             // temperature
         double P = P_fo[icell_glb];             // pressure
         double E = E_fo[icell_glb];             // energy density
@@ -593,7 +582,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         double bulkPi = bulkPi_fo[icell_glb];   // bulk pressure
 
-        //cout << T << endl;
         //cout << fabs(bulkPi / P) << endl;
 
         double muB = 0.0;                       // baryon chemical potential
@@ -768,14 +756,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
 
         //now loop over all particle species and momenta
-        for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+        for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
         {
-          // skip particle and momentum loops for cells with u.dsigma < 0
-          if(udotdsigma <= 0.0)
-          {
-              break;
-          }
-
           // set particle properties
           double mass = Mass[ipart];    // (GeV)
           double mass2 = mass * mass;
@@ -815,10 +797,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             //cout << renorm << endl;
             //exit(-1);
 
-            if(detA < 0.03 || n_linear < 0.0 || T_mod <= 0.0)
+            if(detA < 1.e-3 || n_linear < 0.0)
             {
               breakdown++;
-              cout << setw(5) << setprecision(4) << "feqmod breaks down " <<breakdown << " times\t detA = " << detA << "\t T_mod = " << T_mod << "\t tau = " << tau << "\t Rbulk = " << bulkPi / P << endl;
+              cout << setw(5) << setprecision(4) << "feqmod breaks down:" << "\t detA = " << detA << "\t" << breakdown << endl;
             }
           }
           else renorm = 1.0 / detA;
@@ -860,8 +842,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double f;
 
                   // calculate f:
-                  // if feqmod breaks down, do chapman enskog instead
-                  if(detA < 0.03 || renorm < 0.0 || T_mod <= 0.0)
+                  // if feqmod breaks down, do regulated chapman enskog instead
+                  if(detA < 1.e-3 || renorm < 0.0)
                   {
                      double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
                      double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
@@ -886,8 +868,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                      }
                      double feqbar = 1.0  -  sign * feq;
                      double df = feqbar * (df_shear + df_bulk + df_baryondiff);
-                     // regulate df option
-                     if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0));
+                     // regulate df automatically
+                     df = max(-1.0, min(df, 1.0));
 
                      f = feq * (1.0 + df);
                   }
@@ -910,10 +892,9 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     // modified equilibrium distribution
                     f = renorm / (exp(Emod / T_mod  -  chem_mod) + sign);
                   }
-                  if(pdotdsigma > 0.0)
-                  {
-                    pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
-                  }
+
+                  pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
+
                 } // ieta
 
                 long long int iSpectra = icell + endFO * (ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy)));

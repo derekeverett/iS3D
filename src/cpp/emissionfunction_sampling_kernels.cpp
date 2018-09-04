@@ -37,6 +37,34 @@ lrf_momentum Sample_Momentum(double mass, double T, double alphaB)
   unsigned seed = chrono::system_clock::now().time_since_epoch().count();
   default_random_engine generator(seed);
 
+
+  // Plans to finished the sampling process:
+
+  // - Get pion momentum sampling to work using ARS (ideal case)
+  // - Finish the df sampling with r_visc rejection
+  // - Pull up the code with r_ideal that Derek overwrote
+  // - Write a separate function for sampling modded momentum
+  // - Make a transition to the df sampling in case feqmod breaks down
+  //   just like I do with the smooth spectra
+  // - We should probably exclude u.dsigma < 0 cells and p.dsigma < 0 particles in smooth
+  // - Baryon diffusion corrections are not that important right now
+  //   but I should probably resolve how I would go about doing feqmod
+  //   sampling with baryon diffusion
+  // - SPREW sampling is not in consideration right now...
+
+
+  // Test:
+  // - reproduces the pi+, K+ and proton's smooth distribution
+  //   averaging over many samplings (with shear/bulk)
+  // - need a direct comparison, any exlcusion or transition blocks should be in both
+
+  // Write up:
+  // - explain the sampling process with shear, bulk and / or diffusion
+  // - write an appendix and reference Long-Gang's paper
+  // - get plots on the sampling with df and feqmod modes (plot sampling with ideal or all df?)
+  // - probably easier to see in the interpolated ratios
+
+
   // light hadrons
 
   //TO DO

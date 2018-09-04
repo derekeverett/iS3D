@@ -45,6 +45,12 @@ using namespace std;
 //  - 3-body decays take 141.4s (main benefit)
 
 
+// the script is laid out now but needs more testing
+// - reproduce the plots in the old paper based
+// - there's an analytical
+// - Chun didn't really have anything helpful to add to understanding the old code
+
+
 
 // with grouping it took 185s for the boost invariant calculation
 // without grouping it takes 204s (not significanty slower...)
@@ -258,7 +264,7 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
     int permutation[2];                     // permutation vector
     LUP_decomposition(M, 2, permutation);   // LUP decompose M
     LUP_solve(M, 2, permutation, f);        // solve matrix equation
-    for(int i = 0; i < 2; i++) x[i] = f[i]; // solution x stored in f
+    for(int i = 0; i < 2; i++) x[i] = f[i]; // solution stored in f
     free_2D(M,2);                           // free memory
     //----------------------------------
 
@@ -892,6 +898,8 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
   {
     printline();
     printf("Starting resonance decays: \n\n");
+    printf("I need to change the linear interpolation's MTmax to MTswitch or the last MT point when the distribution is positive!");
+    exit(-1);
     Stopwatch sw;
     sw.tic();
 
@@ -944,7 +952,7 @@ void EmissionFunctionArray::do_resonance_decays(particle_info * particle_data)
                 // why is this number negative sometimes?
                 int decay_products = abs(particle_data[ipart].decays_Npart[ichannel]);
 
-                // set up vector that holds particle indices of real daughters
+                // set up vector that holds (pdg) particle indices of real daughters
                 vector<int> decays_index_vector;
 
                 for(int idaughter = 0; idaughter < decay_products; idaughter++)
@@ -1388,7 +1396,7 @@ void EmissionFunctionArray::two_body_decay(particle_info * particle_data, double
 
                                 double Phip_tilde = acos(cosPhip_tilde);
 
-                                // two solutions for the parent azimuthal angle = [0,2pi)
+                                // force two solutions for the parent azimuthal angle between [0,2pi)
                                 double Phip_1 = fmod(Phip_tilde + phip, two_Pi);
                                 double Phip_2 = fmod(-Phip_tilde + phip, two_Pi);
                                 if(Phip_1 < 0.0) Phip_1 += two_Pi;

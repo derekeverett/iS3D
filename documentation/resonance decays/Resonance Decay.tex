@@ -1,0 +1,248 @@
+%\documentclass[showpacs,aps,prd,nofootinbib,showkeys,superscriptaddress]{revtex4-1}
+\documentclass[10.5pt,aps,prd,superscriptaddress]{revtex4}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%packages
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage{amssymb}
+\usepackage{amsmath,latexsym}
+\usepackage[usenames]{color}
+\usepackage{subfigure}
+\usepackage{subfigure}
+\usepackage{physymb}
+\usepackage{slashed}
+\usepackage{multirow,array}
+\usepackage{mathtools}
+\usepackage{mathrsfs}
+\usepackage[colorlinks=false,linktocpage=true]{hyperref}
+\usepackage{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage{lipsum}
+\usepackage{dsfont}
+%
+%\renewcommand{\baselinestretch}{1.5}
+%
+%
+\usepackage{soul}
+\usepackage{color}
+\usepackage[colorlinks=false,linktocpage=true]{hyperref}
+\usepackage{hyperref}
+%\usepackage[retainorgcmds]{IEEEtrantools}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}{\begin{eqnarray}}
+\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\idd}{\indent \indent}
+\newcommand{\blue}{\textcolor{blue}}
+\newcommand{\red}{\textcolor{red}}
+%%%%%%
+\newcommand{\eq}{\text{eq}}
+\newcommand{\api}{\big(b_n \, \rho^{(n)}_B\big)}
+\newcommand{\bpi}{\big(b_n \, \epsilon^{(n)}_{eq}\big)}
+\newcommand{\cpi}{(\rho_B T)}
+\newcommand{\dpi}{\big(b_n \, \epsilon^{(n)}_{eq}\big)}
+\newcommand{\epi}{\mathcal{I}_{30}}
+\newcommand{\fpi}{\mathcal{I}_{31}}
+\newcommand{\gpi}{(\rho_B T)}
+\newcommand{\hpi}{\mathcal{I}_{31}}
+\newcommand{\jpi}{\mathcal{I}_{32}}
+\newcommand{\bmu}{\langle \mu \rangle}
+\newcommand{\bnu}{\langle \nu \rangle}
+\newcommand{\munu}{{\mu\nu}}
+%%%%%%%
+\newcommand{\ds}{\delta s}
+\newcommand{\Kn}{\text{Kn}}
+\newcommand{\del}{\partial}
+\newcommand{\tr}{\tau_{r}}
+\newcommand{\feq}{f_{\text{eq}}}
+\newcommand{\first}{1^{\text{st}}}
+\newcommand{\pxp}{(- p \cdot \Xi \cdot p)}
+\newcommand{\px}{p^{\langle\mu\rangle}}
+\newcommand{\dft}{\delta\tilde{f}}
+\newcommand{\ddft}{\delta \dot{\tilde{f}}}
+\newcommand{\n}{\newline}
+\newcommand{\up}{u \cdot p}
+\newcommand{\aP}{\alpha_\perp}
+\newcommand{\aL}{\alpha_L}
+\newcommand{\aPsq}{\alpha^2_\perp}
+\newcommand{\aLsq}{\alpha^2_L}
+\newcommand{\ppmunu}{p^{\{\mu} p^{\nu\}}}
+\newcommand{\zp}{z \cdot p}
+\newcommand{\mzp}{(- z \cdot p)}
+\newcommand{\pOp}{(p \cdot \Omega \cdot p)}
+\newcommand{\Pm}{\mathcal{P}}
+\newcommand{\ene}{\mathcal{E}}
+\newcommand{\alphavec}{\mathbf{\alpha}}
+\newcommand{\alphaT}{\alpha_\perp}
+\newcommand{\alphaL}{\alpha_L}
+\newcommand{\pbar}{\bar{p}}
+\newcommand{\mbar}{\bar{m}}
+\newcommand{\order}{\mathcal{O}}
+\newcommand{\BL}{\beta_\Lambda}
+\newcommand{\PL}{\mathcal{P}_L}
+\newcommand{\Pperp}{\mathcal{P}_\perp}
+\newcommand{\Peq}{\mathcal{P}_\text{eq}}
+\newcommand{\bs}{\begin{subequations}}
+\newcommand{\es}{\end{subequations}}
+\newcommand{\beal}{\begin{align}}
+\newcommand{\enal}{\end{align}}
+\newcommand{\pperp}{p^{\{\mu\}}}
+\newcommand{\pperpnu}{p^{\{\nu\}}}
+\newcommand{\nabperp}{\tilde{\nabla}}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\M}{\mathcal{M}}
+\newcommand{\R}{\mathcal{R}}
+\newcommand{\Hm}{\mathcal{H}}
+\newcommand{\J}{\mathcal{J}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\B}{\mathcal{B}}
+\newcommand{\Z}{\mathcal{Z}}
+\newcommand{\T}{\mathcal{T}}
+\newcommand{\LRF}{\text{LRF}}
+\newcommand{\piperp}{\pi_\perp}
+\newcommand{\Wperp}{W_{\perp z}}
+\newcommand{\nn}{\newline\newline}
+%\newcommand{\order}{\mathcal{O}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\title{Resonance Decays in iS3D}
+\maketitle 
+\underline{\textbf{Overview}}
+\nn
+iS3D contains the option to include effects of resonance decays on continuous particle spectra. 
+\nn
+Here we outline the resonance decay routines in \textbf{emissionfunction\_resonance\_decays.cpp}
+\nn
+To run the resonance decays routine, set \textbf{do\_resonance\_decays = 1} and \textbf{operation = 1} (continuous spectra) in the parameters file \textbf{parameter.dat}
+\nn
+\nn
+\textbf{do\_resonance\_decays(..)}
+\nn
+After computing the thermal spectra from the Cooper Frye formula, the resonance decay routine first calls the class function \textbf{do\_resonance\_decays(..)}
+\nn
+The main loop is over the parent resonances listed in the Monte Carlo ID table \textbf{chosen\_particles.dat}, looping from last to first (i.e. heaviest to lightest). The main loop's index \textbf{ichosen} denotes the parent's entry in this file.
+\nn
+First, we set from \textbf{chosen\_particles\_sampling\_table} the index \textbf{ipart}, which is the parent's entry in the PDG table \textbf{pdg.dat}. This is needed to access parent information in the \textbf{particle\_data} struct: stability, mass, decay channels, decay products, and branching ratio. 
+\nn
+If the parent is not stable under strong interactions, we compute the decay channels. Before proceeding, we compute the log of the parent distribution (which could be different from the thermal spectra if the parent was the daughter of another parent) for future reference. 
+\nn
+Next, we loop through the decay channels. For each channel, get the number of decay products and PDG indices of the daughter particles (\textbf{decays\_index\_vector}). Then we call the function \textbf{resonance\_decay\_channel(..)}. 
+\nn
+\nn
+\textbf{resonance\_decay\_channel(..)}
+\nn
+Contains a switch statement for 2, 3 or 4-body decays. 
+\nn
+For each case, we pass the particle masses and PDG indices of the decay products to the integration routine.
+\nn
+\nn
+\textbf{\textbf{two\_body\_decay(..)}}
+\nn
+This function is called for the case of two-body decays.
+\nn
+First we check whether the decay products are in \textbf{chosen\_particles.dat}. If there's a match, then the particle is added to \textbf{selected\_particles}, whose spectra will be amended. If there are no selected particles, we skip the rest of the integration. 
+\nn
+Then we group the selected particles by type and get the number of each type. Grouping saves more time for the 3/4-body decays, where you're more likely to find more than one decay particle of the same type.
+\nn
+For each particle of interest, we evaluate its mass and energy and momentum in the parent rest frame:
+\be
+E^* = \frac{M^2 + m_1^2 - W^2}{2M} \idd\idd p^* = \sqrt{(E^*)^2 - m_1^2}
+\ee
+where $M$ is the parent mass, $m_1$ is the mass of the daughter particle of interest and $W^2 = m_2^2$ is the invariant mass squared of the secondary daughter particle. 
+\nn
+Set the momentum tables for the outgoing daughter particle of interest. We also set the transverse mass $M_T$ table, min and max azimuthal angles $(\Phi_{min},\Phi_{max})$, max rapidity $Y_{max}$ and max transverse mass $M_{T,max}$ of the parent particle. 
+\nn
+Set the Gauss-Legendre roots and weights of the integration variables $(\nu, \zeta)$
+\nn
+For each parent azimuthal angle and rapidity, we extrapolate the log of the parent distribution for high $M_T$. We model the extrapolation with a linear fit, with the constant and slope obtained from a least-squares fit calculation, \textbf{estimate\_MT\_function\_of\_dNdypTdpTdphi}. This can only be done reliably for the linear Chapman-Enskog $\delta f$ with shear or shear and bulk corrections and the modified distribution $f_{\text{eq}}^\text{(mod)}$
+\nn
+The final block of code is the main integration routine, which has a boost-invariant and non-boost invariant option. After looping over the daughter particle's momentum, we compute the resonance decay integral contribution to the daughter spectra
+\be
+\frac{dN_{\text{daughter}}}{dy p_T dp_T d\phi} \mathrel{+}= \frac{n_{\text{mult}} \, b \, M}{4 \pi p^*}  \, \sum_{\Phi_{\pm}} \int_{-1}^1 d \nu \int_0^\pi d \zeta \, \Delta Y \, \frac{\bar{M}_T + \Delta M_T \cos\zeta}{\sqrt{m_T^2 \cosh^2(\nu \Delta Y) - p_T^2}} \, \frac{dN_{\text{parent}}(Y, M_T, \Phi_\pm)}{dY M_T dM_T d\Phi}
+\ee
+where
+\be
+\begin{aligned}
+Y = y + \nu \Delta Y \idd & \idd M_T = \bar{M}_T + \Delta M_T \cos\zeta \idd & \idd \Delta Y = \log\left(\frac{p^* + \sqrt{(E^*)^2 + p_T^2}}{m_T}\right)
+\end{aligned}
+\ee
+and
+\be
+\begin{aligned}
+\bar{M}_T = \frac{E^* M m_T \cosh(\nu \Delta Y)}{m_T^2 \cosh^2(\nu \Delta Y) - p_T^2} \idd & \idd
+\Delta M_T = \frac{M p_T \sqrt{(E^*)^2 + p_T^2 - m_T^2 \cosh^2(\nu \Delta Y)}}{m_T^2 \cosh^2(\nu \Delta Y) - p_T^2} 
+\end{aligned}
+\ee
+$n_{mult}$ is the daughter's multiplicity factor, $b$ is the branching ratio of the decay channel, and $\Phi_\pm$ are the two discrete solutions for the parent azimuthal angle $\Phi$ that satisfy the equation:
+\be
+\cos(\Phi - \phi) = \cos(\tilde\Phi) = \frac{m_T M_T \cosh(\nu \Delta Y) - E^* M}{p_T P_T}
+\ee
+Since we only have a discrete set of spectra data, we need to approximate the parent distribution $dN_\text{parent} / dY M_T dM_T d\Phi$ using the interpolation routine \textbf{dN\_dYMTdMTdPhi\_boost\_invariant(...)} \nn
+For the non-boost invariant case, there is an additional loop over daughter rapidity $y$. There is also a cutoff for parent rapidities $|Y| > Y_\text{max}$, for which case the parent distribution is evaluated to zero. The parent distribution interpolator \textbf{dN\_dYMTdMTdPhi\_non\_boost\_invariant(...)} contains an additional linear interpolation in $Y$. 
+\nn
+\nn
+\textbf{estimate\_MT\_function\_of\_dNdypTdpTdphi(..)}
+\nn
+Returns the linear fit parameters for the extrapolation of the parent distribution at high $M_T$:
+\be
+\log\left(\frac{dN}{dY M_T dM_T d\Phi}\right) = \text{constant} + \text{slope} \times M_T 
+\ee
+\nn
+For a given rapidity and azimuthal angle $(Y, \Phi)$, we gather the coordinates $(M_T, \log dN)$ when the parent distribution is positive and in the ultra-relativistic region (minimum criteria is $M_T > \sqrt{2} \,M$ but we push it to a more relativistic region $M_T > \sqrt{2.73} \,M$) At least two coordinates are needed to construct the linear fit.
+\nn
+For a given set of coordinates, solve the least squares equations for the fit parameters using a custom built matrix solver. 
+\nn
+Note: alternatively one could also do a more direct extrapolation, where we construct the linear fit using the last two coordinates. 
+\nn
+\nn
+\textbf{dN\_dYMTdMTdPhi\_boost\_invariant(...)} 
+\nn
+Approximates the parent distribution $dN / dY M_T dM_T d\Phi$ using linear interpolation.
+\nn
+We linearly interpolate the log distribution, undoing the log at the end. 
+\nn
+For $M_T \leq M_{T,\text{max}}$, we do bilinear interpolation of the boost-invariant spectra in $(M_T, \Phi)$. Otherwise, we linearly interpolate with respect to $\Phi$ the fit function: {$\text{constant}(\Phi) + \text{slope}(\Phi) \times M_T$. 
+\nn
+For example when $M_T \leq M_{T,\text{max}}$, we evaluate the four interpolation points, the intervals $\Delta \Phi$ and $\Delta M_T$, and the bilinear interpolation formula for the parents with azimuthal angles $\Phi_\pm$. 
+\nn
+In the azimuthal angle table \textbf{phi\_gauss\_table.dat} the minimum angle is $\Phi_\text{min} =  3.861 \times 10^{-3}$ and the max angle $\Phi_\text{max} = 6.279$. Therefore, a small slice of the full azimuthal range $[0,2\pi)$ is not covered. If the angles $\Phi_\pm$ happen to lie in this slice, we define the azimuthal range to be $(-\pi, \pi]$; the $\Phi$ interpolation points are then $\Phi_L = \Phi_\text{max} - 2\pi$ and $\Phi_R = \Phi_\text{min}$ and we put $\Phi_\pm$ in between these points. 
+\nn
+\nn
+\textbf{\textbf{three\_body\_decay(..)}}
+\nn
+This essentially contains the same content as the two-body decay routine, except the resonance decay integral is 3-dimensional. The extra dimension is the squared invariant mass $s$ of the secondary set of decay particles.
+\be
+\frac{dN_{\text{daughter}}}{dy p_T dp_T d\phi} \mathrel{+}= \frac{n_{\text{mult}} \, b \, M^2}{2\pi Q}  \, \sum_{\Phi_{\pm}} \int^{s_+}_{s_-} \frac{ds}{s} \int_{-1}^1 d \nu \int_0^\pi d \zeta \, \Delta Y \sqrt{(s-s_-)(s - d)}\frac{\bar{M}_T + \Delta M_T \cos\zeta}{\sqrt{m_T^2 \cosh^2(\nu \Delta Y) - p_T^2}} \, \frac{dN_{\text{parent}}(Y, M_T, \Phi_\pm)}{dY M_T dM_T d\Phi}
+\ee
+The $Q$ factor is computed with the function \textbf{calculate\_Q\_factor(..)}. The other factors are $s_+ = (M - m_1)^2$, $s_- = (m_2 + m_3)^2$ and $d = (m_2 - m_3)^2$. $M$ is the parent mass, $m_1$ is the mass of the decay particle of interest and $m_{2,3}$ are the masses of the remaining decay particles. The energy and momentum of the decay particle of interest in the parent rest frame is a function of $s$
+\be
+E^*(s) = \frac{M^2 + m_1^2 - s}{2M} \idd\idd p^*(s)=  \sqrt{(E^*(s))^2 - m_1^2}
+\ee
+\nn
+\textbf{particle\_index(..)}
+\nn
+Given a particle's Monte Carlo ID, returns its index in the PDG table
+\nn
+\nn
+\textbf{particle\_chosen\_index(..)}
+\nn
+Given a particle's Monte Carlo ID, returns its index in the chosen particle table
+\nn
+\nn
+\textbf{calculate\_Q\_factor(..)}
+\nn
+Computes the following integral with Gaussian quadrature: 
+\be
+Q =  \int_{s_-}^{s_+} \frac{ds}{s} g(s) = \int_{s_-}^{s_+} \frac{ds}{s} \sqrt{a - s}\, \sqrt{s_+ - s}\, \sqrt{s - s_-} \, \sqrt{s - d}
+\ee
+where $s_+ = (M - m_1)^2$, $s_- = (m_2 + m_3)^2$, $a = (M+m_1)^2$ and $d = (m_2 - m_3)^2$. $M$ is the parent mass, $m_1$ is the mass of the decay particle of interest and $m_{2,3}$ are the masses of the remaining decay particles. 
+\end{document}
+
+
+
+
+
+
+
