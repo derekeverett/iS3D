@@ -468,10 +468,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       trig_phi_table[j][0] = cos(phi);
       trig_phi_table[j][1] = sin(phi);
     }
-    double phi = phi_tab->get(1,j+1);
-    trig_phi_table[j][0] = cos(phi);
-    trig_phi_table[j][1] = sin(phi);
-    }
 
     // pT array
     double pTValues[pT_tab_length];

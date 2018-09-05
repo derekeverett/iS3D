@@ -61,9 +61,6 @@ private:
   double *St, *Sx, *Sy, *Sn; //to hold the polarization vector of all species
   double *Snorm; //the normalization of the polarization vector of all species
 
-  double *St, *Sx, *Sy, *Sn; //to hold the polarization vector of all species
-  double *Snorm; //the normalization of the polarization vector of all species
-
   std::vector<Sampled_Particle> particle_list; //to hold sampled particle list
 
   int *chosen_particles_01_table;       // has length Nparticle, 0 means miss, 1 means include
