@@ -47,7 +47,7 @@ void FO_data_reader::read_surf_switch(long length, FO_surf* surf_ptr)
 {
   if (mode == 1) read_surf_VH(length, surf_ptr); //surface file containing viscous hydro dissipative currents
   else if (mode == 2) read_surf_VAH_PLMatch(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents for use with CPU-VAH
-  else if (mode == 3) read_surf_VAH_PLPTMatch(length, surf_ptr); //usrface file containing anisotropic viscous hydro dissipative currents for use with Mike's Hydro
+  else if (mode == 3) read_surf_VAH_PLPTMatch(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents for use with Mike's Hydro
   else if (mode == 4) read_surf_VH_MUSIC(length, surf_ptr);
   else if (mode == 5) read_surf_VH_Vorticity(length, surf_ptr); //surface file containing viscous hydro dissipative currents and thermal vorticity tensor
   return;
@@ -100,32 +100,119 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     // dissipative quantities at freeze out
     //if (include_shear_deltaf)
     //{
+    surfdat >> dummy;
+    surf_ptr[i].pitt = dummy * hbarC; //ten contravariant components of shear stress tensor
+    surfdat >> dummy;
+    surf_ptr[i].pitx = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pity = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pitn = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pixx = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pixy = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pixn = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].piyy = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].piyn = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pinn = dummy * hbarC;
+
+    surfdat >> dummy;
+    surf_ptr[i].bulkPi = dummy * hbarC; //bulk pressure
+
+    if (include_baryon)
+    {
       surfdat >> dummy;
-      surf_ptr[i].pitt = dummy * hbarC; //ten contravariant components of shear stress tensor
+      surf_ptr[i].muB = dummy * hbarC; //baryon chemical potential
+    }
+    if (include_baryondiff_deltaf)
+    {
       surfdat >> dummy;
-      surf_ptr[i].pitx = dummy * hbarC;
+      surf_ptr[i].nB = dummy * hbarC; //baryon density
       surfdat >> dummy;
-      surf_ptr[i].pity = dummy * hbarC;
+      surf_ptr[i].Vt = dummy * hbarC; //four contravariant components of baryon diffusion vector
       surfdat >> dummy;
-      surf_ptr[i].pitn = dummy * hbarC;
+      surf_ptr[i].Vx = dummy * hbarC;
       surfdat >> dummy;
-      surf_ptr[i].pixx = dummy * hbarC;
+      surf_ptr[i].Vy = dummy * hbarC;
       surfdat >> dummy;
-      surf_ptr[i].pixy = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].pixn = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].piyy = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].piyn = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].pinn = dummy * hbarC;
-    //}
-    //if (include_bulk_deltaf)
-    //{
-      surfdat >> dummy;
-      surf_ptr[i].bulkPi = dummy * hbarC; //bulk pressure
-    //}
+      surf_ptr[i].Vn = dummy * hbarC;
+    }
+  }
+  surfdat.close();
+  return;
+}
+
+void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
+{
+  cout << "Reading in freezeout surface vhydro with thermal vorticity terms..." << endl;
+  ostringstream surfdat_stream;
+  double dummy;
+  surfdat_stream << pathToInput << "/surface.dat";
+  ifstream surfdat(surfdat_stream.str().c_str());
+  for (long i = 0; i < length; i++)
+  {
+    // contravariant spacetime position
+    surfdat >> surf_ptr[i].tau;
+    surfdat >> surf_ptr[i].x;
+    surfdat >> surf_ptr[i].y;
+    surfdat >> surf_ptr[i].eta;
+
+    // COVARIANT surface normal vector
+    //note cornelius writes covariant normal vector (used in cpu-ch, gpu-vh,...)
+    surfdat >> surf_ptr[i].dat;
+    surfdat >> surf_ptr[i].dax;
+    surfdat >> surf_ptr[i].day;
+    surfdat >> surf_ptr[i].dan;
+    // added safeguard for boost invariant read-ins on 7/16
+    if(dimension == 2 && surf_ptr[i].dan != 0)
+    {
+      cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
+      exit(-1);
+    }
+
+    // contravariant flow velocity
+    surfdat >> surf_ptr[i].ut;
+    surfdat >> surf_ptr[i].ux;
+    surfdat >> surf_ptr[i].uy;
+    surfdat >> surf_ptr[i].un;
+
+    // thermodynamic quantities at freeze out
+    surfdat >> dummy;
+    surf_ptr[i].E = dummy * hbarC; //energy density
+    surfdat >> dummy;
+    surf_ptr[i].T = dummy * hbarC; //Temperature
+    surfdat >> dummy;
+    surf_ptr[i].P = dummy * hbarC; //pressure
+
+    surfdat >> dummy;
+    surf_ptr[i].pitt = dummy * hbarC; //ten contravariant components of shear stress tensor
+    surfdat >> dummy;
+    surf_ptr[i].pitx = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pity = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pitn = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pixx = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pixy = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pixn = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].piyy = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].piyn = dummy * hbarC;
+    surfdat >> dummy;
+    surf_ptr[i].pinn = dummy * hbarC;
+
+    surfdat >> dummy;
+    surf_ptr[i].bulkPi = dummy * hbarC; //bulk pressure
+
     if (include_baryon)
     {
       surfdat >> dummy;
@@ -145,6 +232,13 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
       surf_ptr[i].Vn = dummy * hbarC;
     }
 
+    //thermal vorticity w^\mu\nu , should be dimensionless...
+    surfdat >> surf_ptr[i].wtx;
+    surfdat >> surf_ptr[i].wty;
+    surfdat >> surf_ptr[i].wtn;
+    surfdat >> surf_ptr[i].wxy;
+    surfdat >> surf_ptr[i].wxn;
+    surfdat >> surf_ptr[i].wyn;
   }
   surfdat.close();
   return;
@@ -651,31 +745,31 @@ int FO_data_reader::read_resonances_list(particle_info* particle)
         {
           if(particle[local_i-1].decays_part[j][k] == 0) particle[local_i].decays_part[j][k] = (particle[local_i-1].decays_part[j][k]);
           else
+          {
+            int idx;
+            // find the index for decay particle
+            for(idx = 0; idx < local_i; idx++)
+            if (particle[idx].mc_id == particle[local_i-1].decays_part[j][k]) break;
+            if(idx == local_i && particle[local_i-1].stable == 0 && particle[local_i-1].decays_branchratio[j] > eps)
             {
-              int idx;
-              // find the index for decay particle
-              for(idx = 0; idx < local_i; idx++)
-              if (particle[idx].mc_id == particle[local_i-1].decays_part[j][k]) break;
-              if(idx == local_i && particle[local_i-1].stable == 0 && particle[local_i-1].decays_branchratio[j] > eps)
-                {
-                  cout << "Error: can not find decay particle index for anti-baryon!" << endl;
-                  cout << "particle mc_id : " << particle[local_i-1].decays_part[j][k] << endl;
-                  exit(1);
-                }
-              if (particle[idx].baryon == 0 && particle[idx].charge == 0 && particle[idx].strange == 0) particle[local_i].decays_part[j][k] = (particle[local_i-1].decays_part[j][k]);
-              else particle[local_i].decays_part[j][k] = (- particle[local_i-1].decays_part[j][k]);
+              cout << "Error: can not find decay particle index for anti-baryon!" << endl;
+              cout << "particle mc_id : " << particle[local_i-1].decays_part[j][k] << endl;
+              exit(1);
             }
+            if (particle[idx].baryon == 0 && particle[idx].charge == 0 && particle[idx].strange == 0) particle[local_i].decays_part[j][k] = (particle[local_i-1].decays_part[j][k]);
+            else particle[local_i].decays_part[j][k] = (- particle[local_i-1].decays_part[j][k]);
           }
         }
       }
+    }
     local_i++;	// Add one to the counting variable "i" for the meson/baryon
   }
-resofile.close();
-Nparticle = local_i - 1; //take account the final fake one
-for (int i = 0; i < Nparticle; i++)
+  resofile.close();
+  Nparticle = local_i - 1; //take account the final fake one
+  for (int i = 0; i < Nparticle; i++)
   {
     if (particle[i].baryon == 0) particle[i].sign = -1;
     else particle[i].sign = 1;
   }
-return(Nparticle);
+  return(Nparticle);
 }

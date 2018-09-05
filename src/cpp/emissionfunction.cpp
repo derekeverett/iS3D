@@ -101,6 +101,26 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     } // if (MODE == 5)
 
+    if (MODE == 5)
+    {
+      //class member to hold polarization vector of chosen particles
+      St = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sx = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sn = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      //holds the normalization of the polarization vector of chosen particles
+      Snorm = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+
+      for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
+      {
+        St[iSpectra] = 0.0;
+        Sx[iSpectra] = 0.0;
+        Sy[iSpectra] = 0.0;
+        Sn[iSpectra] = 0.0;
+        Snorm[iSpectra] = 0.0;
+      }
+    } // if (MODE == 5)
+
     for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
 
     //only grab chosen particles from the table
@@ -277,7 +297,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
-    void EmissionFunctionArray::write_dN_dpTdphidy_with_resonance_decays_toFile()
+  void EmissionFunctionArray::write_dN_dpTdphidy_with_resonance_decays_toFile()
   {
     //write 3D spectra in block format, different blocks for different species,
     //different sublocks for different values of rapidity
@@ -315,7 +335,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
 
-    void EmissionFunctionArray::write_polzn_vector_toFile()
+  void EmissionFunctionArray::write_polzn_vector_toFile()
   {
     printf("Writing polarization vector to file...\n");
     int npart = number_of_chosen_particles;
@@ -369,7 +389,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     SnFile.close();
   }
 
-
   void EmissionFunctionArray::write_particle_list_toFile()
   {
     printf("Writing sampled particles list to file...\n");
@@ -395,7 +414,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
-  // write particle list in OSC1997A format for UrQMD/SMASH afterburner
+  //write particle list in OSC1997A format for UrQMD/SMASH afterburner
   void EmissionFunctionArray::write_particle_list_OSC1997A()
   {
     printf("Writing sampled particles list to OSC1997A File...\n");
@@ -428,7 +447,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
-  /*
+/*
   void EmissionFunctionArray::synchronize_particle_list_and_write()
   {
     printf("Synchronizing sampled particles for afterburner and writing to file...\n");
@@ -467,7 +486,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 */
-
 
   //*********************************************************************************************
   void EmissionFunctionArray::calculate_spectra()
@@ -892,9 +910,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     } //else if(MODE == 2)
 
     else if (MODE == 5) calculate_spin_polzn(Mass, Sign, Degen,
-    T, P, E, tau, eta, ut, ux, uy, un,
-    dat, dax, day, dan,
-    wtx, wty, wtn, wxy, wxn, wyn);
+      T, P, E, tau, eta, ut, ux, uy, un,
+      dat, dax, day, dan,
+      wtx, wty, wtn, wxy, wxn, wyn);
 
     printline();
 
