@@ -109,9 +109,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       double l3 = log(r3);
 
       double p = - T * (l1 + l2 + l3);
-
-      if(::isnan(p)) printf("found p nan!\n");
-
       double E = sqrt(fabs(p * p + mass * mass));
 
       //here the pion weight should include the Bose enhancement factor
@@ -125,11 +122,8 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       {
         // calculate angles and pLRF components
         double costheta = (l1 - l2) / (l1 + l2);
-        if(::isnan(costheta)) printf("found costheta nan!\n");
         double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
-        if(::isnan(phi)) printf("found phi nan!\n");
         double sintheta = sqrt(1.0 - costheta * costheta);
-        if(::isnan(sintheta)) printf("found sintheta nan!\n");
 
         double px = p * costheta;
         double py = p * sintheta * cos(phi);
@@ -180,15 +174,9 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
     } // while loop
   } //if (mass / T < 1.5)
 
-
-  // I should I put in the r_ideal or r_visc accept/reject conditions
-  // after I drawed all the momentum variables (p,phi,costheta) (build it up tonight; at least for ideal hydro)
-  // note: don't assume that r_ideal/visc is independent of p like LongGong does
-
   // light hadrons, but heavier than pions
   else if (mass / T < 2.0) // fixed bug on 7/12
   {
-    // I should wrap the r_ideal/visc while loop around this stuff here: {}
     bool rejected = true;
     while (rejected)
     {
@@ -203,9 +191,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       double l3 = log(r3);
 
       double p = - T * (l1 + l2 + l3);
-
-      if(::isnan(p)) printf("found p nan!\n");
-
       double E = sqrt(fabs(p * p + mass * mass));
 
       double weight = exp((p - E) / T);
@@ -216,11 +201,8 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       {
         // calculate angles and pLRF components
         double costheta = (l1 - l2) / (l1 + l2);
-        if(::isnan(costheta)) printf("found costheta nan!\n");
         double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
-        if(::isnan(phi)) printf("found phi nan!\n");
         double sintheta = sqrt(1.0 - costheta * costheta);
-        if(::isnan(sintheta)) printf("found sintheta nan!\n");
 
         double px = p * costheta;
         double py = p * sintheta * cos(phi);
@@ -289,15 +271,12 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       // draw k from distribution exp(-k/T) by sampling
       // one variable r1 uniformly from [0,1):
       //    k = -T * log(r1)
-
       bool rejected = true;
       while(rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
 
         double k = - T * log(r1);
-        if(::isnan(k)) printf("found k nan!\n");
-
         double E = k + mass;
         double p = sqrt(fabs(E * E - mass * mass));
         double weight = p / E;
@@ -312,17 +291,13 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           double phi = phi_distribution(generator);
           double costheta = costheta_distribution(generator);
           double sintheta = sqrt(1.0 - costheta * costheta);
-          if(::isnan(sintheta)) printf("found sintheta nan!\n");
-
           double px = p * costheta;
           double py = p * sintheta * cos(phi);
           double pz = p * sintheta * sin(phi);
-
           //viscous corrections
           double shear_weight = 1.0;
           double bulk_weight = 1.0;
           double diff_weight = 1.0;
-
           //FIX TEMPORARY
           if (INCLUDE_SHEAR_DELTAF)
           {
@@ -345,9 +320,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
             double den = 1.0 + ( 1.0 + sign * f0 ) * Hmax * bulkPi;
             bulk_weight = num / den;
           }
-
           if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
-
           double viscous_weight = shear_weight * bulk_weight * diff_weight;
           double propose_visc = generate_canonical<double, numeric_limits<double>::digits>(generator);
           if (propose_visc < viscous_weight)
@@ -367,20 +340,14 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       //    k = -T * log(r1)
       //    phi = 2 * \pi * log(r1) / (log(r1) + log(r2)); (double check this formula!!)
 
-      // I could have also done costheta instead of phi (I guess it doesn't matter)
-
       bool rejected = true;
       while (rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
         double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-
         double l1 = log(r1);
         double l2 = log(r2);
-
         double k = - T * (l1 + l2);
-        if(::isnan(k)) printf("found k nan!\n");
-
         double E = k + mass;
         double p = sqrt(fabs(E * E - mass * mass));
         double weight = p / E;
@@ -391,14 +358,10 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         {
           // need to verify this formula
           double phi = 2.0 * M_PI * l1 / (l1 + l2);
-          if(::isnan(phi)) printf("found phi nan!\n");
-
           // sample LRF angle costheta = [-1,1] uniformly
           uniform_real_distribution<double> costheta_distribution(-1.0 , nextafter(1.0, numeric_limits<double>::max()));
           double costheta = costheta_distribution(generator);
           double sintheta = sqrt(1.0 - costheta * costheta);
-          if(::isnan(sintheta)) printf("found sintheta nan!\n");
-
           double px = p * costheta;
           double py = p * sintheta * cos(phi);
           double pz = p * sintheta * sin(phi);
@@ -465,8 +428,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         double l3 = log(r3);
 
         double k = - T * (l1 + l2 + l3);
-        if(::isnan(k)) printf("found k nan!\n");
-
         double E = k + mass;
         double p = sqrt(fabs(E * E - mass * mass));
         double weight = p / E;
@@ -476,11 +437,8 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         {
           // calculate angles
           double costheta = (l1 - l2) / (l1 + l2);
-          if(::isnan(costheta)) printf("found costheta nan!\n");
           double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
-          if(::isnan(phi)) printf("found phi nan!\n");
           double sintheta = sqrt(1.0 - costheta * costheta);
-          if(::isnan(sintheta)) printf("found sintheta nan!\n");
 
           double px = p * costheta;
           double py = p * sintheta * cos(phi);
