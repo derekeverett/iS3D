@@ -1,0 +1,207 @@
+%\documentclass[showpacs,aps,prd,nofootinbib,showkeys,superscriptaddress]{revtex4-1}
+\documentclass[10.5pt,aps,prd,superscriptaddress]{revtex4}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%packages
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage{amssymb}
+\usepackage{amsmath,latexsym}
+\usepackage[usenames]{color}
+\usepackage{subfigure}
+\usepackage{subfigure}
+\usepackage{physymb}
+\usepackage{slashed}
+\usepackage{multirow,array}
+\usepackage{mathtools}
+\usepackage{mathrsfs}
+\usepackage[colorlinks=false,linktocpage=true]{hyperref}
+\usepackage{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage{lipsum}
+\usepackage{dsfont}
+%
+%\renewcommand{\baselinestretch}{1.5}
+%
+%
+\usepackage{soul}
+\usepackage{color}
+\usepackage[colorlinks=false,linktocpage=true]{hyperref}
+\usepackage{hyperref}
+%\usepackage[retainorgcmds]{IEEEtrantools}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}{\begin{eqnarray}}
+\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\idd}{\indent \indent}
+\newcommand{\blue}{\textcolor{blue}}
+\newcommand{\red}{\textcolor{red}}
+%%%%%%
+\newcommand{\eq}{\text{eq}}
+\newcommand{\api}{\big(b_n \, \rho^{(n)}_B\big)}
+\newcommand{\bpi}{\big(b_n \, \epsilon^{(n)}_{eq}\big)}
+\newcommand{\cpi}{(\rho_B T)}
+\newcommand{\dpi}{\big(b_n \, \epsilon^{(n)}_{eq}\big)}
+\newcommand{\epi}{\mathcal{I}_{30}}
+\newcommand{\fpi}{\mathcal{I}_{31}}
+\newcommand{\gpi}{(\rho_B T)}
+\newcommand{\hpi}{\mathcal{I}_{31}}
+\newcommand{\jpi}{\mathcal{I}_{32}}
+\newcommand{\bmu}{\langle \mu \rangle}
+\newcommand{\bnu}{\langle \nu \rangle}
+\newcommand{\munu}{{\mu\nu}}
+%%%%%%%
+\newcommand{\ds}{\delta s}
+\newcommand{\Kn}{\text{Kn}}
+\newcommand{\del}{\partial}
+\newcommand{\tr}{\tau_{r}}
+\newcommand{\feq}{f_{\text{eq}}}
+\newcommand{\first}{1^{\text{st}}}
+\newcommand{\pxp}{(- p \cdot \Xi \cdot p)}
+\newcommand{\px}{p^{\langle\mu\rangle}}
+\newcommand{\dft}{\delta\tilde{f}}
+\newcommand{\ddft}{\delta \dot{\tilde{f}}}
+\newcommand{\n}{\newline}
+\newcommand{\up}{u \cdot p}
+\newcommand{\aP}{\alpha_\perp}
+\newcommand{\aL}{\alpha_L}
+\newcommand{\aPsq}{\alpha^2_\perp}
+\newcommand{\aLsq}{\alpha^2_L}
+\newcommand{\ppmunu}{p^{\{\mu} p^{\nu\}}}
+\newcommand{\zp}{z \cdot p}
+\newcommand{\mzp}{(- z \cdot p)}
+\newcommand{\pOp}{(p \cdot \Omega \cdot p)}
+\newcommand{\Pm}{\mathcal{P}}
+\newcommand{\ene}{\mathcal{E}}
+\newcommand{\alphavec}{\mathbf{\alpha}}
+\newcommand{\alphaT}{\alpha_\perp}
+\newcommand{\alphaL}{\alpha_L}
+\newcommand{\pbar}{\bar{p}}
+\newcommand{\mbar}{\bar{m}}
+\newcommand{\order}{\mathcal{O}}
+\newcommand{\BL}{\beta_\Lambda}
+\newcommand{\PL}{\mathcal{P}_L}
+\newcommand{\Pperp}{\mathcal{P}_\perp}
+\newcommand{\Peq}{\mathcal{P}_\text{eq}}
+\newcommand{\bs}{\begin{subequations}}
+\newcommand{\es}{\end{subequations}}
+\newcommand{\beal}{\begin{align}}
+\newcommand{\enal}{\end{align}}
+\newcommand{\pperp}{p^{\{\mu\}}}
+\newcommand{\pperpnu}{p^{\{\nu\}}}
+\newcommand{\nabperp}{\tilde{\nabla}}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\M}{\mathcal{M}}
+\newcommand{\R}{\mathcal{R}}
+\newcommand{\Hm}{\mathcal{H}}
+\newcommand{\J}{\mathcal{J}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\B}{\mathcal{B}}
+\newcommand{\Z}{\mathcal{Z}}
+\newcommand{\T}{\mathcal{T}}
+\newcommand{\LRF}{\text{LRF}}
+\newcommand{\piperp}{\pi_\perp}
+\newcommand{\Wperp}{W_{\perp z}}
+\newcommand{\nn}{\newline\newline}
+\newcommand{\boldf}{\textbf}
+%\newcommand{\order}{\mathcal{O}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\title{Main Function}
+\maketitle 
+This is a summary describing the sequence of functions and class objects run in \boldf{main.cpp}
+\nn
+\boldf{1. Parameters}
+\nn
+The parameters in the file \boldf{parameters.dat} are stored in the \boldf{ParameterReader} class object \boldf{*paraRdr}. For more information see \boldf{ParameterReader.h}
+\nn
+The \boldf{ParameterReader} class functions, along with some tools in \boldf{arsenal.cpp}, read the equations in \boldf{parameters.dat} and store the parameter's \boldf{name} and its corresponding \boldf{value}. The comments in the parameter file describe what each parameter setting means. 
+\nn\n
+\boldf{ParameterReader} class functions:
+\nn
+\boldf{phraseOneLine(..)} sorts out the line: \textit{x = 1}  \textit{\# comments}. It then passes the equation part, \textit{x = 1}, to the function \boldf{phraseEquationWithoutComments(..)}.
+\nn
+\boldf{phraseEquationWithoutComments(..)} separates the l.h.s. and r.h.s. of the equation: $x = 1$
+\nn
+\boldf{setVal(..)} amends $x$ to the string vector \boldf{*names} and $1$ to the double vector \boldf{*values}
+\nn
+\boldf{getVal(..)} takes in the parameter's \boldf{name} and returns its corresponding \boldf{value}. 
+\nn
+\nn
+\boldf{2. Particlization surface}
+\nn
+The \boldf{FO\_data\_reader} class object \boldf{freeze\_out\_data(..)} loads the data from the directory \boldf{input/surface.dat} to the \boldf{FO\_surf} struct \boldf{*surf\_ptr}, which stores the freezeout cells' information: spacetime coordinates, volume element, and hydrodynamic variables. For more information, see \boldf{readindata.h}
+\nn\n
+\boldf{FO\_data\_reader} class functions:
+\nn
+\boldf{get\_number\_of\_cells()} gets the total number of freezeout cells in the data file
+\nn
+\boldf{read\_surf\_switch(..)} contains a variety of reader functions to read in different file formats: viscous hydrodynamics, anisotropic hydrodynamics and viscous hydroynamics with the thermal vorticity tensor. Each reader function describes what file format is needed. The \boldf{mode} parameter determines the type of file format to be read in. 
+\nn
+The \boldf{dimension} parameter specifies whether the freezeout surface came from a 2+1d or 3+1d hydrodynamic simulation. The file format is the same for either case. For the case of 2+1d surfaces (\boldf{dimension = 2}), the $\eta$ column should be zero in the data file, and we use the data file \boldf{tables/eta\_trapezoid\_table\_xpt.dat} to extend the freezeout surface in $\eta$ during the Cooper Frye integration. 
+\nn
+\boldf{read\_resonances\_list(..)} see below...
+\nn
+\nn
+\boldf{3. Particle data}
+\nn
+The function \boldf{read\_resonances\_list(..)} reads the PDG file \boldf{pdg.dat}, which contains information about all the relevant hadron species, and returns the number of hadrons (including anti-baryons) in the file. It also stores the PDG information (name, Monte Carlo ID, mass, etc) in the \boldf{particle\_info} struct \boldf{*particle\_data}.  For more information, see \boldf{readindata.h}
+\nn
+\nn
+\boldf{4. $\bold\delta f$ coefficients}
+\nn
+The \boldf{DeltafReader} class object \boldf{deltaf(..)} loads the coefficients appearing in the viscous correction $\delta f$ to the \boldf{deltaf\_coefficients} struct \boldf{df}. For more information, see \boldf{deltafReader.h}
+\nn
+The coefficients are tabulated in the directory \boldf{deltaf\_coefficients}. The \boldf{df\_mode} parameter determines what coefficients we read in and store in \boldf{df} using the class function \boldf{load\_coefficients(..)}.
+\nn
+\boldf{deltaf\_coefficients/vh} contains the 14-moment and Chapman Enskog $\delta f$ coefficients of the hadron resonance gas for standard viscous hydrodynamics. The files are tabulated in $(T,\mu_B)$. For a given switching temperature and chemical potential, we bilinearly interpolate the data points. Currently, we assume $(T_\text{sw}, \mu_{B,\text{sw}})$ are fixed across the entire freezeout surface, although they can fluctuate numerically. We may relax this assumption in a future update. 
+\nn
+\boldf{deltaf\_coefficients/vah} so far contains PL-matching vahydro 14-moment coefficients (to be updated in the future). They are tabulated in $(\Lambda, \alpha_L)$. The freezeout cells have different values of $(\Lambda, \alpha_L)$, so we store these coefficients not in \boldf{df} but in \boldf{*surf\_ptr}.
+\nn
+\nn
+\boldf{5. Tables}
+\nn
+The necessary data tables such as the chosen particles in \boldf{chosen\_particles.dat} and momentum arrays are set up before the main calculation. 
+\nn
+\nn
+\boldf{6. Emission function}
+\nn
+The \boldf{EmissionFunctionArray} class object \boldf{efa(..)} computes the particle spectra using the class function \boldf{calculate\_spectra()}. It takes in the parameters, freezeout surface and particle information needed to compute the Cooper Frye formula for each hadron species in \boldf{chosen\_particles.dat}
+\be
+E\frac{dN_i}{d^3 p} = \frac{g_i}{(2\pi \hbar)^3} \int_\Sigma d^3 \sigma_\mu p^\mu (f_{\eq,i} + \delta f_i)
+\ee 
+More code details on the \boldf{EmissionFunctionArray} class can be found in \boldf{emissionfunction.h}
+\nn\n
+\boldf{calculate\_spectra()}
+\nn 
+First, we allocate arrays which hold the mass, quantum statistics sign, spin degeneracy, baryon number, and Monte Carlo ID of the chosen hadrons. The freezeout cells' variables are also loaded into individual allocated arrays. The $\delta f$ coefficients, the type of which depends on \boldf{mode} and \boldf{df\_mode}, are loaded into an array. 
+\nn
+The \boldf{mode} and \boldf{df\_mode} parameters let you calculate the spectra in different modes: continuous spectra or particle sampling, viscous hydro or anisotropic hydro $\delta f$, linearized $\delta f$ or modified distribution $f_\eq^{\text{(mod)}}$. These class functions will be described in separate pdfs.
+\nn
+After the calculation is finished, the results are written to file in the \boldf{results} directory. The arrays used in the calculation are deallocated.
+\nn
+\boldf{Options}
+\nn
+There are several options available to the user:
+\nn
+Setting \boldf{operation} = 1 computes the chosen particles' continuous spectra, which is stored in the array \boldf{*dN\_pTdpTdphidy}. boldf{write\_dN\_pTdpTdphidy\_toFile()} writes the continuous spectra to file.
+\nn
+Setting \boldf{operation} = 2  samples particles, which are stored in the \boldf{Sampled\_particle}-type vector \boldf{particle\_list}. The \boldf{Sampled\_particle} class holds the Monte Carlo ID, mass, spacetime coordinates and four momentum of a sampled particle (recommend including all hadron resonances for any kind of afterburner calculation). \boldf{write\_particle\_list\_toFile()}and \boldf{write\_particle\_list\_OSC1997A()} write the sampled particles list to file in regular format and OSCAR format, respectively. 
+\nn
+Setting \boldf{mode = 1} uses a distribution function $f = f_\eq + \delta f$ computed from viscous hydrodynamics while \boldf{mode = 2} uses $f = f_a + \delta\tilde f$ from anisotropic hydrodynamics. \boldf{mode = 3} is idle at the moment...
+\nn
+Setting \boldf{mode = 5} allows you to compute the spin polarization vector $S^\mu$ for all particle species using the class function \boldf{calc\_spin\_polzn(..)}. For more details, see \boldf{emission\_function\_polzn\_kernels.cpp}
+\nn
+One can include baryon chemical potential and various forms of the $\delta f$ correction using the parameters \boldf{include\_baryon}, \boldf{df\_mode} and \boldf{include\_x\_deltaf}, respectively. The \boldf{df\_mode} value needs to be consistent with the \boldf{mode} parameter (e.g. vhydro to vhydro)
+\nn
+Setting \boldf{do\_resonance\_decays = 1} allows you to include the effects of resonance decays on the continuous particle spectra (\boldf{operation = 1}) using the class function \boldf{do\_resonance\_decays(..)} \boldf{write\_dN\_pTdpTdphidy\_with\_resonance\_decays\_toFile()} writes the continuous spectra with resonance decays to a separate file
+\nn
+\end{document}
+
+
+
+
+
+
+

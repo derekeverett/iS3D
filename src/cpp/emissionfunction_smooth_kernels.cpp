@@ -137,7 +137,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     //to hold the spectra for each surface cell in a chunk, for all particle species
     int npart = number_of_chosen_particles;
     double *dN_pTdpTdphidy_all;
-    dN_pTdpTdphidy_all = (double*)calloc(npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
+    dN_pTdpTdphidy_all = (double*)calloc((long long int)npart * (long long int)FO_chunk * (long long int)pT_tab_length * (long long int)phi_tab_length * (long long int)y_tab_length, sizeof(double));
 
     //loop over bite size chunks of FO surface
     for (int n = 0; n < (FO_length / FO_chunk) + 1; n++)
@@ -150,7 +150,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       {
         int icell_glb = n * FO_chunk + icell;     // global FO cell index
 
-        // set freezeout info to local varibles to reduce(?) memory access outside cache :
+        if(icell_glb < 0 || icell_glb > FO_length - 1)
+        {
+          printf("Error: icell_glb out of bounds! Probably want to fix integer type...\n");
+          exit(-1);
+        }
+
+        // set freezeout info to local varibles to reduce(?) memory access outside cache:
         double tau = tau_fo[icell_glb];         // longitudinal proper time
         double tau2 = tau * tau;
 
@@ -397,7 +403,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                 } // ieta
 
-                long long int iSpectra = icell + endFO * (ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy)));
+                long long int iSpectra = (long long int)icell + (long long int)endFO * ((long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy)));
 
                 dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma_f_eta_sum);
 
@@ -419,13 +425,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
               for (int iy = 0; iy < y_pts; iy++)
               {
                 //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
-                long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+                long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
                 double dN_pTdpTdphidy_tmp = 0.0; //reduction variable
                 #pragma omp simd reduction(+:dN_pTdpTdphidy_tmp)
                 for (int icell = 0; icell < endFO; icell++)
                 {
                   //long long int iSpectra = icell + (endFO * ipart) + (endFO * npart * ipT) + (endFO * npart * pT_tab_length * iphip) + (endFO * npart * pT_tab_length * phi_tab_length * iy);
-                  long long int iSpectra = icell + endFO * iS3D;
+                  long long int iSpectra = (long long int)icell + (long long int)endFO * iS3D;
                   dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[iSpectra];
                 }//icell
                 dN_pTdpTdphidy[iS3D] += dN_pTdpTdphidy_tmp; //sum over all chunks
@@ -525,7 +531,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     //in this way, we are limited to small values of FO_chunk, because our array holds values for all species...
     int npart = number_of_chosen_particles;
     double *dN_pTdpTdphidy_all;
-    dN_pTdpTdphidy_all = (double*)calloc(npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length, sizeof(double));
+    dN_pTdpTdphidy_all = (double*)calloc((long long int)npart * (long long int)FO_chunk * (long long int)pT_tab_length * (long long int)phi_tab_length * (long long int)y_tab_length, sizeof(double));
 
 
     //loop over bite size chunks of FO surface
@@ -540,6 +546,12 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       for (int icell = 0; icell < endFO; icell++) // cell index inside each chunk
       {
         int icell_glb = n * FO_chunk + icell;     // global FO cell index
+
+        if(icell_glb < 0 || icell_glb > FO_length - 1)
+        {
+          printf("Error: icell_glb out of bounds! Probably want to fix integer type...\n");
+          exit(-1);
+        }
 
         // set freezeout info to local varibles to reduce(?) memory access outside cache :
         double tau = tau_fo[icell_glb];         // longitudinal proper time
@@ -902,7 +914,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                 } // ieta
 
-                long long int iSpectra = icell + endFO * (ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy)));
+                long long int iSpectra = (long long int)icell + (long long int)endFO * ((long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy)));
 
                 dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma_f_eta_sum);
 
@@ -926,13 +938,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
               for (int iy = 0; iy < y_pts; iy++)
               {
                 //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
-                long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+                long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
                 double dN_pTdpTdphidy_tmp = 0.0; //reduction variable
                 #pragma omp simd reduction(+:dN_pTdpTdphidy_tmp)
                 for (int icell = 0; icell < endFO; icell++)
                 {
                   //long long int iSpectra = icell + (endFO * ipart) + (endFO * npart * ipT) + (endFO * npart * pT_tab_length * iphip) + (endFO * npart * pT_tab_length * phi_tab_length * iy);
-                  long long int iSpectra = icell + endFO * iS3D;
+                  long long int iSpectra = (long long int)icell + (long long int)endFO * iS3D;
                   dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[iSpectra];
                 }//icell
                 dN_pTdpTdphidy[iS3D] += dN_pTdpTdphidy_tmp; //sum over all chunks
