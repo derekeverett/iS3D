@@ -758,7 +758,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[4] = df.c4;
 
           // print coefficients
-          //cout << "c0 = " << df_coeff[0] << "\tc1 = " << df_coeff[1] << "\tc2 = " << df_coeff[2] << "\tc3 = " << df_coeff[3] << "\tc4 = " << df_coeff[4] << endl;
+          printf("\nc0 = %f\n", df_coeff[0]);
+          printf("c1 = %f\n", df_coeff[1]);
+          printf("c2 = %f\n", df_coeff[2]);
+          printf("c3 = %f\n", df_coeff[3]);
+          printf("c4 = %f\n", df_coeff[4]);
 
           switch(OPERATION)
           {
@@ -798,8 +802,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[4] = df.betapi;
 
           // print coefficients
-          //cout << "F = " << df_coeff[0] << "\tG = " << df_coeff[1] << "\tbetabulk = " << df_coeff[2] << "\tbetaV = " << df_coeff[3] << "\tbetapi = " << df_coeff[4] << endl;
-
+          printf("\nF = %f\n", df_coeff[0]);
+          printf("G = %f\n", df_coeff[1]);
+          printf("betabulk = %f\n", df_coeff[2]);
+          printf("betaV = %f\n", df_coeff[3]);
+          printf("betapi = %f\n", df_coeff[4]);
+         
           switch(OPERATION)
           {
             case 1: // thermal
@@ -838,7 +846,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[4] = df.betapi;
 
           // print coefficients
-          //cout << "F = " << df_coeff[0] << "\tG = " << df_coeff[1] << "\tbetabulk = " << df_coeff[2] << "\tbetaV = " << df_coeff[3] << "\tbetapi = " << df_coeff[4] << endl;
+          printf("\nF = %f\n", df_coeff[0]);
+          printf("G = %f\n", df_coeff[1]);
+          printf("betabulk = %f\n", df_coeff[2]);
+          printf("betaV = %f\n", df_coeff[3]);
+          printf("betapi = %f\n", df_coeff[4]);
 
           switch(OPERATION)
           {

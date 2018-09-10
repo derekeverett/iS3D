@@ -398,8 +398,11 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       exit(-1);
                     } // default error
                   } // df_mode
-
-                  pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
+                  if(pdotdsigma > 0.0)
+                  {
+                    pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
+                  }
+                  
 
                 } // ieta
 
@@ -909,8 +912,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     // modified equilibrium distribution
                     f = renorm / (exp(Emod / T_mod  -  chem_mod) + sign);
                   }
-
-                  pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
+                  if(pdotdsigma > 0.0)
+                  {
+                    pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
+                  }
 
                 } // ieta
 
