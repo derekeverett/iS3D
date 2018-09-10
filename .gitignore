@@ -1,7 +1,12 @@
 results
 input
+parameters.dat
+PDG
+documentation
+*.sublime-project
 *.o
 *.out
 tags
 *.e
 src/cpp/GNUMakefile
+.DS_Store

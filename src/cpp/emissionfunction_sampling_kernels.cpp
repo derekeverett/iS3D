@@ -497,8 +497,8 @@ lrf_momentum Sample_Momentum_mod(double mass, double T, double alphaB)
   pLRF.y = 0.0;
   pLRF.z = 0.0;
   //FIX
-
 }
+
 void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,

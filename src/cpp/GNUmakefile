@@ -11,14 +11,15 @@
 ##
 
 #choose a compiler.
-#CC = pgc++ # pgi compiler for openacc support  
-#CC = g++
-CC = icpc # intel compiler tends to perform much better than gcc
+#CC = pgc++ # pgi compiler for openacc support
+CC = g++
+#CC = icpc # intel compiler tends to perform much better than gcc
 
-#choose flags corresponding to compiler  
+#choose flags corresponding to compiler
 #CFLAGS= -std=c++11 -fopenmp -march=native -O3 -lgsl -lgslcblas -lm # for g++
-CFLAGS= -std=c++11 -qopenmp -march=native -O3 -lgsl -lgslcblas # for icpc
-#CFLAGS= -acc -fast -Minfo -ta=nvidia,time # for pgi 
+#CFLAGS= -std=c++11 -qopenmp -march=native -O3 -lgsl -lgslcblas # for icpc
+CFLAGS= -std=c++11 -march=native -O3 -lgsl -lgslcblas
+#CFLAGS= -acc -fast -Minfo -ta=nvidia,time # for pgi
 #CFLAGS= -acc -fast -ta=tesla:managed # for pgi, also uses unified memory
 
 RM		=	rm -f
@@ -32,7 +33,7 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS3D.e
 endif
 
-SRC   =	main.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp emissionfunction_polzn_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp viscous_correction.cpp
+SRC   =	main.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp emissionfunction_polzn_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp viscous_correction.cpp emissionfunction_resonance_decays.cpp
 INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h gaussThermal.h viscous_correction.h
 
 
@@ -90,3 +91,5 @@ install:	$(TARGET)
 ./readindata.cpp: main.h readindata.h arsenal.h Table.h ParameterReader.h
 ./ParameterReader.cpp: arsenal.h ParameterReader.h
 ./gaussThermal.cpp: gaussThermal.h
+./emissionfunction_resonance_decays.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h ParameterReader.h
+

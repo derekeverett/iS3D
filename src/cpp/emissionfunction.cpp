@@ -55,6 +55,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     LIGHTEST_PARTICLE = paraRdr->getVal("lightest_particle");
 
+    DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
+
     particles = particles_in;
     Nparticles = Nparticles_in;
     surf_ptr = surf_ptr_in;
@@ -66,11 +68,38 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     //a class member to hold 3D smooth CF spectra for all chosen particles
     dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+    // holds smooth CF spectra of a given parent resonance
+    logdN_PTdPTdPhidY = new double [pT_tab_length * phi_tab_length * y_tab_length];
+
     //zero the array
     for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
     {
       dN_pTdpTdphidy[iSpectra] = 0.0;
     }
+    for(int iS_parent = 0; iS_parent < pT_tab_length * phi_tab_length * y_tab_length; iS_parent++)
+    {
+      logdN_PTdPTdPhidY[iS_parent] = 0.0; // is it harmful to have a y_tab_length =/= 1 if DIMENSION = 2 (waste of memory?)
+    }
+
+    if (MODE == 5)
+    {
+      //class member to hold polarization vector of chosen particles
+      St = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sx = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      Sn = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      //holds the normalization of the polarization vector of chosen particles
+      Snorm = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+
+      for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
+      {
+        St[iSpectra] = 0.0;
+        Sx[iSpectra] = 0.0;
+        Sy[iSpectra] = 0.0;
+        Sn[iSpectra] = 0.0;
+        Snorm[iSpectra] = 0.0;
+      }
+    } // if (MODE == 5)
 
     if (MODE == 5)
     {
@@ -151,6 +180,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     delete[] chosen_particles_01_table;
     delete[] chosen_particles_sampling_table;
     delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
+    delete[] logdN_PTdPTdPhidY;
   }
 
 
@@ -182,7 +212,45 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           for (int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pT_tab->get(1,ipT + 1);
-            long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+            long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[iS3D] << "\n";
+          } //ipT
+          spectraFile << "\n";
+        } //iphip
+      } //iy
+    }//ipart
+    spectraFile.close();
+  }
+
+    void EmissionFunctionArray::write_dN_pTdpTdphidy_with_resonance_decays_toFile()
+  {
+    printf("Writing thermal + resonance decays spectra to file...\n");
+    //write 3D spectra in block format, different blocks for different species,
+    //different sublocks for different values of rapidity
+    //rows corespond to phip and columns correspond to pT
+    int npart = number_of_chosen_particles;
+    char filename[255] = "";
+
+    int y_pts = y_tab_length;     // default 3+1d pts
+    if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
+
+    sprintf(filename, "results/dN_pTdpTdphidy_resonance_decays.dat");
+    ofstream spectraFile(filename, ios_base::app);
+    for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    {
+      for (int iy = 0; iy < y_pts; iy++)
+      {
+        double y;
+        if (DIMENSION == 2) y = 0.0;
+        else y = y_tab->get(1,iy + 1);
+
+        for (int iphip = 0; iphip < phi_tab_length; iphip++)
+        {
+          double phip = phi_tab->get(1,iphip + 1);
+          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          {
+            double pT = pT_tab->get(1,ipT + 1);
+            long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
             spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[iS3D] << "\n";
           } //ipT
           spectraFile << "\n";
@@ -218,7 +286,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           for (int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pT_tab->get(1,ipT + 1);
-            long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+            long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
             double value = dN_pTdpTdphidy[iS3D] * pT;
             spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << value << "\n";
           } //ipT
@@ -228,6 +296,44 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     }//ipart
     spectraFile.close();
   }
+
+  void EmissionFunctionArray::write_dN_dpTdphidy_with_resonance_decays_toFile()
+  {
+    //write 3D spectra in block format, different blocks for different species,
+    //different sublocks for different values of rapidity
+    //rows corespond to phip and columns correspond to pT
+    int npart = number_of_chosen_particles;
+    char filename[255] = "";
+    int y_pts = y_tab_length;     // default 3+1d pts
+    if (DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
+    sprintf(filename, "results/dN_dpTdphidy_resonance_decays.dat");
+    ofstream spectraFile(filename, ios_base::app);
+    //write the header
+    spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_dpTdphidy" << "\n";
+    for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    {
+      for (int iy = 0; iy < y_pts; iy++)
+      {
+        double y;
+        if (DIMENSION == 2) y = 0.0;
+        else y = y_tab->get(1,iy + 1);
+        for (int iphip = 0; iphip < phi_tab_length; iphip++)
+        {
+          double phip = phi_tab->get(1,iphip + 1);
+          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          {
+            double pT = pT_tab->get(1,ipT + 1);
+            long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
+            double value = dN_pTdpTdphidy[iS3D] * pT;
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << value << "\n";
+          } //ipT
+          spectraFile << "\n";
+        } //iphip
+      } //iy
+    }//ipart
+    spectraFile.close();
+  }
+
 
   void EmissionFunctionArray::write_polzn_vector_toFile()
   {
@@ -263,7 +369,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           for (int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pT_tab->get(1,ipT + 1);
-            long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+            long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
             StFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (St[iS3D] / Snorm[iS3D]) << "\n";
             SxFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (Sx[iS3D] / Snorm[iS3D]) << "\n";
             SyFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << (Sy[iS3D] / Snorm[iS3D]) << "\n";
@@ -388,6 +494,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     #ifdef _OPENMP
     //double sec = omp_get_wtime();
     #endif
+    Stopwatch sw;
+    sw.tic();
 
     //fill arrays with all particle info and freezeout info to pass to function which will perform the integral
 
@@ -650,7 +758,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[4] = df.c4;
 
           // print coefficients
-          //cout << "c0 = " << df_coeff[0] << "\tc1 = " << df_coeff[1] << "\tc2 = " << df_coeff[2] << "\tc3 = " << df_coeff[3] << "\tc4 = " << df_coeff[4] << endl;
+          printf("\nc0 = %f\n", df_coeff[0]);
+          printf("c1 = %f\n", df_coeff[1]);
+          printf("c2 = %f\n", df_coeff[2]);
+          printf("c3 = %f\n", df_coeff[3]);
+          printf("c4 = %f\n", df_coeff[4]);
 
           switch(OPERATION)
           {
@@ -690,8 +802,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[4] = df.betapi;
 
           // print coefficients
-          //cout << "F = " << df_coeff[0] << "\tG = " << df_coeff[1] << "\tbetabulk = " << df_coeff[2] << "\tbetaV = " << df_coeff[3] << "\tbetapi = " << df_coeff[4] << endl;
-
+          printf("\nF = %f\n", df_coeff[0]);
+          printf("G = %f\n", df_coeff[1]);
+          printf("betabulk = %f\n", df_coeff[2]);
+          printf("betaV = %f\n", df_coeff[3]);
+          printf("betapi = %f\n", df_coeff[4]);
+         
           switch(OPERATION)
           {
             case 1: // thermal
@@ -730,7 +846,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[4] = df.betapi;
 
           // print coefficients
-          //cout << "F = " << df_coeff[0] << "\tG = " << df_coeff[1] << "\tbetabulk = " << df_coeff[2] << "\tbetaV = " << df_coeff[3] << "\tbetapi = " << df_coeff[4] << endl;
+          printf("\nF = %f\n", df_coeff[0]);
+          printf("G = %f\n", df_coeff[1]);
+          printf("betabulk = %f\n", df_coeff[2]);
+          printf("betaV = %f\n", df_coeff[3]);
+          printf("betapi = %f\n", df_coeff[4]);
 
           switch(OPERATION)
           {
@@ -806,20 +926,32 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       dat, dax, day, dan,
       wtx, wty, wtn, wxy, wxn, wyn);
 
-
     printline();
+
 
     //write the results to file
     if (OPERATION == 1)
     {
       write_dN_pTdpTdphidy_toFile();
       write_dN_dpTdphidy_toFile();
+
+      // option to do resonance decays option
+      if(DO_RESONANCE_DECAYS)
+      {
+        // call resonance decays routine
+        do_resonance_decays(particles);
+
+        // write amended spectra from resonance decays to file
+        // currently, unstable particles are still included (should change)
+        write_dN_pTdpTdphidy_with_resonance_decays_toFile();
+        write_dN_dpTdphidy_with_resonance_decays_toFile();
+      }
     }
     else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC1997A();}
 
     if (MODE == 5) write_polzn_vector_toFile();
 
-    cout << "Freeing memory..." << endl;
+    cout << "Freeing freezeout surface memory.." << endl;
     // free memory
     free(Mass);
     free(Sign);
@@ -895,19 +1027,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     #ifdef _OPENMP
     //sec = omp_get_wtime() - sec;
     #endif
-    //cout << "calculate_spectra() took " << sec << " seconds." << endl;
-  }
-
-  void EmissionFunctionArray::do_resonance_decays()
-  {
-    printf("Starting resonance decays \n");
-
-    //declare a particle struct to hold all the particle info
-    particle particles[10];
-
-    //read the in the resonance info
-    //int max, maxdecay;
-    //readParticleData("PDG/pdg.dat", &max, &maxdecay, particles)
-    //calc_reso_decays(max, maxdecay, LIGHTEST_PARTICLE);
-    printf("Resonance decays finished \n");
+    sw.toc();
+    cout << "calculate_spectra() took " << sw.takeTime() << " seconds." << endl;
   }

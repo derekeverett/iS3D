@@ -43,8 +43,8 @@ int main(int argc, char *argv[])
   FO_surf* surf_ptr = new FO_surf[FO_length];
   freeze_out_data.read_surf_switch(FO_length, surf_ptr);
 
-  particle_info *particle = new particle_info [Maxparticle];
-  int Nparticle = freeze_out_data.read_resonances_list(particle); //number of resonances in pdg file
+  particle_info *particle_data = new particle_info [Maxparticle];
+  int Nparticle = freeze_out_data.read_resonances_list(particle_data); //number of resonances in pdg file
 
   // load delta-f coefficients:
   deltaf_coefficients df;
@@ -69,13 +69,14 @@ int main(int argc, char *argv[])
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
   Table eta_tab("tables/eta_trapezoid_table_41pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
-  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle, Nparticle, surf_ptr, FO_length, df);
+  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
 
+  //efa.do_resonance_decays(particle_data);
+  //exit(-1);
   efa.calculate_spectra();
   //calculate resonance decays
-  int do_resonance_decays = paraRdr->getVal("do_resonance_decays");
-  if (do_resonance_decays) efa.do_resonance_decays();
-
+  //int do_resonance_decays = paraRdr->getVal("do_resonance_decays");
+  //if (do_resonance_decays) efa.do_resonance_decays(particle_data);
 
   delete [] surf_ptr;
   delete paraRdr;

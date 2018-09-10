@@ -1,0 +1,291 @@
+%\documentclass[showpacs,aps,prd,nofootinbib,showkeys,superscriptaddress]{revtex4-1}
+\documentclass[10.5pt,aps,prd,superscriptaddress]{revtex4}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%packages
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage{amssymb}
+\usepackage{amsmath,latexsym}
+\usepackage[usenames]{color}
+\usepackage{subfigure}
+\usepackage{subfigure}
+\usepackage{physymb}
+\usepackage{slashed}
+\usepackage{multirow,array}
+\usepackage{mathtools}
+\usepackage{mathrsfs}
+\usepackage[colorlinks=false,linktocpage=true]{hyperref}
+\usepackage{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage{lipsum}
+\usepackage{dsfont}
+%
+%\renewcommand{\baselinestretch}{1.5}
+%
+%
+\usepackage{soul}
+\usepackage{color}
+\usepackage[colorlinks=false,linktocpage=true]{hyperref}
+\usepackage{hyperref}
+%\usepackage[retainorgcmds]{IEEEtrantools}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}{\begin{eqnarray}}
+\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\idd}{\indent \indent}
+\newcommand{\blue}{\textcolor{blue}}
+\newcommand{\red}{\textcolor{red}}
+%%%%%%
+\newcommand{\eq}{\text{eq}}
+\newcommand{\api}{\big(b_n \, \rho^{(n)}_B\big)}
+\newcommand{\bpi}{\big(b_n \, \epsilon^{(n)}_{eq}\big)}
+\newcommand{\cpi}{(\rho_B T)}
+\newcommand{\dpi}{\big(b_n \, \epsilon^{(n)}_{eq}\big)}
+\newcommand{\epi}{\mathcal{I}_{30}}
+\newcommand{\fpi}{\mathcal{I}_{31}}
+\newcommand{\gpi}{(\rho_B T)}
+\newcommand{\hpi}{\mathcal{I}_{31}}
+\newcommand{\jpi}{\mathcal{I}_{32}}
+\newcommand{\bmu}{\langle \mu \rangle}
+\newcommand{\bnu}{\langle \nu \rangle}
+\newcommand{\munu}{{\mu\nu}}
+%%%%%%%
+\newcommand{\ds}{\delta s}
+\newcommand{\Kn}{\text{Kn}}
+\newcommand{\del}{\partial}
+\newcommand{\tr}{\tau_{r}}
+\newcommand{\feq}{f_{\text{eq}}}
+\newcommand{\first}{1^{\text{st}}}
+\newcommand{\pxp}{(- p \cdot \Xi \cdot p)}
+\newcommand{\px}{p^{\langle\mu\rangle}}
+\newcommand{\dft}{\delta\tilde{f}}
+\newcommand{\ddft}{\delta \dot{\tilde{f}}}
+\newcommand{\n}{\newline}
+\newcommand{\up}{u \cdot p}
+\newcommand{\aP}{\alpha_\perp}
+\newcommand{\aL}{\alpha_L}
+\newcommand{\aPsq}{\alpha^2_\perp}
+\newcommand{\aLsq}{\alpha^2_L}
+\newcommand{\ppmunu}{p^{\{\mu} p^{\nu\}}}
+\newcommand{\zp}{z \cdot p}
+\newcommand{\mzp}{(- z \cdot p)}
+\newcommand{\pOp}{(p \cdot \Omega \cdot p)}
+\newcommand{\Pm}{\mathcal{P}}
+\newcommand{\ene}{\mathcal{E}}
+\newcommand{\alphavec}{\mathbf{\alpha}}
+\newcommand{\alphaT}{\alpha_\perp}
+\newcommand{\alphaL}{\alpha_L}
+\newcommand{\pbar}{\bar{p}}
+\newcommand{\mbar}{\bar{m}}
+\newcommand{\order}{\mathcal{O}}
+\newcommand{\BL}{\beta_\Lambda}
+\newcommand{\PL}{\mathcal{P}_L}
+\newcommand{\Pperp}{\mathcal{P}_\perp}
+\newcommand{\Peq}{\mathcal{P}_\text{eq}}
+\newcommand{\bs}{\begin{subequations}}
+\newcommand{\es}{\end{subequations}}
+\newcommand{\beal}{\begin{align}}
+\newcommand{\enal}{\end{align}}
+\newcommand{\pperp}{p^{\{\mu\}}}
+\newcommand{\pperpnu}{p^{\{\nu\}}}
+\newcommand{\nabperp}{\tilde{\nabla}}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\M}{\mathcal{M}}
+\newcommand{\R}{\mathcal{R}}
+\newcommand{\Hm}{\mathcal{H}}
+\newcommand{\J}{\mathcal{J}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\B}{\mathcal{B}}
+\newcommand{\Z}{\mathcal{Z}}
+\newcommand{\T}{\mathcal{T}}
+\newcommand{\LRF}{\text{LRF}}
+\newcommand{\piperp}{\pi_\perp}
+\newcommand{\Wperp}{W_{\perp z}}
+\newcommand{\nn}{\newline\newline}
+%\newcommand{\order}{\mathcal{O}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\title{Particle Sampler in iS3D}
+\maketitle
+Right now, what we have implemented in the particle sampler code so far is the sampling of an ideal distribution for each particle species:
+\be
+ f_{i,\mathrm{eq}}(x,p) = g_i \left[\exp\left(\frac{p \cdot u(x) - b_i \,\mu_B(x)}{T(x)}\right) + \Theta_i\right]^{-1}
+\ee
+%
+where $g_i$ is the spin degeneracy and $\Theta_i = (1,-1,0)$ for fermions, bosons, and Boltzmann particles. This simplification will be relaxed later when we include viscous corrections from the linearized $\delta f$ or modified equilibrium distribution $f_{\eq}^{\text{(mod)}}$. 
+\nn
+Here we outline the steps for sampling particles from the Cooper Frye formula:
+\be
+\label{eq1}
+  dN_i(x,p) = \frac{p \cdot d^3\sigma(x)}{(2\pi\hbar)^3} \, \frac{d^3p}{E} \, f_{i,\eq}(x,p) 
+\ee
+It mostly follows the sampling procedure from Long-Gang's CLVisc paper (Phys. Rev. C 97, 064918)
+\nn
+\nn
+1) For each freezeout cell, compute the mean number of hadrons 
+\newline
+\be 
+\Delta N = \sum_i \frac{g_i}{(2\pi\hbar)^3}\int \frac{d^3p}{E} \, p \cdot d^3\sigma \, f_{i,\eq}(u\cdot p)  = u \cdot d^3\sigma \sum_i n_{i,\eq}
+\ee
+where 
+\be
+n_{i,\eq} = \frac{g_i}{(2\pi\hbar)^3} \int d^3p_{\text{LRF}} f_{i,\eq}(u\cdot p) = \frac{g_i}{2\pi^2\hbar^3} \int_0^\infty  \frac{p^2_{\text{LRF}} \,  dp_{\text{LRF}} }{\exp\left[\dfrac{\sqrt{p^2_{\text{LRF}} + m_i^2}- b_i \,\mu_B(x)}{T(x)}\right] + \Theta_i}
+\ee
+is the LRF equilibrium number density of each species and $p_{\text{LRF}}$ is the LRF radial momentum. To compute radial momentum integral, we expand the denominator as a geometric series, keeping only the first term for heavy hadrons and first 10 terms for pions (alternatively, you could do Gauss-quadrature as a future option).
+\nn
+We skip the rest of the sampling procedure for any cells with $u \cdot d^3\sigma < 0$ ($\Delta N < 0$), which rarely occurs. 
+\nn
+\nn
+2) Then sample the number of hadrons $N$ in that cell with a Poisson distribution
+\newline
+\be
+P(N) =  \frac{(\Delta N)^{N}\exp(-\Delta N)}{N!}
+\ee
+This assumes the number of each species can be individually sampled with a Poisson distribution.
+\nn
+\nn
+3) Out of $N$ hadrons, sample the number of each species $N_i$ with a discrete probability distribution
+\newline
+\be
+P(N_i) =\frac{\Delta N_i}{\Delta N}
+\ee 
+\nn
+\nn
+4) For each sampled particle, sample its LRF momentum $p^\mu_{\text{LRF}} = (u\cdot p, -X \cdot p, - Y \cdot p, - Z \cdot p)$ from the Cooper Frye formula (2). We further assume the equilibrium distribution (1) is Boltzmann-like or $\Theta_i = 0$ (will relax for pions in the immediate future). We outline the momentum sampling procedure for light and heavy particles separately.
+\nn
+{\bf{Light Boltzmann particles $\bf{(T / m > 0.6)}$:}}
+\nn
+The Cooper Frye formula (2) in spherical coordinates takes the form (drop constant factors) 
+\be
+ dN_i \sim \frac{p \cdot d^3\sigma}{u\cdot p} \exp\left(\frac{p_{\text{LRF}} - u \cdot p }{T}\right) \, \left[p_{\text{LRF}}^2 \, \exp\left(-\frac{p_{\text{LRF}}}{T}\right) \, dp _{\text{LRF}}\, d\phi_{\text{LRF}} \, d\cos\theta_{\text{LRF}}\right]
+\ee
+First we draw $p^\mu_\LRF$ from the massless Boltzmann distribution in the brackets [...] in Eq.\,(7). This is done with Scott Pratt's trick: one introduces the coordinates $(r_1, r_2, r_3) \in (0,1]$ 
+\bs
+\beal
+p_\LRF &= - T (\log r_1 + \log r_2 + \log r_3) \\
+\phi_\LRF & = 2\pi \left(\frac{\log r_1 + \log r_2}{\log r_1 + \log r_2 + \log r_3}\right)^2 \\
+\cos\theta_\LRF & = \frac{\log r_1 - \log r_2}{\log r_1 + \log r_2}
+\end{align}
+\es
+The determinant of the Jacobian is $\abs{J} = \big|\dfrac{\partial p}{\partial r}\big| = \dfrac{8 \pi T^3 \exp(p_\LRF / T)}{p_\LRF^2}$. The massless distribution reduces to
+\be
+p_{\text{LRF}}^2 \, \exp\left(-\frac{p_{\text{LRF}}}{T}\right) \, dp _{\text{LRF}}\, d\phi_{\text{LRF}} \, d\cos\theta_{\text{LRF}} = 8\pi T^3 dr_1 dr_2 dr_3
+\ee
+This means $(r_1,r_2,r_3)$ can be sampled uniformly. After we have sampled the $r$-coordinates, we get the spherical coordinates using Eq.\,(8). Then, we can compute the components of the proposed $p^\mu_\LRF$
+\bs
+\beal
+E_\LRF &= u \cdot p =  \sqrt{p_\LRF^2 + m_i^2} \\
+p^x_\LRF &= p_\LRF \sin\theta_\LRF \cos\phi_\LRF \\ 
+p^y_\LRF &= p_\LRF \sin\theta_\LRF \sin\phi_\LRF \\ 
+p^z_\LRF &= p_\LRF \cos\theta_\LRF  
+\end{align}
+\es
+The Cooper Frye formula (7) still has an additional weight factor $w_{\text{light}}$ outside the brackets [...], which is now constant. To make $0 \leq w_{\text{light}} \leq 1$, we rescale it by a constant factor. In this case, we use the Minkowski inequality:
+\be
+\abs{p \cdot d^3\sigma} \leq (u\cdot p)\left(\abs{u \cdot d^3\sigma} + \sqrt{(u \cdot d^3\sigma)^2 - d^3\sigma \cdot d^3\sigma}\right)
+\ee
+The weight now becomes
+\be
+w_{\text{light}} = \frac{\abs{p \cdot d^3\sigma} \,\exp\left[\dfrac{p_{\text{LRF}} - u \cdot p }{T}\right]}{(u\cdot p) \left(\abs{u \cdot d^3\sigma} + \sqrt{(u \cdot d^3\sigma)^2 - d^3\sigma \cdot d^3\sigma}\right)
+}
+\ee
+which lies between 0 and 1. The dot product $\abs{p \cdot d^3\sigma}$ is computed in the LRF. 
+\nn
+Finally, we draw a random number $m \in [0,1]$ from a uniform distribution. If $m < w_{\text{light}}$, then $p^\mu_\LRF$ is accepted. If rejected, we repeat the above steps (7) - (12) until it gets accepted. \blue{(I feel like there's a difference from my version and Long-Gang's version in the weight step)}
+\nn
+\nn
+\nn
+{\bf{Heavy Boltzmann particles $\bf{(T / m < 0.6)}$:}}
+\nn
+For heavy Boltzmann particles, we replace the radial momentum $p_\LRF$ with the variable $k = E_\LRF - m$, to rewrite the Cooper Frye formula (2) as (drop out constant factors) 
+\be
+ dN_i \sim \frac{p \cdot d^3\sigma}{u\cdot p} \, \frac{p_\LRF}{E_\LRF} \, \left[(m^2 + 2mk + k^2) \, \exp\left(-k/T\right) \, dk\, d\phi_{\text{LRF}} \, d\cos\theta_{\text{LRF}}\right]
+\ee
+Then we sample from either one of the three distributions in the parentheses (...) based on their $k$-integrated weights. 
+\bs
+\beal
+I_1 &= \int_0^\infty dk \, m^2 \, \exp(-k/T) = m^2 T \\
+I_2 &= \int_0^\infty dk \, 2mk \, \exp(-k/T) = 2 m T^2 \\
+I_3 &= \int_0^\infty dk \, k^2 \, \exp(-k/T) = 2 T^3 \\ 
+I_{\text{tot}} &= I_1 + I_2 + I_3
+\end{align}
+\es
+The probability of sampling from the first distribution is approximately $I_1 / I_{\text{tot}}$, etc. We draw a random number $q \in [0,1]$ from a uniform distribution and look at each of the possible outcomes: 
+\nn
+{\bf{Case 1: $\bf{e^{-k/T}}$}}
+\nn
+If $0 \leq q \leq I_1 / I_{\text{tot}}$ (most likely scenario for heavy hadrons), we draw $p^\mu_\LRF$ from the distribution
+\be
+\exp\left(-k/T\right) \, dk\, d\phi_{\text{LRF}} \, d\cos\theta_{\text{LRF}}
+\ee
+To sample $k$, we only need to sample one $r$-coordinate $r_1 \in (0,1]$, where
+\be
+k = - T \log r_1
+\ee
+One can easily check that $\exp(-k/T) \,dk = T dr_1$, so we can sample $r_1$ uniformly. Once we sample $k$, $E_\LRF$ and $p_\LRF$ are determined. Next, the angles $(\phi_\LRF, \cos\theta_\LRF)$ are sampled uniformly. The $p^\mu_\LRF$ components can then be computed like before, and we check its acceptance against the weight factor
+\be
+w_{\text{heavy}}= \frac{\abs{p \cdot d^3\sigma} \, p_\LRF / E_\LRF}{(u\cdot p) \left(\abs{u \cdot d^3\sigma} + \sqrt{(u \cdot d^3\sigma)^2 - d^3\sigma \cdot d^3\sigma}\right)
+}
+\ee 
+If rejected, repeat the steps for {\bf{Case 1}} until accepted. 
+\nn\nn
+{\bf{Case 2: $\bf{k \, e^{-k/T}}$}}
+\nn
+If $I_1 / I_{\text{tot}} < q \leq (I_1+I_2) / I_{\text{tot}}$, then we draw $p^\mu_\LRF$ from the distribution 
+\be
+k \exp\left(-k/T\right) \, dk\, d\phi_{\text{LRF}} \, d\cos\theta_{\text{LRF}}
+\ee
+For this case, we need to draw $(k,\phi_\LRF)$ by sampling two variables $(r_1,r_2) \in (0,1]$, where
+\bs
+\beal
+k &= - T (\log r_1 + \log r_2)  \\
+\phi_\LRF &= 2 \pi \frac{\log r_2}{\log r_1 + \log r_2}
+\end{align}
+\es
+One can check that $k \exp(-k/T) \, dk \, d \phi_\LRF = 4\pi T^2 dr_1 dr_2$, so we can sample $(r_1, r_2)$ uniformly. The angle $\cos\theta_\LRF$ is sampled separately. Then compute $p^\mu_\LRF$ and check its acceptance against the weight $w_{\text{heavy}}$ in (17). If rejected, repeat the steps for {\bf{Case 2}} until accepted. 
+\nn
+{\bf{Case 3: $\bf{k^2 \, e^{-k/T}}$}}
+\nn
+If $(I_1 + I_2) / I_{\text{tot}} < q \leq 1$, then we draw $p^\mu_\LRF$ from the distribution 
+\be
+k^2 \exp\left(-k/T\right) \, dk\, d\phi_{\text{LRF}} \, d\cos\theta_{\text{LRF}}
+\ee
+The sampling procedure is the same as the massless distribution [...] in (7) after one swaps out $p_\LRF$ for $k$. After computing $p^\mu_\LRF$, check its acceptance against $w_{\text{heavy}}$ in (17). If rejected, repeat the steps for {\bf{Case 3}} until accepted. 
+\nn
+5) After sampling the particle's LRF momentum, compute the lab frame momentum in Milne coordinates by using the decomposition:
+\newline
+\be
+p^\mu = (u \cdot p) u^\mu + (-X \cdot p)X^\mu + (-Y \cdot p)Y^\mu + (-Z \cdot p)Z^\mu 
+\ee
+The components of the spatial basis vectors are
+\bs
+\beal
+X^\mu &= \left(u_\perp \cosh\kappa_L, \frac{u^x \, u^\tau_\perp}{u_\perp}, \frac{u^y \, u^\tau_\perp}{u_\perp}, \frac{u_\perp \sinh\kappa_L}{\tau} \right) \\
+Y^\mu &=\left(0, - \frac{u^y}{u_\perp}, \frac{u^x}{u_\perp},0\right) \\
+Z^\mu &= \left(\sinh\kappa_L, 0, 0, \frac{\cosh\kappa_L}{\tau}\right)
+\end{align}
+\es
+where $\kappa_L = \tanh^{-1}(\tau u^\eta / u^\tau)$, $u_\perp = \sqrt{(u^x)^2 + (u^y)^2}$, and  $u^\tau_\perp = \sqrt{1+u_\perp^2}$. We also compute the Cartesian lab frame energy $E$ and longitudinal momentum $p^z$.
+\bs
+\beal
+E &= p^\tau \cosh\eta + \tau p^\eta \sinh\eta \\
+p^z &= \tau p^\eta \cosh\eta + p^\tau \sinh\eta
+\end{align}
+\es
+\nn
+6) If $p \cdot d^3 \sigma \geq 0$, amend the sample particle's MC ID number, position and momentum to the output particle list file (current file format):
+\newline
+\be \nonumber
+(\text{MC}, \indent \tau, \indent x, \indent y, \indent \eta, \indent E, \indent p^x, \indent p^y, \indent p^z)
+\ee
+Otherwise, we discard it. 
+\end{document}
+
+
+
+
+
+
+
