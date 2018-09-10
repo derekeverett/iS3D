@@ -1,5 +1,6 @@
 results
 input
+parameters.dat
 *.o
 *.out
 tags
