@@ -437,7 +437,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       double px = particle_list[ipart].px;
       double py = particle_list[ipart].py;
       double pz = particle_list[ipart].pz;
-      spectraFile << mcid << "," << t << "," << x << "," << y << "," << z << "," << E << "," << px << "," << py << "," << pz << "\n";
+      spectraFile << mcid << "," << scientific <<  setw(5) << setprecision(16) << t << "," << x << "," << y << "," << z << "," << E << "," << px << "," << py << "," << pz << "\n";
     }//ipart
     spectraFile.close();
   }
