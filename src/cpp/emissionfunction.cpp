@@ -50,6 +50,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
     INCLUDE_BARYONDIFF_DELTAF = paraRdr->getVal("include_baryondiff_deltaf");
     REGULATE_DELTAF = paraRdr->getVal("regulate_deltaf");
+    DETA_MIN = paraRdr->getVal("deta_min");
     GROUP_PARTICLES = paraRdr->getVal("group_particles");
     PARTICLE_DIFF_TOLERANCE = paraRdr->getVal("particle_diff_tolerance");
 
@@ -127,6 +128,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for (int m = 0; m < number_of_chosen_particles; m++)
     { //loop over all chosen particles
       int mc_id = chosen_particles_in->get(1, m + 1);
+
+      // store chosen index of pion0
+      if(mc_id == 111)
+      {
+        chosen_pion0.push_back(m); 
+      }
 
       for (int n = 0; n < Nparticles; n++)
       {
@@ -213,7 +220,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           {
             double pT = pT_tab->get(1,ipT + 1);
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
-            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[iS3D] << "\n";
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t{" << pT << ",\t" << dN_pTdpTdphidy[iS3D] << "},\n";
           } //ipT
           spectraFile << "\n";
         } //iphip

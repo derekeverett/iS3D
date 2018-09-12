@@ -133,6 +133,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     } // DF_MODE
 
 
+
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spectra for each surface cell in a chunk, for all particle species
     int npart = number_of_chosen_particles;
@@ -167,7 +168,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double dat = dat_fo[icell_glb];         // covariant normal surface vector
         double dax = dax_fo[icell_glb];
         double day = day_fo[icell_glb];
-        double dan = dan_fo[icell_glb];
+        double dan = dan_fo[icell_glb];         // dan should be 0 for 2+1d
 
         double ux = ux_fo[icell_glb];           // contravariant fluid velocity
         double uy = uy_fo[icell_glb];           // enforce normalization
@@ -528,6 +529,27 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         //cout << etaValues[ieta] << "\t" << etaDeltaWeights[ieta] << endl;
       }
     }
+    
+    if(chosen_pion0.size() == 0)
+    {
+      printf("Error: please include pion-0 (mc_id = 111) in PDG/chosen_particles.dat...\n");
+      exit(-1);
+    }
+    else if(chosen_pion0.size() > 1)
+    {
+      printf("Error: have multiple pion-0's in PDG/chosen_particle.dat...\n");
+      exit(-1);
+    }
+    else if(chosen_pion0[0] != 0)
+    {
+      // since pion-0 is most susceptible to negative particle densities
+      // (one of the feqmod breakdown criteria) at large negative bulk pressure
+      printf("Error: please put pion-0 (mc_id = 111) at the top of PDG/chosen_particles.dat before calculating...\n");
+      exit(-1);
+    }
+
+    int chosen_index_pion0 = chosen_pion0[0];
+    //cout << chosen_index_pion0 << endl;
 
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spectra for each surface cell in a chunk, for all particle species
@@ -771,6 +793,9 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         LUP_decomposition(M, 3, permutation);
 
 
+        bool negative_pions = false;
+
+
         // now loop over all particle species and momenta
         for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
         {
@@ -797,6 +822,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           }
           // modified renormalization factor
           double renorm = 1.0;
+          double n_linear_over_neq = 1.0;
 
           if(INCLUDE_BULK_DELTAF)
           {
@@ -809,21 +835,27 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
             double nlinear_correction = nlinear_fact * (neq + (N10 * G) + (J20 * F / T / T));
             double n_linear = neq + nlinear_correction;
+            n_linear_over_neq = n_linear / neq;
             double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
 
             renorm = n_linear / n_mod;
-
-            // test renormalization with feqmod
-            //cout << renorm << endl;
-            //exit(-1);
-
-            if(detA < 0.03 || n_linear < 0.0 || T_mod <= 0.0)
-            {
-              breakdown++;
-              cout << setw(5) << setprecision(4) << "feqmod breaks down:" << "\t detA = " << detA << "\t" << breakdown << endl;
-            }
           }
-          else renorm = 1.0 / detA;
+          else 
+          {
+            renorm = 1.0 / detA;
+          }
+
+          if(ipart == chosen_index_pion0 && n_linear_over_neq < 0.0 && !negative_pions)
+          {
+            negative_pions = true;
+          }
+
+          //if((detA < DETA_MIN || negative_pions || T_mod <= 0.0) && ipart == chosen_index_pion0)
+          if((detA < DETA_MIN || negative_pions || T_mod <= 0.0) && ipart == chosen_index_pion0)
+          {
+            breakdown++;
+            cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cells:" << "\t detA = " << detA << "\tnegative pions = " << negative_pions << endl;
+          }
 
 
           for (int ipT = 0; ipT < pT_tab_length; ipT++)
@@ -863,7 +895,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                   // calculate f:
                   // if feqmod breaks down, do chapman enskog instead
-                  if(detA < 0.03 || renorm < 0.0 || T_mod <= 0.0)
+                  if(detA < DETA_MIN || negative_pions || T_mod <= 0.0)
                   {
                      double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
                      double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
@@ -888,6 +920,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                      }
                      double feqbar = 1.0  -  sign * feq;
                      double df = feqbar * (df_shear + df_bulk + df_baryondiff);
+
                      // regulate df option
                      if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0));
 
@@ -899,18 +932,37 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     double pX = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;  // -x.p
                     double pY = Yx * px  +  Yy * py;                                // -y.p
                     double pZ = -Zt * pt  +  Zn * tau2_pn;                          // -z.p
-                    double p[3] = {pX, pY, pZ};
+                    double pmod[3] = {pX, pY, pZ};
                     // solve the matrix equation: pi = Mij.pmodj
-                    LUP_solve(M, 3, permutation, p);
+                    LUP_solve(M, 3, permutation, pmod);
                     // pmod stored in p
-                    double pXmod2 = p[0] * p[0];
-                    double pYmod2 = p[1] * p[1];
-                    double pZmod2 = p[2] * p[2];
+                    double pXmod2 = pmod[0] * pmod[0];
+                    double pYmod2 = pmod[1] * pmod[1];
+                    double pZmod2 = pmod[2] * pmod[2];
                     // effective LRF energy
                     double Emod = sqrt(mass2 + pXmod2 + pYmod2 + pZmod2);
 
                     // modified equilibrium distribution
                     f = renorm / (exp(Emod / T_mod  -  chem_mod) + sign);
+
+                    // test accuracy of the matrix solver
+                    double pX_test = Mxx * pmod[0] + Mxy * pmod[1] + Mxn * pmod[2];
+                    double pY_test = Myx * pmod[0] + Myy * pmod[1] + Myn * pmod[2];
+                    double pZ_test = Mnx * pmod[0] + Mny * pmod[1] + Mnn * pmod[2];
+
+                    double dpX = pX - pX_test;
+                    double dpY = pY - pY_test;
+                    double dpZ = pZ - pZ_test;
+
+                    double dp = sqrt(dpX * dpX + dpY * dpY + dpZ * dpZ);
+                    double p = sqrt(pX * pX + pY * pY + pZ * pZ);
+
+                    if(dp / p > 1.e-6)
+                    {
+                      printf("Error: dp / p = %f not accurate enough; please adjust detA_max (increase)\n", dp / p);
+                      exit(-1);
+                    }
+
                   }
                   if(pdotdsigma > 0.0)
                   {
@@ -959,6 +1011,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         }//ipart species
       } //if (endFO != 0 )
     }//n FO chunk
+
+    cout << setw(5) << setprecision(4) << "\nfeqmod breaks down for the first " << breakdown << " cells\n" << endl;
 
     //free memory
     free(dN_pTdpTdphidy_all);

@@ -47,6 +47,7 @@ private:
   int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
   int REGULATE_DELTAF;
   int INCLUDE_BARYON;
+  double DETA_MIN;
   int GROUP_PARTICLES;
   double PARTICLE_DIFF_TOLERANCE;
   int LIGHTEST_PARTICLE; //mcid of lightest resonance to calculate in decay feed-down
@@ -62,6 +63,8 @@ private:
   double *Snorm; //the normalization of the polarization vector of all species
 
   std::vector<Sampled_Particle> particle_list; //to hold sampled particle list
+
+  vector<int> chosen_pion0;             // stores chosen particle index of pion0 (for tracking feqmod breakdown)
 
   int *chosen_particles_01_table;       // has length Nparticle, 0 means miss, 1 means include
   int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table

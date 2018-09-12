@@ -1,33 +1,36 @@
 operation					= 1		# operation
-			    	  				# 1 : performs smooth cooper frye resulting in dN/pTdpTdphidy
-				  					# 2 : performs sampling of particle distribution resulting in particle list 
+									# 1 : performs smooth cooper frye resulting in dN/pTdpTdphidy
+									# 2 : performs sampling of particle distribution resulting in particle list 
 
 mode                      	= 1 	# mode for reading in freeze out information
-	                                # 1: reads freezeout file from 3+1D viscous hydro (gpu-vh format)
-	                                # 2: reads freezeout file from 3+1D viscous anisotropic hydro (PL matching)
-	                                # 3: reads freezeout file from 3+1D viscous anisotropic hydro (PL,PT matching)
-	                                # 4: reads freezeout file from 3+1D viscous hydro (MUSIC boost invariant format)
+									# 1: reads freezeout file from 3+1D viscous hydro (gpu-vh format)
+									# 2: reads freezeout file from 3+1D viscous anisotropic hydro (PL matching)
+									# 3: reads freezeout file from 3+1D viscous anisotropic hydro (PL,PT matching)
+									# 4: reads freezeout file from 3+1D viscous hydro (MUSIC boost invariant format)
 									# 5: reads freezeout file from 3+1D viscous hydro with thermal vorticity terms (gpu-vh format)
 
 dimension                	= 2     # this switch determines the dimensionality of the freezeout surface
 	                                # 2: boost invariant
 	                                # 3: full 3+1D
 
-df_mode			  			= 2	  	# mode for type of delta-f correction
-			    	  				# 1: 14-moment approximation viscous hydro
-								  	# 2: Chapman-Enskog expansion viscous hydro
-								  	# 3: Modified equilibrium distribution
-								  	# 4: 14-moment approximation vahydro (PL matching)
-								  	# 5: Chapman-Enskog expansion vahydro (PL, PT matching)
+df_mode			  			= 3	  	# mode for type of delta-f correction
+									# 1: 14-moment approximation viscous hydro
+									# 2: Chapman-Enskog expansion viscous hydro
+									# 3: Modified equilibrium distribution
+									# 4: 14-moment approximation vahydro (PL matching)
+									# 5: Chapman-Enskog expansion vahydro (PL, PT matching)
 									# 6: Modified anisotropic distribution
 
-include_baryon            	= 0     # switch to include baryon chemical potential in distribution function
-include_bulk_deltaf       	= 0     # switch to include delta f correction from bulk pressure (or residual bulk for VAH)
-include_shear_deltaf      	= 0     # switch to include delta f correction from shear stress (or residual pi~ and W_perp for VAH)
-include_baryondiff_deltaf 	= 0     # switch to include delta f correction from baryon diffusion current
-regulate_deltaf           	= 0     # if on, force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
+include_baryon            	= 0		# switch to include baryon chemical potential in distribution function
+include_bulk_deltaf       	= 1		# switch to include delta f correction from bulk pressure (or residual bulk for VAH)
+include_shear_deltaf      	= 1		# switch to include delta f correction from shear stress (or residual pi~ and W_perp for VAH)
+include_baryondiff_deltaf 	= 0		# switch to include delta f correction from baryon diffusion current
+regulate_deltaf           	= 1		# if on, force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
 
-group_particles           	= 0     # group particles with the similar mass and to speed up calculations
+deta_min 					= 0	# minimum value of detA (feqmod break down)
+detc_min 					= 1.e-3 # minimum value of detC (famod break down)
+
+group_particles           	= 0		# group particles with the similar mass and to speed up calculations
 particle_diff_tolerance   	= 0.01  # grouping particle mass tolerance
 
 do_resonance_decays	  		= 0     #switch for resonance decays after thermal spectra calculation
