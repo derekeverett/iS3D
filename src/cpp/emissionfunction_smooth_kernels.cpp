@@ -399,7 +399,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       exit(-1);
                     } // default error
                   } // df_mode
-                  if(pdotdsigma > 0.0)
+                  //if(pdotdsigma > 0.0)
+                  if(true)
                   {
                     pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
                   }

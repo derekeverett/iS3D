@@ -586,6 +586,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     for (int icell = 0; icell < FO_length; icell++)
     {
       //get fo cell coordinates
+      //cout << icell << endl;
+
+
       double tau = tau_fo[icell];         // longitudinal proper time
       double x = x_fo[icell];
       double y = y_fo[icell];
@@ -892,7 +895,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           double pdotdsigma = ptau * dat + px * dax + py * day + pn * dan;
 
           // add sampled particle to particle_list
-          if (pdotdsigma >= 0.0)
+          if(true)
+          //if (pdotdsigma >= 0.0)
           {
             // a new particle
             Sampled_Particle new_particle;

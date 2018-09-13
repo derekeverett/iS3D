@@ -98,7 +98,8 @@ for i in range(0, len(p_pT) ):
 pT_bins = [0,.0072, .038, .094, .175, .28, .42, .58, .78, 1.01, 1.3, 1.6, 1.97, 2.4, 2.96, 3.7]
 
 #normalization factor
-norm = nevents * 2.0 * math.pi
+#norm = nevents * 2.0 * math.pi
+norm = nevents
 print("nevents is " + str(nevents))
 print("norm factor is " + str(norm))
 
@@ -143,14 +144,14 @@ plt.bar(center, hist, align = 'center', width = width, color='y', alpha=0.6)
 
 #or use plt.hist
 weights = []
-for j in range(0, len(p_pT_mid)):
+for j in range(0, len(pi_pT_mid)):
     weights.append(1.0 / norm)
 print( "histogram weighted by " + str(1.0 / norm) )
 
 #n, bins, patches = plt.hist(p_pT_mid, bins = pT_bins)
-n, bins, patches = plt.hist(p_pT_mid, bins = pT_bins, weights = weights)
+n, bins, patches = plt.hist(pi_pT_mid, bins = pT_bins, weights = weights)
 
-plt.title("Proton spectra midrapidity")
+plt.title("Pion spectra midrapidity")
 plt.xlabel("pT (GeV)")
 plt.show()
 
