@@ -421,21 +421,16 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
-  //write particle list in OSC1997A format for UrQMD/SMASH afterburner
-  void EmissionFunctionArray::write_particle_list_OSC1997A()
+  //write particle list in oscar format for UrQMD/SMASH afterburner
+  void EmissionFunctionArray::write_particle_list_OSC()
   {
-    printf("Writing sampled particles list to OSC1997A File...\n");
+    printf("Writing sampled particles list to OSCAR File...\n");
     char filename[255] = "";
-    sprintf(filename, "results/particle_list_osc97.dat");
+    sprintf(filename, "results/particle_list_osc.dat");
     ofstream spectraFile(filename, ios_base::app);
     int num_particles = particle_list.size();
     //write the header
-    spectraFile << "OSC1997A" << "\n";
-    spectraFile << "final_id_p_x" << "\n";
-    //not sure the purpose of this part of header, it is filled with dummy info
-    spectraFile << "iS3D v1.0 (208,82)+(208,82) CM, 2.760, 1" << "\n";
-    //event header
-    spectraFile << "1" << " " << num_particles << " " << 0.0 << " " << 0.0 << "\n";
+    spectraFile << "#" << " " << num_particles << "\n";
     for (int ipart = 0; ipart < num_particles; ipart++)
     {
       int mcid = particle_list[ipart].mcID;
@@ -444,12 +439,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       double t = particle_list[ipart].t;
       double z = particle_list[ipart].z;
 
-      double mass = particle_list[ipart].mass;
+      //double mass = particle_list[ipart].mass;
       double E = particle_list[ipart].E;
       double px = particle_list[ipart].px;
       double py = particle_list[ipart].py;
       double pz = particle_list[ipart].pz;
-      spectraFile << ipart << "," << mcid << "," << px << "," << py << "," << pz << "," << E << "," << mass << "," << x << "," << y << "," << z << "," << t << "\n";
+      spectraFile << mcid << "," << scientific <<  setw(5) << setprecision(16) << t << "," << x << "," << y << "," << z << "," << E << "," << px << "," << py << "," << pz << "\n";
     }//ipart
     spectraFile.close();
   }
@@ -814,7 +809,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           printf("betabulk = %f\n", df_coeff[2]);
           printf("betaV = %f\n", df_coeff[3]);
           printf("betapi = %f\n", df_coeff[4]);
-         
+
           switch(OPERATION)
           {
             case 1: // thermal
@@ -954,7 +949,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         write_dN_dpTdphidy_with_resonance_decays_toFile();
       }
     }
-    else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC1997A();}
+    else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC();}
 
     if (MODE == 5) write_polzn_vector_toFile();
 

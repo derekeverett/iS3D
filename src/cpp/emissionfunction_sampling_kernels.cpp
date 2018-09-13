@@ -905,11 +905,14 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             new_particle.t = tau * cosh(eta);
             new_particle.z = tau * sinh(eta);
 
-            new_particle.E = E;
             new_particle.mass = mass;
             new_particle.px = px;
             new_particle.py = py;
             new_particle.pz = pz;
+
+            //new_particle.E = E; //is it possible for this to be too small or negative?
+            //try enforcing mass shell condition on E
+            new_particle.E = sqrtf(mass*mass + px*px + py*py + pz*pz);
 
             //add to particle list
             //CAREFUL push_back is not a thread-safe operation
