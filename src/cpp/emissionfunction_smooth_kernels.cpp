@@ -727,7 +727,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         // prefactors for equilibrium, linear bulk correction and modified densities
         double neq_fact = 1.0;
-        double nlinear_fact = 0.0;
+        double dn_fact = 0.0;
         double J20_fact = 0.0;
         double N10_fact = 0.0;
         double nmod_fact = 1.0;
@@ -771,7 +771,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           Mnn += bulk_term;
 
           neq_fact = T * T * T / two_pi2_hbarC3;
-          nlinear_fact = bulkPi / betabulk;
+          dn_fact = bulkPi / betabulk;
           J20_fact = T * neq_fact;
           N10_fact = neq_fact;
 
@@ -833,8 +833,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             double N10 = baryon * N10_fact * degeneracy * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
             double J20 = J20_fact * degeneracy * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
 
-            double nlinear_correction = nlinear_fact * (neq + (N10 * G) + (J20 * F / T / T));
-            double n_linear = neq + nlinear_correction;
+            double dn = dn_fact * (neq + (N10 * G) + (J20 * F / T / T));
+            double n_linear = neq + dn;
             n_linear_over_neq = n_linear / neq;
             double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
 
@@ -850,11 +850,11 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             negative_pions = true;
           }
 
-          //if((detA < DETA_MIN || negative_pions || T_mod <= 0.0) && ipart == chosen_index_pion0)
+          //if((detA < DETA_MIN || negative_pions) && ipart == chosen_index_pion0)
           if((detA < DETA_MIN || negative_pions || T_mod <= 0.0) && ipart == chosen_index_pion0)
           {
             breakdown++;
-            cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cells:" << "\t detA = " << detA << "\tnegative pions = " << negative_pions << endl;
+            cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cells at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\tnegative pions = " << negative_pions << endl;
           }
 
 
