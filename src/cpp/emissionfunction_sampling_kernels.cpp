@@ -30,10 +30,17 @@
 using namespace std;
 
 lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double bulkPi, double eps, double pressure, double tau2,
-                              double sign, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE)
+                              double sign, lrf_dsigma dsigmaLRF, double dsigma_time, double dsigma_space, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE)
 {
   lrf_momentum pLRF;
 
+  // dsigma LRF components
+  double dat = dsigmaLRF.t;
+  double dax = dsigmaLRF.x;
+  double day = dsigmaLRF.y;
+  double daz = dsigmaLRF.z;
+
+  // pimunu LRF components 
   double pixx = pimunu.pixx;
   double pixy = pimunu.pixy;
   double pixz = pimunu.pixz;
@@ -111,35 +118,80 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       double p = - T * (l1 + l2 + l3);
       double E = sqrt(fabs(p * p + mass * mass));
 
+      // calculate angles and pLRF components
+      double costheta = (l1 - l2) / (l1 + l2);
+      double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
+      double sintheta = sqrt(fabs(1.0 - costheta * costheta));
+
+
+
+      // what the hell? I can't believe I wrote this....
+      // double px = p * costheta;
+      // double py = p * sintheta * cos(phi);
+      // double pz = p * sintheta * sin(phi);
+
+      double px = p * sintheta * cos(phi);
+      double py = p * sintheta * sin(phi);
+      double pz = p * costheta;
+
+
+
+      // need to review formula
+      double pdotdsigma_abs = fabs(E * dat - px * dax - py * day - pz * daz); 
+
+      double rideal = pdotdsigma_abs / E / (dsigma_time + dsigma_space); 
+
+
+
       //here the pion weight should include the Bose enhancement factor
       //this formula assumes zero chemical potential mu = 0
       //TO DO - generalize for nonzero chemical potential
-      double weight = exp(p/T) / ( exp(E/T) - 1.0 );
+      double weight = rideal * exp(p/T) / ( exp(E/T) - 1.0 );
+      if(!(rideal >= 0.0 && rideal <= 1.0)) 
+      {
+        printf("Error: rideal = %f out of bounds\n", rideal);
+        printf("dsigma_time = %f\n", dsigma_time);
+        printf("dsigma_space = %f\n", dsigma_space);
+        printf("pdotdsigma / E  = %f\n", pdotdsigma_abs / E);
+        exit(-1);
+      }
+      if(!(weight >= 0.0 && weight <= 1.0)) 
+      {
+        printf("Error: weight = %f out of bounds\n", weight);
+        exit(-1);
+      }
+
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       // check p acceptance
       if(propose < weight)
       {
         // calculate angles and pLRF components
-        double costheta = (l1 - l2) / (l1 + l2);
-        double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
-        double sintheta = sqrt(1.0 - costheta * costheta);
+        // double costheta = (l1 - l2) / (l1 + l2);
+        // double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
+        // double sintheta = sqrt(1.0 - costheta * costheta);
 
-        double px = p * costheta;
-        double py = p * sintheta * cos(phi);
-        double pz = p * sintheta * sin(phi);
+        // double px = p * costheta;
+        // double py = p * sintheta * cos(phi);
+        // double pz = p * sintheta * sin(phi);
+        // temp
+        pLRF.x = px;
+        pLRF.y = py;
+        pLRF.z = pz;
+        break;        // end rejected loop 
 
+
+        ////////////////////////////////////////
         //viscous corrections
+        /*
         double shear_weight = 1.0;
         double bulk_weight = 1.0;
         double diff_weight = 1.0;
-
         //FIX TEMPORARY
         if (INCLUDE_SHEAR_DELTAF)
         {
           double A = 2.0 * T * T * (eps + pressure);
           double f0 = 1.0 / ( exp(E / T) + sign );
-
           //check contraction / signs etc...
           double pmupnupimunu = 2.0 * ( px*px*pixx + px*py*pixy + px*pz*pixz + py*py*piyy + py*pz*piyz + pz*pz*pizz );
           double num = A + ( 1.0 + sign * f0 ) * pmupnupimunu;
@@ -147,7 +199,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           double den = A + (1.0 + (sign * f0) ) * pmupnupimunu_max;
           shear_weight = num / den;
         }
-
         if (INCLUDE_BULK_DELTAF)
         {
           double H = 1.0;
@@ -157,8 +208,10 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           double den = 1.0 + ( 1.0 + sign * f0 ) * Hmax * bulkPi;
           bulk_weight = num / den;
         }
-
         if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
+        ////////////////////////////////////////
+
+
 
         double viscous_weight = shear_weight * bulk_weight * diff_weight;
         double propose_visc = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -170,6 +223,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           rejected = false; //stop while loop if accepted
         }
         //FIX
+        */
       } // p acceptance
     } // while loop
   } //if (mass / T < 1.5)
@@ -585,13 +639,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     #pragma omp parallel for
     for (int icell = 0; icell < FO_length; icell++)
     {
-      //get fo cell coordinates
-      //cout << icell << endl;
-
-
       double tau = tau_fo[icell];         // longitudinal proper time
-      double x = x_fo[icell];
-      double y = y_fo[icell];
+      double x = x_fo[icell];             // x position
+      double y = y_fo[icell];             // y position
       double tau2 = tau * tau;
 
       if(DIMENSION == 3)
@@ -599,36 +649,31 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         etaValues[0] = eta_fo[icell];     // spacetime rapidity from surface file
       }
 
-      double dat = dat_fo[icell];         // covariant normal surface vector
+      double dat = dat_fo[icell];         // covariant normal surface vector dsigma_mu
       double dax = dax_fo[icell];
       double day = day_fo[icell];
-      double dan = dan_fo[icell];
+      double dan = dan_fo[icell];         // dan should be 0 in 2+1d case
 
-      double ux = ux_fo[icell];           // contravariant fluid velocity
-      double uy = uy_fo[icell];           // reinforce normalization
+      double ux = ux_fo[icell];           // contravariant fluid velocity u^mu
+      double uy = uy_fo[icell];           // enforce normalization
       double un = un_fo[icell];           // u^\eta
       double ux2 = ux * ux;
       double uy2 = uy * uy;
       double uperp =  sqrt(ux2 + uy2);
-      double ut = sqrt(fabs(1.0 + uperp * uperp + tau2*un*un)); //u^\tau
+      double ut = sqrt(fabs(1.0 + uperp * uperp + tau2*un*un)); // u^\tau
 
       double ut2 = ut * ut;
-      double utperp = sqrt(1.0 + uperp * uperp);
+      double utperp = sqrt(1.0 + uperp * uperp);  // ut as if un = 0
 
       double T = T_fo[icell];             // temperature
       double E = E_fo[icell];             // energy density
       double P = P_fo[icell];             // pressure
 
-      //double pitt = pitt_fo[icell];     // pi^munu
-      //double pitx = pitx_fo[icell];     // enforce orthogonality and tracelessness
-      //double pity = pity_fo[icell];
-      //double pitn = pitn_fo[icell];
-      double pixx = pixx_fo[icell];
-      double pixy = pixy_fo[icell];
+      double pixx = pixx_fo[icell];       // contravariant shear stress tensor pi^munu
+      double pixy = pixy_fo[icell];       // enforce orthogonality and tracelessness
       double pixn = pixn_fo[icell];
       double piyy = piyy_fo[icell];
       double piyn = piyn_fo[icell];
-      //double pinn = pinn_fo[icell];
       double pinn = (pixx*(ux2 - ut2) + piyy*(uy2 - ut2) + 2.0*(pixy*ux*uy + tau2*un*(pixn*ux + piyn*uy))) / (tau2 * utperp * utperp);
       double pitn = (pixn*ux + piyn*uy + tau2*pinn*un) / ut;
       double pity = (pixy*ux + piyy*uy + tau2*piyn*un) / ut;
@@ -638,9 +683,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double bulkPi = bulkPi_fo[icell];   // bulk pressure
 
       double muB = 0.0;
-      double alphaB = 0.0;                       // baryon chemical potential
-      double nB = 0.0;                        // net baryon density
-      double Vt = 0.0;                        // baryon diffusion
+      double alphaB = 0.0;                // baryon chemical potential
+      double nB = 0.0;                    // net baryon density
+      double Vt = 0.0;                    // baryon diffusion (enforce orthogonality)
       double Vx = 0.0;
       double Vy = 0.0;
       double Vn = 0.0;
@@ -655,7 +700,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         if(INCLUDE_BARYONDIFF_DELTAF)
         {
           nB = nB_fo[icell];
-          // Vt = Vt_fo[icell];
           Vx = Vx_fo[icell];
           Vy = Vy_fo[icell];
           Vn = Vn_fo[icell];
@@ -677,8 +721,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       Zt = sinhL;
       Zn = coshL / tau;
 
-      // stops (ux=0)/(uperp=0) nans
-      if(uperp < 1.e-5)
+      if(uperp < 1.e-5) // stops (ux=0)/(uperp=0) nans
       {
         Xx = 1.0; Xy = 0.0;
         Yx = 0.0; Yy = 1.0;
@@ -691,15 +734,33 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         Yy = ux / uperp;
       }
 
+      // dsigma_mu in the LRF (delta_eta_weight factored out because it drops out in r_ideal)
+      //    dat_LRF = u^mu . dsigma_mu
+      //    dai_LRF = - X_i^mu . dsigma_mu
+      //    dsigma_time = u.dsigma       
+      //    dsigma_space = sqrt((u.dsigma)^2 - dsigma.dsigma)
+      lrf_dsigma dsigmaLRF;
+      dsigmaLRF.t = dat * ut  +  dax * ux  +  day * uy  +  dan * un; 
+      dsigmaLRF.x = -(dat * Xt  +  dax * Xx  +  day * Xy  +  dan * Xn);
+      dsigmaLRF.y = -(dax * Yx  +  day * Yy);
+      dsigmaLRF.z = -(dat * Zt  +  dan * Zn);   
 
-      // loop over eta points [table for 2+1d (eta_trapezoid_table_21pt.dat), no table for 3+1d (eta_pts = 1)]
+      double dsigma_time = dsigmaLRF.t;
+      double dsigma_space = sqrt(dsigmaLRF.x * dsigmaLRF.x +  dsigmaLRF.y * dsigmaLRF.y  +  dsigmaLRF.z * dsigmaLRF.z);
+
+      // loop over eta points
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
-        double eta = etaValues[ieta];
         double delta_eta_weight = etaDeltaWeights[ieta];
-        double cosheta = cosh(eta);
+        double udotdsigma = delta_eta_weight * dsigma_time;
+        if(udotdsigma <= 0.0) 
+        {
+          break;
+        }
+        double eta = etaValues[ieta];
+        double cosheta = cosh(eta);   // I could make a table beforehand
         double sinheta = sinh(eta);
-        double udotdsigma = delta_eta_weight * (dat * ut + dax * ux + day * uy + dan * un);
+
         double Vdotdsigma = 0.0;
 
         // V^\mu d^3sigma_\mu
@@ -707,16 +768,15 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         {
           Vdotdsigma = delta_eta_weight * (dat * Vt + dax * Vx + day * Vy + dan * Vn);
         }
-        // evaluate particle densities:
-
-        //the total mean number of particles (all species) for the FO cell
-        double dN_tot = 0.0;
-
-        //a list with species dependent densities
+       
+        // a list to hold the mean number of each species in FO cell
         std::vector<double> density_list;
         density_list.resize(npart);
 
-        //loop over all species
+        // sum the total mean number of hadrons in FO cell:
+        double dN_tot = 0.0;
+
+        // loop over hadrons
         for(int ipart = 0; ipart < npart; ipart++)
         {
           // set particle properties
@@ -759,7 +819,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           {
             switch(DF_MODE)
             {
-              case 1: // 14 moment (not yet finished, work out the code stupid :P)
+              case 1: // 14 moment (not sure what the status is)
               {
                 double J10_fact = pow(T,3) / two_pi2_hbarC3;
                 double J20_fact = pow(T,4) / two_pi2_hbarC3;
@@ -821,15 +881,15 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             } //switch(DF_MODE)
           } //if(INCLUDE_BARYONDIFF_DELTAF)
 
-          // add them up
-          // this is the mean number of particles of species ipart
+          // mean number of particles of species ipart
+          // save to list to later sample inidividual species
           double dN = dN_thermal + dN_bulk + dN_diff;
-          //save to a list to later sample inidividual species
           density_list[ipart] = dN;
-          //add this to the total mean number of hadrons for the FO cell
-          dN_tot += dN;
 
-        } // for(int ipart = 0; ipart < npart; ipart++))
+          // add to total mean number of hadrons for FO cell
+          dN_tot += dN;
+        } // loop over hadrons (ipart)
+
 
         // now sample the number of particles (all species)
         std::poisson_distribution<> poisson_distr(dN_tot);
@@ -851,6 +911,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           double sign = Sign[idx_sampled];
 
           //now we need to boost the shear stress to LRF to compute the vicous sampling weight
+          // 9/14: this could be done in the outer loops: 
           Shear_Tensor pimunu;
           pimunu.pitt = pitt;
           pimunu.pitx = pitx;
@@ -870,7 +931,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
           // perhap divide this into sample_momentum_from_distribution_x()
           lrf_momentum p_LRF = Sample_Momentum_deltaf(mass, T, alphaB, pimunu, bulkPi, E, P, tau2,
-                                              sign, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DF_MODE);
+                                              sign, dsigmaLRF, dsigma_time, dsigma_space, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DF_MODE);
 
           double px_LRF = p_LRF.x;
           double py_LRF = p_LRF.y;
@@ -895,8 +956,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           double pdotdsigma = ptau * dat + px * dax + py * day + pn * dan;
 
           // add sampled particle to particle_list
-          if(true)
-          //if (pdotdsigma >= 0.0)
+          if (pdotdsigma >= 0.0)
           {
             // a new particle
             Sampled_Particle new_particle;

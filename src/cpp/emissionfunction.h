@@ -14,6 +14,14 @@ using namespace std;
 
 typedef struct
 {
+  double t;   // dsigmaLRF.t
+  double x;   // dsigmaLRF.x
+  double y;   // dsigmaLRF.y
+  double z;   // dsigmaLRF.z
+} lrf_dsigma;
+
+typedef struct
+{
   double x;   // pLRF.x
   double y;   // pLRF.y
   double z;   // pLRF.z
@@ -30,7 +38,7 @@ typedef struct
 
 //sample momentum with linear viscous correction
 lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double bulkPi, double eps, double pressure, double tau2,
-                            double sign, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE);
+                            double sign, lrf_dsigma dsigmaLRF, double dsigma_time, double dsigma_space, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE);
 
 //sample momentum with modified equil viscous correction
 lrf_momentum Sample_Momentum_mod(double mass, double T, double alphaB);
