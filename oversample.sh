@@ -1,6 +1,9 @@
 echo "***** Oversampling Freezeout Surface *****"
 echo "*****         nsamples = ${1}        *****"
 
+rm -r oversampling
+mkdir oversampling
+
 for ((i=1; i < $1; i++))
 do
     rm -r results
