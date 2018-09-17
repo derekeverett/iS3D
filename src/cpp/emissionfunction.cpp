@@ -328,6 +328,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       int mcid = MCID[ipart];
       sprintf(filename, "results/dN_dpTdphidy_%d.dat", mcid);
       ofstream spectraFile(filename, ios_base::app);
+      //write the header
+      spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_dpTdphidy" << "\n";
       for (int iy = 0; iy < y_pts; iy++)
       {
         double y;
@@ -346,7 +348,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           spectraFile << "\n";
         } //iphip
       } //iy
-    } //ipart 
+    } //ipart
   }
 
   void EmissionFunctionArray::write_dN_dpTdphidy_with_resonance_decays_toFile()
