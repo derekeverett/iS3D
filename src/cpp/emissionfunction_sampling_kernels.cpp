@@ -138,12 +138,11 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       //this formula assumes zero chemical potential mu = 0
       //TO DO - generalize for nonzero chemical potential
       double weight = rideal * exp(p/T) / (exp(E/T) - 1.0);
+      double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
       if(!(rideal >= 0.0 && rideal <= 1.0))
       {
         printf("Error: rideal = %f out of bounds\n", rideal);
-        //printf("dsigma_time = %f\n", dsigma_time);
-        //printf("dsigma_space = %f\n", dsigma_space);
-        //printf("pdotdsigma / E  = %f\n", pdotdsigma_abs / E);
         exit(-1);
       }
       if(!(weight >= 0.0 && weight <= 1.0))
@@ -151,8 +150,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         printf("Error: weight = %f out of bounds\n", weight);
         exit(-1);
       }
-
-      double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       // check p acceptance
       if(propose < weight)
@@ -222,7 +219,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
   // light hadrons, but heavier than pions
   else if (mass / T < 2.0) // fixed bug on 7/12
   {
-    while (rejected)
+    while(rejected)
     {
       // draw (p, phi, costheta) from distribution p^2 * exp[-p/T] by
       // sampling three variables (r1,r2,r3) uniformly from [0,1)
@@ -237,21 +234,41 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       double p = - T * (l1 + l2 + l3);
       double E = sqrt(fabs(p * p + mass_squared));
 
-      double weight = exp((p - E) / T);
+      double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
+      double costheta = (l1 - l2) / (l1 + l2);
+      double sintheta = sqrt(fabs(1.0 - costheta * costheta));
+
+      double px = p * sintheta * cos(phi);
+      double py = p * sintheta * sin(phi);
+      double pz = p * costheta;
+
+      double pdotdsigma_abs = fabs(E * dat - px * dax - py * day - pz * daz);
+      double rideal = pdotdsigma_abs / E / dsigma_magnitude;
+      
+      double weight = rideal * exp((p - E) / T);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      if(!(rideal >= 0.0 && rideal <= 1.0))
+      {
+        printf("Error: rideal = %f out of bounds\n", rideal);
+        exit(-1);
+      }
+      if(!(weight >= 0.0 && weight <= 1.0))
+      {
+        printf("Error: weight = %f out of bounds\n", weight);
+        exit(-1);
+      }
 
       // check p acceptance
       if(propose < weight)
       {
-        // calculate angles and pLRF components
-        double costheta = (l1 - l2) / (l1 + l2);
-        double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
-        double sintheta = sqrt(fabs(1.0 - costheta * costheta));
+        pLRF.x = px;
+        pLRF.y = py;
+        pLRF.z = pz;
+        break;
 
-        double px = p * costheta;
-        double py = p * sintheta * cos(phi);
-        double pz = p * sintheta * sin(phi);
-
+        
+        /*
         //viscous corrections
         double shear_weight = 1.0;
         double bulk_weight = 1.0;
@@ -292,6 +309,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           pLRF.z = pz;
           rejected = false; //stop while loop if accepted
         }
+        */
         //FIX
       } // p acceptance
     } // while loop
@@ -340,6 +358,17 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
 
         double weight = rideal * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        if(!(rideal >= 0.0 && rideal <= 1.0))
+        {
+          printf("Error: rideal = %f out of bounds\n", rideal);
+          exit(-1);
+        }
+        if(!(weight >= 0.0 && weight <= 1.0))
+        {
+          printf("Error: weight = %f out of bounds\n", weight);
+          exit(-1);
+        }
 
         // check k acceptance
         if(propose < weight)
@@ -426,6 +455,17 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
 
         double weight = rideal * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        if(!(rideal >= 0.0 && rideal <= 1.0))
+        {
+          printf("Error: rideal = %f out of bounds\n", rideal);
+          exit(-1);
+        }
+        if(!(weight >= 0.0 && weight <= 1.0))
+        {
+          printf("Error: weight = %f out of bounds\n", weight);
+          exit(-1);
+        }
 
         // check k acceptance
         if(propose < weight)
@@ -518,6 +558,17 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
 
         double weight = rideal * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        if(!(rideal >= 0.0 && rideal <= 1.0))
+        {
+          printf("Error: rideal = %f out of bounds\n", rideal);
+          exit(-1);
+        }
+        if(!(weight >= 0.0 && weight <= 1.0))
+        {
+          printf("Error: weight = %f out of bounds\n", weight);
+          exit(-1);
+        }
 
         if(propose < weight)
         {

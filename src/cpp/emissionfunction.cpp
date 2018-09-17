@@ -201,6 +201,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     char filename[255] = "";
 
     int y_pts = y_tab_length;     // default 3+1d pts
+
     if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
 
     sprintf(filename, "results/dN_pTdpTdphidy.dat");
@@ -209,10 +210,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     {
       for (int iy = 0; iy < y_pts; iy++)
       {
-        double y;
-        if (DIMENSION == 2) y = 0.0;
-        else y = y_tab->get(1,iy + 1);
-
+        double y = y_tab->get(1,iy + 1);
+        
+        if(DIMENSION == 2) y = 0.0;
+       
         for (int iphip = 0; iphip < phi_tab_length; iphip++)
         {
           double phip = phi_tab->get(1,iphip + 1);
