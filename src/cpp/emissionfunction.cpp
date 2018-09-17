@@ -191,7 +191,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
 
-  void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
+ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile(int *MCID)
   {
     printf("Writing thermal spectra to file...\n");
     //write 3D spectra in block format, different blocks for different species,
@@ -201,7 +201,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     char filename[255] = "";
 
     int y_pts = y_tab_length;     // default 3+1d pts
-
     if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
 
     sprintf(filename, "results/dN_pTdpTdphidy.dat");
@@ -210,10 +209,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     {
       for (int iy = 0; iy < y_pts; iy++)
       {
-        double y = y_tab->get(1,iy + 1);
-        
-        if(DIMENSION == 2) y = 0.0;
-       
+        double y;
+        if (DIMENSION == 2) y = 0.0;
+        else y = y_tab->get(1,iy + 1);
+
         for (int iphip = 0; iphip < phi_tab_length; iphip++)
         {
           double phip = phi_tab->get(1,iphip + 1);
@@ -228,6 +227,32 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       } //iy
     }//ipart
     spectraFile.close();
+
+    //now write a separate file for each species
+    for (int ipart  = 0; ipart < npart; ipart++)
+    {
+      int mcid = MCID[ipart];
+      sprintf(filename, "results/dN_pTdpTdphidy_%d.dat", mcid);
+      ofstream spectraFile(filename, ios_base::app);
+      for (int iy = 0; iy < y_pts; iy++)
+      {
+        double y;
+        if (DIMENSION == 2) y = 0.0;
+        else y = y_tab->get(1,iy + 1);
+        for (int iphip = 0; iphip < phi_tab_length; iphip++)
+        {
+          double phip = phi_tab->get(1,iphip + 1);
+          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          {
+            double pT = pT_tab->get(1,ipT + 1);
+            long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[iS3D] << "\n";
+          } //ipT
+          spectraFile << "\n";
+        } //iphip
+      } //iy
+      spectraFile.close();
+    }
   }
 
     void EmissionFunctionArray::write_dN_pTdpTdphidy_with_resonance_decays_toFile()
@@ -268,7 +293,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
-  void EmissionFunctionArray::write_dN_dpTdphidy_toFile()
+  void EmissionFunctionArray::write_dN_dpTdphidy_toFile(int *MCID)
   {
     //write 3D spectra in block format, different blocks for different species,
     //different sublocks for different values of rapidity
@@ -303,6 +328,34 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       } //iy
     }//ipart
     spectraFile.close();
+
+    //now write a separate file for each species
+    for (int ipart  = 0; ipart < npart; ipart++)
+    {
+      int mcid = MCID[ipart];
+      sprintf(filename, "results/dN_dpTdphidy_%d.dat", mcid);
+      ofstream spectraFile(filename, ios_base::app);
+      //write the header
+      spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_dpTdphidy" << "\n";
+      for (int iy = 0; iy < y_pts; iy++)
+      {
+        double y;
+        if (DIMENSION == 2) y = 0.0;
+        else y = y_tab->get(1,iy + 1);
+        for (int iphip = 0; iphip < phi_tab_length; iphip++)
+        {
+          double phip = phi_tab->get(1,iphip + 1);
+          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          {
+            double pT = pT_tab->get(1,ipT + 1);
+            long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
+            double value = dN_pTdpTdphidy[iS3D] * pT;
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << value << "\n";
+          } //ipT
+          spectraFile << "\n";
+        } //iphip
+      } //iy
+    } //ipart
   }
 
   void EmissionFunctionArray::write_dN_dpTdphidy_with_resonance_decays_toFile()
@@ -955,8 +1008,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     //write the results to file
     if (OPERATION == 1)
     {
-      write_dN_pTdpTdphidy_toFile();
-      write_dN_dpTdphidy_toFile();
+      write_dN_pTdpTdphidy_toFile(MCID);
+      write_dN_dpTdphidy_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)
