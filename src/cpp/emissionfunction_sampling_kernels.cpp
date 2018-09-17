@@ -29,10 +29,15 @@
 
 using namespace std;
 
-lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double bulkPi, double eps, double pressure, double tau2,
-                              double sign, lrf_dsigma dsigmaLRF, double dsigma_time, double dsigma_space, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE)
+lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double bulkPi, double eps, double pressure, double tau2, double sign, lrf_dsigma dsigmaLRF, double dsigma_magnitude, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE)
 {
+  // sampled LRF momentum
   lrf_momentum pLRF;
+
+  // for acceptance / rejection loop
+  bool rejected = true;
+
+  double mass_squared = mass * mass;
 
   // dsigma LRF components
   double dat = dsigmaLRF.t;
@@ -40,7 +45,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
   double day = dsigmaLRF.y;
   double daz = dsigmaLRF.z;
 
-  // pimunu LRF components 
+  // pimunu LRF components
   double pixx = pimunu.pixx;
   double pixy = pimunu.pixy;
   double pixz = pimunu.pixz;
@@ -102,7 +107,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
   //not Adaptive Rejection Sampling, but the naive method here...
   if (mass / T < 1.5)
   {
-    bool rejected = true;
     while (rejected)
     {
       // draw (p, phi, costheta) from distribution p^2 * exp[-p/T] by
@@ -116,46 +120,33 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       double l3 = log(r3);
 
       double p = - T * (l1 + l2 + l3);
-      double E = sqrt(fabs(p * p + mass * mass));
+      double E = sqrt(fabs(p * p + mass_squared));
 
       // calculate angles and pLRF components
       double costheta = (l1 - l2) / (l1 + l2);
       double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
       double sintheta = sqrt(fabs(1.0 - costheta * costheta));
 
-
-
-      // what the hell? I can't believe I wrote this....
-      // double px = p * costheta;
-      // double py = p * sintheta * cos(phi);
-      // double pz = p * sintheta * sin(phi);
-
       double px = p * sintheta * cos(phi);
       double py = p * sintheta * sin(phi);
       double pz = p * costheta;
 
-
-
-      // need to review formula
-      double pdotdsigma_abs = fabs(E * dat - px * dax - py * day - pz * daz); 
-
-      double rideal = pdotdsigma_abs / E / (dsigma_time + dsigma_space); 
-
-
+      double pdotdsigma_abs = fabs(E * dat - px * dax - py * day - pz * daz);
+      double rideal = pdotdsigma_abs / E / dsigma_magnitude;
 
       //here the pion weight should include the Bose enhancement factor
       //this formula assumes zero chemical potential mu = 0
       //TO DO - generalize for nonzero chemical potential
-      double weight = rideal * exp(p/T) / ( exp(E/T) - 1.0 );
-      if(!(rideal >= 0.0 && rideal <= 1.0)) 
+      double weight = rideal * exp(p/T) / (exp(E/T) - 1.0);
+      if(!(rideal >= 0.0 && rideal <= 1.0))
       {
         printf("Error: rideal = %f out of bounds\n", rideal);
-        printf("dsigma_time = %f\n", dsigma_time);
-        printf("dsigma_space = %f\n", dsigma_space);
-        printf("pdotdsigma / E  = %f\n", pdotdsigma_abs / E);
+        //printf("dsigma_time = %f\n", dsigma_time);
+        //printf("dsigma_space = %f\n", dsigma_space);
+        //printf("pdotdsigma / E  = %f\n", pdotdsigma_abs / E);
         exit(-1);
       }
-      if(!(weight >= 0.0 && weight <= 1.0)) 
+      if(!(weight >= 0.0 && weight <= 1.0))
       {
         printf("Error: weight = %f out of bounds\n", weight);
         exit(-1);
@@ -178,7 +169,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         pLRF.x = px;
         pLRF.y = py;
         pLRF.z = pz;
-        break;        // end rejected loop 
+        break;        // end rejected loop
 
 
         ////////////////////////////////////////
@@ -231,7 +222,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
   // light hadrons, but heavier than pions
   else if (mass / T < 2.0) // fixed bug on 7/12
   {
-    bool rejected = true;
     while (rejected)
     {
       // draw (p, phi, costheta) from distribution p^2 * exp[-p/T] by
@@ -245,7 +235,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       double l3 = log(r3);
 
       double p = - T * (l1 + l2 + l3);
-      double E = sqrt(fabs(p * p + mass * mass));
+      double E = sqrt(fabs(p * p + mass_squared));
 
       double weight = exp((p - E) / T);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -256,7 +246,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         // calculate angles and pLRF components
         double costheta = (l1 - l2) / (l1 + l2);
         double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
-        double sintheta = sqrt(1.0 - costheta * costheta);
+        double sintheta = sqrt(fabs(1.0 - costheta * costheta));
 
         double px = p * costheta;
         double py = p * sintheta * cos(phi);
@@ -312,7 +302,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
   else
   {
     // determine which part of integrand dominates
-    double I1 = mass * mass;
+    double I1 = mass_squared;
     double I2 = 2.0 * mass * T;
     double I3 = 2.0 * T * T;
     double Itot = I1 + I2 + I3;
@@ -325,29 +315,42 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       // draw k from distribution exp(-k/T) by sampling
       // one variable r1 uniformly from [0,1):
       //    k = -T * log(r1)
-      bool rejected = true;
+      // sample LRF angles costheta = [-1,1] and phi = [0,2pi) uniformly
+      uniform_real_distribution<double> phi_distribution(0.0 , 2.0 * M_PI);
+      uniform_real_distribution<double> costheta_distribution(-1.0 , nextafter(1.0, numeric_limits<double>::max()));
+
       while(rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double phi = phi_distribution(generator);
+        double costheta = costheta_distribution(generator);
 
         double k = - T * log(r1);
+        double sintheta = sqrt(fabs(1.0 - costheta * costheta));
+
         double E = k + mass;
-        double p = sqrt(fabs(E * E - mass * mass));
-        double weight = p / E;
+        double p = sqrt(fabs(E * E - mass_squared));
+
+        double px = p * sintheta * cos(phi);
+        double py = p * sintheta * sin(phi);
+        double pz = p * costheta;
+
+        double pdotdsigma_abs = fabs(E * dat - px * dax - py * day - pz * daz);
+        double rideal = pdotdsigma_abs / E / dsigma_magnitude;
+
+        double weight = rideal * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
         // check k acceptance
         if(propose < weight)
         {
-          // sample LRF angles costheta = [-1,1] and phi = [0,2pi) uniformly
-          uniform_real_distribution<double> phi_distribution(0.0 , 2.0 * M_PI);
-          uniform_real_distribution<double> costheta_distribution(-1.0 , nextafter(1.0, numeric_limits<double>::max()));
-          double phi = phi_distribution(generator);
-          double costheta = costheta_distribution(generator);
-          double sintheta = sqrt(1.0 - costheta * costheta);
-          double px = p * costheta;
-          double py = p * sintheta * cos(phi);
-          double pz = p * sintheta * sin(phi);
+          pLRF.x = px;
+          pLRF.y = py;
+          pLRF.z = pz;
+          break;
+
+
+          /*
           //viscous corrections
           double shear_weight = 1.0;
           double bulk_weight = 1.0;
@@ -384,6 +387,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
             pLRF.z = pz;
             rejected = false; //stop while loop if accepted
           }
+          */
         } // k acceptance
       } // while loop
     } // distribution 1
@@ -393,33 +397,49 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       // sampling two variables (r1,r2) uniformly from [0,1):
       //    k = -T * log(r1)
       //    phi = 2 * \pi * log(r1) / (log(r1) + log(r2)); (double check this formula!!)
+      // sample LRF angle costheta = [-1,1] uniformly
+      uniform_real_distribution<double> costheta_distribution(-1.0 , nextafter(1.0, numeric_limits<double>::max()));
 
       bool rejected = true;
       while (rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
         double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double costheta = costheta_distribution(generator);
+
         double l1 = log(r1);
         double l2 = log(r2);
+
         double k = - T * (l1 + l2);
+        double phi = 2.0 * M_PI * l1 / (l1 + l2);
+        double sintheta = sqrt(fabs(1.0 - costheta * costheta));
+
         double E = k + mass;
-        double p = sqrt(fabs(E * E - mass * mass));
-        double weight = p / E;
+        double p = sqrt(fabs(E * E - mass_squared));
+
+        double px = p * sintheta * cos(phi);
+        double py = p * sintheta * sin(phi);
+        double pz = p * costheta;
+
+        double pdotdsigma_abs = fabs(E * dat - px * dax - py * day - pz * daz);
+        double rideal = pdotdsigma_abs / E / dsigma_magnitude;
+
+        double weight = rideal * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
         // check k acceptance
         if(propose < weight)
         {
           // need to verify this formula
-          double phi = 2.0 * M_PI * l1 / (l1 + l2);
-          // sample LRF angle costheta = [-1,1] uniformly
-          uniform_real_distribution<double> costheta_distribution(-1.0 , nextafter(1.0, numeric_limits<double>::max()));
-          double costheta = costheta_distribution(generator);
-          double sintheta = sqrt(1.0 - costheta * costheta);
-          double px = p * costheta;
-          double py = p * sintheta * cos(phi);
-          double pz = p * sintheta * sin(phi);
+          pLRF.x = px;
+          pLRF.y = py;
+          pLRF.z = pz;
+          break;
 
+
+
+
+          /*
           //viscous corrections
           double shear_weight = 1.0;
           double bulk_weight = 1.0;
@@ -459,6 +479,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
             pLRF.z = pz;
             rejected = false; //stop while loop if accepted
           }
+          */
         } // k acceptance
       } // while loop
     } // distribution 2
@@ -470,7 +491,6 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       //    phi = 2 * \pi * (log(r1) + log(r2))^2 / (log(r1) + log(r2) + log(r3))^2
       //    costheta = (log(r1) - log(r2)) / (log(r1) + log(r2))
 
-      bool rejected = true;
       while(rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -482,22 +502,33 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         double l3 = log(r3);
 
         double k = - T * (l1 + l2 + l3);
+        double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
+        double costheta = (l1 - l2) / (l1 + l2);
+        double sintheta = sqrt(1.0 - costheta * costheta);
+
         double E = k + mass;
-        double p = sqrt(fabs(E * E - mass * mass));
-        double weight = p / E;
+        double p = sqrt(fabs(E * E - mass_squared));
+
+        double px = p * sintheta * cos(phi);
+        double py = p * sintheta * sin(phi);
+        double pz = p * costheta;
+
+        double pdotdsigma_abs = fabs(E * dat - px * dax - py * day - pz * daz);
+        double rideal = pdotdsigma_abs / E / dsigma_magnitude;
+
+        double weight = rideal * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
         if(propose < weight)
         {
           // calculate angles
-          double costheta = (l1 - l2) / (l1 + l2);
-          double phi = 2.0 * M_PI * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
-          double sintheta = sqrt(1.0 - costheta * costheta);
+          pLRF.x = px;
+          pLRF.y = py;
+          pLRF.z = pz;
+          break;
 
-          double px = p * costheta;
-          double py = p * sintheta * cos(phi);
-          double pz = p * sintheta * sin(phi);
 
+          /*
           //viscous corrections
           double shear_weight = 1.0;
           double bulk_weight = 1.0;
@@ -536,6 +567,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
             pLRF.z = pz;
             rejected = false; //stop while loop if accepted
           }
+          */
         } // k acceptance
       }
     } // distribution 3
@@ -737,23 +769,24 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       // dsigma_mu in the LRF (delta_eta_weight factored out because it drops out in r_ideal)
       //    dat_LRF = u^mu . dsigma_mu
       //    dai_LRF = - X_i^mu . dsigma_mu
-      //    dsigma_time = u.dsigma       
+      //    dsigma_time = u.dsigma
       //    dsigma_space = sqrt((u.dsigma)^2 - dsigma.dsigma)
       lrf_dsigma dsigmaLRF;
-      dsigmaLRF.t = dat * ut  +  dax * ux  +  day * uy  +  dan * un; 
+      dsigmaLRF.t = dat * ut  +  dax * ux  +  day * uy  +  dan * un;
       dsigmaLRF.x = -(dat * Xt  +  dax * Xx  +  day * Xy  +  dan * Xn);
       dsigmaLRF.y = -(dax * Yx  +  day * Yy);
-      dsigmaLRF.z = -(dat * Zt  +  dan * Zn);   
+      dsigmaLRF.z = -(dat * Zt  +  dan * Zn);
 
       double dsigma_time = dsigmaLRF.t;
       double dsigma_space = sqrt(dsigmaLRF.x * dsigmaLRF.x +  dsigmaLRF.y * dsigmaLRF.y  +  dsigmaLRF.z * dsigmaLRF.z);
+      double dsigma_magnitude = dsigma_time + dsigma_space;
 
       // loop over eta points
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
         double delta_eta_weight = etaDeltaWeights[ieta];
         double udotdsigma = delta_eta_weight * dsigma_time;
-        if(udotdsigma <= 0.0) 
+        if(udotdsigma <= 0.0)
         {
           break;
         }
@@ -768,7 +801,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         {
           Vdotdsigma = delta_eta_weight * (dat * Vt + dax * Vx + day * Vy + dan * Vn);
         }
-       
+
         // a list to hold the mean number of each species in FO cell
         std::vector<double> density_list;
         density_list.resize(npart);
@@ -911,7 +944,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           double sign = Sign[idx_sampled];
 
           //now we need to boost the shear stress to LRF to compute the vicous sampling weight
-          // 9/14: this could be done in the outer loops: 
+          // 9/14: this could be done in the outer loops:
           Shear_Tensor pimunu;
           pimunu.pitt = pitt;
           pimunu.pitx = pitx;
@@ -931,7 +964,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
           // perhap divide this into sample_momentum_from_distribution_x()
           lrf_momentum p_LRF = Sample_Momentum_deltaf(mass, T, alphaB, pimunu, bulkPi, E, P, tau2,
-                                              sign, dsigmaLRF, dsigma_time, dsigma_space, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DF_MODE);
+                                              sign, dsigmaLRF, dsigma_magnitude, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DF_MODE);
 
           double px_LRF = p_LRF.x;
           double py_LRF = p_LRF.y;

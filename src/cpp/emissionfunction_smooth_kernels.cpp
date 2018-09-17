@@ -318,7 +318,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double tau2_pn = tau2 * pn;
 
                   //momentum vector is contravariant, surface normal vector is COVARIANT
-                  double pdotdsigma = pt * dat + px * dax + py * day + pn * dan;
+                  double pdotdsigma = delta_eta_weight * (pt * dat + px * dax + py * day + pn * dan);
 
                   // u.p LRF energy
                   double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
@@ -399,12 +399,11 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       exit(-1);
                     } // default error
                   } // df_mode
-                  //if(pdotdsigma > 0.0)
-                  if(true)
+                  if(pdotdsigma > 0.0)
                   {
-                    pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
+                    pdotdsigma_f_eta_sum += (pdotdsigma * f);
                   }
-                  
+
 
                 } // ieta
 
@@ -530,7 +529,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         //cout << etaValues[ieta] << "\t" << etaDeltaWeights[ieta] << endl;
       }
     }
-    
+
     if(chosen_pion0.size() == 0)
     {
       printf("Error: please include pion-0 (mc_id = 111) in PDG/chosen_particles.dat...\n");
@@ -841,7 +840,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
             renorm = n_linear / n_mod;
           }
-          else 
+          else
           {
             renorm = 1.0 / detA;
           }
@@ -890,7 +889,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double pn = mT_over_tau * sinh(y - eta);  // p^eta
                   double tau2_pn = tau2 * pn;
                   // momentum vector is contravariant, surface normal vector is COVARIANT
-                  double pdotdsigma = pt * dat  +  px * dax  +  py * day  +  pn * dan;
+                  double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan);
                   // distribution feq(1+df) or feqmod
                   double f;
 
@@ -967,7 +966,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   }
                   if(pdotdsigma > 0.0)
                   {
-                    pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * f);
+                    pdotdsigma_f_eta_sum += (pdotdsigma * f);
                   }
 
                 } // ieta

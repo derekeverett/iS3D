@@ -132,7 +132,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       // store chosen index of pion0
       if(mc_id == 111)
       {
-        chosen_pion0.push_back(m); 
+        chosen_pion0.push_back(m);
       }
 
       for (int n = 0; n < Nparticles; n++)
@@ -220,7 +220,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           {
             double pT = pT_tab->get(1,ipT + 1);
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
-            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t{" << pT << ",\t" << dN_pTdpTdphidy[iS3D] << "},\n";
+            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[iS3D] << "\n";
           } //ipT
           spectraFile << "\n";
         } //iphip
@@ -445,6 +445,26 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       double py = particle_list[ipart].py;
       double pz = particle_list[ipart].pz;
       spectraFile << mcid << "," << scientific <<  setw(5) << setprecision(16) << t << "," << x << "," << y << "," << z << "," << E << "," << px << "," << py << "," << pz << "\n";
+    }//ipart
+    spectraFile.close();
+  }
+
+  void EmissionFunctionArray::write_momentum_list_toFile()
+  {
+    printf("Writing sampled momentum list to file...\n");
+    char filename[255] = "";
+    sprintf(filename, "results/momentum_list.dat");
+    ofstream spectraFile(filename, ios_base::app);
+    int num_particles = particle_list.size();
+    //write the header
+    spectraFile << "E" << "\t" << "px" << "\t" << "py" << "\t" << "pz" << "\n";
+    for (int ipart = 0; ipart < num_particles; ipart++)
+    {
+      double E = particle_list[ipart].E;
+      double px = particle_list[ipart].px;
+      double py = particle_list[ipart].py;
+      double pz = particle_list[ipart].pz;
+      spectraFile << scientific <<  setw(5) << setprecision(8) << E << "\t" << px << "\t" << py << "\t" << pz << "\n";
     }//ipart
     spectraFile.close();
   }
@@ -949,7 +969,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         write_dN_dpTdphidy_with_resonance_decays_toFile();
       }
     }
-    else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC();}
+    else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC(); write_momentum_list_toFile();}
 
     if (MODE == 5) write_polzn_vector_toFile();
 
