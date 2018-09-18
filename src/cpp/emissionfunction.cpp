@@ -943,6 +943,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             }
             case 2: // sample
             {
+              printf("sampling particles with feqmod...\n");
 
               sample_dN_pTdpTdphidy_feqmod(Mass, Sign, Degen, Baryon, MCID,
               T, P, E, tau, x, y, eta, ut, ux, uy, un,

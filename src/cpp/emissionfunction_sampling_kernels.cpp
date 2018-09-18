@@ -1399,21 +1399,16 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
   double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff,
   int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2)
   {
-    printf("sampling particles from vhydro with feqmod...\n");
-
-    if((MODE != 1) || (DF_MODE != 3))
-    {
-      cout << "Stopping: please set mode = 1 (viscous hydro) and df_mode = 3 (modified) in parameters.dat" << endl;
-      exit(-1);
-    }
-
     int npart = number_of_chosen_particles;
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
 
     int eta_pts = 1;
-    if(DIMENSION == 2) eta_pts = eta_tab_length;
+    if(DIMENSION == 2)
+    {
+      eta_pts = eta_tab_length;
+    }
     double etaValues[eta_pts];
-    double etaDeltaWeights[eta_pts];    // eta_weight * delta_eta
+    double etaDeltaWeights[eta_pts];                               // eta_weight * delta_eta
     double delta_eta = (eta_tab->get(1,2)) - (eta_tab->get(1,1));  // assume uniform grid
 
     if(DIMENSION == 2)
@@ -1426,7 +1421,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
     }
     else if(DIMENSION == 3)
     {
-      etaValues[0] = 0.0;       // below, will load eta_fo
+      etaValues[0] = 0.0;       // placeholder for eta_fo below
       etaDeltaWeights[0] = 1.0; // default 1.0 for 3+1d
     }
 
@@ -1443,8 +1438,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
     {
       // FO cell coordinates:
       double tau = tau_fo[icell];         // longitudinal proper time
-      double x = x_fo[icell];
-      double y = y_fo[icell];
+      double x = x_fo[icell];             // x coordinate
+      double y = y_fo[icell];             // y coordinate
       double tau2 = tau * tau;
 
       if(DIMENSION == 3)
@@ -1452,44 +1447,31 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
         etaValues[0] = eta_fo[icell];     // spacetime rapidity from surface file
       }
 
-      double dat = dat_fo[icell];         // covariant normal surface vector d^3sigma_mu
+      double dat = dat_fo[icell];         // covariant normal surface vector dsigma_mu
       double dax = dax_fo[icell];
       double day = day_fo[icell];
       double dan = dan_fo[icell];
 
       double ux = ux_fo[icell];           // fluid velocity u^mu
-      double uy = uy_fo[icell];           // reinforce normalization
-      double un = un_fo[icell];           // u^\eta
+      double uy = uy_fo[icell];           // enforce normalization
+      double un = un_fo[icell];           // u^eta
+      double ut = sqrt(fabs(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un)); //u^tau
+
+      // useful expressions
+      double ut2 = ut * ut;
       double ux2 = ux * ux;
       double uy2 = uy * uy;
       double uperp =  sqrt(ux2 + uy2);
-      double ut = sqrt(fabs(1.0 + uperp * uperp + tau2*un*un)); //u^\tau
-
-      double ut2 = ut * ut;
       double utperp = sqrt(1.0 + uperp * uperp);
 
       // set milne basis vectors
       Milne_Basis_Vectors basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
 
-      // temporary
-      double Xt = basis_vectors.Xt;
-      double Xx = basis_vectors.Xx;
-      double Xy = basis_vectors.Xy;
-      double Xn = basis_vectors.Xn;
-
-      double Yx = basis_vectors.Yx;
-      double Yy = basis_vectors.Yy;
-
-      double Zt = basis_vectors.Zt;
-      double Zn = basis_vectors.Zn;
-
-
       double T = T_fo[icell];             // temperature
-      double T_mod = T;                   // modified temperature (default)
       double E = E_fo[icell];             // energy density
       double P = P_fo[icell];             // pressure
 
-      double pitt = 0.0;                  // shear stress pi^munu
+      double pitt = 0.0;                  // shear stress tensor pi^munu
       double pitx = 0.0;                  // enforce orthogonality and tracelessness
       double pity = 0.0;
       double pitn = 0.0;
@@ -1518,17 +1500,17 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
       if(INCLUDE_BULK_DELTAF)
       {
-        bulkPi = bulkPi_fo[icell];   // bulk pressure
+        bulkPi = bulkPi_fo[icell];        // bulk pressure
       }
 
       double muB = 0.0;                   // baryon chemical potential
       double alphaB = 0.0;                // muB / T
-      double alphaB_mod = alphaB;         // modified muB / T (default)
       double nB = 0.0;                    // net baryon density
-      Baryon_Diffusion_Current Vmu;
-
-      double Vdotdsigma = 0.0;
-      double baryon_enthalpy_ratio = 0.0;
+      double Vt = 0.0;                    // net baryon diffusion current V^mu
+      double Vx = 0.0;
+      double Vy = 0.0;
+      double Vn = 0.0; 
+      double baryon_enthalpy_ratio = 0.0; // nB / (E + P)
 
       if(INCLUDE_BARYON)
       {
@@ -1538,12 +1520,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
         if(INCLUDE_BARYONDIFF_DELTAF)
         {
           nB = nB_fo[icell];
-          Vmu.Vx = Vx_fo[icell];
-          Vmu.Vy = Vy_fo[icell];
-          Vmu.Vn = Vn_fo[icell];
-          Vmu.Vt = (Vmu.Vx * ux  +  Vmu.Vy * uy  +  tau2 * Vmu.Vn * un) / ut;
-          Vmu.boost_to_lrf(basis_vectors, tau2);
-
+          Vx = Vx_fo[icell];
+          Vy = Vy_fo[icell];
+          Vn = Vn_fo[icell];
+          Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
           baryon_enthalpy_ratio = nB / (E + P);
         }
       }
@@ -1551,113 +1531,85 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       // set modified coefficients, temperature, chemical potential
       double shear_coeff = 0.5 / betapi;
       double bulk_coeff = bulkPi / betabulk / 3.0;
-      double diff_coeff = 0.0;
-      if(INCLUDE_BULK_DELTAF)
-      {
-        double dT = F * bulkPi / betabulk;
-        double dalphaB = G * bulkPi / betabulk;
-        T_mod += dT;
-        alphaB_mod += dalphaB;
-      }
-      if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
-      {
-        diff_coeff = T / betaV;
-      }
+      double diff_coeff = T / betaV;
+
+      double T_mod = T + (F * bulkPi / betabulk); 
+      double alphaB_mod =  alphaB + (G * bulkPi / betabulk);
+
+      // dsigma class (delta_eta_weight factored out of 2+1d volume element since it drops out in rideal)
+      dsigma_Vector dsigma(dat, dax, day, dan); 
+      dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
+      dsigma.compute_dsigma_max();  
+
+      // shear stress class
+      Shear_Stress_Tensor_Mike pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
+      pimunu.boost_shear_stress_to_lrf(basis_vectors, tau2);
+
+      // baryon diffusion class
+      Baryon_Diffusion_Current Vmu(Vt, Vx, Vy, Vn);
+      Vmu.boost_baryon_diffusion_to_lrf(basis_vectors, tau2);
+
+      // udotdsigma and Vdotdsigma w/o delta_eta_weight factor
+      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
+      double Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
 
 
-
-
-      // set LRF shear stress and diffusion components:
-      Shear_Tensor pimunu;
-      pimunu.pitt = pitt;
-      pimunu.pitx = pitx;
-      pimunu.pity = pity;
-      pimunu.pitn = pitn;
-      pimunu.pixx = pixx;
-      pimunu.pixy = pixy;
-      pimunu.pixn = pixn;
-      pimunu.piyy = piyy;
-      pimunu.piyn = piyn;
-      pimunu.pinn = pinn;
-
-      pimunu.boost_to_lrf(Xt, Xx, Xy, Xn, Yx, Yy, Zt, Zn, tau2);
-
-
-      // dsigma_mu in the LRF (delta_eta_weight factored out because it drops out in r_ideal)
-      lrf_dsigma dsigmaLRF;
-      dsigmaLRF.t = dat * ut  +  dax * ux  +  day * uy  +  dan * un;
-      dsigmaLRF.x = -(dat * Xt  +  dax * Xx  +  day * Xy  +  dan * Xn);
-      dsigmaLRF.y = -(dax * Yx  +  day * Yy);
-      dsigmaLRF.z = -(dat * Zt  +  dan * Zn);
-
-      double dsigma_time = dsigmaLRF.t;
-      double dsigma_space = sqrt(dsigmaLRF.x * dsigmaLRF.x +  dsigmaLRF.y * dsigmaLRF.y  +  dsigmaLRF.z * dsigmaLRF.z);
-      double dsigma_magnitude = dsigma_time + dsigma_space;
-
-      // loop over eta points [table for 2+1d (eta_trapezoid_table_21pt.dat), no table for 3+1d (eta_pts = 1)]
+      // loop over eta points 
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
-        double eta = etaValues[ieta];
         double delta_eta_weight = etaDeltaWeights[ieta];
-        double cosheta = cosh(eta);
-        double sinheta = sinh(eta);
-        double udotdsigma = delta_eta_weight * (dat*ut + dax*ux + day*uy + dan*un);
-        double Vdotdsigma = 0.0;
-
-        // V^\mu d^3sigma_\mu
-        if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+        double udotdsigma = delta_eta_weight * udsigma;
+        if(udotdsigma <= 0.0)
         {
-          Vdotdsigma = delta_eta_weight * (dat * Vmu.Vt + dax * Vmu.Vx + day * Vmu.Vy + dan * Vmu.Vn);
+          break;
         }
-        // evaluate particle densities:
+        double eta = etaValues[ieta];
+        double cosheta = cosh(eta);  
+        double sinheta = sinh(eta);
+        double Vdotdsigma = delta_eta_weight * Vdsigma;
 
-        //the total mean number of particles (all species) for the FO cell
-        double dN_tot = 0.0;
-        //a list with species dependent densities
-        std::vector<double> density_list;
+        std::vector<double> density_list;         // holds mean number of each species in FO cell
         density_list.resize(npart);
+        double dN_tot = 0.0;                      // total mean number of hadrons in FO cell
 
-        //loop over all species
+        // loop over all particle species
         for(int ipart = 0; ipart < npart; ipart++)
         {
-          // set particle properties
-          double mass = Mass[ipart];   // (GeV)
-          double mass2 = mass * mass;
-          double mbar = mass / T;
-          double sign = Sign[ipart];
-          double degeneracy = Degeneracy[ipart];
-          double baryon = 0.0;
-          double chem = 0.0;           // chemical potential term in feq
-          if(INCLUDE_BARYON)
-          {
-            baryon = Baryon[ipart];
-            chem = baryon * alphaB;   // probably need to rethink computing particle density
-                                      // use gauss quadrature
-          }
+          // particle's properties
+          double mass = Mass[ipart];               // mass in GeV
+          double mass_squared = mass * mass;       // mass squared
+          double mbar = mass / T;                  // m / T 
+          double sign = Sign[ipart];               // quantum statistics sign 
+          double degeneracy = Degeneracy[ipart];   // spin degeneracy 
+          double baryon = Baryon[ipart];           // baryon number
+          double chem = baryon * alphaB;           // baryon chemical potential term in feq
 
-          // first calculate thermal equilibrium particles
-          double neq = 0.0;
-          double dN_thermal = 0.0;
-
-          // for light particles need more than leading order term in BE or FD expansion
-          int jmax = 2;
-          if(mass / T < 2.0) jmax = 10;
+          // thermal particles
+          //:::::::::::::::::::::::::::::::::::        
+          int jmax = 2;                            // truncation term of Bose-Fermi expansion = jmax - 1
+          if(mbar < 2.0) jmax = 10;                // light particles need more terms than the leading order term
 
           double sign_factor = -sign;
 
-          for(int j = 1; j < jmax; j++) // truncate expansion of BE or FD distribution
+          double neq = 0.0;                        // equilibrium particle density
+
+          for(int j = 1; j < jmax; j++)            // sum truncated expansion of Bose-Fermi distribution
           {
             double k = (double)j;
             sign_factor *= (-sign);
-            neq += (sign_factor * exp(k * chem) * gsl_sf_bessel_Kn(2, k * mbar) / k); // fixed on 7/15
+            neq += sign_factor * exp(k * chem) * gsl_sf_bessel_Kn(2, k * mbar) / k; 
           }
-          neq *= (degeneracy * mass2 * T / two_pi2_hbarC3);
 
-          dN_thermal = udotdsigma * neq;
+          neq *= degeneracy * mass_squared * T / two_pi2_hbarC3;
 
-          // bulk pressure: density correction
-          // (modified bulk correction exactly same as linear one because of renormalization factor)
+          double dN_thermal = udotdsigma * neq;   // mean number of particles in FO cell
+          //:::::::::::::::::::::::::::::::::::
+
+
+          // bulk pressure correction (modified bulk correction same as df because of renormalization factor Z)
+          //:::::::::::::::::::::::::::::::::::
           double dN_bulk = 0.0;
+
           if(INCLUDE_BULK_DELTAF)
           {
             double J10_fact = pow(T,3) / two_pi2_hbarC3;
@@ -1666,50 +1618,57 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
             double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
             dN_bulk = udotdsigma * (bulkPi / betabulk) * (neq + (baryon * J10 * G) + (J20 * F / T / T));
           }
+          //:::::::::::::::::::::::::::::::::::
 
-          // baryon diffusion: density correction
-          // (~ assumes modified diffusion current of each species is approximately same as linear one)
+
+          // baryon diffusion correction (~ assumes modified diffusion current of each species is approx same as df one)
+          //:::::::::::::::::::::::::::::::::::
           double dN_diff = 0.0;
+
           if(INCLUDE_BARYONDIFF_DELTAF)
           {
             double J11_fact = pow(T,3) / two_pi2_hbarC3 / 3.0;
             double J11 = degeneracy * J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
             dN_diff = - (Vdotdsigma / betaV) * (neq * T * baryon_enthalpy_ratio - baryon * J11);
           }
-
-          // add them up
-          // this is the mean number of particles of species ipart
-          double dN = dN_thermal + dN_bulk + dN_diff;
-          //save to a list to later sample inidividual species
-          density_list[ipart] = dN;
-          //add this to the total mean number of hadrons for the FO cell
-          dN_tot += dN;
-
-        } // for(int ipart = 0; ipart < npart; ipart++))
+          //:::::::::::::::::::::::::::::::::::
 
 
-        // now sample the number of particles (all species)
+          double dN = dN_thermal + dN_bulk + dN_diff;    // mean number of particles of species ipart
+          density_list[ipart] = dN;                      // store in density list to sample individual species later
+          dN_tot += dN;                                  // add to total mean number of hadrons 
+
+        } // finished looping over particles 
+
+
+
+        // random number generators 
         std::random_device gen1;
         std::random_device gen2;
-        std::poisson_distribution<> poisson_distr(dN_tot);
-        //sample total number of hadrons in FO cell
-        int N_hadrons = poisson_distr(gen1);
-        //make a discrete distribution with weights according to particle densities
-        std::discrete_distribution<int> particle_numbers (density_list.begin(), density_list.end());
 
+        // probability distributions for number of hadrons and particle type 
+        std::poisson_distribution<> poisson_hadrons(dN_tot);
+        std::discrete_distribution<int> discrete_particle_type(density_list.begin(), density_list.end());
+        
+        int N_hadrons = poisson_hadrons(gen1);              // sample total number of hadrons in FO cell
+
+        // sample momentum of N_hadrons
         for(int n = 0; n < N_hadrons; n++)
         {
-          //sample discrete distribution
-          int idx_sampled = particle_numbers(gen2); // this gives the index of the sampled particle
+          // sample particle type with discrete distribution (weights ~ number of particles of each type)
+          //:::::::::::::::::::::::::::::::::::
+          int idx_sampled = discrete_particle_type(gen2);   // chosen index of sampled particle type
 
-          //get the mass of the sampled particle
-          double mass = Mass[idx_sampled]; // (GeV)
-          double mass2 = mass * mass;
-          //get the MC ID of the sampled particle
-          int mcid = MCID[idx_sampled];
+          double mass = Mass[idx_sampled];                  // mass of sampled particle in GeV
+          double mass2 = mass * mass;                       // mass squared 
+          int mcid = MCID[idx_sampled];                     // MC ID of sampled particle
+          //:::::::::::::::::::::::::::::::::::
 
 
+          // sample particle's momentum from modified equilibrium distribution 
 
+          
+          
           // sample prime LRF Momentum p' from an "equilibrium" distribution
           // with Scott Pratt's Trick - See LongGang's Sampler Notes
           // modified version:

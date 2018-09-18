@@ -24,18 +24,37 @@ Milne_Basis_Vectors::Milne_Basis_Vectors(double ut, double ux, double uy, double
       }
 }
 
-
-
-Baryon_Diffusion_Current::Baryon_Diffusion_Current()
+dsigma_Vector::dsigma_Vector(double dsigmat_in, double dsigmax_in, double dsigmay_in, double dsigman_in)
 {
-    Vt = 0.0;
-    Vx = 0.0;
-    Vy = 0.0;
-    Vn = 0.0;
+    dsigmat = dsigmat_in;
+    dsigmax = dsigmax_in;
+    dsigmay = dsigmay_in;
+    dsigman = dsigman_in;
+}
 
-    Vx_LRF = 0.0;
-    Vy_LRF = 0.0;
-    Vz_LRF = 0.0;
+void dsigma_Vector::boost_dsigma_to_lrf(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un)
+{
+    double Xt = basis_vectors.Xt;
+    double Xx = basis_vectors.Xx;
+    double Xy = basis_vectors.Xy;
+    double Xn = basis_vectors.Xn;
+
+    double Yx = basis_vectors.Yx;
+    double Yy = basis_vectors.Yy;
+
+    double Zt = basis_vectors.Zt;
+    double Zn = basis_vectors.Zn;
+
+    dsigmat_LRF = dsigmat * ut  +  dsigmax * ux  +  dsigmay * uy  +  dsigman * un;
+    dsigmax_LRF = -(dsigmat * Xt  +  dsigmax * Xx  +  dsigmay * Xy  +  dsigman * Xn);
+    dsigmay_LRF = -(dsigmax * Yx  +  dsigmay * Yy);
+    dsigmaz_LRF = -(dsigmat * Zt  +  dsigman * Zn);
+    
+}
+
+void dsigma_Vector::compute_dsigma_max()
+{
+    dsigma_magnitude = fabs(dsigmat_LRF) + sqrt(dsigmax_LRF * dsigmax_LRF  +  dsigmay_LRF * dsigmay_LRF  +  dsigmaz_LRF * dsigmaz_LRF); 
 }
 
 void Shear_Tensor::boost_to_lrf(double Xt, double Xx, double Xy, double Xn, double Yx, double Yy, double Zt, double Zn, double tau2)
@@ -68,21 +87,68 @@ double Shear_Tensor::compute_max()
 }
 
 
-void Baryon_Diffusion_Current::boost_to_lrf(Milne_Basis_Vectors basis, double tau2)
+
+Shear_Stress_Tensor_Mike::Shear_Stress_Tensor_Mike(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in)
 {
-    double Xt = basis.Xt;
-    double Xx = basis.Xx;
-    double Xy = basis.Xy;
-    double Xn = basis.Xn;
+    pitt = pitt_in;
+    pitx = pitx_in;
+    pity = pity_in;
+    pitn = pitn_in;
+    pixx = pixx_in;
+    pixy = pixy_in;
+    pixn = pixn_in;
+    piyy = piyy_in;
+    piyn = piyn_in;
+    pinn = pinn_in;
+}
 
-    double Yx = basis.Yx;
-    double Yy = basis.Yy;
 
-    double Zt = basis.Zt;
-    double Zn = basis.Zn;
+void Shear_Stress_Tensor_Mike::boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
+{
+    double Xt = basis_vectors.Xt;
+    double Xx = basis_vectors.Xx;
+    double Xy = basis_vectors.Xy;
+    double Xn = basis_vectors.Xn;
+
+    double Yx = basis_vectors.Yx;
+    double Yy = basis_vectors.Yy;
+
+    double Zt = basis_vectors.Zt;
+    double Zn = basis_vectors.Zn;
+
+    double pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
+            + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
+    double pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xy + pixy*Xx + piyy*Xy + tau2*piyn*Xn);
+    double pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xn - piyn*Xy - tau2*pinn*Xn);
+    double piyy_LRF = pixx*Yx*Yx + piyy*Yy*Yy + 2.0*pixy*Yx*Yy;
+    double piyz_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
+    double pizz_LRF = - (pixx_LRF + piyy_LRF);
+}
+
+
+Baryon_Diffusion_Current::Baryon_Diffusion_Current(double Vt_in, double Vx_in, double Vy_in, double Vn_in)
+{
+    Vt = Vt_in;
+    Vx = Vx_in;
+    Vy = Vy_in;
+    Vn = Vn_in;
+}
+
+void Baryon_Diffusion_Current::boost_baryon_diffusion_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
+{
+    double Xt = basis_vectors.Xt;
+    double Xx = basis_vectors.Xx;
+    double Xy = basis_vectors.Xy;
+    double Xn = basis_vectors.Xn;
+
+    double Yx = basis_vectors.Yx;
+    double Yy = basis_vectors.Yy;
+
+    double Zt = basis_vectors.Zt;
+    double Zn = basis_vectors.Zn;
 
     Vx_LRF = - Vt * Xt  +  Vx * Xx  +  Vy * Xy  +  tau2 * Vn * Xn;
-    Vy_LRF = Vx * Yx + Vy * Yy;
+    Vy_LRF = Vx * Yx  +  Vy * Yy;
     Vz_LRF = - Vt * Zt  +  tau2 * Vn * Zn;
 }
 
