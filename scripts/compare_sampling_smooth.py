@@ -42,6 +42,7 @@ pT_weights = pT_weights_file['weight']
 print("pT weights are ")
 print(pT_weights)
 
+
 phi_weights_file = pd.read_csv("tables/phi_gauss_table_left_align.dat")
 phi_values = phi_weights_file['phi']
 phi_weights = phi_weights_file['weight']
@@ -53,6 +54,7 @@ y_values = y_weights_file['y']
 y_weights = y_weights_file['weight']
 print("y weights are ")
 print(y_weights)
+
 
 pi_norm = 0.0
 k_norm = 0.0
@@ -68,6 +70,7 @@ for j in range(0, len(dN_dpTdphidy_pi_mid)):
     dN_dpTdphidy_k_mid[j] = dN_dpTdphidy_k_mid[j] / k_norm
     dN_dpTdphidy_p_mid[j] = dN_dpTdphidy_p_mid[j] / p_norm
 
+
 #find total yield from smooth ASSUMING OPTICAL GLAUBER
 yield_pi_smooth = 0.0
 yield_k_smooth = 0.0
@@ -78,6 +81,7 @@ for phi_w in range(0, len(phi_weights)):
         yield_pi_smooth = yield_pi_smooth + pi_norm * phi_weights[phi_w] * y_weights[y_w]
         yield_k_smooth = yield_k_smooth + k_norm * phi_weights[phi_w] * y_weights[y_w]
         yield_p_smooth = yield_p_smooth + p_norm * phi_weights[phi_w] * y_weights[y_w]
+
 
 ##############################
 #Sampled Particles
@@ -149,10 +153,13 @@ pT_bins_eqwidth = []
 for j in range(0, 20):
     pT_bins_eqwidth.append( j * delta_pT)
 
+
+
 #normalization factor
 norm = nevents
 print("nevents is " + str(nevents))
 #print("norm factor is " + str(norm))
+
 
 
 #plot pion
@@ -217,4 +224,5 @@ plt.show()
 plt.hist(p_y, bins = 'auto', normed=True)
 plt.title("Proton 1/N_part dN/dy")
 plt.xlabel("y")
+
 plt.show()

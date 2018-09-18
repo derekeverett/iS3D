@@ -14,6 +14,14 @@ using namespace std;
 
 typedef struct
 {
+  double t;   // dsigmaLRF.t
+  double x;   // dsigmaLRF.x
+  double y;   // dsigmaLRF.y
+  double z;   // dsigmaLRF.z
+} lrf_dsigma;
+
+typedef struct
+{
   double x;   // pLRF.x
   double y;   // pLRF.y
   double z;   // pLRF.z
@@ -29,11 +37,10 @@ typedef struct
 } MT_fit_parameters;
 
 //sample momentum with linear viscous correction
-lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double bulkPi, double eps, double pressure, double tau2,
-                            double sign, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE);
+lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double bulkPi, double eps, double pressure, double tau2, double sign, lrf_dsigma dsigmaLRF, double dsigma_magnitude, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE);
 
 //sample momentum with modified equil viscous correction
-lrf_momentum Sample_Momentum_mod(double mass, double T, double alphaB);
+lrf_momentum Sample_Momentum_mod(double mass, double T, double alphaB_mod, Shear_Tensor pimunu, double bulkPi, double betapi, double betabulk, double betaV, lrf_dsigma dsigmaLRF, double dsigma_magnitude);
 
 class EmissionFunctionArray
 {
@@ -47,6 +54,7 @@ private:
   int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
   int REGULATE_DELTAF;
   int INCLUDE_BARYON;
+  double DETA_MIN;
   int GROUP_PARTICLES;
   double PARTICLE_DIFF_TOLERANCE;
   int LIGHTEST_PARTICLE; //mcid of lightest resonance to calculate in decay feed-down
@@ -62,6 +70,8 @@ private:
   double *Snorm; //the normalization of the polarization vector of all species
 
   std::vector<Sampled_Particle> particle_list; //to hold sampled particle list
+
+  vector<int> chosen_pion0;             // stores chosen particle index of pion0 (for tracking feqmod breakdown)
 
   int *chosen_particles_01_table;       // has length Nparticle, 0 means miss, 1 means include
   int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table
@@ -137,10 +147,13 @@ public:
   void write_dN_pTdpTdphidy_toFile(int *MCID); // write invariant 3D spectra to file
   void write_dN_pTdpTdphidy_with_resonance_decays_toFile(); // write invariant 3D spectra to file (w/ resonance decay effects)
   void write_polzn_vector_toFile(); //write components of spin polarization vector to file
+
+
   void write_dN_dpTdphidy_toFile(int *MCID);   // write 3D spectra to file in experimental bins
   void write_dN_dpTdphidy_with_resonance_decays_toFile();   // write 3D spectra to file in experimental bins (w/ resonance decay effects)
   void write_particle_list_toFile();  // write sampled particle list
   void write_particle_list_OSC(); //write sampled particle list in OSCAR format for UrQMD/SMASH
+  void write_momentum_list_toFile();  // write sampled momentum list
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
   // resonance decay routine:

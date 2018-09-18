@@ -50,6 +50,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
     INCLUDE_BARYONDIFF_DELTAF = paraRdr->getVal("include_baryondiff_deltaf");
     REGULATE_DELTAF = paraRdr->getVal("regulate_deltaf");
+    DETA_MIN = paraRdr->getVal("deta_min");
     GROUP_PARTICLES = paraRdr->getVal("group_particles");
     PARTICLE_DIFF_TOLERANCE = paraRdr->getVal("particle_diff_tolerance");
 
@@ -128,6 +129,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     { //loop over all chosen particles
       int mc_id = chosen_particles_in->get(1, m + 1);
 
+      // store chosen index of pion0
+      if(mc_id == 111)
+      {
+        chosen_pion0.push_back(m);
+      }
+
       for (int n = 0; n < Nparticles; n++)
       {
         if (particles[n].mc_id == mc_id)
@@ -184,7 +191,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
 
+
   void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile(int *MCID)
+
   {
     printf("Writing thermal spectra to file...\n");
     //write 3D spectra in block format, different blocks for different species,
@@ -492,6 +501,26 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       double py = particle_list[ipart].py;
       double pz = particle_list[ipart].pz;
       spectraFile << mcid << "," << scientific <<  setw(5) << setprecision(16) << t << "," << x << "," << y << "," << z << "," << E << "," << px << "," << py << "," << pz << "\n";
+    }//ipart
+    spectraFile.close();
+  }
+
+  void EmissionFunctionArray::write_momentum_list_toFile()
+  {
+    printf("Writing sampled momentum list to file...\n");
+    char filename[255] = "";
+    sprintf(filename, "results/momentum_list.dat");
+    ofstream spectraFile(filename, ios_base::app);
+    int num_particles = particle_list.size();
+    //write the header
+    spectraFile << "E" << "\t" << "px" << "\t" << "py" << "\t" << "pz" << "\n";
+    for (int ipart = 0; ipart < num_particles; ipart++)
+    {
+      double E = particle_list[ipart].E;
+      double px = particle_list[ipart].px;
+      double py = particle_list[ipart].py;
+      double pz = particle_list[ipart].pz;
+      spectraFile << scientific <<  setw(5) << setprecision(8) << E << "\t" << px << "\t" << py << "\t" << pz << "\n";
     }//ipart
     spectraFile.close();
   }
@@ -996,7 +1025,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         write_dN_dpTdphidy_with_resonance_decays_toFile();
       }
     }
-    else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC();}
+    else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC(); write_momentum_list_toFile();}
 
     if (MODE == 5) write_polzn_vector_toFile();
 
