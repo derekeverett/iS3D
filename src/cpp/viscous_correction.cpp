@@ -2,7 +2,7 @@
 #include <math.h>
 
 
-Milne_Vector_Basis::Milne_Vector_Basis(double ut, double ux, double uy, double un, double uperp, double utperp, double tau)
+Milne_Basis_Vectors::Milne_Basis_Vectors(double ut, double ux, double uy, double un, double uperp, double utperp, double tau)
 {
       Xx = 1.0; Xy = 0.0;
       Yx = 0.0; Yy = 1.0;
@@ -68,7 +68,7 @@ double Shear_Tensor::compute_max()
 }
 
 
-void Baryon_Diffusion_Current::boost_to_lrf(Milne_Vector_Basis basis, double tau2)
+void Baryon_Diffusion_Current::boost_to_lrf(Milne_Basis_Vectors basis, double tau2)
 {
     double Xt = basis.Xt;
     double Xx = basis.Xx;

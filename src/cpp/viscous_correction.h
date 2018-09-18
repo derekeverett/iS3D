@@ -61,8 +61,8 @@ class Baryon_Diffusion_Current
     double Vy_LRF;
     double Vz_LRF;
 
-    Baryon_Diffusion_Current(double Vt_in, double Vx_in, double Vy_in, double Vn_in);
-    void boost_to_lrf(double Xt, double Xx, double Xy, double Xn, double Yx, double Yy, double Zt, double Zn, double tau2);
+    Baryon_Diffusion_Current();
+    void boost_to_lrf(Milne_Basis_Vectors basis, double tau2);
 };
 
 #endif

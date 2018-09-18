@@ -1469,7 +1469,20 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       double utperp = sqrt(1.0 + uperp * uperp);
 
       // set milne basis vectors
-      Milne_Vector_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
+      Milne_Basis_Vectors basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
+
+      // temporary
+      double Xt = basis_vectors.Xt;
+      double Xx = basis_vectors.Xx;
+      double Xy = basis_vectors.Xy;
+      double Xn = basis_vectors.Xn;
+
+      double Yx = basis_vectors.Yx;
+      double Yy = basis_vectors.Yy;
+
+      double Zt = basis_vectors.Zt;
+      double Zn = basis_vectors.Zn;
+
 
       double T = T_fo[icell];             // temperature
       double T_mod = T;                   // modified temperature (default)
@@ -1594,7 +1607,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
         // V^\mu d^3sigma_\mu
         if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
         {
-          Vdotdsigma = delta_eta_weight * (dat*Vt + dax*Vx + day*Vy + dan*Vn);
+          Vdotdsigma = delta_eta_weight * (dat * Vmu.Vt + dax * Vmu.Vx + day * Vmu.Vy + dan * Vmu.Vn);
         }
         // evaluate particle densities:
 
