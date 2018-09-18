@@ -191,7 +191,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
 
- void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile(int *MCID)
+
+  void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile(int *MCID)
+
   {
     printf("Writing thermal spectra to file...\n");
     //write 3D spectra in block format, different blocks for different species,

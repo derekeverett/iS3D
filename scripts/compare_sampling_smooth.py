@@ -42,6 +42,20 @@ pT_weights = pT_weights_file['weight']
 print("pT weights are ")
 print(pT_weights)
 
+
+phi_weights_file = pd.read_csv("tables/phi_gauss_table_left_align.dat")
+phi_values = phi_weights_file['phi']
+phi_weights = phi_weights_file['weight']
+print("phi weights are ")
+print(phi_weights)
+
+y_weights_file = pd.read_csv("tables/y_riemann_table_11pt_left_align.dat")
+y_values = y_weights_file['y']
+y_weights = y_weights_file['weight']
+print("y weights are ")
+print(y_weights)
+
+
 pi_norm = 0.0
 k_norm = 0.0
 p_norm = 0.0
@@ -55,6 +69,19 @@ for j in range(0, len(dN_dpTdphidy_pi_mid)):
     dN_dpTdphidy_pi_mid[j] = dN_dpTdphidy_pi_mid[j] / pi_norm
     dN_dpTdphidy_k_mid[j] = dN_dpTdphidy_k_mid[j] / k_norm
     dN_dpTdphidy_p_mid[j] = dN_dpTdphidy_p_mid[j] / p_norm
+
+
+#find total yield from smooth ASSUMING OPTICAL GLAUBER
+yield_pi_smooth = 0.0
+yield_k_smooth = 0.0
+yield_p_smooth = 0.0
+
+for phi_w in range(0, len(phi_weights)):
+    for y_w in range(0, len(y_weights)):
+        yield_pi_smooth = yield_pi_smooth + pi_norm * phi_weights[phi_w] * y_weights[y_w]
+        yield_k_smooth = yield_k_smooth + k_norm * phi_weights[phi_w] * y_weights[y_w]
+        yield_p_smooth = yield_p_smooth + p_norm * phi_weights[phi_w] * y_weights[y_w]
+
 
 ##############################
 #Sampled Particles
@@ -126,36 +153,16 @@ pT_bins_eqwidth = []
 for j in range(0, 20):
     pT_bins_eqwidth.append( j * delta_pT)
 
-"""
-pT_bins = [0,.0072, .038, .094, .175, .28, .42, .58, .78, 1.01, 1.3, 1.6, 1.97, 2.4, 2.96, 3.7, 5.0]
-pT_bins_centered = []
-pT_bins_centered.append(0.0)
-for j in range(0, len(pT_bins)-1):
-    pT_bins_centered.append( (pT_bins[j] + pT_bins[j+1]) / 2.0)
-"""
+
 
 #normalization factor
 norm = nevents
 print("nevents is " + str(nevents))
 #print("norm factor is " + str(norm))
 
-"""
-weightsPi = []
-for j in range(0, len(pi_pT_mid)):
-    weightsPi.append(1.0 / norm)
-weightsK = []
-for j in range(0, len(k_pT_mid)):
-    weightsK.append(1.0 / norm)
-weightsP = []
-for j in range(0, len(p_pT_mid)):
-    weightsP.append(1.0 / norm)
-
-print( "histograms weighted by " + str(1.0 / norm) )
-"""
 
 
 #plot pion
-#nPi, binsPi, patchesPi = plt.hist(pi_pT_mid, bins = pT_bins_eqwidth, weights = weightsPi)
 nPi, binsPi, patchesPi = plt.hist(pi_pT_mid, bins = pT_bins_eqwidth, normed=True)
 plt.plot(pT_mid, dN_dpTdphidy_pi_mid)
 plt.title("Pion spectra midrapidity")
@@ -163,7 +170,6 @@ plt.xlabel("pT (GeV)")
 plt.show()
 
 #plot kaon
-#nK, binsK, patchesK = plt.hist(k_pT_mid, bins = pT_bins_eqwidth, weights = weightsK)
 nK, binsK, patchesK = plt.hist(k_pT_mid, bins = pT_bins_eqwidth, normed=True)
 plt.plot(pT_mid, dN_dpTdphidy_k_mid)
 plt.title("Kaon spectra midrapidity")
@@ -171,9 +177,52 @@ plt.xlabel("pT (GeV)")
 plt.show()
 
 #plot proton
-#nP, binsP, patchesP = plt.hist(p_pT_mid, bins = pT_bins_eqwidth, weights = weightsP)
 nP, binsP, patchesP = plt.hist(p_pT_mid, bins = pT_bins_eqwidth, normed=True)
 plt.plot(pT_mid, dN_dpTdphidy_p_mid)
 plt.title("Proton spectra midrapidity")
 plt.xlabel("pT (GeV)")
+plt.show()
+
+#compare total yields
+yield_pi_sample = len(pi_pT) / nevents
+yield_k_sample = len(k_pT) / nevents
+yield_p_sample = len(p_pT) / nevents 
+
+ratio_pi_yield = yield_pi_sample / yield_pi_smooth
+ratio_k_yield = yield_k_sample / yield_k_smooth
+ratio_p_yield = yield_p_sample / yield_p_smooth
+
+print("Ratios of yields : pion " + str(ratio_pi_yield) + ", kaon " + str(ratio_k_yield) + ", proton " + str(ratio_p_yield))
+
+#examine dN/dphi
+plt.hist(pi_phi, bins = 'auto', normed=True)
+plt.title("Pion 1/N_part dN/dphi")
+plt.xlabel("phi")
+plt.show()
+
+plt.hist(k_phi, bins = 'auto', normed=True)
+plt.title("Kaon 1/N_part dN/dphi")
+plt.xlabel("phi")
+plt.show()
+
+plt.hist(p_phi, bins = 'auto', normed=True)
+plt.title("Proton 1/N_part dN/dphi")
+plt.xlabel("phi")
+plt.show()
+
+#examine dN/dy
+plt.hist(pi_y, bins = 'auto', normed=True)
+plt.title("Pion 1/N_part dN/y")
+plt.xlabel("y")
+plt.show()
+
+plt.hist(k_y, bins = 'auto', normed=True)
+plt.title("Kaon 1/N_part dN/dy")
+plt.xlabel("y")
+plt.show()
+
+plt.hist(p_y, bins = 'auto', normed=True)
+plt.title("Proton 1/N_part dN/dy")
+plt.xlabel("y")
+
 plt.show()
