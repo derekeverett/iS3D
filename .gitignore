@@ -9,5 +9,6 @@ documentation
 *.out
 tags
 *.e
+*.*~
 src/cpp/GNUMakefile
 .DS_Store
