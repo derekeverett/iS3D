@@ -76,11 +76,16 @@ yield_pi_smooth = 0.0
 yield_k_smooth = 0.0
 yield_p_smooth = 0.0
 
+#try trapezoid rule for y integral
 for phi_w in range(0, len(phi_weights)):
     for y_w in range(0, len(y_weights)):
-        yield_pi_smooth = yield_pi_smooth + pi_norm * phi_weights[phi_w] * y_weights[y_w]
-        yield_k_smooth = yield_k_smooth + k_norm * phi_weights[phi_w] * y_weights[y_w]
-        yield_p_smooth = yield_p_smooth + p_norm * phi_weights[phi_w] * y_weights[y_w]
+        if ( (y_w == 0) or (y_w == len(y_weights) - 1) ):
+            y_wt = y_weights[y_w] * 0.5
+        else:
+            y_wt = y_weights[y_w]
+        yield_pi_smooth = yield_pi_smooth + pi_norm * phi_weights[phi_w] * y_wt
+        yield_k_smooth = yield_k_smooth + k_norm * phi_weights[phi_w] * y_wt
+        yield_p_smooth = yield_p_smooth + p_norm * phi_weights[phi_w] * y_wt
 
 
 ##############################
@@ -167,6 +172,7 @@ nPi, binsPi, patchesPi = plt.hist(pi_pT_mid, bins = pT_bins_eqwidth, normed=True
 plt.plot(pT_mid, dN_dpTdphidy_pi_mid)
 plt.title("Pion spectra midrapidity")
 plt.xlabel("pT (GeV)")
+plt.savefig('plots/211_spectra_midrap.pdf')
 plt.show()
 
 #plot kaon
@@ -174,6 +180,7 @@ nK, binsK, patchesK = plt.hist(k_pT_mid, bins = pT_bins_eqwidth, normed=True)
 plt.plot(pT_mid, dN_dpTdphidy_k_mid)
 plt.title("Kaon spectra midrapidity")
 plt.xlabel("pT (GeV)")
+plt.savefig('plots/321_spectra_midrap.pdf')
 plt.show()
 
 #plot proton
@@ -181,12 +188,13 @@ nP, binsP, patchesP = plt.hist(p_pT_mid, bins = pT_bins_eqwidth, normed=True)
 plt.plot(pT_mid, dN_dpTdphidy_p_mid)
 plt.title("Proton spectra midrapidity")
 plt.xlabel("pT (GeV)")
+plt.savefig('plots/2212_spectra_midrap.pdf')
 plt.show()
 
 #compare total yields
 yield_pi_sample = len(pi_pT) / nevents
 yield_k_sample = len(k_pT) / nevents
-yield_p_sample = len(p_pT) / nevents 
+yield_p_sample = len(p_pT) / nevents
 
 ratio_pi_yield = yield_pi_sample / yield_pi_smooth
 ratio_k_yield = yield_k_sample / yield_k_smooth
@@ -198,31 +206,37 @@ print("Ratios of yields : pion " + str(ratio_pi_yield) + ", kaon " + str(ratio_k
 plt.hist(pi_phi, bins = 'auto', normed=True)
 plt.title("Pion 1/N_part dN/dphi")
 plt.xlabel("phi")
+plt.savefig('plots/211_dNdphi.pdf')
 plt.show()
 
 plt.hist(k_phi, bins = 'auto', normed=True)
 plt.title("Kaon 1/N_part dN/dphi")
 plt.xlabel("phi")
+plt.savefig('plots/321_dNdphi.pdf')
 plt.show()
 
 plt.hist(p_phi, bins = 'auto', normed=True)
 plt.title("Proton 1/N_part dN/dphi")
 plt.xlabel("phi")
+plt.savefig('plots/2212_dNdphi.pdf')
 plt.show()
 
 #examine dN/dy
 plt.hist(pi_y, bins = 'auto', normed=True)
 plt.title("Pion 1/N_part dN/y")
 plt.xlabel("y")
+plt.savefig('plots/211_dNdy.pdf')
 plt.show()
 
 plt.hist(k_y, bins = 'auto', normed=True)
 plt.title("Kaon 1/N_part dN/dy")
 plt.xlabel("y")
+plt.savefig('plots/321_dNdy.pdf')
 plt.show()
 
 plt.hist(p_y, bins = 'auto', normed=True)
 plt.title("Proton 1/N_part dN/dy")
 plt.xlabel("y")
+plt.savefig('plots/2212_dNdy.pdf')
 
 plt.show()
