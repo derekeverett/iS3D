@@ -22,10 +22,32 @@ typedef struct
 
 typedef struct
 {
+  double E;   // u.p
   double x;   // pLRF.x
   double y;   // pLRF.y
   double z;   // pLRF.z
 } lrf_momentum;
+
+class Lab_Momentum
+{
+  private:            // momentum LRF components:
+    double E_LRF;     // u.p
+    double px_LRF;    // -X.p
+    double py_LRF;    // -Y.p
+    double pz_LRF;    // -Z.p
+
+  public:             // contravariant lab frame momentum p^mu (milne):
+    double ptau;      // p^tau
+    double px;        // p^x
+    double py;        // p^y
+    double pn;        // p^eta
+
+    // constructor
+    Lab_Momentum(lrf_momentum pLRF_in); 
+    // boost pLRF to the lab frame 
+    void boost_pLRF_to_lab_frame(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un); 
+
+};
 
 typedef struct
 {
@@ -39,8 +61,12 @@ typedef struct
 //sample momentum with linear viscous correction
 lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double bulkPi, double eps, double pressure, double tau2, double sign, lrf_dsigma dsigmaLRF, double dsigma_magnitude, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE);
 
+// momentum rescaling 
+lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double baryon, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
+
 //sample momentum with modified equil viscous correction
-lrf_momentum Sample_Momentum_mod(double mass, double T, double alphaB_mod, Shear_Tensor pimunu, double bulkPi, double betapi, double betabulk, double betaV, lrf_dsigma dsigmaLRF, double dsigma_magnitude);
+lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, double alphaB_mod, dsigma_Vector ds, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
+
 
 class EmissionFunctionArray
 {
