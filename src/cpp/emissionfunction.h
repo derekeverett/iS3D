@@ -28,6 +28,27 @@ typedef struct
   double z;   // pLRF.z
 } lrf_momentum;
 
+class Lab_Momentum
+{
+  private:            // momentum LRF components:
+    double E_LRF;     // u.p
+    double px_LRF;    // -X.p
+    double py_LRF;    // -Y.p
+    double pz_LRF;    // -Z.p
+
+  public:             // contravariant lab frame momentum p^mu (milne):
+    double ptau;      // p^tau
+    double px;        // p^x
+    double py;        // p^y
+    double pn;        // p^eta
+
+    // constructor
+    Lab_Momentum(lrf_momentum pLRF_in); 
+    // boost pLRF to the lab frame 
+    void boost_pLRF_to_lab_frame(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un); 
+
+};
+
 typedef struct
 {
   // fit parameters of y = exp(constant + slope * mT)

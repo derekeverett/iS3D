@@ -1628,30 +1628,12 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           // sample particle's momentum from modified equilibrium distribution
           lrf_momentum pLRF = Sample_Momentum_mod(mass, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
           
-          double E_LRF = pLRF.E;
-          double px_LRF = pLRF.x;
-          double py_LRF = pLRF.y;
-          double pz_LRF = pLRF.z;
-
-          // need to bring back the basis vectors (temporary)
-          double Xt = basis_vectors.Xt;
-          double Xx = basis_vectors.Xx;
-          double Xy = basis_vectors.Xy;
-          double Xn = basis_vectors.Xn;
-          double Yx = basis_vectors.Yx;
-          double Yy = basis_vectors.Yy;
-          double Zt = basis_vectors.Zt;
-          double Zn = basis_vectors.Zn;
-
-
-          // lab frame milne p^mu
-          double ptau = E_LRF * ut + px_LRF * Xt + pz_LRF * Zt;
-          double px = E_LRF * ux + px_LRF * Xx + py_LRF * Yx;
-          double py = E_LRF * uy + px_LRF * Xy + py_LRF * Yy;
-          double pn = E_LRF * un + px_LRF * Xn + pz_LRF * Zn;
+          // lab frame momentum p^mu (milne components)
+          Lab_Momentum pmu(pLRF);
+          pmu.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un); 
 
           // pdsigma has delta_eta_weight factored out (irrelevant for sign)
-          double pdsigma = ptau * dat  +  px * dax  +  py * day  +  pn * dan;
+          double pdsigma = pmu.ptau * dat  +  pmu.px * dax  +  pmu.py * day  +  pmu.pn * dan;
 
           // only keep particles with p.dsigma >= 0
           if(pdsigma >= 0.0)
@@ -1663,10 +1645,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
             new_particle.x = x;
             new_particle.y = y;
             new_particle.eta = eta;
-            new_particle.E = ptau * cosheta  +  tau * pn * sinheta;
-            new_particle.px = px;
-            new_particle.py = py;
-            new_particle.pz = tau * pn * cosheta  +  ptau * sinheta;
+            new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
+            new_particle.px = pmu.px;
+            new_particle.py = pmu.py;
+            new_particle.pz = tau * pmu.pn * cosheta  +  pmu.ptau * sinheta;
 
             //add to particle list
             //CAREFUL push_back is not a thread safe operation
