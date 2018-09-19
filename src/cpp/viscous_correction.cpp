@@ -49,12 +49,12 @@ void dsigma_Vector::boost_dsigma_to_lrf(Milne_Basis_Vectors basis_vectors, doubl
     dsigmax_LRF = -(dsigmat * Xt  +  dsigmax * Xx  +  dsigmay * Xy  +  dsigman * Xn);
     dsigmay_LRF = -(dsigmax * Yx  +  dsigmay * Yy);
     dsigmaz_LRF = -(dsigmat * Zt  +  dsigman * Zn);
-    
+
 }
 
 void dsigma_Vector::compute_dsigma_max()
 {
-    dsigma_magnitude = fabs(dsigmat_LRF) + sqrt(dsigmax_LRF * dsigmax_LRF  +  dsigmay_LRF * dsigmay_LRF  +  dsigmaz_LRF * dsigmaz_LRF); 
+    dsigma_magnitude = fabs(dsigmat_LRF) + sqrt(dsigmax_LRF * dsigmax_LRF  +  dsigmay_LRF * dsigmay_LRF  +  dsigmaz_LRF * dsigmaz_LRF);
 }
 
 void Shear_Tensor::boost_to_lrf(double Xt, double Xx, double Xy, double Xn, double Yx, double Yy, double Zt, double Zn, double tau2)
@@ -87,8 +87,7 @@ double Shear_Tensor::compute_max()
 }
 
 
-
-Shear_Stress_Tensor_Mike::Shear_Stress_Tensor_Mike(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in)
+Shear_Stress_Tensor::Shear_Stress_Tensor(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in)
 {
     pitt = pitt_in;
     pitx = pitx_in;
@@ -103,7 +102,7 @@ Shear_Stress_Tensor_Mike::Shear_Stress_Tensor_Mike(double pitt_in, double pitx_i
 }
 
 
-void Shear_Stress_Tensor_Mike::boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
+void Shear_Stress_Tensor::boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
 {
     double Xt = basis_vectors.Xt;
     double Xx = basis_vectors.Xx;
@@ -134,6 +133,7 @@ Baryon_Diffusion_Current::Baryon_Diffusion_Current(double Vt_in, double Vx_in, d
     Vn = Vn_in;
 }
 
+
 void Baryon_Diffusion_Current::boost_baryon_diffusion_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
 {
     double Xt = basis_vectors.Xt;
@@ -151,5 +151,62 @@ void Baryon_Diffusion_Current::boost_baryon_diffusion_to_lrf(Milne_Basis_Vectors
     Vy_LRF = Vx * Yx  +  Vy * Yy;
     Vz_LRF = - Vt * Zt  +  tau2 * Vn * Zn;
 }
+
+
+lrf_momentum Rescale_Momentum(lrf_momentum p_mod, double mass_squared, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon, double baryon_enthalpy_ratio)
+{
+    // rescale modified momentum p_mod with matrix Mij
+    double E_mod = pmod.E;
+    double px_mod = pmod.px;
+    double py_mod = pmod.py;
+    double pz_mod = pmod.pz;
+
+    // LRF momentum (ideal by default or no viscous corrections)
+    double px_LRF = px_mod;
+    double py_LRF = py_mod;
+    double pz_LRF = pz_mod;
+
+    // LRF shear stress components
+    double pixx_LRF = pimunu.pixx_LRF;
+    double pixy_LRF = pimunu.pixy_LRF;
+    double pixz_LRF = pimunu.pixz_LRF;
+    double piyy_LRF = pimunu.piyy_LRF;
+    double piyz_LRF = pimunu.piyz_LRF;
+    double pizz_LRF = pimunu.pizz_LRF;
+
+    // LRF baryon diffusion components
+    double Vx_LRF = Vmu.Vx_LRF;
+    double Vy_LRF = Vmu.Vy_LRF;
+    double Vz_LRF = Vmu.Vz_LRF;
+    double diffusion_factor = diff_coeff * (E_mod * baryon_enthalpy_ratio + baryon);
+
+    // rescale momentum:
+    //::::::::::::::::::::::::::::::::::::::::
+    // add shear terms
+    px_LRF += shear_coeff * (pixx_LRF * px_mod  +  pixy_LRF * py_mod  +  pixz_LRF * pz_mod);
+    py_LRF += shear_coeff * (pixy_LRF * px_mod  +  piyy_LRF * py_mod  +  piyz_LRF * pz_mod);
+    pz_LRF += shear_coeff * (pixz_LRF * px_mod  +  piyz_LRF * py_mod  +  pizz_LRF * pz_mod);
+
+    // add bulk terms
+    px_LRF += bulk_coeff * px_mod;
+    py_LRF += bulk_coeff * py_mod;
+    pz_LRF += bulk_coeff * pz_mod;
+
+    // add baryon diffusion terms
+    px_LRF += diffusion_factor * Vx_LRF;
+    py_LRF += diffusion_factor * Vy_LRF;
+    pz_LRF += diffusion_factor * Vz_LRF;
+    //::::::::::::::::::::::::::::::::::::::::
+
+    // set LRF momentum
+    lrf_momentum pLRF;
+    pLRF.px = px_LRF;
+    pLRF.py = py_LRF:
+    pLRF.pz = pz_LRF;
+    pLRF.E = sqrt(mass_squared  +  px_LRF * px_LRF  +  py_LRF * py_LRF  +  pz_LRF * pzLRF);
+
+    return pLRF;
+}
+
 
 

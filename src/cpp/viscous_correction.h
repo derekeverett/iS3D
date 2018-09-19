@@ -48,9 +48,9 @@ public:
   double compute_max();
 };
 
-class Shear_Stress_Tensor_Mike
+class Shear_Stress_Tensor // (Mike's version)
 {
-  private:            // pi^munu contravariant milne components:               
+  private:            // pi^munu contravariant milne components:
     double pitt;      // pi^tautau
     double pitx;      // pi^taux
     double pity;      // pi^tauy
@@ -70,7 +70,7 @@ class Shear_Stress_Tensor_Mike
     double piyz_LRF;  // Y.pi.Z
     double pizz_LRF;  // Z.pi.Z
 
-    // constructor 
+    // constructor
     Shear_Stress_Tensor_Mike(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in);
 
     // computes the LRF components pi_ij
@@ -82,9 +82,9 @@ class Shear_Stress_Tensor_Mike
 
 
 class Baryon_Diffusion_Current
-{ 
+{
   private:            // V^mu contravariant milne components:
-    double Vt;        // V^tau 
+    double Vt;        // V^tau
     double Vx;        // V^x
     double Vy;        // V^y
     double Vn;        // V^eta
@@ -103,27 +103,29 @@ class Baryon_Diffusion_Current
 
 
 class dsigma_Vector
-{ 
-  private:                    // dsigma_mu covariant milne components: (delta_eta_weight factored out) 
-    double dsigmat;           // dsigma_tau 
+{
+  private:                    // dsigma_mu covariant milne components: (delta_eta_weight factored out)
+    double dsigmat;           // dsigma_tau
     double dsigmax;           // dsigma_x
     double dsigmay;           // dsigma_y
     double dsigman;           // dsigma_eta
 
   public:                     // LRF components:  (no tau2 factor needed since dsigma is covariant)
-    double dsigmat_LRF;       // u.dsigma  = u^mu . dsigma_mu     
+    double dsigmat_LRF;       // u.dsigma  = u^mu . dsigma_mu
     double dsigmax_LRF;       // -X.dsigma = - X^mu . dsigma_mu
     double dsigmay_LRF;       // -Y.dsigma = - Y^mu . dsigma_mu
     double dsigmaz_LRF;       // -Z.dsigma = - Z^mu . dsigma_mu
-    double dsigma_magnitude;  // |u.dsigma| + sqrt((u.dsigma)^2 - dsigma.dsigma)  (for rideal) 
+    double dsigma_magnitude;  // |u.dsigma| + sqrt((u.dsigma)^2 - dsigma.dsigma)  (for rideal)
 
     // constructor
     dsigma_Vector(double dsigmat_in, double dsigmax_in, double dsigmay_in, double dsigman_in);
 
-    // computes the LRF components 
+    // computes the LRF components
     void boost_dsigma_to_lrf(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un);
-    void compute_dsigma_max(); 
+    void compute_dsigma_max();
 
 };
+
+lrf_momentum Rescale_Momentum(lrf_momentum p_mod, double mass_squared, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon, double baryon_enthalpy_ratio);
 
 #endif
