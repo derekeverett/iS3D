@@ -1,7 +1,6 @@
 #ifndef VISCOUS_CORRECTION_H
 #define VISCOUS_CORRECTION_H
 
-
 class Milne_Basis_Vectors
 {
   public:
@@ -71,7 +70,7 @@ class Shear_Stress_Tensor // (Mike's version)
     double pizz_LRF;  // Z.pi.Z
 
     // constructor
-    Shear_Stress_Tensor_Mike(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in);
+    Shear_Stress_Tensor(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in);
 
     // computes the LRF components pi_ij
     void boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2);
@@ -125,7 +124,5 @@ class dsigma_Vector
     void compute_dsigma_max();
 
 };
-
-lrf_momentum Rescale_Momentum(lrf_momentum p_mod, double mass_squared, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon, double baryon_enthalpy_ratio);
 
 #endif

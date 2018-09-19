@@ -22,6 +22,7 @@ typedef struct
 
 typedef struct
 {
+  double E;   // u.p
   double x;   // pLRF.x
   double y;   // pLRF.y
   double z;   // pLRF.z
@@ -39,8 +40,12 @@ typedef struct
 //sample momentum with linear viscous correction
 lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double bulkPi, double eps, double pressure, double tau2, double sign, lrf_dsigma dsigmaLRF, double dsigma_magnitude, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE);
 
+// momentum rescaling 
+lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double baryon, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
+
 //sample momentum with modified equil viscous correction
-lrf_momentum Sample_Momentum_mod(double mass, double T, double alphaB_mod, Shear_Tensor pimunu, double bulkPi, double betapi, double betabulk, double betaV, lrf_dsigma dsigmaLRF, double dsigma_magnitude);
+lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, double alphaB_mod, dsigma_Vector ds, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
+
 
 class EmissionFunctionArray
 {
