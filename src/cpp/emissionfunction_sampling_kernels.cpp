@@ -107,7 +107,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
   //not Adaptive Rejection Sampling, but the naive method here...
   if (mass / T < 1.5)
   {
-    // sample momentum until get an acceptance 
+    // sample momentum until get an acceptance
     while (rejected)
     {
       // draw (p, phi, costheta) from distribution p^2 * exp[-p/T] by
@@ -135,14 +135,14 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       double pdotdsigma_abs = fabs(E * dat - px * dax - py * day - pz * daz);
       double rideal = pdotdsigma_abs / E / dsigma_magnitude;
 
-     
+
       //viscous corrections: (is there some way compactify this into a function?)
       //::::::::::::::::::::::::::::::::::::::::
       double shear_weight = 1.0;
       double bulk_weight = 1.0;
       double diff_weight = 1.0;
       //FIX TEMPORARY
-      if (INCLUDE_SHEAR_DELTAF) 
+      if (INCLUDE_SHEAR_DELTAF)
       {
         double A = 2.0 * T * T * (eps + pressure);
         double f0 = 1.0 / ( exp(E / T) + sign );
@@ -165,7 +165,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
       //::::::::::::::::::::::::::::::::::::::::
 
-      double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do? 
+      double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
 
 
       //here the pion weight should include the Bose enhancement factor
@@ -200,7 +200,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
   // light hadrons, but heavier than pions
   else if (mass / T < 2.0) // fixed bug on 7/12
   {
-    // sample momentum until get an acceptance 
+    // sample momentum until get an acceptance
     while(rejected)
     {
       // draw (p, phi, costheta) from distribution p^2 * exp[-p/T] by
@@ -233,7 +233,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       double bulk_weight = 1.0;
       double diff_weight = 1.0;
       //FIX TEMPORARY
-      if (INCLUDE_SHEAR_DELTAF) 
+      if (INCLUDE_SHEAR_DELTAF)
       {
         double A = 2.0 * T * T * (eps + pressure);
         double f0 = 1.0 / ( exp(E / T) + sign );
@@ -256,7 +256,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
       //::::::::::::::::::::::::::::::::::::::::
 
-      double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do? 
+      double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
 
       double weight = rideal * viscous_weight * exp((p - E) / T);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -278,8 +278,8 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         pLRF.x = px;
         pLRF.y = py;
         pLRF.z = pz;
-        break;        // exit rejection loop 
-      } 
+        break;        // exit rejection loop
+      }
 
     } // rejection loop
   } // mass / T < 0.6
@@ -306,7 +306,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       uniform_real_distribution<double> phi_distribution(0.0 , 2.0 * M_PI);
       uniform_real_distribution<double> costheta_distribution(-1.0 , nextafter(1.0, numeric_limits<double>::max()));
 
-      // sample momentum until get an acceptance 
+      // sample momentum until get an acceptance
       while(rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -332,7 +332,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         double bulk_weight = 1.0;
         double diff_weight = 1.0;
         //FIX TEMPORARY
-        if (INCLUDE_SHEAR_DELTAF) 
+        if (INCLUDE_SHEAR_DELTAF)
         {
           double A = 2.0 * T * T * (eps + pressure);
           double f0 = 1.0 / ( exp(E / T) + sign );
@@ -355,7 +355,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
         //::::::::::::::::::::::::::::::::::::::::
 
-        double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do? 
+        double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
 
         double weight = rideal * viscous_weight * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -377,8 +377,8 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           pLRF.x = px;
           pLRF.y = py;
           pLRF.z = pz;
-          break;        // exit rejection loop 
-        } 
+          break;        // exit rejection loop
+        }
 
       } // rejection loop
     } // distribution 1
@@ -391,7 +391,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       // sample LRF angle costheta = [-1,1] uniformly
       uniform_real_distribution<double> costheta_distribution(-1.0 , nextafter(1.0, numeric_limits<double>::max()));
 
-      // sample momentum until get acceptance 
+      // sample momentum until get acceptance
       while (rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -421,7 +421,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         double bulk_weight = 1.0;
         double diff_weight = 1.0;
         //FIX TEMPORARY
-        if (INCLUDE_SHEAR_DELTAF) 
+        if (INCLUDE_SHEAR_DELTAF)
         {
           double A = 2.0 * T * T * (eps + pressure);
           double f0 = 1.0 / ( exp(E / T) + sign );
@@ -444,7 +444,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
         //::::::::::::::::::::::::::::::::::::::::
 
-        double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do? 
+        double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
 
         double weight = rideal * viscous_weight * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -466,8 +466,8 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           pLRF.x = px;
           pLRF.y = py;
           pLRF.z = pz;
-          break;        // exit rejection loop 
-        } 
+          break;        // exit rejection loop
+        }
 
       } // rejection loop
     } // distribution 2
@@ -479,7 +479,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       //    phi = 2 * \pi * (log(r1) + log(r2))^2 / (log(r1) + log(r2) + log(r3))^2
       //    costheta = (log(r1) - log(r2)) / (log(r1) + log(r2))
 
-      // sample momentum until get acceptance 
+      // sample momentum until get acceptance
       while(rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -511,7 +511,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         double bulk_weight = 1.0;
         double diff_weight = 1.0;
         //FIX TEMPORARY
-        if (INCLUDE_SHEAR_DELTAF) 
+        if (INCLUDE_SHEAR_DELTAF)
         {
           double A = 2.0 * T * T * (eps + pressure);
           double f0 = 1.0 / ( exp(E / T) + sign );
@@ -534,7 +534,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
         //::::::::::::::::::::::::::::::::::::::::
 
-        double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do? 
+        double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
 
         double weight = rideal * viscous_weight * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -550,15 +550,15 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
           exit(-1);
         }
 
-        // check pLRF acceptance 
+        // check pLRF acceptance
         if(propose < weight)
         {
           pLRF.x = px;
           pLRF.y = py;
           pLRF.z = pz;
-          break;        // exit rejection loop 
-        } 
-        
+          break;        // exit rejection loop
+        }
+
       }
     } // distribution 3
   } // heavy hadron
@@ -624,7 +624,7 @@ lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double
 
 lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, double alphaB_mod, dsigma_Vector ds, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio)
 {
-  double two_pi = 2.0 * M_PI; 
+  double two_pi = 2.0 * M_PI;
 
   lrf_momentum pLRF;                          // sampled LRF momentum
   lrf_momentum pLRF_mod;                      // sampled modified LRF momentum
@@ -659,7 +659,7 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
 
       double p_mod = - T_mod * (l1 + l2 + l3);                  // modified 3-momentum magnitude
       double E_mod = sqrt(fabs(p_mod * p_mod + mass_squared));  // modified energy
-      
+
       // calculate modified angles and p_mod LRF components
       double phi_mod = two_pi * (l1 + l2) * (l1 + l2) / ((l1 + l2 + l3) * (l1 + l2 + l3));
       double costheta_mod = (l1 - l2) / (l1 + l2);
@@ -669,12 +669,12 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
       pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
       pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
       pLRF_mod.z = p_mod * costheta_mod;
-      
+
       // momentum rescaling (* highlight *)
       pLRF = Rescale_Momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
 
       double E = pLRF.E;
-      double p = sqrt(fabs(E * E - mass_squared)); 
+      double p = sqrt(fabs(E * E - mass_squared));
 
       double pdsigma_abs = fabs(E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
       double rideal = pdsigma_abs / E / ds_mag;
@@ -682,23 +682,23 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
       //here the pion weight should include the Bose enhancement factor
       //this formula assumes zero chemical potential mu = 0
       //TO DO - generalize for nonzero chemical potential
-      double weight = rideal * exp(p_mod / T_mod) / (exp(E_mod / T_mod) - 1.0);  
+      double weight = rideal * exp(p_mod / T_mod) / (exp(E_mod / T_mod) - 1.0);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
       if(!(weight >= 0.0 && weight <= 1.0)){printf("Error: weight = %f out of bounds\n", weight);exit(-1);}
 
       // check pLRF acceptance
-      if(propose < weight) 
+      if(propose < weight)
       {
-        break;  // exit rejection loop 
-      } 
+        break;  // exit rejection loop
+      }
 
     } // rejection loop
   } //if (mass / T_mod < 1.5)
 
   // light hadrons, but heavier than pions (~ massless Boltzmann distribution)
-  else if (mass / T_mod < 2.0) 
+  else if (mass / T_mod < 2.0)
   {
     while(rejected)
     {
@@ -719,11 +719,11 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
       double costheta_mod = (l1 - l2) / (l1 + l2);
       double sintheta_mod = sqrt(fabs(1.0 - costheta_mod * costheta_mod));
 
-      pLRF_mod.E = E_mod; 
+      pLRF_mod.E = E_mod;
       pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
       pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
       pLRF_mod.z = p_mod * costheta_mod;
-      
+
       // momentum rescaling (* highlight *)
       pLRF = Rescale_Momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
 
@@ -739,11 +739,11 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
       // check pLRF acceptance
       if(propose < weight)
       {
-        break;  // exit rejection loop 
-      } 
+        break;  // exit rejection loop
+      }
 
     } // rejection loop
-  } // mass / T_mod < 2.0 
+  } // mass / T_mod < 2.0
 
   //heavy hadrons
   //use variable transformation described in LongGang's Sampler Notes
@@ -779,7 +779,7 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
         double E_mod = k_mod + mass;
         double p_mod = sqrt(fabs(E_mod * E_mod - mass_squared));
 
-        pLRF_mod.E = E_mod; 
+        pLRF_mod.E = E_mod;
         pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
         pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
         pLRF_mod.z = p_mod * costheta_mod;
@@ -799,7 +799,7 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
         // check pLRF acceptance
         if(propose < weight)
         {
-          break;  // exit rejection loop 
+          break;  // exit rejection loop
         }
 
       } // rejection loop
@@ -809,11 +809,9 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
       // draw (k_mod,phi_mod) from distribution k_mod * exp(-k_mod/T_mod) by
       // sampling two variables (r1,r2) uniformly from [0,1):
       //    k_mod = - T_mod * log(r1)
-      //    phi_mod = 2 * pi * log(r1) / (log(r1) + log(r2)); 
+      //    phi_mod = 2 * pi * log(r1) / (log(r1) + log(r2));
       // sample LRF angle costheta_mod = [-1,1] uniformly
       uniform_real_distribution<double> costheta_distribution(-1.0, nextafter(1.0, numeric_limits<double>::max()));
-
-      bool rejected = true;
       while (rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -830,7 +828,7 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
         double E_mod = k_mod + mass;
         double p_mod = sqrt(fabs(E_mod * E_mod - mass_squared));
 
-        pLRF_mod.E = E_mod; 
+        pLRF_mod.E = E_mod;
         pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
         pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
         pLRF_mod.z = p_mod * costheta_mod;
@@ -881,7 +879,7 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
         double E_mod = k_mod + mass;
         double p_mod = sqrt(fabs(E_mod * E_mod - mass_squared));
 
-        pLRF_mod.E = E_mod; 
+        pLRF_mod.E = E_mod;
         pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
         pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
         pLRF_mod.z = p_mod * costheta_mod;
@@ -898,13 +896,13 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
         if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
         if(!(weight >= 0.0 && weight <= 1.0)){printf("Error: weight = %f out of bounds\n", weight);exit(-1);}
 
-        // check pLRF acceptance 
+        // check pLRF acceptance
         if(propose < weight)
         {
-          break;  // exit rejection loop 
+          break;  // exit rejection loop
         }
 
-      } // rejection loop 
+      } // rejection loop
     } // distribution 3
   } // heavy hadron
   return pLRF;
@@ -1428,7 +1426,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       double P = P_fo[icell];             // pressure
 
       double T3 = T * T * T;              // useful expressions
-      double T4 = T3 * T; 
+      double T4 = T3 * T;
 
       double pitt = 0.0;                  // shear stress tensor pi^munu
       double pitx = 0.0;                  // enforce orthogonality and tracelessness
@@ -1443,16 +1441,16 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
       if(INCLUDE_SHEAR_DELTAF)
       {
-        double pixx = pixx_fo[icell];
-        double pixy = pixy_fo[icell];
-        double pixn = pixn_fo[icell];
-        double piyy = piyy_fo[icell];
-        double piyn = piyn_fo[icell];
-        double pinn = (pixx*(ux2 - ut2) + piyy*(uy2 - ut2) + 2.0*(pixy*ux*uy + tau2*un*(pixn*ux + piyn*uy))) / (tau2 * utperp * utperp);
-        double pitn = (pixn*ux + piyn*uy + tau2*pinn*un) / ut;
-        double pity = (pixy*ux + piyy*uy + tau2*piyn*un) / ut;
-        double pitx = (pixx*ux + pixy*uy + tau2*pixn*un) / ut;
-        double pitt = (pitx*ux + pity*uy + tau2*pitn*un) / ut;
+        pixx = pixx_fo[icell];
+        pixy = pixy_fo[icell];
+        pixn = pixn_fo[icell];
+        piyy = piyy_fo[icell];
+        piyn = piyn_fo[icell];
+        pinn = (pixx*(ux2 - ut2) + piyy*(uy2 - ut2) + 2.0*(pixy*ux*uy + tau2*un*(pixn*ux + piyn*uy))) / (tau2 * utperp * utperp);
+        pitn = (pixn*ux + piyn*uy + tau2*pinn*un) / ut;
+        pity = (pixy*ux + piyy*uy + tau2*piyn*un) / ut;
+        pitx = (pixx*ux + pixy*uy + tau2*pixn*un) / ut;
+        pitt = (pitx*ux + pity*uy + tau2*pitn*un) / ut;
       }
 
       double bulkPi = 0.0;
@@ -1566,7 +1564,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           //:::::::::::::::::::::::::::::::::::
 
 
-          // bulk pressure correction 
+          // bulk pressure correction
           //:::::::::::::::::::::::::::::::::::
           double dN_bulk = 0.0;                   // dN_bulk mod same as df b/c of renorm factor Z)
 
@@ -1581,7 +1579,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           //:::::::::::::::::::::::::::::::::::
 
 
-          // baryon diffusion correction 
+          // baryon diffusion correction
           //:::::::::::::::::::::::::::::::::::
           double dN_diff = 0.0;                   // assumes mod (not baryon) diffusion current of each species ~ same as df one)
 
@@ -1602,12 +1600,12 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
 
         // SAMPLE PARTICLES:
-        // random number generators (could I move the random_device generators outside the loops?) 
+        // random number generators (could I move the random_device generators outside the loops?)
         std::random_device gen1;
         std::random_device gen2;
 
         // probability distributions for number of hadrons and particle type
-        std::poisson_distribution<int> poisson_hadrons(dN_tot);
+        std::poisson_distribution<> poisson_hadrons(dN_tot);
         std::discrete_distribution<int> discrete_particle_type(density_list.begin(), density_list.end());
 
         int N_hadrons = poisson_hadrons(gen1);              // sample total number of hadrons in FO cell
@@ -1627,10 +1625,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
           // sample particle's momentum from modified equilibrium distribution
           lrf_momentum pLRF = Sample_Momentum_mod(mass, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
-          
+
           // lab frame momentum p^mu (milne components)
           Lab_Momentum pmu(pLRF);
-          pmu.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un); 
+          pmu.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
 
           // pdsigma has delta_eta_weight factored out (irrelevant for sign)
           double pdsigma = pmu.ptau * dat  +  pmu.px * dax  +  pmu.py * day  +  pmu.pn * dan;
@@ -1645,10 +1643,20 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
             new_particle.x = x;
             new_particle.y = y;
             new_particle.eta = eta;
-            new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
+
+            new_particle.t = tau * cosheta;
+            new_particle.z = tau * sinheta;
+
+            new_particle.mass = mass;
             new_particle.px = pmu.px;
             new_particle.py = pmu.py;
-            new_particle.pz = tau * pmu.pn * cosheta  +  pmu.ptau * sinheta;
+
+            double pz = tau * pmu.pn * cosheta  +  pmu.ptau * sinheta;
+            new_particle.pz = pz;
+            //new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
+            //is it possible for this to be too small or negative?
+            //try enforcing mass shell condition on E
+            new_particle.E = sqrtf(mass*mass + pmu.px*pmu.px + pmu.py*pmu.py + pz*pz);
 
             //add to particle list
             //CAREFUL push_back is not a thread safe operation
@@ -1656,6 +1664,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
             #pragma omp critical
             particle_list.push_back(new_particle);
           } // keep particle
+
 
 
         } // for (int n = 0; n < N_hadrons; n++)
