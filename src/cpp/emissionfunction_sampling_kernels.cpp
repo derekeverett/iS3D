@@ -568,6 +568,8 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
 
 lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double baryon, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio)
 {
+    lrf_momentum pLRF;
+
     // rescale modified momentum p_mod with matrix Mij
     double E_mod = pLRF_mod.E;
     double px_mod = pLRF_mod.x;
@@ -579,6 +581,7 @@ lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double
     double py_LRF = py_mod;
     double pz_LRF = pz_mod;
 
+    
     // LRF shear stress components
     double pixx_LRF = pimunu.pixx_LRF;
     double pixy_LRF = pimunu.pixy_LRF;
@@ -593,6 +596,20 @@ lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double
     double Vz_LRF = Vmu.Vz_LRF;
     double diffusion_factor = diff_coeff * (E_mod * baryon_enthalpy_ratio + baryon);
 
+    // printf("\n");
+    // printf("pixx_LRF = %f\n", pixx_LRF);
+    // printf("pixy_LRF = %f\n", pixy_LRF);
+    // printf("pixz_LRF = %f\n", pixz_LRF);
+    // printf("piyy_LRF = %f\n", piyy_LRF);
+    // printf("piyz_LRF = %f\n", piyz_LRF);
+    // printf("pizz_LRF = %f\n", pizz_LRF);
+    // printf("\n");
+    // cout << Vx_LRF << endl;
+    // cout << Vy_LRF << endl;
+    // cout << Vz_LRF << endl;
+    // printf("\n");
+
+    
     // rescale momentum:
     //::::::::::::::::::::::::::::::::::::::::
     // add shear terms
@@ -610,15 +627,16 @@ lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double
     py_LRF += diffusion_factor * Vy_LRF;
     pz_LRF += diffusion_factor * Vz_LRF;
     //::::::::::::::::::::::::::::::::::::::::
+    
 
     // set LRF momentum
-    lrf_momentum pLRF;
     pLRF.x = px_LRF;
     pLRF.y = py_LRF;
     pLRF.z = pz_LRF;
     pLRF.E = sqrt(mass_squared  +  px_LRF * px_LRF  +  py_LRF * py_LRF  +  pz_LRF * pz_LRF);
-
+ 
     return pLRF;
+    
 }
 
 
@@ -631,6 +649,7 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
 
   bool rejected = true;                       // for acceptance / rejection loop
 
+
   double mass_squared = mass * mass;          // mass squared
 
   double dst = ds.dsigmat_LRF;                // dsigma LRF components
@@ -638,6 +657,15 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
   double dsy = ds.dsigmay_LRF;
   double dsz = ds.dsigmaz_LRF;
   double ds_mag = ds.dsigma_magnitude;
+
+  // printf("\n\n");
+  // cout << dst << endl;
+  // cout << dsx << endl;
+  // cout << dsy << endl;
+  // cout << dsz << endl;
+  // cout << ds_mag << endl;
+  // exit(-1);
+
 
   unsigned seed = chrono::system_clock::now().time_since_epoch().count();
   default_random_engine generator(seed);
@@ -661,7 +689,7 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
       double E_mod = sqrt(fabs(p_mod * p_mod + mass_squared));  // modified energy
 
       // calculate modified angles and p_mod LRF components
-      double phi_mod = two_pi * (l1 + l2) * (l1 + l2) / ((l1 + l2 + l3) * (l1 + l2 + l3));
+      double phi_mod = two_pi * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
       double costheta_mod = (l1 - l2) / (l1 + l2);
       double sintheta_mod = sqrt(fabs(1.0 - costheta_mod * costheta_mod));
 
@@ -672,12 +700,18 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
 
       // momentum rescaling (* highlight *)
       pLRF = Rescale_Momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
+      //pLRF = pLRF_mod;
 
-      double E = pLRF.E;
-      double p = sqrt(fabs(E * E - mass_squared));
+      // there's something wrong with pLRF? 
+      // printf("\n");
+      // cout << pLRF.E << "\t" << pLRF_mod.E << endl;
+      // cout << pLRF.x << "\t" << pLRF_mod.x << endl;
+      // cout << pLRF.y << "\t" << pLRF_mod.y << endl;
+      // cout << pLRF.z << "\t" << pLRF_mod.z << endl;
+      // exit(-1);
 
-      double pdsigma_abs = fabs(E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
-      double rideal = pdsigma_abs / E / ds_mag;
+      double pdsigma_abs = fabs(pLRF.E * dst - pLRF_mod.x * dsx - pLRF_mod.y * dsy - pLRF_mod.z * dsz);
+      double rideal = pdsigma_abs / (pLRF.E * ds_mag);
 
       //here the pion weight should include the Bose enhancement factor
       //this formula assumes zero chemical potential mu = 0
@@ -700,6 +734,7 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
   // light hadrons, but heavier than pions (~ massless Boltzmann distribution)
   else if (mass / T_mod < 2.0)
   {
+    cout << "Hey" << endl;
     while(rejected)
     {
       // draw (p_mod, phi_mod, costheta_mod) from distribution p_mod^2 * exp(-p_mod / T_mod) by
@@ -749,6 +784,7 @@ lrf_momentum Sample_Momentum_mod(double mass, double baryon, double T_mod, doubl
   //use variable transformation described in LongGang's Sampler Notes
   else
   {
+    cout << "Hey" << endl;
     // determine which part of integrand dominates
     double I1 = mass_squared;
     double I2 = 2.0 * mass * T_mod;
@@ -1090,6 +1126,18 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         Yy = ux / uperp;
       }
 
+      // printf("\n");
+      // cout << Xt << endl;
+      // cout << Xx << endl;
+      // cout << Xy << endl;
+      // cout << Xn << endl;
+      // cout << Yx << endl;
+      // cout << Yy << endl;
+      // cout << Zt << endl;
+      // cout << Zn << endl;
+      // cout << - tau2 * Zn * Zn << endl;
+      // exit(-1); 
+
       // dsigma_mu in the LRF (delta_eta_weight factored out because it drops out in r_ideal)
       //    dat_LRF = u^mu . dsigma_mu
       //    dai_LRF = - X_i^mu . dsigma_mu
@@ -1104,6 +1152,12 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double dsigma_time = dsigmaLRF.t;
       double dsigma_space = sqrt(dsigmaLRF.x * dsigmaLRF.x +  dsigmaLRF.y * dsigmaLRF.y  +  dsigmaLRF.z * dsigmaLRF.z);
       double dsigma_magnitude = dsigma_time + dsigma_space;
+
+      // cout << dsigmaLRF.t << endl;
+      // cout << dsigmaLRF.x << endl;
+      // cout << dsigmaLRF.y << endl;
+      // cout << dsigmaLRF.z << endl;
+      // cout << dsigma_magnitude << endl;
 
       // loop over eta points
       for(int ieta = 0; ieta < eta_pts; ieta++)
@@ -1247,6 +1301,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           dN_tot += dN;
         } // loop over hadrons (ipart)
 
+        // printf("\n");
+        // cout << density_list[0] << endl;
+        // cout << dN_tot << endl;
+        // exit(-1);
 
         // now sample the number of particles (all species)
         std::poisson_distribution<> poisson_distr(dN_tot);
@@ -1357,6 +1415,12 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
     int npart = number_of_chosen_particles;
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
 
+    //set seed of random devices using clock time to produce nonidentical events
+    unsigned seed1 = chrono::system_clock::now().time_since_epoch().count();
+    unsigned seed2 = chrono::system_clock::now().time_since_epoch().count();
+    default_random_engine gen1(seed1);
+    default_random_engine gen2(seed2);
+
     int eta_pts = 1;
     if(DIMENSION == 2)
     {
@@ -1421,9 +1485,24 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       // set milne basis vectors
       Milne_Basis_Vectors basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
 
+      // printf("\n");
+      // cout << basis_vectors.Xt << endl;
+      // cout << basis_vectors.Xx << endl;
+      // cout << basis_vectors.Xy << endl;
+      // cout << basis_vectors.Xn << endl;
+      // cout << basis_vectors.Yx << endl;
+      // cout << basis_vectors.Yy << endl;
+      // cout << basis_vectors.Zt << endl;
+      // cout << basis_vectors.Zn << endl;
+      // cout << - tau2 * basis_vectors.Zn * basis_vectors.Zn << endl;
+      // exit(-1); 
+
       double T = T_fo[icell];             // temperature
       double E = E_fo[icell];             // energy density
       double P = P_fo[icell];             // pressure
+
+      
+
 
       double T3 = T * T * T;              // useful expressions
       double T4 = T3 * T;
@@ -1493,10 +1572,20 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       double T_mod = T + (F * bulkPi / betabulk);
       double alphaB_mod =  alphaB + (G * bulkPi / betabulk);
 
+      //cout << T << "\t" << T_mod << endl;
+
       // dsigma class (delta_eta_weight factored out of 2+1d volume element since it drops out in rideal)
       dsigma_Vector dsigma(dat, dax, day, dan);
       dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
       dsigma.compute_dsigma_max();
+
+      // printf("\n");
+      // cout << dsigma.dsigmat_LRF << endl;
+      // cout << dsigma.dsigmax_LRF << endl;
+      // cout << dsigma.dsigmay_LRF << endl;
+      // cout << dsigma.dsigmaz_LRF << endl;
+      // cout << dsigma.dsigma_magnitude << endl;
+      // exit(-1);
 
       // shear stress class
       Shear_Stress_Tensor pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
@@ -1598,17 +1687,20 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
         } // loop over particles (ipart)
 
+        // printf("\n");
+        // cout << density_list[0] << endl;
+        // cout << dN_tot << endl;
+        // exit(-1);
 
         // SAMPLE PARTICLES:
-        // random number generators (could I move the random_device generators outside the loops?)
-        std::random_device gen1;
-        std::random_device gen2;
-
+    
         // probability distributions for number of hadrons and particle type
         std::poisson_distribution<> poisson_hadrons(dN_tot);
         std::discrete_distribution<int> discrete_particle_type(density_list.begin(), density_list.end());
 
         int N_hadrons = poisson_hadrons(gen1);              // sample total number of hadrons in FO cell
+
+        //if(N_hadrons > 0) {cout << N_hadrons << endl;}
 
         // sample momentum of N_hadrons
         for(int n = 0; n < N_hadrons; n++)
@@ -1621,6 +1713,14 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           double baryon = Baryon[idx_sampled];              // baryon number
           int mcid = MCID[idx_sampled];                     // MC ID of sampled particle
           //:::::::::::::::::::::::::::::::::::
+
+          // printf("\n\n");
+          // cout << dsigma.dsigmat_LRF << endl;
+          // cout << dsigma.dsigmax_LRF << endl;
+          // cout << dsigma.dsigmay_LRF << endl;
+          // cout << dsigma.dsigmaz_LRF << endl;
+          // cout << dsigma.dsigma_magnitude << endl;
+
 
 
           // sample particle's momentum from modified equilibrium distribution
