@@ -1,5 +1,8 @@
 #include "viscous_correction.h"
 #include <math.h>
+#include <iostream>
+#include <stdlib.h> 
+using namespace std;
 
 
 Milne_Basis_Vectors::Milne_Basis_Vectors(double ut, double ux, double uy, double un, double uperp, double utperp, double tau)
@@ -103,7 +106,7 @@ Shear_Stress_Tensor::Shear_Stress_Tensor(double pitt_in, double pitx_in, double 
 
 
 void Shear_Stress_Tensor::boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
-{
+{   
     double Xt = basis_vectors.Xt;
     double Xx = basis_vectors.Xx;
     double Xy = basis_vectors.Xy;
