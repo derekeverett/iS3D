@@ -86,6 +86,8 @@ private:
   int LIGHTEST_PARTICLE; //mcid of lightest resonance to calculate in decay feed-down
   int DO_RESONANCE_DECAYS; // smooth resonance decays option
 
+  int OVERSAMPLE;
+
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
   long FO_length;
@@ -177,9 +179,9 @@ public:
 
   void write_dN_dpTdphidy_toFile(int *MCID);   // write 3D spectra to file in experimental bins
   void write_dN_dpTdphidy_with_resonance_decays_toFile();   // write 3D spectra to file in experimental bins (w/ resonance decay effects)
-  void write_particle_list_toFile();  // write sampled particle list
-  void write_particle_list_OSC(); //write sampled particle list in OSCAR format for UrQMD/SMASH
-  void write_momentum_list_toFile();  // write sampled momentum list
+  void write_particle_list_toFile(int sample);  // write sampled particle list
+  void write_particle_list_OSC(int sample); //write sampled particle list in OSCAR format for UrQMD/SMASH
+  void write_momentum_list_toFile(int sample);  // write sampled momentum list
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
   // resonance decay routine:
