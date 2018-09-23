@@ -581,7 +581,7 @@ lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double
     double py_LRF = py_mod;
     double pz_LRF = pz_mod;
 
-    
+
     // LRF shear stress components
     double pixx_LRF = pimunu.pixx_LRF;
     double pixy_LRF = pimunu.pixy_LRF;
@@ -596,7 +596,7 @@ lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double
     double Vz_LRF = Vmu.Vz_LRF;
     double diffusion_factor = diff_coeff * (E_mod * baryon_enthalpy_ratio + baryon);
 
-  
+
     // rescale momentum:
     //::::::::::::::::::::::::::::::::::::::::
     // add shear terms
@@ -614,15 +614,15 @@ lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double
     py_LRF += diffusion_factor * Vy_LRF;
     pz_LRF += diffusion_factor * Vz_LRF;
     //::::::::::::::::::::::::::::::::::::::::
-    
+
 
     // set LRF momentum
     pLRF.x = px_LRF;
     pLRF.y = py_LRF;
     pLRF.z = pz_LRF;
     pLRF.E = sqrt(mass_squared  +  px_LRF * px_LRF  +  py_LRF * py_LRF  +  pz_LRF * pz_LRF);
- 
-    return pLRF; 
+
+    return pLRF;
 }
 
 
@@ -677,14 +677,15 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
 
       // momentum rescaling (* highlight *)
       pLRF = Rescale_Momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
-      
+
       double pdsigma_abs = fabs(pLRF.E * dst - pLRF_mod.x * dsx - pLRF_mod.y * dsy - pLRF_mod.z * dsz);
       double rideal = pdsigma_abs / (pLRF.E * ds_mag);
 
       //here the pion weight should include the Bose enhancement factor
       //this formula assumes zero chemical potential mu = 0
       //TO DO - generalize for nonzero chemical potential
-      double weight = rideal * exp(p_mod / T_mod) / (exp(E_mod / T_mod) + sign);   // I might want to pass sign since T_mod can vary 
+      // I might want to pass sign since T_mod can vary ("light particle" not necessarily a pion)
+      double weight = rideal * exp(p_mod / T_mod) / (exp(E_mod / T_mod) + sign);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
@@ -762,6 +763,8 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
 
     double propose_distribution = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
+    // what if I used the discrete distribution? Would that change anything?
+
     // accept-reject distributions to sample momentum from based on integrated weights
     if(propose_distribution < I1 / Itot)
     {
@@ -795,7 +798,7 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
         double pdsigma_abs = fabs(pLRF.E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
         double rideal = pdsigma_abs / pLRF.E / ds_mag;
 
-        double weight = rideal * (p_mod / E_mod);
+        double weight = rideal * (p_mod / E_mod) * exp(E_mod / T_mod) / (exp(E_mod / T_mod) + sign);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
         if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
@@ -817,6 +820,7 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
       //    phi_mod = 2 * pi * log(r1) / (log(r1) + log(r2));
       // sample LRF angle costheta_mod = [-1,1] uniformly
       uniform_real_distribution<double> costheta_distribution(-1.0, nextafter(1.0, numeric_limits<double>::max()));
+
       while (rejected)
       {
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -844,7 +848,7 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
         double pdsigma_abs = fabs(pLRF.E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
         double rideal = pdsigma_abs / pLRF.E / ds_mag;
 
-        double weight = rideal * (p_mod / E_mod);
+        double weight = rideal * (p_mod / E_mod) * exp(E_mod / T_mod) / (exp(E_mod / T_mod) + sign);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
         if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
@@ -877,9 +881,9 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
         double l3 = log(r3);
 
         double k_mod = - T_mod * (l1 + l2 + l3);
-        double phi_mod = 2.0 * M_PI * (l1 + l2) * (l1 + l2) / ((l1 + l2 + l3) * (l1 + l2 + l3));
+        double phi_mod = two_pi * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
         double costheta_mod = (l1 - l2) / (l1 + l2);
-        double sintheta_mod = sqrt(1.0 - costheta_mod * costheta_mod);
+        double sintheta_mod = sqrt(fabs(1.0 - costheta_mod * costheta_mod));
 
         double E_mod = k_mod + mass;
         double p_mod = sqrt(fabs(E_mod * E_mod - mass_squared));
@@ -895,7 +899,7 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
         double pdsigma_abs = fabs(pLRF.E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
         double rideal = pdsigma_abs / pLRF.E / ds_mag;
 
-        double weight = rideal * (p_mod / E_mod);
+        double weight = rideal * (p_mod / E_mod) * exp(E_mod / T_mod) / (exp(E_mod / T_mod) + sign);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
         if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
@@ -1105,7 +1109,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       // cout << Zt << endl;
       // cout << Zn << endl;
       // cout << - tau2 * Zn * Zn << endl;
-      // exit(-1); 
+      // exit(-1);
 
       // dsigma_mu in the LRF (delta_eta_weight factored out because it drops out in r_ideal)
       //    dat_LRF = u^mu . dsigma_mu
@@ -1575,10 +1579,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           double baryon = Baryon[ipart];           // baryon number
           double chem = baryon * alphaB;           // baryon chemical potential term in feq
 
+
           // thermal particles
           //:::::::::::::::::::::::::::::::::::
-          int jmax = 2;                            // truncation term of Bose-Fermi expansion = jmax - 1
-          if(mbar < 2.0) jmax = 10;                // light particles need more terms than the leading order term
+          int jmax = 6;                            // truncation term of Bose-Fermi expansion = jmax - 1
+          if(mbar < 2.0) jmax = 20;                // light particles need more terms than the leading order term
 
           double sign_factor = -sign;
 
@@ -1592,6 +1597,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
           }
 
           neq *= degeneracy * mass * mass * T / two_pi2_hbarC3;
+
+          //cout << setprecision(16) << neq << "\t" << T << endl;
+          //exit(-1);
 
           double dN_thermal = udotdsigma * neq;   // mean number of particles of type ipart in FO cell
           //:::::::::::::::::::::::::::::::::::
@@ -1633,7 +1641,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
 
         // SAMPLE PARTICLES:
-    
+
         // probability distributions for number of hadrons and particle type
         std::poisson_distribution<> poisson_hadrons(dN_tot);
         std::discrete_distribution<int> discrete_particle_type(density_list.begin(), density_list.end());
@@ -1699,6 +1707,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
 
         } // for (int n = 0; n < N_hadrons; n++)
+
       } // for(int ieta = 0; ieta < eta_ptsl ieta++)
   } // for (int icell = 0; icell < FO_length; icell++)
 }

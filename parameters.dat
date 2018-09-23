@@ -1,6 +1,6 @@
 operation					= 2		# operation
 									# 1 : performs smooth cooper frye resulting in dN/pTdpTdphidy
-									# 2 : performs sampling of particle distribution resulting in particle list 
+									# 2 : performs sampling of particle distribution resulting in particle list
 
 mode                      	= 1 	# mode for reading in freeze out information
 									# 1: reads freezeout file from 3+1D viscous hydro (gpu-vh format)
@@ -34,6 +34,6 @@ group_particles           	= 0		# group particles with the similar mass and to s
 particle_diff_tolerance   	= 0.01  # grouping particle mass tolerance
 
 do_resonance_decays	  		= 0     #switch for resonance decays after thermal spectra calculation
-lightest_particle 	 		= 211   #PDG MC ID of lightest particle for resonance decay feeddown 
+lightest_particle 	 		= 211   #PDG MC ID of lightest particle for resonance decay feeddown
 
-oversample					= 10	# total number of MC sampled events
+oversample					= 1.e+5 # max number of sampled particles from all MC events

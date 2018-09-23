@@ -889,9 +889,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             case 2: // sample
             {
 
-              
-              
-              for(int sample = 1; sample <= OVERSAMPLE; sample++)
+
+              int sample = 1;
+              long int Nsampled = 0;
+              printf("Oversampling batch = %ld particles\n", OVERSAMPLE);
+              while(Nsampled < OVERSAMPLE)
               {
                 particle_list.clear();
 
@@ -903,12 +905,20 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
 
                 write_particle_list_toFile(sample);
-                write_particle_list_OSC(sample); 
+                write_particle_list_OSC(sample);
                 write_momentum_list_toFile(sample);
+
+                Nsampled += (long int)particle_list.size();
+
+                printf("Finished event %d\n: total number sampled = %ld\n", sample, Nsampled);
+
+
+                sample++;
+
               }
 
 
-              
+
 
 
 
@@ -997,7 +1007,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               printf("sampling particles with feqmod...\n");
 
-              for(int sample = 1; sample <= OVERSAMPLE; sample++)
+
+              int sample = 1;
+              long int Nsampled = 0;
+              printf("Oversampling batch: %ld particles\n", OVERSAMPLE);
+              while(Nsampled < OVERSAMPLE)
               {
                 particle_list.clear();
 
@@ -1009,8 +1023,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
 
                 write_particle_list_toFile(sample);
-                write_particle_list_OSC(sample); 
+                write_particle_list_OSC(sample);
                 write_momentum_list_toFile(sample);
+
+                Nsampled += (long int)particle_list.size();
+
+                printf("Finished event %d: total number sampled so far = %ld\n", sample, Nsampled);
+
+                sample++;
+
               }
 
               break;

@@ -43,9 +43,9 @@ class Lab_Momentum
     double pn;        // p^eta
 
     // constructor
-    Lab_Momentum(lrf_momentum pLRF_in); 
-    // boost pLRF to the lab frame 
-    void boost_pLRF_to_lab_frame(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un); 
+    Lab_Momentum(lrf_momentum pLRF_in);
+    // boost pLRF to the lab frame
+    void boost_pLRF_to_lab_frame(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un);
 
 };
 
@@ -61,7 +61,7 @@ typedef struct
 //sample momentum with linear viscous correction
 lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_Tensor pimunu, double bulkPi, double eps, double pressure, double tau2, double sign, lrf_dsigma dsigmaLRF, double dsigma_magnitude, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE);
 
-// momentum rescaling 
+// momentum rescaling
 lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double baryon, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
 
 //sample momentum with modified equil viscous correction
@@ -86,7 +86,7 @@ private:
   int LIGHTEST_PARTICLE; //mcid of lightest resonance to calculate in decay feed-down
   int DO_RESONANCE_DECAYS; // smooth resonance decays option
 
-  int OVERSAMPLE;
+  long int OVERSAMPLE;
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
