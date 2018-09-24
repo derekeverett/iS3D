@@ -1548,96 +1548,102 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       double Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
 
 
-      // loop over eta points
-      for(int ieta = 0; ieta < eta_pts; ieta++)
-      {
-        double delta_eta_weight = etaDeltaWeights[ieta];
-        double udotdsigma = delta_eta_weight * udsigma;
+      std::vector<double> density_list;         // holds mean number / delta_eta_weight of each species in FO cell
+      density_list.resize(npart);
+      double dn_tot = 0.0;                      // total mean number  / delta_eta_weight of hadrons in FO cell 
 
-        if(udotdsigma <= 0.0)
+      // loop over particles
+      for(int ipart = 0; ipart < npart; ipart++)
+      {
+        if(udsigma <= 0.0)
         {
           break;                                  // skip over cells with u.dsigma < 0
         }
 
+        // particle's properties
+        double mass = Mass[ipart];               // mass in GeV
+        double mbar = mass / T;                  // mass / temperature
+        double sign = Sign[ipart];               // quantum statistics sign
+        double degeneracy = Degeneracy[ipart];   // spin degeneracy
+        double baryon = Baryon[ipart];           // baryon number
+        double chem = baryon * alphaB;           // baryon chemical potential term in feq
+
+        // thermal particles
+        //:::::::::::::::::::::::::::::::::::
+        int jmax = 6;                            // truncation term of Bose-Fermi expansion = jmax - 1
+        if(mbar < 2.0) jmax = 20;                // light particles need more terms than the leading order term
+
+        double sign_factor = -sign;
+
+        double neq = 0.0;                        // equilibrium particle density
+
+        for(int j = 1; j < jmax; j++)            // sum truncated expansion of Bose-Fermi distribution
+        {
+          double k = (double)j;
+          sign_factor *= (-sign);
+          neq += sign_factor * exp(k * chem) * gsl_sf_bessel_Kn(2, k * mbar) / k;
+        }
+
+        neq *= degeneracy * mass * mass * T / two_pi2_hbarC3;
+
+        //cout << setprecision(16) << neq << "\t" << T << endl;
+        //exit(-1);
+
+        double dn_thermal = udsigma * neq;       // mean number of particles / delta_eta_weight of type ipart in FO cell
+        //:::::::::::::::::::::::::::::::::::
+
+
+        // bulk pressure correction
+        //:::::::::::::::::::::::::::::::::::
+        double dn_bulk = 0.0;                    // dn_bulk mod same as df b/c of renorm factor Z)
+
+        if(INCLUDE_BULK_DELTAF)
+        {
+          double J10_fact = T3 / two_pi2_hbarC3;
+          double J20_fact = T4 / two_pi2_hbarC3;
+          double J10 = degeneracy * J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+          double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+          dn_bulk = udsigma * (bulkPi / betabulk) * (neq + (baryon * J10 * G) + (J20 * F / T / T));
+        }
+        //:::::::::::::::::::::::::::::::::::
+
+
+        // baryon diffusion correction
+        //:::::::::::::::::::::::::::::::::::
+        double dn_diff = 0.0;                    // assumes mod (not baryon) diffusion current of each species ~ same as df one)
+
+        if(INCLUDE_BARYONDIFF_DELTAF)
+        {
+          double J11_fact = T3 / two_pi2_hbarC3 / 3.0;
+          double J11 = degeneracy * J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+          dn_diff = - (Vdsigma / betaV) * (neq * T * baryon_enthalpy_ratio - baryon * J11);
+        }
+        //:::::::::::::::::::::::::::::::::::
+
+
+        double dn = dn_thermal + dn_bulk + dn_diff;    // mean number of particles of species ipart / delta_eta_weight
+        density_list[ipart] = dn;                      // store in density list to sample individual species later
+        dn_tot += dn;                                  // add to total mean number of hadrons / delta_eta_weight
+
+      } // loop over particles (ipart)
+
+
+      // loop over eta points
+      for(int ieta = 0; ieta < eta_pts; ieta++)
+      {
+        if(udsigma <= 0.0)
+        {
+          break;                                       // skip over cells with u.dsigma < 0
+        }
+
         double eta = etaValues[ieta];
+        double delta_eta_weight = etaDeltaWeights[ieta];
         double cosheta = cosh(eta);
         double sinheta = sinh(eta);
-        double Vdotdsigma = delta_eta_weight * Vdsigma;
+       
+        double dN_tot = delta_eta_weight * dn_tot;     // total mean number of hadrons in FO cell
 
-        std::vector<double> density_list;         // holds mean number of each species in FO cell
-        density_list.resize(npart);
-        double dN_tot = 0.0;                      // total mean number of hadrons in FO cell
-
-        // loop over particles
-        for(int ipart = 0; ipart < npart; ipart++)
-        {
-          // particle's properties
-          double mass = Mass[ipart];               // mass in GeV
-          double mbar = mass / T;                  // mass / temperature
-          double sign = Sign[ipart];               // quantum statistics sign
-          double degeneracy = Degeneracy[ipart];   // spin degeneracy
-          double baryon = Baryon[ipart];           // baryon number
-          double chem = baryon * alphaB;           // baryon chemical potential term in feq
-
-
-          // thermal particles
-          //:::::::::::::::::::::::::::::::::::
-          int jmax = 6;                            // truncation term of Bose-Fermi expansion = jmax - 1
-          if(mbar < 2.0) jmax = 20;                // light particles need more terms than the leading order term
-
-          double sign_factor = -sign;
-
-          double neq = 0.0;                        // equilibrium particle density
-
-          for(int j = 1; j < jmax; j++)            // sum truncated expansion of Bose-Fermi distribution
-          {
-            double k = (double)j;
-            sign_factor *= (-sign);
-            neq += sign_factor * exp(k * chem) * gsl_sf_bessel_Kn(2, k * mbar) / k;
-          }
-
-          neq *= degeneracy * mass * mass * T / two_pi2_hbarC3;
-
-          //cout << setprecision(16) << neq << "\t" << T << endl;
-          //exit(-1);
-
-          double dN_thermal = udotdsigma * neq;   // mean number of particles of type ipart in FO cell
-          //:::::::::::::::::::::::::::::::::::
-
-
-          // bulk pressure correction
-          //:::::::::::::::::::::::::::::::::::
-          double dN_bulk = 0.0;                   // dN_bulk mod same as df b/c of renorm factor Z)
-
-          if(INCLUDE_BULK_DELTAF)
-          {
-            double J10_fact = T3 / two_pi2_hbarC3;
-            double J20_fact = T4 / two_pi2_hbarC3;
-            double J10 = degeneracy * J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-            double J20 = degeneracy * J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
-            dN_bulk = udotdsigma * (bulkPi / betabulk) * (neq + (baryon * J10 * G) + (J20 * F / T / T));
-          }
-          //:::::::::::::::::::::::::::::::::::
-
-
-          // baryon diffusion correction
-          //:::::::::::::::::::::::::::::::::::
-          double dN_diff = 0.0;                   // assumes mod (not baryon) diffusion current of each species ~ same as df one)
-
-          if(INCLUDE_BARYONDIFF_DELTAF)
-          {
-            double J11_fact = T3 / two_pi2_hbarC3 / 3.0;
-            double J11 = degeneracy * J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-            dN_diff = - (Vdotdsigma / betaV) * (neq * T * baryon_enthalpy_ratio - baryon * J11);
-          }
-          //:::::::::::::::::::::::::::::::::::
-
-
-          double dN = dN_thermal + dN_bulk + dN_diff;    // mean number of particles of species ipart
-          density_list[ipart] = dN;                      // store in density list to sample individual species later
-          dN_tot += dN;                                  // add to total mean number of hadrons
-
-        } // loop over particles (ipart)
+        
 
 
         // SAMPLE PARTICLES:
