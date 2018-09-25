@@ -699,32 +699,80 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
 
     } // rejection loop
   } //if (mass / T_mod < 1.5)
-
-  // light hadrons, but heavier than pions (~ massless Boltzmann distribution)
-  /*
-  else if (mass / T_mod < 2.0)
+  // heavy hadrons (use variable transformation described in LongGang's Sampler Notes)
+  else
   {
-    cout << "Hey kaon" << endl;
-    exit(-1);
+    // determine which part of integrand dominates
+    double I1 = mass_squared;
+    double I2 = 2.0 * mass * T_mod;
+    double I3 = 2.0 * T_mod * T_mod;     
+    double Itot = I1 + I2 + I3;
+
+    // uniform distributions in (phi_mod, costheta_mod) on standby:
+    uniform_real_distribution<double> phi_distribution(0.0, two_pi);
+    uniform_real_distribution<double> costheta_distribution(-1.0, nextafter(1.0, numeric_limits<double>::max()));
+
     while(rejected)
-    {
-      // draw (p_mod, phi_mod, costheta_mod) from distribution p_mod^2 * exp(-p_mod / T_mod) by
-      // sampling three variables (r1,r2,r3) uniformly from [0,1)
-      double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-      double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-      double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+    { 
+      // random variables to be sampled 
+      double k_mod, phi_mod, costheta_mod;  
 
-      double l1 = log(r1);
-      double l2 = log(r2);
-      double l3 = log(r3);
+      double propose_distribution = generate_canonical<double, numeric_limits<double>::digits>(generator);
+    
+      // accept-reject distributions to sample momentum from based on integrated weights
+      if(propose_distribution < I1 / Itot)
+      {
+        // draw k_mod from distribution exp(-k_mod / T_mod) by sampling r1 uniformly from [0,1):
+        //    k_mod = -T_mod * log(r1)
+        // sample modified LRF angles costheta_mod = [-1,1] and phi_mod = [0,2pi) uniformly
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+    
+        k_mod = - T_mod * log(r1);
+        phi_mod = phi_distribution(generator);
+        costheta_mod = costheta_distribution(generator);
 
-      double p_mod = - T_mod * (l1 + l2 + l3);
-      double E_mod = sqrt(fabs(p_mod * p_mod + mass_squared));
+      } // distribution 1 
+      else if(propose_distribution < (I1 + I2) / Itot)
+      {
+        // draw (k_mod,phi_mod) from distribution k_mod * exp(-k_mod/T_mod) by sampling (r1,r2) uniformly from [0,1):
+        //    k_mod = - T_mod * log(r1)
+        //    phi_mod = 2 * pi * log(r1) / (log(r1) + log(r2));
+        // sample LRF angle costheta_mod = [-1,1] uniformly
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        
+        double l1 = log(r1);
+        double l2 = log(r2);
 
-      double phi_mod = two_pi * (l1 + l2) * (l1 + l2) / ((l1 + l2 + l3) * (l1 + l2 + l3));
-      double costheta_mod = (l1 - l2) / (l1 + l2);
+        k_mod = - T_mod * (l1 + l2);
+        phi_mod = two_pi * l1 / (l1 + l2);
+        costheta_mod = costheta_distribution(generator);
+
+      } // distribution 2
+      else
+      {
+        // draw (k_mod,phi_mod,costheta_mod) from k_mod^2 * exp(-k_mod / T_mod) distribution by sampling (r1,r2,r3) uniformly from [0,1):
+        //    k_mod = - T_mod * (log(r1) + log(r2) + log(r3))
+        //    phi_mod = 2 * \pi * (log(r1) + log(r2))^2 / (log(r1) + log(r2) + log(r3))^2
+        //    costheta_mod = (log(r1) - log(r2)) / (log(r1) + log(r2)
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        double l1 = log(r1);
+        double l2 = log(r2);
+        double l3 = log(r3);
+
+        k_mod = - T_mod * (l1 + l2 + l3);
+        phi_mod = two_pi * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
+        costheta_mod = (l1 - l2) / (l1 + l2);
+
+      } // distribution 3
+
       double sintheta_mod = sqrt(fabs(1.0 - costheta_mod * costheta_mod));
-
+      double E_mod = k_mod + mass;
+      double p_mod = sqrt(fabs(E_mod * E_mod - mass_squared));
+      
       pLRF_mod.E = E_mod;
       pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
       pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
@@ -734,185 +782,20 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
       pLRF = Rescale_Momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
 
       double pdsigma_abs = fabs(pLRF.E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
-      double rideal = pdsigma_abs / pLRF.E / ds_mag;
+      double rideal = pdsigma_abs / (pLRF.E * ds_mag);
 
-      double weight = rideal * exp((p_mod - E_mod) / T_mod);
+      double weight = rideal * (p_mod / E_mod) * exp(E_mod / T_mod) / (exp(E_mod / T_mod) + sign);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
       if(!(weight >= 0.0 && weight <= 1.0)){printf("Error: weight = %f out of bounds\n", weight);exit(-1);}
 
-      // check pLRF acceptance
       if(propose < weight)
       {
-        break;  // exit rejection loop
+        break;  // exit rejection loop 
       }
 
     } // rejection loop
-  } // mass / T_mod < 2.0
-  */
-  //heavy hadrons
-  //use variable transformation described in LongGang's Sampler Notes
-  else
-  {
-    // determine which part of integrand dominates
-    double I1 = mass_squared;
-    double I2 = 2.0 * mass * T_mod;
-    double I3 = 2.0 * T_mod * T_mod;    // do these formulas change for the mod case other than using T_mod? (detM?...)
-    double Itot = I1 + I2 + I3;
-
-    double propose_distribution = generate_canonical<double, numeric_limits<double>::digits>(generator);
-
-    // what if I used the discrete distribution? Would that change anything?
-
-    // accept-reject distributions to sample momentum from based on integrated weights
-    if(propose_distribution < I1 / Itot)
-    {
-      // draw k_mod from distribution exp(-k_mod / T_mod) by sampling
-      // one variable r1 uniformly from [0,1):
-      //    k_mod = -T_mod * log(r1)
-      // sample modified LRF angles costheta_mod = [-1,1] and phi_mod = [0,2pi) uniformly
-      uniform_real_distribution<double> phi_distribution(0.0, two_pi);
-      uniform_real_distribution<double> costheta_distribution(-1.0, nextafter(1.0, numeric_limits<double>::max()));
-
-      while(rejected)
-      {
-        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-        double phi_mod = phi_distribution(generator);
-        double costheta_mod = costheta_distribution(generator);
-
-        double k_mod = - T_mod * log(r1);
-        double sintheta_mod = sqrt(fabs(1.0 - costheta_mod * costheta_mod));
-
-        double E_mod = k_mod + mass;
-        double p_mod = sqrt(fabs(E_mod * E_mod - mass_squared));
-
-        pLRF_mod.E = E_mod;
-        pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
-        pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
-        pLRF_mod.z = p_mod * costheta_mod;
-
-        // momentum rescaling (* highlight *)
-        pLRF = Rescale_Momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
-
-        double pdsigma_abs = fabs(pLRF.E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
-        double rideal = pdsigma_abs / pLRF.E / ds_mag;
-
-        double weight = rideal * (p_mod / E_mod) * exp(E_mod / T_mod) / (exp(E_mod / T_mod) + sign);
-        double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
-
-        if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
-        if(!(weight >= 0.0 && weight <= 1.0)){printf("Error: weight = %f out of bounds\n", weight);exit(-1);}
-
-        // check pLRF acceptance
-        if(propose < weight)
-        {
-          break;  // exit rejection loop
-        }
-
-      } // rejection loop
-    } // distribution 1
-    else if (propose_distribution < (I1 + I2) / Itot)
-    {
-      // draw (k_mod,phi_mod) from distribution k_mod * exp(-k_mod/T_mod) by
-      // sampling two variables (r1,r2) uniformly from [0,1):
-      //    k_mod = - T_mod * log(r1)
-      //    phi_mod = 2 * pi * log(r1) / (log(r1) + log(r2));
-      // sample LRF angle costheta_mod = [-1,1] uniformly
-      uniform_real_distribution<double> costheta_distribution(-1.0, nextafter(1.0, numeric_limits<double>::max()));
-
-      while (rejected)
-      {
-        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-        double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-        double costheta_mod = costheta_distribution(generator);
-
-        double l1 = log(r1);
-        double l2 = log(r2);
-
-        double k_mod = - T_mod * (l1 + l2);
-        double phi_mod = two_pi * l1 / (l1 + l2);
-        double sintheta_mod = sqrt(fabs(1.0 - costheta_mod * costheta_mod));
-
-        double E_mod = k_mod + mass;
-        double p_mod = sqrt(fabs(E_mod * E_mod - mass_squared));
-
-        pLRF_mod.E = E_mod;
-        pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
-        pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
-        pLRF_mod.z = p_mod * costheta_mod;
-
-        // momentum rescaling (* highlight *)
-        pLRF = Rescale_Momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
-
-        double pdsigma_abs = fabs(pLRF.E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
-        double rideal = pdsigma_abs / pLRF.E / ds_mag;
-
-        double weight = rideal * (p_mod / E_mod) * exp(E_mod / T_mod) / (exp(E_mod / T_mod) + sign);
-        double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
-
-        if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
-        if(!(weight >= 0.0 && weight <= 1.0)){printf("Error: weight = %f out of bounds\n", weight);exit(-1);}
-
-        // check pLRF acceptance
-        if(propose < weight)
-        {
-          break;
-        }
-
-      } // rejection loop
-    } // distribution 2
-    else
-    {
-      // draw (k_mod,phi_mod,costheta_mod) from k_mod^2 * exp(-k_mod / T_mod) distribution by
-      // sampling three variables (r1,r2,r3) uniformly from [0,1):
-      //    k_mod = - T_mod * (log(r1) + log(r2) + log(r3))
-      //    phi_mod = 2 * \pi * (log(r1) + log(r2))^2 / (log(r1) + log(r2) + log(r3))^2
-      //    costheta_mod = (log(r1) - log(r2)) / (log(r1) + log(r2))
-
-      while(rejected)
-      {
-        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-        double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-        double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
-
-        double l1 = log(r1);
-        double l2 = log(r2);
-        double l3 = log(r3);
-
-        double k_mod = - T_mod * (l1 + l2 + l3);
-        double phi_mod = two_pi * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
-        double costheta_mod = (l1 - l2) / (l1 + l2);
-        double sintheta_mod = sqrt(fabs(1.0 - costheta_mod * costheta_mod));
-
-        double E_mod = k_mod + mass;
-        double p_mod = sqrt(fabs(E_mod * E_mod - mass_squared));
-
-        pLRF_mod.E = E_mod;
-        pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
-        pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
-        pLRF_mod.z = p_mod * costheta_mod;
-
-        // momentum rescaling (* highlight *)
-        pLRF = Rescale_Momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
-
-        double pdsigma_abs = fabs(pLRF.E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
-        double rideal = pdsigma_abs / pLRF.E / ds_mag;
-
-        double weight = rideal * (p_mod / E_mod) * exp(E_mod / T_mod) / (exp(E_mod / T_mod) + sign);
-        double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
-
-        if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
-        if(!(weight >= 0.0 && weight <= 1.0)){printf("Error: weight = %f out of bounds\n", weight);exit(-1);}
-
-        // check pLRF acceptance
-        if(propose < weight)
-        {
-          break;  // exit rejection loop
-        }
-
-      } // rejection loop
-    } // distribution 3
   } // heavy hadron
   return pLRF;
 }

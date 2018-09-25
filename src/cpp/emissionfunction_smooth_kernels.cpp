@@ -72,6 +72,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     if(DIMENSION == 2)
     {
       yValues[0] = 0.0;
+      //for (int iy = 0; iy < y_pts; iy++) yValues[iy] = y_tab->get(1, iy + 1);
+
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
         etaValues[ieta] = eta_tab->get(1, ieta + 1);
