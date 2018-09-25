@@ -105,7 +105,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
 
   //pion routine
   //not Adaptive Rejection Sampling, but the naive method here...
-  if (mass / T < 1.5)
+  if (mass / T < 4.0)
   {
     // sample momentum until get an acceptance
     while (rejected)
@@ -141,16 +141,20 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       double shear_weight = 1.0;
       double bulk_weight = 1.0;
       double diff_weight = 1.0;
-      //FIX TEMPORARY
+      
+      //bosons have sign = -1, fermions
+
       if (INCLUDE_SHEAR_DELTAF)
       {
         double A = 2.0 * T * T * (eps + pressure);
         double f0 = 1.0 / ( exp(E / T) + sign );
+        double sign_fac = 1.0; //the max of (1 - sign*f0)
+        if (sign == -1) sign_fac = 2.0;
         //check contraction / signs etc...
         double pmupnupimunu = 2.0 * ( px*px*pixx + px*py*pixy + px*pz*pixz + py*py*piyy + py*pz*piyz + pz*pz*pizz );
-        double num = A + ( 1.0 + sign * f0 ) * pmupnupimunu;
+        double num = A + ( 1.0 - sign * f0 ) * pmupnupimunu;
         double pmupnupimunu_max = E * E * pimunu.compute_max();
-        double den = A + (1.0 + (sign * f0) ) * pmupnupimunu_max;
+        double den = A + sign_fac * pmupnupimunu_max;
         shear_weight = num / den;
       }
       if (INCLUDE_BULK_DELTAF)
@@ -165,13 +169,15 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
       //::::::::::::::::::::::::::::::::::::::::
 
-      double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
+
+      //double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
+      double viscous_weight = fabs( shear_weight * bulk_weight * diff_weight ); // enforced regulation
 
 
       //here the pion weight should include the Bose enhancement factor
       //this formula assumes zero chemical potential mu = 0
       //TO DO - generalize for nonzero chemical potential
-      double weight = rideal * viscous_weight * exp(p/T) / (exp(E/T) - 1.0);
+      double weight = rideal * viscous_weight * exp(p/T) / (exp(E/T) + sign);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       if(!(rideal >= 0.0 && rideal <= 1.0))
@@ -179,6 +185,11 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         printf("Error: rideal = %f out of bounds\n", rideal);
         exit(-1);
       }
+      if( (viscous_weight > 1.0) || (viscous_weight < 0.0) )
+	{
+	  printf("viscous weight = %f \n", viscous_weight);
+	  exit(-1);
+	}
       if(!(weight >= 0.0 && weight <= 1.0))
       {
         printf("Error: weight = %f out of bounds\n", weight);
@@ -195,9 +206,10 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       } // p acceptance
 
     } // while loop
-  } //if (mass / T < 1.5)
+  } //if (mass / T < 4.0 )
 
   // light hadrons, but heavier than pions
+  /*
   else if (mass / T < 2.0) // fixed bug on 7/12
   {
     // sample momentum until get an acceptance
@@ -256,7 +268,10 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
       if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
       //::::::::::::::::::::::::::::::::::::::::
 
-      double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
+
+      //double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
+      double viscous_weight = fabs( shear_weight * bulk_weight * diff_weight ); // enforced regulation
+
 
       double weight = rideal * viscous_weight * exp((p - E) / T);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -283,7 +298,7 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
 
     } // rejection loop
   } // mass / T < 0.6
-
+  */
   //heavy hadrons
   //use variable transformation described in LongGang's Sampler Notes
   else
@@ -336,11 +351,13 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         {
           double A = 2.0 * T * T * (eps + pressure);
           double f0 = 1.0 / ( exp(E / T) + sign );
+          double sign_fac = 1.0; //the max of (1 - sign*f0)
+          if (sign == -1) sign_fac = 2.0;
           //check contraction / signs etc...
           double pmupnupimunu = 2.0 * ( px*px*pixx + px*py*pixy + px*pz*pixz + py*py*piyy + py*pz*piyz + pz*pz*pizz );
-          double num = A + ( 1.0 + sign * f0 ) * pmupnupimunu;
+          double num = A + ( 1.0 - sign * f0 ) * pmupnupimunu;
           double pmupnupimunu_max = E * E * pimunu.compute_max();
-          double den = A + (1.0 + (sign * f0) ) * pmupnupimunu_max;
+          double den = A + sign_fac * pmupnupimunu_max;
           shear_weight = num / den;
         }
         if (INCLUDE_BULK_DELTAF)
@@ -355,7 +372,10 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
         //::::::::::::::::::::::::::::::::::::::::
 
-        double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
+
+        //double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
+        double viscous_weight = fabs( shear_weight * bulk_weight * diff_weight ); // enforced regulation
+
 
         double weight = rideal * viscous_weight * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -425,11 +445,13 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         {
           double A = 2.0 * T * T * (eps + pressure);
           double f0 = 1.0 / ( exp(E / T) + sign );
+          double sign_fac = 1.0; //the max of (1 - sign*f0)
+          if (sign == -1) sign_fac = 2.0;
           //check contraction / signs etc...
           double pmupnupimunu = 2.0 * ( px*px*pixx + px*py*pixy + px*pz*pixz + py*py*piyy + py*pz*piyz + pz*pz*pizz );
-          double num = A + ( 1.0 + sign * f0 ) * pmupnupimunu;
+          double num = A + ( 1.0 - sign * f0 ) * pmupnupimunu;
           double pmupnupimunu_max = E * E * pimunu.compute_max();
-          double den = A + (1.0 + (sign * f0) ) * pmupnupimunu_max;
+          double den = A + sign_fac * pmupnupimunu_max;
           shear_weight = num / den;
         }
         if (INCLUDE_BULK_DELTAF)
@@ -444,7 +466,9 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
         //::::::::::::::::::::::::::::::::::::::::
 
-        double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
+
+        //double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
+        double viscous_weight = fabs( shear_weight * bulk_weight * diff_weight ); // enforced regulation
 
         double weight = rideal * viscous_weight * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -515,11 +539,13 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         {
           double A = 2.0 * T * T * (eps + pressure);
           double f0 = 1.0 / ( exp(E / T) + sign );
+          double sign_fac = 1.0; //the max of (1 - sign*f0)
+          if (sign == -1) sign_fac = 2.0;
           //check contraction / signs etc...
           double pmupnupimunu = 2.0 * ( px*px*pixx + px*py*pixy + px*pz*pixz + py*py*piyy + py*pz*piyz + pz*pz*pizz );
-          double num = A + ( 1.0 + sign * f0 ) * pmupnupimunu;
+          double num = A + ( 1.0 - sign * f0 ) * pmupnupimunu;
           double pmupnupimunu_max = E * E * pimunu.compute_max();
-          double den = A + (1.0 + (sign * f0) ) * pmupnupimunu_max;
+          double den = A + sign_fac * pmupnupimunu_max;
           shear_weight = num / den;
         }
         if (INCLUDE_BULK_DELTAF)
@@ -534,7 +560,10 @@ lrf_momentum Sample_Momentum_deltaf(double mass, double T, double alphaB, Shear_
         if (INCLUDE_BARYONDIFF_DELTAF) diff_weight = 1.0;
         //::::::::::::::::::::::::::::::::::::::::
 
-        double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
+
+        //double viscous_weight = shear_weight * bulk_weight * diff_weight;     // could this go negative?...if so what to do?
+        double viscous_weight = fabs( shear_weight * bulk_weight * diff_weight ); // enforced regulation
+
 
         double weight = rideal * viscous_weight * (p / E);
         double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -678,8 +707,9 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
       // momentum rescaling (* highlight *)
       pLRF = Rescale_Momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
 
-      double pdsigma_abs = fabs(pLRF.E * dst - pLRF_mod.x * dsx - pLRF_mod.y * dsy - pLRF_mod.z * dsz);
+      double pdsigma_abs = fabs(pLRF.E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
       double rideal = pdsigma_abs / (pLRF.E * ds_mag);
+
 
       //here the pion weight should include the Bose enhancement factor
       //this formula assumes zero chemical potential mu = 0
