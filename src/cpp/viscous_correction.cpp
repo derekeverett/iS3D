@@ -82,7 +82,8 @@ void Shear_Tensor::boost_to_lrf(double Xt, double Xx, double Xy, double Xn, doub
 double Shear_Tensor::compute_max()
 {
   // probably want to make LRF variables
-  double max = 2.0 * ( fabs(pixx) + fabs(pixy) + fabs(pixz) + fabs(piyy) + fabs(piyz) + fabs(pizz) );
+  //double max = 2.0 * ( fabs(pixx) + fabs(pixy) + fabs(pixz) + fabs(piyy) + fabs(piyz) + fabs(pizz) );
+  double max = 2.0 * sqrt(pixx*pixx + pixy*pixy + pixz*pixz + piyy*piyy + piyz*piyz + pizz*pizz);
   return max;
 }
 
@@ -151,5 +152,3 @@ void Baryon_Diffusion_Current::boost_baryon_diffusion_to_lrf(Milne_Basis_Vectors
     Vy_LRF = Vx * Yx  +  Vy * Yy;
     Vz_LRF = - Vt * Zt  +  tau2 * Vn * Zn;
 }
-
-

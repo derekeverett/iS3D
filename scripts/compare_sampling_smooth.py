@@ -153,18 +153,16 @@ for i in range(0, len(p_pT) ):
         p_pT_mid.append( p_pT[i] )
 
 #pT bins
-delta_pT = 0.2
+delta_pT = 0.1
 pT_bins_eqwidth = []
-for j in range(0, 20):
+for j in range(0, 40):
     pT_bins_eqwidth.append( j * delta_pT)
-
 
 
 #normalization factor
 norm = nevents
 print("nevents is " + str(nevents))
 #print("norm factor is " + str(norm))
-
 
 
 #plot pion
