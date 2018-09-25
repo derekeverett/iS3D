@@ -1,5 +1,8 @@
 #include "viscous_correction.h"
 #include <math.h>
+#include <iostream>
+#include <stdlib.h> 
+using namespace std;
 
 
 Milne_Basis_Vectors::Milne_Basis_Vectors(double ut, double ux, double uy, double un, double uperp, double utperp, double tau)
@@ -104,7 +107,7 @@ Shear_Stress_Tensor::Shear_Stress_Tensor(double pitt_in, double pitx_in, double 
 
 
 void Shear_Stress_Tensor::boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
-{
+{   
     double Xt = basis_vectors.Xt;
     double Xx = basis_vectors.Xx;
     double Xy = basis_vectors.Xy;
@@ -116,13 +119,14 @@ void Shear_Stress_Tensor::boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_ve
     double Zt = basis_vectors.Zt;
     double Zn = basis_vectors.Zn;
 
-    double pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
+    // fixed bug (don't double these variables) on 8/20
+    pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
             + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
-    double pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xy + pixy*Xx + piyy*Xy + tau2*piyn*Xn);
-    double pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xn - piyn*Xy - tau2*pinn*Xn);
-    double piyy_LRF = pixx*Yx*Yx + piyy*Yy*Yy + 2.0*pixy*Yx*Yy;
-    double piyz_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
-    double pizz_LRF = - (pixx_LRF + piyy_LRF);
+    pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xy + pixy*Xx + piyy*Xy + tau2*piyn*Xn);
+    pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xn - piyn*Xy - tau2*pinn*Xn);
+    piyy_LRF = pixx*Yx*Yx + piyy*Yy*Yy + 2.0*pixy*Yx*Yy;
+    piyz_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
+    pizz_LRF = - (pixx_LRF + piyy_LRF);
 }
 
 

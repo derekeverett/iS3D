@@ -16,6 +16,7 @@ class Milne_Basis_Vectors
     double Zt;
     double Zn;
 
+    // constructor 
     Milne_Basis_Vectors(double ut, double ux, double uy, double un, double uperp, double utperp, double tau);
 };
 

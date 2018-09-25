@@ -89,6 +89,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     LIGHTEST_PARTICLE = paraRdr->getVal("lightest_particle");
 
     DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
+    OVERSAMPLE = paraRdr->getVal("oversample");
 
     particles = particles_in;
     Nparticles = Nparticles_in;
@@ -235,6 +236,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     char filename[255] = "";
 
     int y_pts = y_tab_length;     // default 3+1d pts
+
     if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
 
     sprintf(filename, "results/dN_pTdpTdphidy.dat");
@@ -244,7 +246,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       for (int iy = 0; iy < y_pts; iy++)
       {
         double y;
+
         if (DIMENSION == 2) y = 0.0;
+
         else y = y_tab->get(1,iy + 1);
 
         for (int iphip = 0; iphip < phi_tab_length; iphip++)
@@ -271,8 +275,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       for (int iy = 0; iy < y_pts; iy++)
       {
         double y;
+
         if (DIMENSION == 2) y = 0.0;
         else y = y_tab->get(1,iy + 1);
+
         for (int iphip = 0; iphip < phi_tab_length; iphip++)
         {
           double phip = phi_tab->get(1,iphip + 1);
@@ -484,11 +490,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     SnFile.close();
   }
 
-  void EmissionFunctionArray::write_particle_list_toFile()
+  void EmissionFunctionArray::write_particle_list_toFile(int sample)
   {
     printf("Writing sampled particles list to file...\n");
     char filename[255] = "";
-    sprintf(filename, "results/particle_list.dat");
+    sprintf(filename, "results/particle_list_%d.dat", sample);
     ofstream spectraFile(filename, ios_base::app);
     int num_particles = particle_list.size();
     //write the header
@@ -510,11 +516,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
   //write particle list in oscar format for UrQMD/SMASH afterburner
-  void EmissionFunctionArray::write_particle_list_OSC()
+  void EmissionFunctionArray::write_particle_list_OSC(int sample)
   {
     printf("Writing sampled particles list to OSCAR File...\n");
     char filename[255] = "";
-    sprintf(filename, "results/particle_list_osc.dat");
+    sprintf(filename, "results/particle_list_osc_%d.dat", sample);
     ofstream spectraFile(filename, ios_base::app);
     int num_particles = particle_list.size();
     //write the header
@@ -537,11 +543,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
-  void EmissionFunctionArray::write_momentum_list_toFile()
+  void EmissionFunctionArray::write_momentum_list_toFile(int sample)
   {
     printf("Writing sampled momentum list to file...\n");
     char filename[255] = "";
-    sprintf(filename, "results/momentum_list.dat");
+    sprintf(filename, "results/momentum_list_%d.dat", sample);
     ofstream spectraFile(filename, ios_base::app);
     int num_particles = particle_list.size();
     //write the header
@@ -887,12 +893,41 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             }
             case 2: // sample
             {
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
+
+
+              int sample = 1;
+              long int Nsampled = 0;
+              printf("Oversampling batch = %ld particles\n", OVERSAMPLE);
+              while(Nsampled < OVERSAMPLE)
+              {
+                particle_list.clear();
+
+                sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
               T, P, E, tau, x, y, eta, ut, ux, uy, un,
               dat, dax, day, dan,
               pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
               muB, nB, Vt, Vx, Vy, Vn, df_coeff,
               pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+
+                write_particle_list_toFile(sample);
+                write_particle_list_OSC(sample);
+                write_momentum_list_toFile(sample);
+
+                Nsampled += (long int)particle_list.size();
+
+                printf("Finished event %d\n: total number sampled = %ld\n", sample, Nsampled);
+
+
+                sample++;
+
+              }
+
+
+
+
+
+
+
               break;
             }
             default:
@@ -977,12 +1012,32 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               printf("sampling particles with feqmod...\n");
 
-              sample_dN_pTdpTdphidy_feqmod(Mass, Sign, Degen, Baryon, MCID,
-              T, P, E, tau, x, y, eta, ut, ux, uy, un,
-              dat, dax, day, dan,
-              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
+
+              int sample = 1;
+              long int Nsampled = 0;
+              printf("Oversampling batch: %ld particles\n", OVERSAMPLE);
+              while(Nsampled < OVERSAMPLE)
+              {
+                particle_list.clear();
+
+                sample_dN_pTdpTdphidy_feqmod(Mass, Sign, Degen, Baryon, MCID,
+                T, P, E, tau, x, y, eta, ut, ux, uy, un,
+                dat, dax, day, dan,
+                pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+                muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
+
+                write_particle_list_toFile(sample);
+                write_particle_list_OSC(sample);
+                write_momentum_list_toFile(sample);
+
+                Nsampled += (long int)particle_list.size();
+
+                printf("Finished event %d: total number sampled so far = %ld\n", sample, Nsampled);
+
+                sample++;
+
+              }
 
               break;
             }
@@ -1058,7 +1113,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         write_dN_dpTdphidy_with_resonance_decays_toFile();
       }
     }
-    else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC(); write_momentum_list_toFile();}
+    //else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC(); write_momentum_list_toFile();}
 
     if (MODE == 5) write_polzn_vector_toFile();
 
