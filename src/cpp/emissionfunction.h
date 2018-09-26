@@ -86,7 +86,8 @@ private:
   int LIGHTEST_PARTICLE; //mcid of lightest resonance to calculate in decay feed-down
   int DO_RESONANCE_DECAYS; // smooth resonance decays option
 
-  long int OVERSAMPLE;
+  int OVERSAMPLE; // whether or not to iteratively oversample surface
+  long int MIN_NUM_HADRONS; //min number of particles summed over all samples
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
