@@ -90,6 +90,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
     OVERSAMPLE = paraRdr->getVal("oversample");
+    MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
 
     particles = particles_in;
     Nparticles = Nparticles_in;
@@ -893,40 +894,46 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             }
             case 2: // sample
             {
-
-
               int sample = 1;
-              long int Nsampled = 0;
-              printf("Oversampling batch = %ld particles\n", OVERSAMPLE);
-              while(Nsampled < OVERSAMPLE)
+              if (OVERSAMPLE)
               {
-                particle_list.clear();
 
+                long int Nsampled = 0;
+                printf("Oversampling batch = %ld particles\n", MIN_NUM_HADRONS);
+                while(Nsampled < MIN_NUM_HADRONS)
+                {
+                  particle_list.clear();
+
+                  sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
+                T, P, E, tau, x, y, eta, ut, ux, uy, un,
+                dat, dax, day, dan,
+                pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+                muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+
+                  write_particle_list_toFile(sample);
+                  write_particle_list_OSC(sample);
+                  write_momentum_list_toFile(sample);
+
+                  Nsampled += (long int)particle_list.size();
+                  printf("Finished event %d\n: total number sampled = %ld\n", sample, Nsampled);
+                  sample++;
+                }
+              } // if(OVERSAMPLE)
+
+              else
+              {
                 sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
-              T, P, E, tau, x, y, eta, ut, ux, uy, un,
-              dat, dax, day, dan,
-              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+                                      T, P, E, tau, x, y, eta, ut, ux, uy, un,
+                                      dat, dax, day, dan,
+                                      pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+                                      muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+                                      pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
 
                 write_particle_list_toFile(sample);
                 write_particle_list_OSC(sample);
                 write_momentum_list_toFile(sample);
-
-                Nsampled += (long int)particle_list.size();
-
-                printf("Finished event %d\n: total number sampled = %ld\n", sample, Nsampled);
-
-
-                sample++;
-
               }
-
-
-
-
-
-
 
               break;
             }
@@ -1015,7 +1022,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               int sample = 1;
               long int Nsampled = 0;
-              printf("Oversampling batch: %ld particles\n", OVERSAMPLE);
+              printf("Oversampling batch: %ld particles\n", MIN_NUM_HADRONS);
               while(Nsampled < OVERSAMPLE)
               {
                 particle_list.clear();
