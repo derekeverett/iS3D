@@ -131,7 +131,7 @@ void Shear_Stress_Tensor::boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_ve
 
 void Shear_Stress_Tensor::compute_pimunu_max()
 {
-    pi_magnitude = 2.0 * sqrt(pixx_LRF * pixx_LRF  + pixy_LRF * pixy_LRF  +  pixz_LRF * pixz_LRF  +  piyy_LRF * piyy_LRF  +  piyz_LRF * piyz_LRF  +  pizz_LRF * pizz_LRF); 
+    pi_magnitude = sqrt(pixx_LRF * pixx_LRF  +  piyy_LRF * piyy_LRF  +  pizz_LRF * pizz_LRF  +  2.0 * (pixy_LRF * pixy_LRF  +  pixz_LRF * pixz_LRF   +  piyz_LRF * piyz_LRF)); 
 }
 
 

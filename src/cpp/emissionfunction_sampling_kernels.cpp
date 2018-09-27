@@ -73,6 +73,16 @@ double compute_deltaf_weight(lrf_momentum pLRF, double mass, double sign, double
   double feqbar = (1.0 - sign * feq);
   double sign_factor = (3.0 - sign) / 2.0;    // 1 for fermions, 2 for bosons
 
+
+  if(feq > 1.0)
+  {
+    printf("Error: feq > 1\n"); exit(-1);
+  }
+  if(feqbar > 2.0)
+  {
+    printf("Error: feqbar > 2\n"); exit(-1);
+  }
+
   // default values for the viscous weights
   double shear_weight = 1.0;
   double bulk_weight = 1.0;
@@ -81,10 +91,24 @@ double compute_deltaf_weight(lrf_momentum pLRF, double mass, double sign, double
   if(INCLUDE_SHEAR_DELTAF)
   {
     double A = shear_coeff;
-    double pimunu_pmu_pnu = 2.0 * (px * px * pixx  +  px * py * pixy  +  px * pz * pixz  +  py * py * piyy  +  py * pz * piyz  +  pz * pz * pizz);
+    double pimunu_pmu_pnu = px * px * pixx  + py * py * piyy  +  pz * pz * pizz  +  2.0 * (px * py * pixy  +  px * pz * pixz  +  py * pz * piyz);
 
-    shear_weight = (A + feqbar * pimunu_pmu_pnu) / (A + sign_factor * E * E * pi_magnitude);
+    double df_shear = feqbar * pimunu_pmu_pnu / A;
+    double df_shear_max = sign_factor * E * E * pi_magnitude / A;
+
+    // default 
+    shear_weight = (1.0 + df_shear) / (1.0 + df_shear_max);
+
+    // regulate 
+    if(df_shear > 1.0 || df_shear < -1.0)
+    {
+      shear_weight = (1.0 + max(-1.0, min(df_shear, 1.0))) / (1.0 + min(df_shear_max, 1.0)); 
+    }
+
+    // regulated shear weight 
+    //shear_weight = (1.0 + max(-1.0, min(df_shear, 1.0))) / (1.0 + min(df_shear_max, 1.0));
   }
+  /*
   if(INCLUDE_BULK_DELTAF)
   {
     double H = 1.0;
@@ -99,9 +123,11 @@ double compute_deltaf_weight(lrf_momentum pLRF, double mass, double sign, double
   {
     diffusion_weight = 1.0;
   }
+  */
 
   // enforced regulation?
-  return fabs(shear_weight * bulk_weight * diffusion_weight);
+  //return fabs(shear_weight * bulk_weight * diffusion_weight);
+  return shear_weight;
 }
 
 
@@ -196,7 +222,7 @@ lrf_momentum Sample_Momentum_feq_plus_deltaf(double mass, double sign, double ba
       double l3 = log(r3);
 
       double p = - T * (l1 + l2 + l3);
-      double phi = two_pi * pow((l1 + l2) / (l1 + l2 + l3), 2);
+      double phi = two_pi * pow(l1 + l2, 2) / pow(l1 + l2 + l3, 2);
       double costheta = (l1 - l2) / (l1 + l2);
 
       double E = sqrt(fabs(p * p  +  mass_squared));
@@ -376,15 +402,15 @@ lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double
     py += shear_coeff * (pixy * px_mod  +  piyy * py_mod  +  piyz * pz_mod);
     pz += shear_coeff * (pixz * px_mod  +  piyz * py_mod  +  pizz * pz_mod);
 
-    // add bulk corrections
-    px += bulk_coeff * px_mod;
-    py += bulk_coeff * py_mod;
-    pz += bulk_coeff * pz_mod;
+    // // add bulk corrections
+    // px += bulk_coeff * px_mod;
+    // py += bulk_coeff * py_mod;
+    // pz += bulk_coeff * pz_mod;
 
-    // add diffusion corrections
-    px += diffusion_factor * Vx;
-    py += diffusion_factor * Vy;
-    pz += diffusion_factor * Vz;
+    // // add diffusion corrections
+    // px += diffusion_factor * Vx;
+    // py += diffusion_factor * Vy;
+    // pz += diffusion_factor * Vz;
 
     // set LRF momentum
     pLRF.x = px;
