@@ -61,8 +61,10 @@ typedef struct
 // thermal particle density (expanding BE/FD distributions)
 double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem, double mbar, int jmax, double two_pi2_hbarC3);
 
+double compute_deltaf_weight(lrf_momentum pLRF, double mass, double sign, double baryon, double T, double alphaB, Shear_Stress_Tensor pimunu, double bulkPi, Baryon_Diffusion_Current Vmu, double shear_coeff, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE);
+
 //sample momentum with linear viscous correction
-lrf_momentum Sample_Momentum_feq_plus_deltaf(double mass, double sign, double baryon, double T, double alphaB, dsigma_Vector dsigma, Shear_Stress_Tensor pimunu, double bulkPi, Baryon_Diffusion_Current Vmu, double shear_coeff, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE);
+lrf_momentum Sample_Momentum_feq_plus_deltaf(double mass, double sign, double baryon, double T, double alphaB, dsigma_Vector ds, Shear_Stress_Tensor pimunu, double bulkPi, Baryon_Diffusion_Current Vmu, double shear_coeff, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DF_MODE);
 
 // momentum rescaling
 lrf_momentum Rescale_Momentum(lrf_momentum pLRF_mod, double mass_squared, double baryon, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
