@@ -68,9 +68,12 @@ double compute_deltaf_weight(lrf_momentum pLRF, double mass, double sign, double
   double pizz = pimunu.pizz_LRF;
   double pi_magnitude = pimunu.pi_magnitude;
 
+  //cout << pixx + piyy + pizz << endl;
+  //exit(-1);
+
   // equilibrium distribution
   double feq = 1.0 / (exp(E / T) + sign);
-  double feqbar = (1.0 - sign * feq);
+  double feqbar = 1.0 - sign * feq;
   double sign_factor = (3.0 - sign) / 2.0;    // 1 for fermions, 2 for bosons
 
 
@@ -624,7 +627,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     if(DIMENSION == 2) eta_pts = eta_tab_length;
     double etaValues[eta_pts];
     double etaDeltaWeights[eta_pts];    // eta_weight * delta_eta
-    double delta_eta = (eta_tab->get(1,2)) - (eta_tab->get(1,1));  // assume uniform grid
+    double delta_eta = fabs((eta_tab->get(1,2)) - (eta_tab->get(1,1)));  // assume uniform grid
 
     if(DIMENSION == 2)
     {
@@ -1161,6 +1164,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
       // shear stress class
       Shear_Stress_Tensor pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
       pimunu.boost_shear_stress_to_lrf(basis_vectors, tau2);
+      pimunu.compute_pimunu_max();
 
       // baryon diffusion class
       Baryon_Diffusion_Current Vmu(Vt, Vx, Vy, Vn);
@@ -1260,7 +1264,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy_feqmod(double *Mass, double *S
 
 
           // sample particle's momentum with the modified equilibrium distribution
-          lrf_momentum pLRF = Sample_Momentum_feqmod(mass, sign, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
+         //lrf_momentum pLRF = Sample_Momentum_feqmod(mass, sign, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
+
+          double shear_coeff_14 = 2.0 * T * T * (E + P); 
+          lrf_momentum pLRF = Sample_Momentum_feq_plus_deltaf(mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, shear_coeff_14, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DF_MODE);
+
 
 
           // lab frame momentum p^mu (milne components)
