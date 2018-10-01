@@ -70,14 +70,16 @@ class Shear_Stress_Tensor // (Mike's version)
     double piyz_LRF;  // Y.pi.Z
     double pizz_LRF;  // Z.pi.Z
 
+    double pi_magnitude;  // sqrt(pi^munu pi_munu)
+
     // constructor
     Shear_Stress_Tensor(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in);
 
     // computes the LRF components pi_ij
     void boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2);
 
-    //calculates the upper bound sum_{\mu,\nu} | pi^\mu\nu |
-    //double compute_max();
+    // magnitude of pimunu
+    void compute_pimunu_max();
 };
 
 
@@ -122,6 +124,8 @@ class dsigma_Vector
 
     // computes the LRF components
     void boost_dsigma_to_lrf(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un);
+
+    // magnitude of dsigma 
     void compute_dsigma_max();
 
 };
