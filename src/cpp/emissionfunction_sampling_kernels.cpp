@@ -68,10 +68,8 @@ double compute_deltaf_weight(lrf_momentum pLRF, double mass, double sign, double
   double pizz = pimunu.pizz_LRF;
   double pi_magnitude = pimunu.pi_magnitude;
 
-  // equilibrium distribution
-  double feq = 1.0 / (exp(E / T) + sign);
-  double feqbar = 1.0 - sign * feq;
-  double sign_factor = (3.0 - sign) / 2.0;    // 1 for fermions, 2 for bosons
+  double feqbar = 1.0 - sign / (exp(E / T) + sign);   // 1 - sign . feq
+  double sign_factor = (3.0 - sign) / 2.0;            // 1 for fermions, 2 for bosons
 
   //if(feq > 1.0) {printf("Error: feq > 1\n"); exit(-1);}
   //if(feqbar > 2.0) {printf("Error: feqbar > 2\n"); exit(-1);}
