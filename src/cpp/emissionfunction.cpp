@@ -898,6 +898,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               if (OVERSAMPLE)
               {
 
+                double Ntotal = estimate_total_yield(Mass, Sign, Degen, Baryon,
+                T, P, E, tau, ut, ux, uy, un,
+                dat, dax, day, dan, bulkPi,
+                muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+
                 long int Nsampled = 0;
                 printf("Oversampling batch = %ld particles\n", MIN_NUM_HADRONS);
                 while(Nsampled < MIN_NUM_HADRONS)

@@ -604,6 +604,259 @@ lrf_momentum Sample_Momentum_feqmod(double mass, double sign, double baryon, dou
 }
 
 
+
+double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
+  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
+  double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *bulkPi_fo,
+  double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff,
+  int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2, double *pbar_root3, double *pbar_weight3)
+  {
+    printf("computing mean total yield of particles...\n");
+
+
+    double Ntot = 0.0;                                                    // total particle yield (includes p.dsigma < 0 particles)
+
+
+    int npart = number_of_chosen_particles;
+    double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
+
+    int eta_pts = 1;
+    if(DIMENSION == 2) eta_pts = eta_tab_length;
+    double etaDeltaWeights[eta_pts];                                      // eta_weight * delta_eta
+    double delta_eta = fabs((eta_tab->get(1,2)) - (eta_tab->get(1,1)));   // assume uniform grid
+
+    if(DIMENSION == 2)
+    {
+      for(int ieta = 0; ieta < eta_pts; ieta++)
+      {
+        etaDeltaWeights[ieta] = (eta_tab->get(2, ieta + 1)) * delta_eta;
+      }
+    }
+    else if(DIMENSION == 3)
+    {
+      etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
+    }
+
+    // set df coefficients (only need bulk / diffusion)
+    double c0 = 0.0;
+    double c1 = 0.0;
+    double c2 = 0.0;
+    double c3 = 0.0;
+    double c4 = 0.0;
+    double F = 0.0;
+    double G = 0.0;
+    double betabulk = 0.0;
+    double betaV = 0.0;
+
+    switch(DF_MODE)
+    {
+      case 1: // 14-moment
+      {
+        // bulk coefficients
+        c0 = df_coeff[0];
+        c1 = df_coeff[1];
+        c2 = df_coeff[2];
+        // diffusion coefficients
+        c3 = df_coeff[3];
+        c4 = df_coeff[4];
+        break;
+      }
+      case 2: // Chapman-Enskog
+      {
+        // bulk coefficients
+        F = df_coeff[0];
+        G = df_coeff[1];
+        betabulk = df_coeff[2];
+        // diffusion coefficient
+        betaV = df_coeff[3];
+        break;
+      }
+      default:
+      {
+        printf("Please choose df_mode = 1 or 2 in parameters.dat\n");
+        exit(-1);
+      }
+    }
+
+    // estimate particle number (assume constant T, muB, E, P, nB; rough but fast estimate)
+    double T = T_fo[0];                        // temperature (GeV)
+    double E = E_fo[0];                        // energy density (GeV/fm^3)
+    double P = P_fo[0];                        // pressure (GeV/fm^3)
+
+    double T2 = T * T;                         // useful expressions
+    double T3 = T2 * T;              
+    double T4 = T3 * T;
+    double T5 = T4 * T;
+
+    double nB = 0.0;                           // net baryon density (fm^-3)
+    double muB = 0.0;                          // baryon chemical potential (GeV)
+    if(INCLUDE_BARYON)
+    {
+      nB = nB_fo[0];
+      muB =  muB_fo[0]; 
+    }
+    double alphaB = muB / T;                 
+    double baryon_enthalpy_ratio = nB / (E + P);
+
+    double neq_tot = 0.0;                      // total equilibrium number / udsigma
+    double dn_bulk_tot = 0.0;                  // bulk correction / udsigma / bulkPi
+    double dn_diff_tot = 0.0;                  // diffusion correction / Vdsigma
+ 
+    // loop over hadron species
+    for(int ipart = 0; ipart < npart; ipart++)
+    {
+      double mass = Mass[ipart];               // mass in GeV
+      double mbar = mass / T;                  // mass / temperature (equilibrium)
+      double sign = Sign[ipart];               // quantum statistics sign
+      double degeneracy = Degeneracy[ipart];   // spin degeneracy
+      double baryon = Baryon[ipart];           // baryon number
+      double chem = baryon * alphaB;           // baryon chemical potential term in feq
+
+      // thermal particles:
+      int jmax = 6;                            // truncation term of Bose-Fermi expansion = jmax - 1
+      if(mbar < 2.0) jmax = 20;                // light particles need more terms than the leading order term
+
+      double neq = equilibrium_particle_density(mass, degeneracy, sign, T, chem, mbar, jmax, two_pi2_hbarC3);
+      
+      // bulk and diffusion corrections
+      double dn_bulk = 0.0;
+      double dn_diff = 0.0;
+
+      if(INCLUDE_BULK_DELTAF)
+      {
+        switch(DF_MODE)
+        {
+          case 1: // 14 moment (not sure what the status is)
+          {
+            double J10_fact = degeneracy * T3 / two_pi2_hbarC3;
+            double J20_fact = degeneracy * T4 / two_pi2_hbarC3;
+            double J30_fact = degeneracy * T5 / two_pi2_hbarC3;
+            double J10 =  J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+            double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+            double J30 = J30_fact * GaussThermal(J30_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+
+            dn_bulk = ((c0 - c2) * mass * mass * J10 + (c1 * baryon * J20) + (4.0 * c2 - c0) * J30);
+            break;
+          }
+          case 2: // Chapman-Enskog
+          {
+            double J10_fact = degeneracy * T3 / two_pi2_hbarC3;
+            double J20_fact = degeneracy * T4 / two_pi2_hbarC3;
+            double J10 = J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+            double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+            dn_bulk = (neq + (baryon * J10 * G) + (J20 * F / T2)) / betabulk;
+
+            break;
+          }
+          default:
+          {
+            cout << "Please choose df_mode = 1 or 2 in parameters.dat" << endl;
+            exit(-1);
+          }
+        } //switch(DF_MODE)
+      } //if(INCLUDE_BULK_DELTAF)
+      if(INCLUDE_BARYONDIFF_DELTAF)
+      {
+        switch(DF_MODE)
+        {
+          case 1: // 14 moment
+          {
+            // it's probably faster to use J31
+            double J31_fact = degeneracy * T5 / two_pi2_hbarC3 / 3.0;
+            double J31 = J31_fact * GaussThermal(J31_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+            // these coefficients need to be loaded.
+            // c3 ~ cV / V
+            // c4 ~ 2cW / V
+            dn_diff = ((baryon * c3 * neq * T) + (c4 * J31)) / betaV;
+            break;
+          }
+          case 2: // Chapman Enskog
+          {
+            double J11_fact = degeneracy * T3 / two_pi2_hbarC3 / 3.0;
+            double J11 = J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+            dn_diff = (neq * T * baryon_enthalpy_ratio - baryon * J11) / betaV;
+            break;
+          }
+          default:
+          {
+            cout << "Please choose df_mode = 1 or 2 in parameters.dat" << endl;
+            exit(-1);
+          }
+        } //switch(DF_MODE)
+      } //if(INCLUDE_BARYONDIFF_DELTAF)
+
+      neq_tot += neq;
+      dn_bulk_tot += dn_bulk;
+      dn_diff_tot += dn_diff;
+
+    } // loop over hadrons (ipart)
+
+
+    // loop over all freezeout cells
+    #pragma omp parallel for
+    for (long icell = 0; icell < FO_length; icell++) 
+    {
+      double tau = tau_fo[icell];         // longitudinal proper time
+
+      double dat = dat_fo[icell];         // covariant normal surface vector dsigma_mu
+      double dax = dax_fo[icell];
+      double day = day_fo[icell];
+      double dan = dan_fo[icell];         // dan should be 0 in 2+1d case
+
+      double ux = ux_fo[icell];           // contravariant fluid velocity u^mu
+      double uy = uy_fo[icell];           // enforce normalization
+      double un = un_fo[icell];           // u^eta (fm^-1)
+      double ut = sqrt(fabs(1.0  +  ux * ux  +  uy * uy  +  tau * tau * un * un)); //u^tau
+      
+      double bulkPi = 0.0;
+
+      if(INCLUDE_BULK_DELTAF)
+      {
+        bulkPi = bulkPi_fo[icell];        // bulk pressure (GeV/fm^3)
+      }
+
+      double Vt = 0.0;                    // contravariant net baryon diffusion current V^mu (fm^-3)
+      double Vx = 0.0;                    // enforce orthogonality
+      double Vy = 0.0;
+      double Vn = 0.0;
+
+      if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+      {
+        Vx = Vx_fo[icell];
+        Vy = Vy_fo[icell];
+        Vn = Vn_fo[icell];
+        Vt = (Vx * ux  +  Vy * uy  +  tau * tau * Vn * un) / ut;
+      }
+
+      // udotdsigma and Vdotdsigma w/o delta_eta_weight factor
+      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
+      double Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
+
+      double dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;   // total number of hadrons / delta_eta_weight in FO_cell 
+
+      // loop over eta points
+      for(int ieta = 0; ieta < eta_pts; ieta++)
+      {
+        if(udsigma <= 0.0) break;
+
+        double delta_eta_weight = etaDeltaWeights[ieta];
+
+        Ntot += delta_eta_weight * dn_tot;                        // add mean number of hadrons in FO cell to total yield
+
+      } // for(int ieta = 0; ieta < eta_pts; ieta++)
+
+    } // for (long icell = 0; icell < FO_length; icell++)
+
+    //Ntot -= sqrt(Ntot);           // subtract width of poisson distribution (~ lower limit)
+
+    return Ntot; 
+
+  }
+
+
+
+
+
 void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,

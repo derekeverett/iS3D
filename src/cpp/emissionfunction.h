@@ -148,6 +148,12 @@ public:
 
   // sampling spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
+  double estimate_total_yield(double *, double *, double *, double *,
+  double *, double *, double *, double *, double *, double *, double *, double *,
+  double *, double *, double *, double *, double *,
+  double *, double *, double *, double *, double *, double *, double *,
+  int, double *, double *, double *, double *, double *, double *);
+
   void sample_dN_pTdpTdphidy(double *, double *, double *, double *, int *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
