@@ -492,77 +492,102 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     SnFile.close();
   }
 
-  void EmissionFunctionArray::write_particle_list_toFile(int sample)
+  void EmissionFunctionArray::write_particle_list_toFile()
   {
     printf("Writing sampled particles list to file...\n");
-    char filename[255] = "";
-    sprintf(filename, "results/particle_list_%d.dat", sample);
-    ofstream spectraFile(filename, ios_base::app);
-    int num_particles = particle_list.size();
-    //write the header
-    spectraFile << "mcid" << "," << "tau" << "," << "x" << "," << "y" << "," << "eta" << "," << "E" << "," << "px" << "," << "py" << "," << "pz" << "\n";
-    for (int ipart = 0; ipart < num_particles; ipart++)
+
+    for(int ievent = 0; ievent < Nevents; ievent++)
     {
-      int mcid = particle_list[ipart].mcID;
-      double tau = particle_list[ipart].tau;
-      double x = particle_list[ipart].x;
-      double y = particle_list[ipart].y;
-      double eta = particle_list[ipart].eta;
-      double E = particle_list[ipart].E;
-      double px = particle_list[ipart].px;
-      double py = particle_list[ipart].py;
-      double pz = particle_list[ipart].pz;
-      spectraFile << scientific <<  setw(5) << setprecision(8) << mcid << "," << tau << "," << x << "," << y << "," << eta << "," << E << "," << px << "," << py << "," << pz << "\n";
-    }//ipart
-    spectraFile.close();
+      char filename[255] = "";
+      sprintf(filename, "results/particle_list_%d.dat", ievent + 1);
+
+      //ofstream spectraFile(filename, ios_base::app);
+      ofstream spectraFile(filename, ios_base::out);
+
+      int num_particles = particle_event_list[ievent].size();
+
+      //write the header
+      spectraFile << "mcid" << "," << "tau" << "," << "x" << "," << "y" << "," << "eta" << "," << "E" << "," << "px" << "," << "py" << "," << "pz" << "\n";
+      for (int ipart = 0; ipart < num_particles; ipart++)
+      {
+        int mcid = particle_event_list[ievent][ipart].mcID;
+        double tau = particle_event_list[ievent][ipart].tau;
+        double x = particle_event_list[ievent][ipart].x;
+        double y = particle_event_list[ievent][ipart].y;
+        double eta = particle_event_list[ievent][ipart].eta;
+        double E = particle_event_list[ievent][ipart].E;
+        double px = particle_event_list[ievent][ipart].px;
+        double py = particle_event_list[ievent][ipart].py;
+        double pz = particle_event_list[ievent][ipart].pz;
+        spectraFile << scientific <<  setw(5) << setprecision(8) << mcid << "," << tau << "," << x << "," << y << "," << eta << "," << E << "," << px << "," << py << "," << pz << "\n";
+      }//ipart
+      spectraFile.close();
+    } // ievent 
   }
 
   //write particle list in oscar format for UrQMD/SMASH afterburner
-  void EmissionFunctionArray::write_particle_list_OSC(int sample)
+  void EmissionFunctionArray::write_particle_list_OSC()
   {
     printf("Writing sampled particles list to OSCAR File...\n");
-    char filename[255] = "";
-    sprintf(filename, "results/particle_list_osc_%d.dat", sample);
-    ofstream spectraFile(filename, ios_base::app);
-    int num_particles = particle_list.size();
-    //write the header
-    spectraFile << "#" << " " << num_particles << "\n";
-    for (int ipart = 0; ipart < num_particles; ipart++)
-    {
-      int mcid = particle_list[ipart].mcID;
-      double x = particle_list[ipart].x;
-      double y = particle_list[ipart].y;
-      double t = particle_list[ipart].t;
-      double z = particle_list[ipart].z;
 
-      //double mass = particle_list[ipart].mass;
-      double E = particle_list[ipart].E;
-      double px = particle_list[ipart].px;
-      double py = particle_list[ipart].py;
-      double pz = particle_list[ipart].pz;
-      spectraFile << mcid << "," << scientific <<  setw(5) << setprecision(16) << t << "," << x << "," << y << "," << z << "," << E << "," << px << "," << py << "," << pz << "\n";
-    }//ipart
-    spectraFile.close();
+    for(int ievent = 0; ievent < Nevents; ievent++)
+    {
+      char filename[255] = "";
+      sprintf(filename, "results/particle_list_osc_%d.dat", ievent + 1);
+
+      //ofstream spectraFile(filename, ios_base::app);
+      ofstream spectraFile(filename, ios_base::out);
+
+      int num_particles = particle_event_list[ievent].size();
+
+      //write the header
+      spectraFile << "#" << " " << num_particles << "\n";
+      for (int ipart = 0; ipart < num_particles; ipart++)
+      {
+        int mcid = particle_event_list[ievent][ipart].mcID;
+        double x = particle_event_list[ievent][ipart].x;
+        double y = particle_event_list[ievent][ipart].y;
+        double t = particle_event_list[ievent][ipart].t;
+        double z = particle_event_list[ievent][ipart].z;
+
+        //double mass = particle_list[ipart].mass;
+        double E = particle_event_list[ievent][ipart].E;
+        double px = particle_event_list[ievent][ipart].px;
+        double py = particle_event_list[ievent][ipart].py;
+        double pz = particle_event_list[ievent][ipart].pz;
+        spectraFile << mcid << "," << scientific <<  setw(5) << setprecision(16) << t << "," << x << "," << y << "," << z << "," << E << "," << px << "," << py << "," << pz << "\n";
+      }//ipart
+      spectraFile.close();
+    } // ievent
   }
 
-  void EmissionFunctionArray::write_momentum_list_toFile(int sample)
+  void EmissionFunctionArray::write_momentum_list_toFile()
   {
     printf("Writing sampled momentum list to file...\n");
-    char filename[255] = "";
-    sprintf(filename, "results/momentum_list_%d.dat", sample);
-    ofstream spectraFile(filename, ios_base::app);
-    int num_particles = particle_list.size();
-    //write the header
-    spectraFile << "E" << "\t" << "px" << "\t" << "py" << "\t" << "pz" << "\n";
-    for (int ipart = 0; ipart < num_particles; ipart++)
+
+    for(int ievent = 0; ievent < Nevents; ievent++)
     {
-      double E = particle_list[ipart].E;
-      double px = particle_list[ipart].px;
-      double py = particle_list[ipart].py;
-      double pz = particle_list[ipart].pz;
-      spectraFile << scientific <<  setw(5) << setprecision(8) << E << "\t" << px << "\t" << py << "\t" << pz << "\n";
-    }//ipart
-    spectraFile.close();
+      char filename[255] = "";
+      sprintf(filename, "results/momentum_list_%d.dat", ievent + 1);
+
+      //ofstream spectraFile(filename, ios_base::app);
+      ofstream spectraFile(filename, ios_base::out);
+
+      int num_particles = particle_event_list[ievent].size();
+
+      //write the header
+      spectraFile << "E" << "\t" << "px" << "\t" << "py" << "\t" << "pz" << "\n";
+
+      for(int ipart = 0; ipart < num_particles; ipart++)
+      {
+        double E = particle_event_list[ievent][ipart].E;
+        double px = particle_event_list[ievent][ipart].px;
+        double py = particle_event_list[ievent][ipart].py;
+        double pz = particle_event_list[ievent][ipart].pz;
+        spectraFile << scientific <<  setw(5) << setprecision(8) << E << "\t" << px << "\t" << py << "\t" << pz << "\n";
+      }//ipart
+      spectraFile.close();
+    } // ievent
   }
 
 /*
@@ -906,10 +931,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               particle_event_list.resize(Nevents);
 
-              //cout << particle_event_list.size() << endl;
-
-              //exit(-1);
-
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
               T, P, E, tau, x, y, eta, ut, ux, uy, un,
               dat, dax, day, dan,
@@ -917,9 +938,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               muB, nB, Vt, Vx, Vy, Vn, df_coeff,
               pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
 
-              //write_particle_list_toFile(sample);
-              //write_particle_list_OSC(sample);
-              //write_momentum_list_toFile(sample);
+              write_particle_list_toFile();
+              write_particle_list_OSC();
+              write_momentum_list_toFile();
 
               break;
             }
@@ -1026,9 +1047,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 muB, nB, Vt, Vx, Vy, Vn, df_coeff,
                 pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
 
-                  write_particle_list_toFile(sample);
-                  write_particle_list_OSC(sample);
-                  write_momentum_list_toFile(sample);
+                  //write_particle_list_toFile(sample);
+                  //write_particle_list_OSC(sample);
+                  //write_momentum_list_toFile(sample);
 
                   Nsampled += (long int)particle_list.size();
                   printf("Finished event %d\n: total number sampled = %ld\n", sample, Nsampled);
@@ -1044,9 +1065,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 muB, nB, Vt, Vx, Vy, Vn, df_coeff,
                 pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
 
-                write_particle_list_toFile(sample);
-                write_particle_list_OSC(sample);
-                write_momentum_list_toFile(sample);
+                //write_particle_list_toFile(sample);
+                //write_particle_list_OSC(sample);
+                //write_momentum_list_toFile(sample);
               }
 
               break;

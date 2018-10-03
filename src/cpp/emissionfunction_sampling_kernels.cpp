@@ -848,9 +848,9 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
 
     } // for (long icell = 0; icell < FO_length; icell++)
 
-    //Ntot -= sqrt(Ntot);           // subtract width of poisson distribution (~ lower limit)
+    //Ntot -= sqrt(Ntot);           // subtract width of poisson distribution (conservative side)
 
-    return Ntot;
+    return 0.99 * Ntot;             // assume ~ 99% particles have p.dsigma > 0 (ballpark estimate)
 
   }
 
@@ -1243,7 +1243,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       } // eta points (ieta)
 
-  } // freezeout cells (icell)
+    } // freezeout cells (icell)
 
 }
 
