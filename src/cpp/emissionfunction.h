@@ -93,6 +93,7 @@ private:
 
   int OVERSAMPLE; // whether or not to iteratively oversample surface
   long int MIN_NUM_HADRONS; //min number of particles summed over all samples
+  int Nevents;              // number of sampled events
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
@@ -103,7 +104,9 @@ private:
   double *St, *Sx, *Sy, *Sn; //to hold the polarization vector of all species
   double *Snorm; //the normalization of the polarization vector of all species
 
-  std::vector<Sampled_Particle> particle_list; //to hold sampled particle list
+  std::vector<Sampled_Particle> particle_list; // to hold sampled particle list
+
+  std::vector< std::vector<Sampled_Particle> > particle_event_list;   // holds sampled particle list of all events
 
   vector<int> chosen_pion0;             // stores chosen particle index of pion0 (for tracking feqmod breakdown)
 
@@ -148,6 +151,10 @@ public:
 
   // sampling spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
+  double estimate_total_yield(double *, double *, double *, double *,
+  double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
+  int, double *, double *, double *, double *, double *, double *);
+
   void sample_dN_pTdpTdphidy(double *, double *, double *, double *, int *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
@@ -185,9 +192,9 @@ public:
 
   void write_dN_dpTdphidy_toFile(int *MCID);   // write 3D spectra to file in experimental bins
   void write_dN_dpTdphidy_with_resonance_decays_toFile();   // write 3D spectra to file in experimental bins (w/ resonance decay effects)
-  void write_particle_list_toFile(int sample);  // write sampled particle list
-  void write_particle_list_OSC(int sample); //write sampled particle list in OSCAR format for UrQMD/SMASH
-  void write_momentum_list_toFile(int sample);  // write sampled momentum list
+  void write_particle_list_toFile();  // write sampled particle list
+  void write_particle_list_OSC(); //write sampled particle list in OSCAR format for UrQMD/SMASH
+  void write_momentum_list_toFile();  // write sampled momentum list
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
   // resonance decay routine:
