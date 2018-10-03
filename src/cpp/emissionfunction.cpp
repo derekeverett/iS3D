@@ -938,9 +938,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               muB, nB, Vt, Vx, Vy, Vn, df_coeff,
               pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
 
-              write_particle_list_toFile();
-              write_particle_list_OSC();
-              write_momentum_list_toFile();
+              //write_particle_list_toFile();
+              //write_particle_list_OSC();
+              //write_momentum_list_toFile();
 
               break;
             }
