@@ -614,7 +614,8 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
     printf("computing mean total yield of particles...\n");
 
 
-    double Ntot = 0.0;                                                    // total particle yield (includes p.dsigma < 0 particles)
+    // total particle yield (includes p.dsigma < 0 particles)
+    double Ntot = 0.0;
 
 
     int npart = number_of_chosen_particles;
@@ -684,7 +685,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
     double P = P_fo[0];                        // pressure (GeV/fm^3)
 
     double T2 = T * T;                         // useful expressions
-    double T3 = T2 * T;              
+    double T3 = T2 * T;
     double T4 = T3 * T;
     double T5 = T4 * T;
 
@@ -693,15 +694,15 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
     if(INCLUDE_BARYON)
     {
       nB = nB_fo[0];
-      muB =  muB_fo[0]; 
+      muB =  muB_fo[0];
     }
-    double alphaB = muB / T;                 
+    double alphaB = muB / T;
     double baryon_enthalpy_ratio = nB / (E + P);
 
     double neq_tot = 0.0;                      // total equilibrium number / udsigma
     double dn_bulk_tot = 0.0;                  // bulk correction / udsigma / bulkPi
     double dn_diff_tot = 0.0;                  // diffusion correction / Vdsigma
- 
+
     // loop over hadron species
     for(int ipart = 0; ipart < npart; ipart++)
     {
@@ -717,7 +718,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
       if(mbar < 2.0) jmax = 20;                // light particles need more terms than the leading order term
 
       double neq = equilibrium_particle_density(mass, degeneracy, sign, T, chem, mbar, jmax, two_pi2_hbarC3);
-      
+
       // bulk and diffusion corrections
       double dn_bulk = 0.0;
       double dn_diff = 0.0;
@@ -794,7 +795,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
 
     // loop over all freezeout cells
     #pragma omp parallel for
-    for (long icell = 0; icell < FO_length; icell++) 
+    for (long icell = 0; icell < FO_length; icell++)
     {
       double tau = tau_fo[icell];         // longitudinal proper time
 
@@ -807,7 +808,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
       double uy = uy_fo[icell];           // enforce normalization
       double un = un_fo[icell];           // u^eta (fm^-1)
       double ut = sqrt(fabs(1.0  +  ux * ux  +  uy * uy  +  tau * tau * un * un)); //u^tau
-      
+
       double bulkPi = 0.0;
 
       if(INCLUDE_BULK_DELTAF)
@@ -832,7 +833,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
       double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
       double Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
 
-      double dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;   // total number of hadrons / delta_eta_weight in FO_cell 
+      double dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;   // total number of hadrons / delta_eta_weight in FO_cell
 
       // loop over eta points
       for(int ieta = 0; ieta < eta_pts; ieta++)
@@ -849,7 +850,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
 
     //Ntot -= sqrt(Ntot);           // subtract width of poisson distribution (~ lower limit)
 
-    return Ntot; 
+    return Ntot;
 
   }
 
@@ -1161,93 +1162,89 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       } // loop over hadrons (ipart)
 
+      // discrete probability distribution for particle types (weights = dn_ipart / dn_tot)
+      std::discrete_distribution<int> discrete_particle_type(density_list.begin(), density_list.end());
 
       // loop over eta points
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
-        if(udsigma <= 0.0)
-        {
-          break;                                       // skip over cells with u.dsigma < 0
-        }
-
+        if(udsigma <= 0.0) break;                                     // skip over cells with u.dsigma < 0
         double delta_eta_weight = etaDeltaWeights[ieta];
-        double dN_tot = delta_eta_weight * dn_tot;     // total mean number of hadrons in FO cell
+        double dN_tot = delta_eta_weight * dn_tot;                    // total mean number of hadrons in FO cell
 
-        // SAMPLE PARTICLES:
+        std::poisson_distribution<> poisson_hadrons(dN_tot);          // probability distribution for number of hadrons
 
-        // probability distribution for number of hadrons
-        std::poisson_distribution<> poisson_hadrons(dN_tot);
-
-        int N_hadrons = poisson_hadrons(gen_poisson);               // sample total number of hadrons in FO cell
-
-        for (int n = 0; n < N_hadrons; n++)
+        // sample events for each FO cell
+        for(int ievent = 0; ievent < Nevents; ievent++)
         {
-          // sample particle type with discrete distribution (weights = dn_ipart / dn_tot)
-          std::discrete_distribution<int> discrete_particle_type(density_list.begin(), density_list.end());
+          int N_hadrons = poisson_hadrons(gen_poisson);               // sample total number of hadrons in FO cell
 
-          int idx_sampled = discrete_particle_type(gen_discrete);   // chosen index of sampled particle type
-
-          double mass = Mass[idx_sampled];                          // mass of sampled particle in GeV
-          double sign = Sign[idx_sampled];                          // quantum statistics sign
-          double baryon = Baryon[idx_sampled];                      // baryon number
-          int mcid = MCID[idx_sampled];                             // MC ID of sampled particle
-
-
-
-          // should make sample_momentum functions class members
-
-          // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
-          // perhap divide this into sample_momentum_from_distribution_x()
-          lrf_momentum pLRF = Sample_Momentum_feq_plus_deltaf(mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, shear_coeff, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DF_MODE);
-
-
-
-          // lab frame momentum p^mu (milne components)
-          Lab_Momentum pmu(pLRF);
-          pmu.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
-
-
-          // pdsigma has delta_eta_weight factored out (irrelevant for sign)
-          double pdsigma = pmu.ptau * dat  +  pmu.px * dax  +  pmu.py * day  +  pmu.pn * dan;
-
-          // add sampled particle to particle_list
-          if (pdsigma >= 0.0)
+          for(int n = 0; n < N_hadrons; n++)
           {
-            double eta = etaValues[ieta];
-            double sinheta = sinh(eta);
-            double cosheta = sqrt(1.0 + sinheta * sinheta);
+            int idx_sampled = discrete_particle_type(gen_discrete);   // chosen index of sampled particle type
+
+            double mass = Mass[idx_sampled];                          // mass of sampled particle in GeV
+            double sign = Sign[idx_sampled];                          // quantum statistics sign
+            double baryon = Baryon[idx_sampled];                      // baryon number
+            int mcid = MCID[idx_sampled];                             // MC ID of sampled particle
+
+            // should make sample_momentum functions class members
+
+            // sample LRF Momentum with Scott Pratt's Trick - See LongGang's Sampler Notes
+            // perhap divide this into sample_momentum_from_distribution_x()
+            lrf_momentum pLRF = Sample_Momentum_feq_plus_deltaf(mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, shear_coeff, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DF_MODE);
+
+            // lab frame momentum p^mu (milne components)
+            Lab_Momentum pmu(pLRF);
+            pmu.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
+
+            // p.dsigma / delta_eta_weight
+            double pdsigma = pmu.ptau * dat  +  pmu.px * dax  +  pmu.py * day  +  pmu.pn * dan;
 
             // add sampled particle to particle_list
-            Sampled_Particle new_particle;
-            new_particle.mcID = mcid;
-            new_particle.tau = tau;
-            new_particle.x = x;
-            new_particle.y = y;
-            new_particle.eta = eta;
+            if(pdsigma >= 0.0)
+            {
+              double eta = etaValues[ieta];
+              double sinheta = sinh(eta);
+              double cosheta = sqrt(1.0 + sinheta * sinheta);
 
-            new_particle.t = tau * cosheta;
-            new_particle.z = tau * sinheta;
+              // add sampled particle to particle_list
+              Sampled_Particle new_particle;
+              new_particle.mcID = mcid;
+              new_particle.tau = tau;
+              new_particle.x = x;
+              new_particle.y = y;
+              new_particle.eta = eta;
 
-            new_particle.mass = mass;
-            new_particle.px = pmu.px;
-            new_particle.py = pmu.py;
+              new_particle.t = tau * cosheta;
+              new_particle.z = tau * sinheta;
 
-            double pz = tau * pmu.pn * cosheta  +  pmu.ptau * sinheta;
-            new_particle.pz = pz;
-            //new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
-            //is it possible for this to be too small or negative?
-            //try enforcing mass shell condition on E
-            new_particle.E = sqrtf(mass * mass  +  pmu.px * pmu.px  +  pmu.py * pmu.py  +  pz * pz);
+              new_particle.mass = mass;
+              new_particle.px = pmu.px;
+              new_particle.py = pmu.py;
 
-            //add to particle list
-            //CAREFUL push_back is not a thread-safe operation
-            //how should we modify for GPU version?
-            #pragma omp critical
-            particle_list.push_back(new_particle);
-          } // if(pdsigma >= 0)
-        } // for (int n = 0; n < N_hadrons; n++)
-      } // for(int ieta = 0; ieta < eta_pts; ieta++)
-  } // for (int icell = 0; icell < FO_length; icell++)
+              double pz = tau * pmu.pn * cosheta  +  pmu.ptau * sinheta;
+              new_particle.pz = pz;
+              //new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
+              //is it possible for this to be too small or negative?
+              //try enforcing mass shell condition on E
+              new_particle.E = sqrtf(mass * mass  +  pmu.px * pmu.px  +  pmu.py * pmu.py  +  pz * pz);
+
+              //add to particle list
+              //CAREFUL push_back is not a thread-safe operation
+              //how should we modify for GPU version?
+              #pragma omp critical
+              particle_event_list[ievent].push_back(new_particle);
+            } // if(pdsigma >= 0)
+
+          } // sampled hadrons (n)
+
+        } // sampled events (ievent)
+
+      } // eta points (ieta)
+
+  } // freezeout cells (icell)
+
 }
 
 
