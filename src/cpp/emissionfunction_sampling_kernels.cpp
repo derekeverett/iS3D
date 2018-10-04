@@ -55,8 +55,8 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass, 
   double py = pLRF.y;
   double pz = pLRF.z;
 
-  double feqbar = 1.0 - sign / (exp(E / T) + sign);   // 1 - sign . feq (bosons, fermions have sign = -1, 1)
-  double sign_factor = (3.0 - sign) / 2.0;            // 1 for fermions, 2 for bosons
+  double feqbar = 1.0 - sign / (exp(E/T) + sign);   // 1 - sign . feq (bosons, fermions have sign = -1, 1)
+  double sign_factor = (3.0 - sign) / 2.0;          // 1 for fermions, 2 for bosons
 
   //if(feq > 1.0) {printf("Error: feq > 1\n"); exit(-1);}
   //if(feqbar > 2.0) {printf("Error: feqbar > 2\n"); exit(-1);}
@@ -83,14 +83,7 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass, 
     double df_shear = feqbar * pimunu_pmu_pnu / A;
     double df_shear_max = sign_factor * E * E * pi_magnitude / A;
 
-    // default
-    shear_weight = (1.0 + df_shear) / (1.0 + df_shear_max);
-
-    // regulate
-    if(fabs(df_shear) > 1.0)
-    {
-      shear_weight = (1.0 + max(-1.0, min(df_shear, 1.0))) / (1.0 + min(df_shear_max, 1.0));
-    }
+    shear_weight = (1.0 + max(-1.0, min(df_shear, 1.0))) / (1.0 + min(df_shear_max, 1.0));
   }
   /*
   if(INCLUDE_BULK_DELTAF)
@@ -178,15 +171,12 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
     {
       double phi = phi_uniform_distribution(generator);
       double costheta = costheta_uniform_distribution(generator);
-
-      double cosphi = cos(phi);
-      double sinphi = sqrt(fabs(1.0 - cosphi * cosphi));
       double sintheta = sqrt(fabs(1.0 - costheta * costheta));
 
       // pLRF components
       pLRF.E = E;
-      pLRF.x = p * sintheta * cosphi;
-      pLRF.y = p * sintheta * sinphi;
+      pLRF.x = p * sintheta * cos(phi);
+      pLRF.y = p * sintheta * sin(phi);
       pLRF.z = p * costheta;
 
       double pdsigma_abs = fabs(E * dst  -  pLRF.x * dsx  -  pLRF.y * dsy  -  pLRF.z * dsz);
@@ -197,10 +187,11 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
       double weight_angle = rideal * rvisc;
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
+
       if(!(weight_angle >= 0.0 && weight_angle <= 1.0))
       {
         printf("Error: weight_angle = %f out of bounds\n", weight_angle);
-        exit(-1);
+        //exit(-1);
       }
 
       // check angles' acceptance
@@ -278,14 +269,12 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
       double phi = phi_uniform_distribution(generator);
       double costheta = costheta_uniform_distribution(generator);
 
-      double cosphi = cos(phi);
-      double sinphi = sqrt(fabs(1.0 - cosphi * cosphi));
       double sintheta = sqrt(fabs(1.0 - costheta * costheta));
 
       // pLRF components
       pLRF.E = E;
-      pLRF.x = p * sintheta * cosphi;
-      pLRF.y = p * sintheta * sinphi;
+      pLRF.x = p * sintheta * cos(phi);
+      pLRF.y = p * sintheta * sin(phi);
       pLRF.z = p * costheta;
 
       double pdsigma_abs = fabs(E * dst  -  pLRF.x * dsx  -  pLRF.y * dsy  -  pLRF.z * dsz);
@@ -299,7 +288,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
       if(!(weight_angle >= 0.0 && weight_angle <= 1.0))
       {
         printf("Error: weight_angle = %f out of bounds\n", weight_angle);
-        exit(-1);
+        //exit(-1);
       }
 
       // check angles acceptance
@@ -314,20 +303,14 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
 }
 
 
-lrf_momentum EmissionFunctionArray::rescale_momentum(lrf_momentum pLRF_mod, double mass, double baryon, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio)
+lrf_momentum EmissionFunctionArray::rescale_momentum(lrf_momentum pmod, double mass, double baryon, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio)
 {
     lrf_momentum pLRF;
 
-    // rescale modified momentum p_mod with map M
-    double E_mod = pLRF_mod.E;
-    double px_mod = pLRF_mod.x;
-    double py_mod = pLRF_mod.y;
-    double pz_mod = pLRF_mod.z;
-
-    // LRF momentum components (ideal by default or no viscous corrections)
-    double px = px_mod;
-    double py = py_mod;
-    double pz = pz_mod;
+    // Default ideal (no viscous corrections)
+    pLRF.x = pmod.x;
+    pLRF.y = pmod.y;
+    pLRF.z = pmod.z;
 
     // LRF shear stress components
     double pixx = pimunu.pixx_LRF;
@@ -341,32 +324,15 @@ lrf_momentum EmissionFunctionArray::rescale_momentum(lrf_momentum pLRF_mod, doub
     double Vx = Vmu.Vx_LRF;
     double Vy = Vmu.Vy_LRF;
     double Vz = Vmu.Vz_LRF;
-    double diffusion_factor = diff_coeff * (E_mod * baryon_enthalpy_ratio + baryon);
+    diff_coeff *= (pmod.E * baryon_enthalpy_ratio + baryon);
 
-    // rescale momentum:
-    // add shear corrections
-    px += shear_coeff * (pixx * px_mod  +  pixy * py_mod  +  pixz * pz_mod);
-    py += shear_coeff * (pixy * px_mod  +  piyy * py_mod  +  piyz * pz_mod);
-    pz += shear_coeff * (pixz * px_mod  +  piyz * py_mod  +  pizz * pz_mod);
-
-    // // add bulk corrections
-    px += bulk_coeff * px_mod;
-    py += bulk_coeff * py_mod;
-    pz += bulk_coeff * pz_mod;
-
-    // add diffusion corrections
-    px += diffusion_factor * Vx;
-    py += diffusion_factor * Vy;
-    pz += diffusion_factor * Vz;
-
-    // set LRF momentum
-    pLRF.x = px;
-    pLRF.y = py;
-    pLRF.z = pz;
-    pLRF.E = sqrt(mass * mass  +  px * px  +  py * py  +  pz * pz);
+    // rescale momentum with viscous transformation M(pmod):
+    pLRF.x += (shear_coeff * (pixx * pmod.x + pixy * pmod.y + pixz * pmod.z)  +  bulk_coeff * pmod.x  +  diff_coeff * Vx);
+    pLRF.y += (shear_coeff * (pixy * pmod.x + piyy * pmod.y + piyz * pmod.z)  +  bulk_coeff * pmod.y  +  diff_coeff * Vy);
+    pLRF.z += (shear_coeff * (pixz * pmod.x + piyz * pmod.y + pizz * pmod.z)  +  bulk_coeff * pmod.z  +  diff_coeff * Vz);
+    pLRF.E = sqrt(mass * mass  +  pLRF.x * pLRF.x  +  pLRF.y * pLRF.y  +  pLRF.z * pLRF.z);
 
     return pLRF;
-
 }
 
 
@@ -415,14 +381,12 @@ lrf_momentum EmissionFunctionArray::sample_momentum_feqmod(double mass, double s
       double phi_mod = two_pi * pow((l1 + l2) / (l1 + l2 + l3), 2);   // modified angles
       double costheta_mod = (l1 - l2) / (l1 + l2);
 
-      double cosphi_mod = cos(phi_mod);
-      double sinphi_mod = sqrt(fabs(1.0 - cosphi_mod * cosphi_mod));
       double sintheta_mod = sqrt(fabs(1.0 - costheta_mod * costheta_mod));
 
       // modified pLRF components
       pLRF_mod.E = E_mod;
-      pLRF_mod.x = p_mod * sintheta_mod * cosphi_mod;
-      pLRF_mod.y = p_mod * sintheta_mod * sinphi_mod;
+      pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
+      pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
       pLRF_mod.z = p_mod * costheta_mod;
 
       // momentum rescaling
@@ -524,13 +488,11 @@ lrf_momentum EmissionFunctionArray::sample_momentum_feqmod(double mass, double s
       double E_mod = k_mod + mass;
       double p_mod = sqrt(fabs(E_mod * E_mod - mass * mass));
 
-      double cosphi_mod = cos(phi_mod);
-      double sinphi_mod = sqrt(fabs(1.0 - cosphi_mod * cosphi_mod));
       double sintheta_mod = sqrt(fabs(1.0 - costheta_mod * costheta_mod));
 
       pLRF_mod.E = E_mod;
-      pLRF_mod.x = p_mod * sintheta_mod * cosphi_mod;
-      pLRF_mod.y = p_mod * sintheta_mod * sinphi_mod;
+      pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
+      pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
       pLRF_mod.z = p_mod * costheta_mod;
 
       // momentum rescaling
@@ -621,6 +583,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
         break;
       }
       case 2: // Chapman-Enskog
+      case 3:
       {
         // bulk coefficients
         F = df_coeff[0];
@@ -632,7 +595,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
       }
       default:
       {
-        printf("Please choose df_mode = 1 or 2 in parameters.dat\n");
+        printf("Error: please set df_mode = 1,2,3\n");
         exit(-1);
       }
     }

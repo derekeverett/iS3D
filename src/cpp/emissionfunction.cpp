@@ -940,7 +940,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
-              //write_momentum_list_toFile();
+              write_momentum_list_toFile();
 
               break;
             }
@@ -1028,48 +1028,28 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               printf("sampling particles with feqmod...\n");
 
-
-              // need to rewrite this part:
-              int sample = 1;
-              if (OVERSAMPLE)
+              if(OVERSAMPLE)
               {
+                double Ntotal = estimate_total_yield(Mass, Sign, Degen, Baryon,
+                T, P, E, tau, ut, ux, uy, un, dat, dax, day, dan, bulkPi, muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
 
-                long int Nsampled = 0;
-                printf("Oversampling batch = %ld particles\n", MIN_NUM_HADRONS);
-                while(Nsampled < MIN_NUM_HADRONS)
-                {
-                  particle_list.clear();
-
-
-                  sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
-              T, P, E, tau, x, y, eta, ut, ux, uy, un,
-              dat, dax, day, dan,
-              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
-
-                  //write_particle_list_toFile(sample);
-                  //write_particle_list_OSC(sample);
-                  //write_momentum_list_toFile(sample);
-
-                  Nsampled += (long int)particle_list.size();
-                  printf("Finished event %d\n: total number sampled = %ld\n", sample, Nsampled);
-                  sample++;
-                }
-              } // if(OVERSAMPLE)
-              else
-              {
-                sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
-              T, P, E, tau, x, y, eta, ut, ux, uy, un,
-              dat, dax, day, dan,
-              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
-
-                //write_particle_list_toFile(sample);
-                //write_particle_list_OSC(sample);
-                //write_momentum_list_toFile(sample);
+                Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
+
+              particle_event_list.resize(Nevents);
+
+              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
+              T, P, E, tau, x, y, eta, ut, ux, uy, un,
+              dat, dax, day, dan,
+              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+
+              //write_particle_list_toFile();
+              //write_particle_list_OSC();
+              write_momentum_list_toFile();
+              
 
               break;
             }
