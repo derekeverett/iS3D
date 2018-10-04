@@ -522,7 +522,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         spectraFile << scientific <<  setw(5) << setprecision(8) << mcid << "," << tau << "," << x << "," << y << "," << eta << "," << E << "," << px << "," << py << "," << pz << "\n";
       }//ipart
       spectraFile.close();
-    } // ievent 
+    } // ievent
   }
 
   //write particle list in oscar format for UrQMD/SMASH afterburner
@@ -1040,12 +1040,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 {
                   particle_list.clear();
 
-                  sample_dN_pTdpTdphidy_feqmod(Mass, Sign, Degen, Baryon, MCID,
-                T, P, E, tau, x, y, eta, ut, ux, uy, un,
-                dat, dax, day, dan,
-                pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-                muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
+
+                  sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
+              T, P, E, tau, x, y, eta, ut, ux, uy, un,
+              dat, dax, day, dan,
+              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
 
                   //write_particle_list_toFile(sample);
                   //write_particle_list_OSC(sample);
@@ -1058,12 +1059,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               } // if(OVERSAMPLE)
               else
               {
-                sample_dN_pTdpTdphidy_feqmod(Mass, Sign, Degen, Baryon, MCID,
-                T, P, E, tau, x, y, eta, ut, ux, uy, un,
-                dat, dax, day, dan,
-                pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-                muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
+                sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
+              T, P, E, tau, x, y, eta, ut, ux, uy, un,
+              dat, dax, day, dan,
+              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
 
                 //write_particle_list_toFile(sample);
                 //write_particle_list_OSC(sample);

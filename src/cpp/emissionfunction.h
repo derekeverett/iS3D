@@ -117,7 +117,7 @@ private:
 
 public:
 
-  // constructor / destructor 
+  // constructor / destructor
   EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients df_in);
   ~EmissionFunctionArray();
 
@@ -136,7 +136,7 @@ public:
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double*, double*);
 
-  // continuous spectra with feqmod 
+  // continuous spectra with feqmod
   void calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
     double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
     double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
@@ -158,12 +158,12 @@ public:
   // sampling spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
-  // estimate total particle yield from freezeout surface -> number of events to sample 
+  // estimate total particle yield from freezeout surface -> number of events to sample
   double estimate_total_yield(double *, double *, double *, double *,
   double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
   int, double *, double *, double *, double *, double *, double *);
 
-  // sample momentum with feq + df 
+  // sample momentum with feq + df
   lrf_momentum sample_momentum(double mass, double sign, double baryon, double T, double alphaB, dsigma_Vector ds, Shear_Stress_Tensor pimunu, double bulkPi, Baryon_Diffusion_Current Vmu, double shear_coeff);
 
   // sample momentum with feqmod
@@ -176,7 +176,7 @@ public:
   lrf_momentum rescale_momentum(lrf_momentum pLRF_mod, double mass_squared, double baryon, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
 
 
-  // sample particles with feq + df
+  // sample particles with feq + df or feqmod
   void sample_dN_pTdpTdphidy(double *, double *, double *, double *, int *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
@@ -184,13 +184,15 @@ public:
     double *, double *, double *, double *, double *, double *, double *,
     int, double *, double *, double *, double *, double *, double *);
 
-  // sample particles with feqmod 
+  // sample particles with feqmod
+  /*
   void sample_dN_pTdpTdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
   double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo,
   double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff,
   int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2);
+  */
 
   void sample_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
   double *, double *, double *, double *, double *,
@@ -234,7 +236,7 @@ public:
   // resonance decay routine:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
-  // main function 
+  // main function
   void do_resonance_decays(particle_info * particle_data);
 
   // switch statement for n-body routines
