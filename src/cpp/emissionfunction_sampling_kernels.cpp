@@ -235,7 +235,7 @@ lrf_momentum Sample_Momentum_feq_plus_deltaf(double mass, double sign, double ba
       double costheta = costheta_uniform_distribution(generator);
 
       double cosphi = cos(phi);
-      double sinphi = sqrt(fabs(1.0 - cosphi * cosphi));
+      double sinphi = sin(phi);
       double sintheta = sqrt(fabs(1.0 - costheta * costheta));
 
       // pLRF components
@@ -336,7 +336,7 @@ lrf_momentum Sample_Momentum_feq_plus_deltaf(double mass, double sign, double ba
       double costheta = costheta_uniform_distribution(generator);
 
       double cosphi = cos(phi);
-      double sinphi = sqrt(fabs(1.0 - cosphi * cosphi));
+      double sinphi = sin(phi);
       double sintheta = sqrt(fabs(1.0 - costheta * costheta));
 
       // pLRF components
