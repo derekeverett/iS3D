@@ -396,7 +396,6 @@ lrf_momentum EmissionFunctionArray::sample_momentum_feqmod(double mass, double s
       double weight_light = rideal * exp(p_mod/T_mod) / (exp(E_mod/T_mod) + sign);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-      //if(!(rideal >= 0.0 && rideal <= 1.0)){printf("Error: rideal = %f out of bounds\n", rideal);exit(-1);}
       if(!(weight_light >= 0.0 && weight_light <= 1.0))
       {
         printf("Error: weight = %f out of bounds\n", weight_light);//exit(-1);
@@ -495,7 +494,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum_feqmod(double mass, double s
       }
 
       // check pLRF acceptance
-      if(propose < weight_heavy) break; // exit rejection loop
+      if(propose < weight_heavy) break; 
 
     } // rejection loop
 
@@ -844,8 +843,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double ut = sqrt(fabs(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un)); //u^tau
 
       double T = T_fo[icell];             // temperature (GeV)
-      double E = E_fo[icell];             // energy density (GeV/fm^3)
-      double P = P_fo[icell];             // pressure (GeV/fm^3)
+
+      // default values, only access arrays if needed
+      double E = 1.0;                     // energy density (GeV/fm^3)
+      double P = 1.0;                     // pressure (GeV/fm^3)         
 
       double T2 = T * T;
       double T3 = T2 * T;                 // useful expressions
@@ -872,12 +873,17 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
         if(INCLUDE_BARYONDIFF_DELTAF)
         {
-          nB = nB_fo[icell];
           Vx = Vx_fo[icell];
           Vy = Vy_fo[icell];
           Vn = Vn_fo[icell];
           Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
-          baryon_enthalpy_ratio = nB / (E + P);
+          if(DF_MODE == 2 || DF_MODE == 3)
+          {
+            nB = nB_fo[icell];
+            E = E_fo[icell]; 
+            P = P_fo[icell];
+            baryon_enthalpy_ratio = nB / (E + P);
+          } 
         }
       }
 
@@ -951,7 +957,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             }
           } //switch(DF_MODE)
         } //if(INCLUDE_BULK_DELTAF)
-        if(INCLUDE_BARYONDIFF_DELTAF)
+        if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
         {
           switch(DF_MODE)
           {
@@ -989,8 +995,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       } // loop over hadrons (ipart)
 
-      // discrete probability distribution for particle types (weights = dn_ipart / dn_tot)
-      std::discrete_distribution<int> discrete_particle_type(density_list.begin(), density_list.end());
 
       // loop over eta points
       for(int ieta = 0; ieta < eta_pts; ieta++)
@@ -1009,6 +1013,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
           for(int n = 0; n < N_hadrons; n++)
           {
+            // discrete probability distribution for particle types (weights = dn_ipart / dn_tot)
+            std::discrete_distribution<int> discrete_particle_type(density_list.begin(), density_list.end());
+
             int chosen_index = discrete_particle_type(gen_discrete);  // chosen index of sampled particle type
 
             double mass = Mass[chosen_index];                         // mass of sampled particle in GeV
@@ -1030,9 +1037,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
             dsigma.compute_dsigma_max();
 
-            // try to access memory as little as possible
-            // more efficient to access pimunu arrays here
-            // if MIN_NUM_HADRONS < FO_length (for large, high resolution FO surfaces)
             double pitt = 0.0;                  // contravariant shear stress tensor pi^munu (GeV/fm^3)
             double pitx = 0.0;                  // enforce orthogonality pi.u = 0
             double pity = 0.0;                  // and tracelessness Tr(pi) = 0
@@ -1044,7 +1048,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             double piyn = 0.0;
             double pinn = 0.0;
 
-            if(INCLUDE_SHEAR_DELTAF)
+            if(INCLUDE_SHEAR_DELTAF)            // access pimunu arrays as little as possbile
             {
               pixx = pixx_fo[icell];
               pixy = pixy_fo[icell];
@@ -1066,6 +1070,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             // baryon diffusion class
             Baryon_Diffusion_Current Vmu(Vt, Vx, Vy, Vn);
             Vmu.boost_baryon_diffusion_to_lrf(basis_vectors, tau2);
+            Vmu.compute_Vmu_max(); 
 
             lrf_momentum pLRF;
 
@@ -1073,9 +1078,21 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             switch(DF_MODE)
             {
               case 1: // 14 moment
+              {
+                if(!(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF))
+                {
+                  E = E_fo[icell];  // access E, P if necessary 
+                  P = P_fo[icell];
+                }
+                double shear14_coeff = 2.0 * T2 * (E + P);
+
+                pLRF = sample_momentum(mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, shear14_coeff); 
+
+                break;
+              }
               case 2: // Chapman Enskog
               {
-                double shear14_coeff = 2.0 * T2 * (E + P);
+                double shear14_coeff = 1.0; // idle 
 
                 pLRF = sample_momentum(mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, shear14_coeff);
 
@@ -1090,7 +1107,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 double T_mod = T + bulkPi * F / betabulk;
                 double alphaB_mod = alphaB + bulkPi * G / betabulk;
 
-                // somehow I can switch to df case under certain conditions
+                // somehow I can switch to df case under certain conditions (goto 2)
 
                 pLRF = sample_momentum_feqmod(mass, sign, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
 
