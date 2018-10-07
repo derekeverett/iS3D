@@ -1,7 +1,7 @@
 #include "viscous_correction.h"
 #include <math.h>
 #include <iostream>
-#include <stdlib.h> 
+#include <stdlib.h>
 using namespace std;
 
 
@@ -18,7 +18,7 @@ Milne_Basis_Vectors::Milne_Basis_Vectors(double ut, double ux, double uy, double
       Zt = sinhL;
       Zn = coshL / tau;
 
-      if(uperp > 1.e-5) // stops (ux=0)/(uperp=0) nans for first FO cells with no initial transverse flow 
+      if(uperp > 1.e-5) // stops (ux=0)/(uperp=0) nans for first FO cells with no initial transverse flow
       {
         Xx = utperp * ux / uperp;
         Xy = utperp * uy / uperp;
@@ -37,16 +37,10 @@ dsigma_Vector::dsigma_Vector(double dsigmat_in, double dsigmax_in, double dsigma
 
 void dsigma_Vector::boost_dsigma_to_lrf(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un)
 {
-    double Xt = basis_vectors.Xt;
-    double Xx = basis_vectors.Xx;
-    double Xy = basis_vectors.Xy;
-    double Xn = basis_vectors.Xn;
-
-    double Yx = basis_vectors.Yx;
-    double Yy = basis_vectors.Yy;
-
-    double Zt = basis_vectors.Zt;
-    double Zn = basis_vectors.Zn;
+    double Xt = basis_vectors.Xt;   double Yx = basis_vectors.Yx;
+    double Xx = basis_vectors.Xx;   double Yy = basis_vectors.Yy;
+    double Xy = basis_vectors.Xy;   double Zt = basis_vectors.Zt;
+    double Xn = basis_vectors.Xn;   double Zn = basis_vectors.Zn;
 
     dsigmat_LRF = dsigmat * ut  +  dsigmax * ux  +  dsigmay * uy  +  dsigman * un;
     dsigmax_LRF = -(dsigmat * Xt  +  dsigmax * Xx  +  dsigmay * Xy  +  dsigman * Xn);
@@ -73,18 +67,12 @@ Shear_Stress_Tensor::Shear_Stress_Tensor(double pitt_in, double pitx_in, double 
     pinn = pinn_in;
 }
 
-void Shear_Stress_Tensor::boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
-{   
-    double Xt = basis_vectors.Xt;
-    double Xx = basis_vectors.Xx;
-    double Xy = basis_vectors.Xy;
-    double Xn = basis_vectors.Xn;
-
-    double Yx = basis_vectors.Yx;
-    double Yy = basis_vectors.Yy;
-
-    double Zt = basis_vectors.Zt;
-    double Zn = basis_vectors.Zn;
+void Shear_Stress_Tensor::boost_pimunu_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
+{
+    double Xt = basis_vectors.Xt;   double Yx = basis_vectors.Yx;
+    double Xx = basis_vectors.Xx;   double Yy = basis_vectors.Yy;
+    double Xy = basis_vectors.Xy;   double Zt = basis_vectors.Zt;
+    double Xn = basis_vectors.Xn;   double Zn = basis_vectors.Zn;
 
     // fixed bug (don't double these variables) on 8/20
     pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
@@ -98,7 +86,7 @@ void Shear_Stress_Tensor::boost_shear_stress_to_lrf(Milne_Basis_Vectors basis_ve
 
 void Shear_Stress_Tensor::compute_pimunu_max()
 {
-    pi_magnitude = sqrt(pixx_LRF * pixx_LRF  +  piyy_LRF * piyy_LRF  +  pizz_LRF * pizz_LRF  +  2.0 * (pixy_LRF * pixy_LRF  +  pixz_LRF * pixz_LRF   +  piyz_LRF * piyz_LRF)); 
+    pi_magnitude = sqrt(pixx_LRF * pixx_LRF  +  piyy_LRF * piyy_LRF  +  pizz_LRF * pizz_LRF  +  2.0 * (pixy_LRF * pixy_LRF  +  pixz_LRF * pixz_LRF   +  piyz_LRF * piyz_LRF));
 }
 
 Baryon_Diffusion_Current::Baryon_Diffusion_Current(double Vt_in, double Vx_in, double Vy_in, double Vn_in)
@@ -109,18 +97,12 @@ Baryon_Diffusion_Current::Baryon_Diffusion_Current(double Vt_in, double Vx_in, d
     Vn = Vn_in;
 }
 
-void Baryon_Diffusion_Current::boost_baryon_diffusion_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
+void Baryon_Diffusion_Current::boost_Vmu_to_lrf(Milne_Basis_Vectors basis_vectors, double tau2)
 {
-    double Xt = basis_vectors.Xt;
-    double Xx = basis_vectors.Xx;
-    double Xy = basis_vectors.Xy;
-    double Xn = basis_vectors.Xn;
-
-    double Yx = basis_vectors.Yx;
-    double Yy = basis_vectors.Yy;
-
-    double Zt = basis_vectors.Zt;
-    double Zn = basis_vectors.Zn;
+    double Xt = basis_vectors.Xt;   double Yx = basis_vectors.Yx;
+    double Xx = basis_vectors.Xx;   double Yy = basis_vectors.Yy;
+    double Xy = basis_vectors.Xy;   double Zt = basis_vectors.Zt;
+    double Xn = basis_vectors.Xn;   double Zn = basis_vectors.Zn;
 
     Vx_LRF = - Vt * Xt  +  Vx * Xx  +  Vy * Xy  +  tau2 * Vn * Xn;
     Vy_LRF = Vx * Yx  +  Vy * Yy;
@@ -129,5 +111,5 @@ void Baryon_Diffusion_Current::boost_baryon_diffusion_to_lrf(Milne_Basis_Vectors
 
 void Baryon_Diffusion_Current::compute_Vmu_max()
 {
-    V_magnitude = sqrt(Vx_LRF * Vx_LRF  +  Vy_LRF * Vy_LRF  +  Vz_LRF * Vz_LRF); 
+    V_magnitude = sqrt(Vx_LRF * Vx_LRF  +  Vy_LRF * Vy_LRF  +  Vz_LRF * Vz_LRF);
 }

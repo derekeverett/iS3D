@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
   freeze_out_data.read_surf_switch(FO_length, surf_ptr);
 
   particle_info *particle_data = new particle_info [Maxparticle];
-  int Nparticle = freeze_out_data.read_resonances_list(particle_data); //number of resonances in pdg file
+  int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr); //number of resonances in pdg file
 
   // load delta-f coefficients:
   deltaf_coefficients df;

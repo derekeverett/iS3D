@@ -12,6 +12,7 @@
 #include "arsenal.h"
 #include "ParameterReader.h"
 #include "Table.h"
+#include "gaussThermal.h"
 
 using namespace std;
 
@@ -61,6 +62,11 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
   double dummy;
   surfdat_stream << pathToInput << "/surface.dat";
   ifstream surfdat(surfdat_stream.str().c_str());
+
+
+  double Tmin = 1.0;  // 1 GeV
+  double Tmax = 0.0;  // 0 GeV
+
   for (long i = 0; i < length; i++)
   {
     // contravariant spacetime position
@@ -95,6 +101,9 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surf_ptr[i].T = dummy * hbarC; //Temperature
     surfdat >> dummy;
     surf_ptr[i].P = dummy * hbarC; //pressure
+
+    if(surf_ptr[i].T > Tmax) Tmax = surf_ptr[i].T;
+    if(surf_ptr[i].T < Tmin) Tmin = surf_ptr[i].T;
 
     //file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
     // dissipative quantities at freeze out
@@ -144,6 +153,10 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     }
   }
   surfdat.close();
+
+  printf("Tmin = %f GeV\n", Tmin);
+  printf("Tmax = %f GeV\n", Tmax);
+
   return;
 }
 
@@ -580,7 +593,7 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
   return;
 }
 
-int FO_data_reader::read_resonances_list(particle_info* particle)
+int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_ptr)
 {
   double eps = 1e-15;
   int Nparticle=0;
@@ -674,5 +687,64 @@ int FO_data_reader::read_resonances_list(particle_info* particle)
     if (particle[i].baryon == 0) particle[i].sign = -1;
     else particle[i].sign = 1;
   }
-  return(Nparticle);
+
+
+  // need to think about what goes here:
+  // the viscous number terms depend on df_mode (so do a switch statement)
+  // I think I need an extension of the gla_root file to a = 3
+
+   // set Gauss Laguerre roots-weights
+  FILE * gla_file;
+  char header[300];
+  gla_file = fopen("gla12_roots_weights_64_pts.dat", "r");
+  if(gla_file == NULL) printf("Couldn't open Gauss-Laguerre roots/weights file\n");
+
+  int pbar_pts;
+  fscanf(gla_file, "%d\n", &pbar_pts);  // get # quadrature pts
+
+  double pbar_root1[pbar_pts];
+  double pbar_weight1[pbar_pts];
+  double pbar_root2[pbar_pts];
+  double pbar_weight2[pbar_pts];
+
+  fgets(header, 100, gla_file);        // skip the next 2 headers
+  fgets(header, 100, gla_file);
+
+  for(int i = 0; i < pbar_pts; i++)    // load roots/weights
+  {
+    fscanf(gla_file, "%lf\t\t%lf\t\t%lf\t\t%lf\n", &pbar_root1[i], &pbar_weight1[i], &pbar_root2[i], &pbar_weight2[i]);
+  }
+  fclose(gla_file);
+
+
+  // let's start with thermal density (finish this tomorrow)
+
+  for(int i = 0; i < Nparticle; i++)
+  {
+    double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
+    double T = surf_ptr[0].T;
+    double alphaB = 0.0;
+    if(include_baryon) alphaB = surf_ptr[0].muB / surf_ptr[0].T;
+
+    double degeneracy = (double)particle[i].gspin;
+    double baryon = (double)particle[i].baryon;
+    double sign = (double)particle[i].sign;
+    double mbar = particle[i].mass / T;
+
+    double neq_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
+
+     //double N10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
+    //double J20_fact = degeneracy * pow(T,4) / two_pi2_hbarC3;
+
+    //double N10 = N10_fact * GaussThermal(N10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+    //double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+
+    double neq = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+    //double nlinear_correction = neq + (N10 * G) + (J20 * F / pow(T,2));
+
+    particle[i].equilibrium_density = neq;
+
+  }
+
+  return Nparticle;
 }

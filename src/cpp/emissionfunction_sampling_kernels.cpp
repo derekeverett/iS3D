@@ -494,7 +494,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum_feqmod(double mass, double s
       }
 
       // check pLRF acceptance
-      if(propose < weight_heavy) break; 
+      if(propose < weight_heavy) break;
 
     } // rejection loop
 
@@ -756,7 +756,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
 
 
 
-void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
+void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
   double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo,
@@ -794,8 +794,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     }
 
     // set df coefficients
-    double c0, c1, c2, c3, c4;              // 14 moment
-    double F, G, betabulk, betaV, betapi;   // Chapman Enskog
+    double c0, c1, c2, c3, c4, shear14_coeff; // 14 moment
+    double F, G, betabulk, betaV, betapi;     // Chapman Enskog
 
     switch(DF_MODE)
     {
@@ -806,6 +806,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         c2 = df_coeff[2];
         c3 = df_coeff[3];         // diffusion coefficients
         c4 = df_coeff[4];
+        // shear14_coeff evaluated later
         break;
       }
       case 2: // Chapman-Enskog
@@ -824,6 +825,20 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         exit(-1);
       }
     }
+
+    // compute contributions to total mean hadron number / cell volume
+    double neq_tot = 0.0;                      // total equilibrium number / udsigma
+    double dn_bulk_tot = 0.0;                  // fill this in
+    double dn_diff_tot = 0.0;
+
+    for(int ipart = 0; ipart < npart; ipart++)
+    {
+      double neq = Equilibrium_Density[ipart];
+      // fill in the other terms
+      neq_tot += neq;
+    }
+
+
 
     //loop over all freezeout cells
     #pragma omp parallel for
@@ -846,12 +861,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       // default values, only access arrays if needed
       double E = 1.0;                     // energy density (GeV/fm^3)
-      double P = 1.0;                     // pressure (GeV/fm^3)         
-
-      double T2 = T * T;
-      double T3 = T2 * T;                 // useful expressions
-      double T4 = T3 * T;
-      double T5 = T4 * T;
+      double P = 1.0;                     // pressure (GeV/fm^3)
 
       double bulkPi = 0.0;                // bulk pressure (GeV/fm^3)
 
@@ -880,10 +890,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           if(DF_MODE == 2 || DF_MODE == 3)
           {
             nB = nB_fo[icell];
-            E = E_fo[icell]; 
+            E = E_fo[icell];
             P = P_fo[icell];
             baryon_enthalpy_ratio = nB / (E + P);
-          } 
+          }
         }
       }
 
@@ -891,110 +901,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
       double Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
 
-      std::vector<double> density_list;          // holds mean number / delta_eta_weight of each species in FO cell
-      density_list.resize(npart);
-      double dn_tot = 0.0;                       // total mean number  / delta_eta_weight of hadrons in FO cell
-
-      // loop over hadron species
-      for(int ipart = 0; ipart < npart; ipart++)
-      {
-        if(udsigma <= 0.0) break;                // skip over cells with u.dsigma < 0
-
-        // particle's properties:
-        double mass = Mass[ipart];               // mass in GeV
-        double mbar = mass / T;                  // mass / temperature (equilibrium)
-        double sign = Sign[ipart];               // quantum statistics sign
-        double degeneracy = Degeneracy[ipart];   // spin degeneracy
-        double baryon = Baryon[ipart];           // baryon number
-        double chem = baryon * alphaB;           // baryon chemical potential term in feq
-
-        // thermal particles:
-        int jmax = 6;                            // truncation term of Bose-Fermi expansion = jmax - 1
-        if(mbar < 2.0) jmax = 20;                // light particles need more terms than the leading order term
-
-        double neq = equilibrium_particle_density(mass, degeneracy, sign, T, chem, mbar, jmax, two_pi2_hbarC3);
-        //double neq = 0.04561358185;
-        double dn_thermal = udsigma * neq;       // mean number of thermal particles / delta_eta_weight of type ipart in FO cell
-
-
-
-        // bulk and diffusion corrections to particle number in FO cell:
-        double dn_bulk = 0.0;
-        double dn_diff = 0.0;
-        /*
-
-        if(INCLUDE_BULK_DELTAF)
-        {
-          switch(DF_MODE)
-          {
-            case 1: // 14 moment (not sure what the status is)
-            {
-              double J10_fact = degeneracy * T3 / two_pi2_hbarC3;
-              double J20_fact = degeneracy * T4 / two_pi2_hbarC3;
-              double J30_fact = degeneracy * T5 / two_pi2_hbarC3;
-              double J10 =  J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-              double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
-              double J30 = J30_fact * GaussThermal(J30_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
-
-              dn_bulk = udsigma * bulkPi * ((c0 - c2) * mass * mass * J10 + (c1 * baryon * J20) + (4.0 * c2 - c0) * J30);
-              break;
-            }
-            case 2: // Chapman-Enskog
-            case 3: // Modified
-            {
-              double J10_fact = degeneracy * T3 / two_pi2_hbarC3;
-              double J20_fact = degeneracy * T4 / two_pi2_hbarC3;
-              double J10 = J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-              double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
-              dn_bulk = udsigma * (bulkPi / betabulk) * (neq + (baryon * J10 * G) + (J20 * F / T2));
-
-              break;
-            }
-            default:
-            {
-              cout << "Please choose df_mode = 1 or 2 in parameters.dat" << endl;
-              exit(-1);
-            }
-          } //switch(DF_MODE)
-        } //if(INCLUDE_BULK_DELTAF)
-        if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
-        {
-          switch(DF_MODE)
-          {
-            case 1: // 14 moment
-            {
-              // it's probably faster to use J31
-              double J31_fact = degeneracy * T5 / two_pi2_hbarC3 / 3.0;
-              double J31 = J31_fact * GaussThermal(J31_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
-              // these coefficients need to be loaded.
-              // c3 ~ cV / V
-              // c4 ~ 2cW / V
-              dn_diff = - (Vdsigma / betaV) * ((baryon * c3 * neq * T) + (c4 * J31));
-              break;
-            }
-            case 2: // Chapman Enskog
-            case 3: // Modified
-            {
-              double J11_fact = degeneracy * T3 / two_pi2_hbarC3 / 3.0;
-              double J11 = J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-              dn_diff = - (Vdsigma / betaV) * (neq * T * baryon_enthalpy_ratio - baryon * J11);
-              break;
-            }
-            default:
-            {
-              cout << "Please choose df_mode = 1 or 2 in parameters.dat" << endl;
-              exit(-1);
-            }
-          } //switch(DF_MODE)
-        } //if(INCLUDE_BARYONDIFF_DELTAF)
-        */
-
-        double dn = dn_thermal + dn_bulk + dn_diff;    // mean number of particles of species ipart / delta_eta_weight
-        density_list[ipart] = dn;                      // store in density list to sample individual species later
-        dn_tot += dn;                                  // add to total mean number of hadrons / delta_eta_weight
-
-      } // loop over hadrons (ipart)
-
+      // total mean number  / delta_eta_weight of hadrons in FO cell
+      double dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;
 
       // loop over eta points
       for(int ieta = 0; ieta < eta_pts; ieta++)
@@ -1013,21 +921,34 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
           for(int n = 0; n < N_hadrons; n++)
           {
+            // mean number of particles of species ipart / delta_eta_weight
+            std::vector<double> density_list;
+            density_list.resize(npart);
+
+            for(int ipart = 0; ipart < npart; ipart++)
+            {
+              double neq = Equilibrium_Density[ipart];
+
+              double dn_thermal = udsigma * neq;
+              double dn_bulk = 0.0;
+              double dn_diff = 0.0;
+
+              density_list[ipart] = (dn_thermal + dn_bulk + dn_diff);
+            }
+
             // discrete probability distribution for particle types (weights = dn_ipart / dn_tot)
             std::discrete_distribution<int> discrete_particle_type(density_list.begin(), density_list.end());
 
             int chosen_index = discrete_particle_type(gen_discrete);  // chosen index of sampled particle type
-
             double mass = Mass[chosen_index];                         // mass of sampled particle in GeV
             double sign = Sign[chosen_index];                         // quantum statistics sign
             double baryon = Baryon[chosen_index];                     // baryon number
-            int mcid = MCID[chosen_index];                            // MC ID of sampled particle
 
             double ut2 = ut * ut;                                     // useful expressions
             double ux2 = ux * ux;
             double uy2 = uy * uy;
             double uperp =  sqrt(ux2 + uy2);
-            double utperp = sqrt(1.0  +  uperp * uperp);
+            double utperp = sqrt(1.0 + uperp * uperp);
 
             // set milne basis vectors
             Milne_Basis_Vectors basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
@@ -1064,13 +985,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
             // shear stress class
             Shear_Stress_Tensor pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
-            pimunu.boost_shear_stress_to_lrf(basis_vectors, tau2);
+            pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
             pimunu.compute_pimunu_max();
 
             // baryon diffusion class
             Baryon_Diffusion_Current Vmu(Vt, Vx, Vy, Vn);
-            Vmu.boost_baryon_diffusion_to_lrf(basis_vectors, tau2);
-            Vmu.compute_Vmu_max(); 
+            Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
+            Vmu.compute_Vmu_max();
 
             lrf_momentum pLRF;
 
@@ -1079,21 +1000,16 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             {
               case 1: // 14 moment
               {
-                if(!(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF))
-                {
-                  E = E_fo[icell];  // access E, P if necessary 
-                  P = P_fo[icell];
-                }
-                double shear14_coeff = 2.0 * T2 * (E + P);
+                E = E_fo[icell];
+                P = P_fo[icell];
+                shear14_coeff = 2.0 * T * T * (E + P);
 
-                pLRF = sample_momentum(mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, shear14_coeff); 
+                pLRF = sample_momentum(mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, shear14_coeff);
 
                 break;
               }
               case 2: // Chapman Enskog
               {
-                double shear14_coeff = 1.0; // idle 
-
                 pLRF = sample_momentum(mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, shear14_coeff);
 
                 break;
@@ -1121,11 +1037,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             }
 
             // lab frame momentum p^mu (milne components)
-            Lab_Momentum pmu(pLRF);
-            pmu.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
+            Lab_Momentum pLab(pLRF);
+            pLab.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
 
             // p.dsigma / delta_eta_weight
-            double pdsigma = pmu.ptau * dat  +  pmu.px * dax  +  pmu.py * day  +  pmu.pn * dan;
+            double pdsigma = pLab.ptau * dat  +  pLab.px * dax  +  pLab.py * day  +  pLab.pn * dan;
 
             // add sampled particle to particle_event_list
             if(pdsigma >= 0.0)
@@ -1138,7 +1054,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
               // add sampled particle to particle_event_list
               Sampled_Particle new_particle;
-              new_particle.mcID = mcid;
+              new_particle.mcID = MCID[chosen_index];
               new_particle.tau = tau;
               new_particle.x = x_fo[icell];
               new_particle.y = y_fo[icell];
@@ -1148,15 +1064,15 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               new_particle.z = tau * sinheta;
 
               new_particle.mass = mass;
-              new_particle.px = pmu.px;
-              new_particle.py = pmu.py;
+              new_particle.px = pLab.px;
+              new_particle.py = pLab.py;
 
-              double pz = tau * pmu.pn * cosheta  +  pmu.ptau * sinheta;
+              double pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
               new_particle.pz = pz;
               //new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
               //is it possible for this to be too small or negative?
               //try enforcing mass shell condition on E
-              new_particle.E = sqrtf(mass * mass  +  pmu.px * pmu.px  +  pmu.py * pmu.py  +  pz * pz);
+              new_particle.E = sqrtf(mass * mass + pLab.px * pLab.px + pLab.py * pLab.py + pz * pz);
 
               //add to particle_event_list
               //CAREFUL push_back is not a thread-safe operation

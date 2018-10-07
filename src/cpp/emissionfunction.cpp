@@ -37,16 +37,10 @@ Lab_Momentum::Lab_Momentum(lrf_momentum pLRF_in)
 
 void Lab_Momentum::boost_pLRF_to_lab_frame(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un)
 {
-    double Xt = basis_vectors.Xt;
-    double Xx = basis_vectors.Xx;
-    double Xy = basis_vectors.Xy;
-    double Xn = basis_vectors.Xn;
-
-    double Yx = basis_vectors.Yx;
-    double Yy = basis_vectors.Yy;
-
-    double Zt = basis_vectors.Zt;
-    double Zn = basis_vectors.Zn;
+    double Xt = basis_vectors.Xt;   double Yx = basis_vectors.Yx;
+    double Xx = basis_vectors.Xx;   double Yy = basis_vectors.Yy;
+    double Xy = basis_vectors.Xy;   double Zt = basis_vectors.Zt;
+    double Xn = basis_vectors.Xn;   double Zn = basis_vectors.Zn;
 
     ptau  = E_LRF * ut  +  px_LRF * Xt  +  pz_LRF * Zt;
     px    = E_LRF * ux  +  px_LRF * Xx  +  py_LRF * Yx;
@@ -644,13 +638,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     //particle info
     particle_info *particle;
-    double *Mass, *Sign, *Degen, *Baryon;
+    double *Mass, *Sign, *Degen, *Baryon, *Equilibrium_Density;
     int *MCID;
     Mass = (double*)calloc(number_of_chosen_particles, sizeof(double));
     Sign = (double*)calloc(number_of_chosen_particles, sizeof(double));
     Degen = (double*)calloc(number_of_chosen_particles, sizeof(double));
     Baryon = (double*)calloc(number_of_chosen_particles, sizeof(double));
     MCID = (int*)calloc(number_of_chosen_particles, sizeof(int));
+    Equilibrium_Density = (double*)calloc(number_of_chosen_particles, sizeof(double));
 
     for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
@@ -661,6 +656,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       Degen[ipart] = particle->gspin;
       Baryon[ipart] = particle->baryon;
       MCID[ipart] = particle->mc_id;
+      Equilibrium_Density[ipart] = particle->equilibrium_density;
     }
 
     // freezeout info
@@ -931,7 +927,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               particle_event_list.resize(Nevents);
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
+              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density,
               T, P, E, tau, x, y, eta, ut, ux, uy, un,
               dat, dax, day, dan,
               pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
@@ -1039,7 +1035,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               particle_event_list.resize(Nevents);
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
+              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density,
               T, P, E, tau, x, y, eta, ut, ux, uy, un,
               dat, dax, day, dan,
               pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
@@ -1049,7 +1045,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               //write_particle_list_toFile();
               //write_particle_list_OSC();
               write_momentum_list_toFile();
-              
+
 
               break;
             }

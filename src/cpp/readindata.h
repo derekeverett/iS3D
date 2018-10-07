@@ -27,6 +27,12 @@ typedef struct
   double decays_branchratio[Maxdecaychannel];
   int decays_part[Maxdecaychannel][Maxdecaypart];
   int sign; //Bose-Einstein or Dirac-Fermi statistics
+
+  // ~ particle number / cell volume (for sampler routine)
+  double equilibrium_density; //                      (thermal number / u.dsigma)
+  double dn_bulk;             // bulk correction      (bulk number / u.dsigma / bulkPi)
+  double dn_diffusion;        // diffusion correction (diffusion number / V.dsigma)
+
 } particle_info;
 
 typedef struct
@@ -78,7 +84,7 @@ class FO_data_reader
         void read_surf_VAH_PLMatch(long length, FO_surf* surf_ptr);
         void read_surf_VAH_PLPTMatch(long length, FO_surf* surf_ptr);
         void read_surf_VH_MUSIC(long length, FO_surf* surf_ptr);
-        int read_resonances_list(particle_info* particle);
+        int read_resonances_list(particle_info* particle, FO_surf* surf_ptr);
 };
 
 #endif

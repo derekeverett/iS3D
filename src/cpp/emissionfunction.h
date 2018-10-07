@@ -30,17 +30,11 @@ typedef struct
 
 class Lab_Momentum
 {
-  private:            // momentum LRF components:
-    double E_LRF;     // u.p
-    double px_LRF;    // -X.p
-    double py_LRF;    // -Y.p
-    double pz_LRF;    // -Z.p
+  private:
+    double E_LRF, px_LRF, py_LRF, pz_LRF; // LRF momentum components
 
-  public:             // contravariant lab frame momentum p^mu (milne):
-    double ptau;      // p^tau
-    double px;        // p^x
-    double py;        // p^y
-    double pn;        // p^eta
+  public:                     // contravariant lab frame momentum p^mu (milne):
+    double ptau, px, py, pn;  // p^tau, p^x, p^y, p^eta
 
     // constructor
     Lab_Momentum(lrf_momentum pLRF_in);
@@ -177,7 +171,7 @@ public:
 
 
   // sample particles with feq + df or feqmod
-  void sample_dN_pTdpTdphidy(double *, double *, double *, double *, int *,
+  void sample_dN_pTdpTdphidy(double *, double *, double *, double *, int *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
