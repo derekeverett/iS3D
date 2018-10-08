@@ -116,6 +116,8 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
   // for accept / reject loop
   bool rejected = true;
 
+  double mass_squared = mass * mass; 
+
   // random generator
   unsigned seed = chrono::system_clock::now().time_since_epoch().count();
   default_random_engine generator(seed);
@@ -147,7 +149,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
       double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       p = - T * log(r1 * r2 * r3);
-      E = sqrt(p * p + mass * mass);
+      E = sqrt(p * p + mass_squared);
 
       //here the pion weight should include the Bose enhancement factor
       //this formula assumes zero chemical potential mu = 0
@@ -155,11 +157,10 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
       double weight_light = exp(p/T) / (exp(E/T) + sign);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-      if(!(weight_light >= 0.0 && weight_light <= 1.0))
-      {
-        printf("Error: weight_light = %f out of bounds\n", weight_light);
-        exit(-1);
-      }
+      // if(fabs(weight_light - 0.5) > 0.5)
+      // {
+      //   printf("Error: weight_light = %f out of bounds\n", weight_light);
+      // }
 
       // check p acceptance
       if(propose < weight_light) break;
@@ -179,7 +180,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
       pLRF.y = p * sintheta * sin(phi);
       pLRF.z = p * costheta;
 
-      double pdsigma_abs = fabs(E * dst  -  pLRF.x * dsx  -  pLRF.y * dsy  -  pLRF.z * dsz);
+      double pdsigma_abs = fabs(E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
       double rideal = pdsigma_abs / (E * ds_magnitude);
 
       double rvisc = compute_df_weight(pLRF, mass, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, shear_coeff);
@@ -187,11 +188,10 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
       double weight_angle = rideal * rvisc;
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-
-      if(!(weight_angle >= 0.0 && weight_angle <= 1.0))
-      {
-        printf("Error: weight_angle = %f out of bounds\n", weight_angle);//exit(-1);
-      }
+      // if(fabs(weight_angle - 0.5) > 0.5)
+      // {
+      //   printf("Error: weight_angle = %f out of bounds\n", weight_angle);
+      // }
 
       // check angles' acceptance
       if(propose < weight_angle) break;
@@ -204,10 +204,13 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
   else
   {
     // determine which part of integrand dominates
-    double I1 = mass * mass;
+    double I1 = mass_squared;
     double I2 = 2.0 * mass * T;
     double I3 = 2.0 * T * T;
     double Itot = I1 + I2 + I3;
+
+    double I1_over_Itot = I1 / Itot;
+    double I1_plus_I2_over_Itot = (I1 + I2) / Itot; 
 
     double p, E, k;   // radial momentum, energy, kinetic energy
 
@@ -217,14 +220,14 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
       double propose_distribution = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       // randomly select distributions to sample k from based on integrated weights
-      if(propose_distribution < I1 / Itot)
+      if(propose_distribution < I1_over_Itot)
       {
         // draw k from distribution exp(-k/T) . dk by sampling r1 uniformly from [0,1):
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
         k = - T * log(r1);
 
       } // distribution 1 (very heavy)
-      else if(propose_distribution < (I1 + I2) / Itot)
+      else if(propose_distribution < I1_plus_I2_over_Itot)
       {
         // draw k from k.exp(-k/T).dk by sampling (r1,r2) uniformly from [0,1):
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -245,14 +248,14 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
       } // distribution 3 (light)
 
       E = k + mass;
-      p = sqrt(fabs(E * E - mass * mass));
+      p = sqrt(fabs(E * E - mass_squared));
 
       double weight_heavy = p/E * exp(E/T) / (exp(E/T) + sign);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-      if(!(weight_heavy >= 0.0 && weight_heavy <= 1.0))
+      if(fabs(weight_heavy - 0.5) > 0.5)
       {
-        printf("Error: weight_heavy = %f out of bounds\n", weight_heavy);//exit(-1);
+        printf("Error: weight_heavy = %f out of bounds\n", weight_heavy);
       }
 
       // check k acceptance
@@ -281,9 +284,9 @@ lrf_momentum EmissionFunctionArray::sample_momentum(double mass, double sign, do
       double weight_angle = rideal * rvisc;
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-      if(!(weight_angle >= 0.0 && weight_angle <= 1.0))
+      if(fabs(weight_angle - 0.5) > 0.5)
       {
-        printf("Error: weight_angle = %f out of bounds\n", weight_angle);//exit(-1);
+        printf("Error: weight_angle = %f out of bounds\n", weight_angle);
       }
 
       // check angles acceptance
@@ -490,7 +493,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum_feqmod(double mass, double s
 
       if(!(weight_heavy >= 0.0 && weight_heavy <= 1.0))
       {
-        printf("Error: weight = %f out of bounds\n", weight_heavy);//exit(-1);
+        printf("Error: weight = %f out of bounds\n", weight_heavy);
       }
 
       // check pLRF acceptance
@@ -507,10 +510,10 @@ lrf_momentum EmissionFunctionArray::sample_momentum_feqmod(double mass, double s
 
 
 double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
-  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
+  double *tau_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *bulkPi_fo,
   double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff,
-  int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2, double *pbar_root3, double *pbar_weight3)
+  int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2, double *pbar_root3, double *pbar_weight3, double *thermodynamic_average)
   {
     printf("estimating total yield of particles...\n");
 
@@ -579,23 +582,26 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
       }
     }
 
+    // average thermodynamic quantities
+    double Tavg = thermodynamic_average[0];
+    double Eavg = thermodynamic_average[1];
+    double Pavg = thermodynamic_average[2];
+    double muBavg = thermodynamic_average[3];
+    double nBavg = thermodynamic_average[4];
+
     // estimate particle number (assume constant T, muB, E, P, nB; rough but fast estimate)
-    double T = T_fo[0];                        // temperature (GeV)
-    double E = E_fo[0];                        // energy density (GeV/fm^3)
-    double P = P_fo[0];                        // pressure (GeV/fm^3)
+    double T = Tavg;                           // temperature (GeV)
+    double E = Eavg;                           // energy density (GeV/fm^3)
+    double P = Pavg;                           // pressure (GeV/fm^3)
 
     double T2 = T * T;                         // useful expressions
     double T3 = T2 * T;
     double T4 = T3 * T;
     double T5 = T4 * T;
 
-    double nB = 0.0;                           // net baryon density (fm^-3)
-    double muB = 0.0;                          // baryon chemical potential (GeV)
-    if(INCLUDE_BARYON)
-    {
-      nB = nB_fo[0];
-      muB =  muB_fo[0];
-    }
+    double nB = nBavg;                         // net baryon density (fm^-3)
+    double muB = muBavg;                       // baryon chemical potential (GeV)
+   
     double alphaB = muB / T;
     double baryon_enthalpy_ratio = nB / (E + P);
 
@@ -709,13 +715,10 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
       double un = un_fo[icell];           // u^eta (fm^-1)
       double ut = sqrt(fabs(1.0  +  ux * ux  +  uy * uy  +  tau * tau * un * un)); //u^tau
 
-      double bulkPi = 0.0;
+      double bulkPi = 0.0;                // bulk pressure (GeV/fm^3)
 
-      if(INCLUDE_BULK_DELTAF)
-      {
-        bulkPi = bulkPi_fo[icell];        // bulk pressure (GeV/fm^3)
-      }
-
+      if(INCLUDE_BULK_DELTAF) bulkPi = bulkPi_fo[icell]; 
+  
       double Vt = 0.0;                    // contravariant net baryon diffusion current V^mu (fm^-3)
       double Vx = 0.0;                    // enforce orthogonality
       double Vy = 0.0;
@@ -761,7 +764,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
   double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo,
   double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff,
-  int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2, double *pbar_root3, double *pbar_weight3)
+  int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2, double *pbar_root3, double *pbar_weight3, double *thermodynamic_average)
   {
     printf("sampling particles from vhydro with df...\n");
     int npart = number_of_chosen_particles;
@@ -793,9 +796,18 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
     }
 
+    // average thermodynamic quantities
+    double Tavg = thermodynamic_average[0];
+    double Eavg = thermodynamic_average[1];
+    double Pavg = thermodynamic_average[2];
+    double muBavg = thermodynamic_average[3];
+    double nBavg = thermodynamic_average[4];
+
+
     // set df coefficients
     double c0, c1, c2, c3, c4, shear14_coeff; // 14 moment
     double F, G, betabulk, betaV, betapi;     // Chapman Enskog
+    double baryon_enthalpy_ratio = 0.0;       // default value
 
     switch(DF_MODE)
     {
@@ -855,51 +867,28 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double ux = ux_fo[icell];           // contravariant fluid velocity u^mu
       double uy = uy_fo[icell];           // enforce normalization u.u = 1
       double un = un_fo[icell];           // u^eta (fm^-1)
-      double ut = sqrt(fabs(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un)); //u^tau
-
-      double T = T_fo[icell];             // temperature (GeV)
-
-      // default values, only access arrays if needed
-      double E = 1.0;                     // energy density (GeV/fm^3)
-      double P = 1.0;                     // pressure (GeV/fm^3)
+      double ut = sqrt(1.0 + ux * ux + uy * uy + tau2 * un * un); //u^tau
 
       double bulkPi = 0.0;                // bulk pressure (GeV/fm^3)
 
       if(INCLUDE_BULK_DELTAF) bulkPi = bulkPi_fo[icell];
 
-      double muB = 0.0;                   // baryon chemical potential (GeV)
-      double alphaB = 0.0;                // muB / T
-      double nB = 0.0;                    // net baryon density (fm^-3)
       double Vt = 0.0;                    // contravariant net baryon diffusion current V^mu (fm^-3)
       double Vx = 0.0;                    // enforce orthogonality V.u = 0
       double Vy = 0.0;
       double Vn = 0.0;
-      double baryon_enthalpy_ratio = 0.0; // nB / (E + P)
 
-      if(INCLUDE_BARYON)
+      if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
       {
-        muB = muB_fo[icell];
-        alphaB = muB / T;
-
-        if(INCLUDE_BARYONDIFF_DELTAF)
-        {
-          Vx = Vx_fo[icell];
-          Vy = Vy_fo[icell];
-          Vn = Vn_fo[icell];
-          Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
-          if(DF_MODE == 2 || DF_MODE == 3)
-          {
-            nB = nB_fo[icell];
-            E = E_fo[icell];
-            P = P_fo[icell];
-            baryon_enthalpy_ratio = nB / (E + P);
-          }
-        }
+        Vx = Vx_fo[icell];
+        Vy = Vy_fo[icell];
+        Vn = Vn_fo[icell];
+        Vt = (Vx * ux + Vy * uy + tau2 * Vn * un) / ut;
       }
 
       // (udotdsigma, Vdotdsigma) / delta_eta_weight
-      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
-      double Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
+      double udsigma = ut * dat + ux * dax + uy * day + un * dan;
+      double Vdsigma = Vt * dat + Vx * dax + Vy * day + Vn * dan;
 
       // total mean number  / delta_eta_weight of hadrons in FO cell
       double dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;
@@ -943,6 +932,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             double mass = Mass[chosen_index];                         // mass of sampled particle in GeV
             double sign = Sign[chosen_index];                         // quantum statistics sign
             double baryon = Baryon[chosen_index];                     // baryon number
+                                
+            double T = Tavg;                                          // temperature (GeV)
+            double muB = muBavg;                                      // baryon chemical potential (GeV)
+            double alphaB = muB / T;                                  // muB / T
 
             double ut2 = ut * ut;                                     // useful expressions
             double ux2 = ux * ux;
@@ -976,11 +969,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               pixn = pixn_fo[icell];
               piyy = piyy_fo[icell];
               piyn = piyn_fo[icell];
-              pinn = (pixx * (ux2 - ut2)  +  piyy * (uy2 - ut2)  +  2.0 * (pixy * ux * uy  +  tau2 * un * (pixn * ux  +  piyn * uy))) / (tau2 * utperp * utperp);
-              pitn = (pixn * ux  +  piyn * uy  +  tau2 * pinn * un) / ut;
-              pity = (pixy * ux  +  piyy * uy  +  tau2 * piyn * un) / ut;
-              pitx = (pixx * ux  +  pixy * uy  +  tau2 * pixn * un) / ut;
-              pitt = (pitx * ux  +  pity * uy  +  tau2 * pitn * un) / ut;
+              pinn = (pixx * (ux2 - ut2) + piyy * (uy2 - ut2) + 2.0 * (pixy * ux * uy + tau2 * un * (pixn * ux + piyn * uy))) / (tau2 * utperp * utperp);
+              pitn = (pixn * ux + piyn * uy + tau2 * pinn * un) / ut;
+              pity = (pixy * ux + piyy * uy + tau2 * piyn * un) / ut;
+              pitx = (pixx * ux + pixy * uy + tau2 * pixn * un) / ut;
+              pitt = (pitx * ux + pity * uy + tau2 * pitn * un) / ut;
             }
 
             // shear stress class
@@ -1000,8 +993,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             {
               case 1: // 14 moment
               {
-                E = E_fo[icell];
-                P = P_fo[icell];
+                double E = Eavg;   // energy density (GeV/fm^3)
+                double P = Pavg;   // equilibrium pressure (GeV/fm^3)
                 shear14_coeff = 2.0 * T * T * (E + P);
 
                 pLRF = sample_momentum(mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, shear14_coeff);
@@ -1010,6 +1003,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               }
               case 2: // Chapman Enskog
               {
+                double baryon_enthalpy_ratio = nBavg / (Eavg + Pavg);                
+
                 pLRF = sample_momentum(mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, shear14_coeff);
 
                 break;
@@ -1023,6 +1018,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 double T_mod = T + bulkPi * F / betabulk;
                 double alphaB_mod = alphaB + bulkPi * G / betabulk;
 
+                baryon_enthalpy_ratio = nBavg / (Eavg + Pavg);   
+
                 // somehow I can switch to df case under certain conditions (goto 2)
 
                 pLRF = sample_momentum_feqmod(mass, sign, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
@@ -1031,7 +1028,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               }
               default:
               {
-                printf("\nError: for momentum sampling please set df_mode = (1,2,3)\n");
+                printf("\nError: for vhydro momentum sampling please set df_mode = (1,2,3)\n");
                 exit(-1);
               }
             }
@@ -1041,7 +1038,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             pLab.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
 
             // p.dsigma / delta_eta_weight
-            double pdsigma = pLab.ptau * dat  +  pLab.px * dax  +  pLab.py * day  +  pLab.pn * dan;
+            double pdsigma = pLab.ptau * dat + pLab.px * dax + pLab.py * day + pLab.pn * dan;
 
             // add sampled particle to particle_event_list
             if(pdsigma >= 0.0)
@@ -1067,7 +1064,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               new_particle.px = pLab.px;
               new_particle.py = pLab.py;
 
-              double pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
+              double pz = tau * pLab.pn * cosheta + pLab.ptau * sinheta;
               new_particle.pz = pz;
               //new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
               //is it possible for this to be too small or negative?

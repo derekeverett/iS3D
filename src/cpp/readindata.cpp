@@ -63,9 +63,13 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
   surfdat_stream << pathToInput << "/surface.dat";
   ifstream surfdat(surfdat_stream.str().c_str());
 
-
-  double Tmin = 1.0;  // 1 GeV
-  double Tmax = 0.0;  // 0 GeV
+  // average thermodynamic quantities on surface
+  double Tavg = 0.0;
+  double Eavg = 0.0;
+  double Pavg = 0.0;
+  double muBavg = 0.0; 
+  double nBavg = 0.0;
+  double total_surface_volume = 0.0; 
 
   for (long i = 0; i < length; i++)
   {
@@ -96,14 +100,16 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
 
     // thermodynamic quantities at freeze out
     surfdat >> dummy;
-    surf_ptr[i].E = dummy * hbarC; //energy density
+    double E = dummy * hbarC; //energy density
     surfdat >> dummy;
-    surf_ptr[i].T = dummy * hbarC; //Temperature
+    double T = dummy * hbarC; //temperature
     surfdat >> dummy;
-    surf_ptr[i].P = dummy * hbarC; //pressure
-
-    if(surf_ptr[i].T > Tmax) Tmax = surf_ptr[i].T;
-    if(surf_ptr[i].T < Tmin) Tmin = surf_ptr[i].T;
+    double P = dummy * hbarC; //pressure
+    
+    surf_ptr[i].E = E;
+    surf_ptr[i].T = T;
+    surf_ptr[i].P = P;
+    
 
     //file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
     // dissipative quantities at freeze out
@@ -131,31 +137,71 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surf_ptr[i].pinn = dummy * hbarC;
 
     surfdat >> dummy;
-    surf_ptr[i].bulkPi = dummy * hbarC; //bulk pressure
+    surf_ptr[i].bulkPi = dummy * hbarC; // bulk pressure
+
+    double muB = 0.0; // nonzero if include_baryon
+    double nB = 0.0;  // effectively defaulted to zero if no diffusion correction needed  (even if include_baryon)
 
     if (include_baryon)
     {
       surfdat >> dummy;
-      surf_ptr[i].muB = dummy * hbarC; //baryon chemical potential
+      muB = dummy * hbarC;              // baryon chemical potential
+      surf_ptr[i].muB = muB;
     }
     if (include_baryondiff_deltaf)
     {
-      surfdat >> dummy;
-      surf_ptr[i].nB = dummy * hbarC; //baryon density
-      surfdat >> dummy;
-      surf_ptr[i].Vt = dummy * hbarC; //four contravariant components of baryon diffusion vector
-      surfdat >> dummy;
-      surf_ptr[i].Vx = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].Vy = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].Vn = dummy * hbarC;
+      surfdat >> nB;                    // baryon density           
+      surf_ptr[i].nB = nB;
+      surfdat >> surf_ptr[i].Vt;        // four contravariant components of baryon diffusion vector
+      surfdat >> surf_ptr[i].Vx;
+      surfdat >> surf_ptr[i].Vy;
+      surfdat >> surf_ptr[i].Vn;        // fixed units on 10/8 (overlooked)
     }
+
+    // getting average thermodynamic quantities
+    double tau = surf_ptr[i].tau;
+    double ux = surf_ptr[i].ux;
+    double uy = surf_ptr[i].uy;
+    double un = surf_ptr[i].un;
+    double ut = sqrt(1.0 + ux * ux + uy * uy + tau * tau * un * un);  // enforce normalization
+    double dat = surf_ptr[i].dat;
+    double dax = surf_ptr[i].dax;
+    double day = surf_ptr[i].day;
+    double dan = surf_ptr[i].dan;
+
+    double udsigma = ut * dat + ux * dax + uy * day + un * dan; 
+    double dsigma_dsigma = dat * dat - dax * dax - day * day - dan * dan / (tau * tau); 
+    double dsigma_magnitude = fabs(udsigma) + sqrt(fabs(udsigma * udsigma - dsigma_dsigma)); 
+
+    total_surface_volume += dsigma_magnitude; 
+
+    Eavg += (E * dsigma_magnitude);
+    Tavg += (T * dsigma_magnitude);
+    Pavg += (P * dsigma_magnitude);
+    muBavg += (muB * dsigma_magnitude);
+    nBavg += (nB * dsigma_magnitude);
+    
   }
   surfdat.close();
 
-  printf("Tmin = %f GeV\n", Tmin);
-  printf("Tmax = %f GeV\n", Tmax);
+  Tavg /= total_surface_volume;
+  Eavg /= total_surface_volume;
+  Pavg /= total_surface_volume;
+  muBavg /= total_surface_volume;
+  nBavg /= total_surface_volume;
+
+  printf("Tavg = %f GeV\n", Tavg);
+  printf("Eavg = %f GeV/fm^3\n", Eavg);
+  printf("Pavg = %f GeV/fm^3\n", Pavg);
+  printf("muBavg = %f GeV\n", muBavg);
+  printf("nBavg = %f fm^-3\n", nBavg);
+
+  // write averaged thermodynamic quantities to file
+  ofstream thermal_average("average_thermodynamic_quantities.dat", ios_base::out);
+  thermal_average << setprecision(15) << Tavg << "\n" << Eavg << "\n" << Pavg << "\n" << muBavg << "\n" << nBavg;
+  thermal_average.close(); 
+
+
 
   return;
 }
@@ -233,16 +279,11 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
     }
     if (include_baryondiff_deltaf)
     {
-      surfdat >> dummy;
-      surf_ptr[i].nB = dummy * hbarC; //baryon density
-      surfdat >> dummy;
-      surf_ptr[i].Vt = dummy * hbarC; //four contravariant components of baryon diffusion vector
-      surfdat >> dummy;
-      surf_ptr[i].Vx = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].Vy = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].Vn = dummy * hbarC;
+      surfdat >> surf_ptr[i].nB;       //baryon density
+      surfdat >> surf_ptr[i].Vt;       //four contravariant components of baryon diffusion vector
+      surfdat >> surf_ptr[i].Vx;
+      surfdat >> surf_ptr[i].Vy;
+      surfdat >> surf_ptr[i].Vn;       // fixed units on 10/8 (overlooked)
     }
 
     //thermal vorticity w^\mu\nu , should be dimensionless...

@@ -154,8 +154,8 @@ public:
 
   // estimate total particle yield from freezeout surface -> number of events to sample
   double estimate_total_yield(double *, double *, double *, double *,
-  double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
-  int, double *, double *, double *, double *, double *, double *);
+  double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
+  int, double *, double *, double *, double *, double *, double *, double *);
 
   // sample momentum with feq + df
   lrf_momentum sample_momentum(double mass, double sign, double baryon, double T, double alphaB, dsigma_Vector ds, Shear_Stress_Tensor pimunu, double bulkPi, Baryon_Diffusion_Current Vmu, double shear_coeff);
@@ -176,7 +176,7 @@ public:
     double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *,
-    int, double *, double *, double *, double *, double *, double *);
+    int, double *, double *, double *, double *, double *, double *, double *);
 
   // sample particles with feqmod
   /*

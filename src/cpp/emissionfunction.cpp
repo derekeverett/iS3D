@@ -659,6 +659,18 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       Equilibrium_Density[ipart] = particle->equilibrium_density;
     }
 
+    // averaged thermodynamic quantities
+    double Tavg, Eavg, Pavg, muBavg, nBavg;
+    FILE * avg_thermo_file;
+    avg_thermo_file = fopen("average_thermodynamic_quantities.dat", "r");
+    if(avg_thermo_file == NULL) printf("Couldn't open average thermodynamic file\n");
+    fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg); 
+    fclose(avg_thermo_file);
+
+    double thermodynamic_average[5] = {Tavg, Eavg, Pavg, muBavg, nBavg};
+
+    //cout << Tavg << "\t" << Eavg << "\t" << Pavg << "\t" << muBavg << "\t" << nBavg << endl;
+
     // freezeout info
     FO_surf *surf = &surf_ptr[0];
 
@@ -919,8 +931,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               if(OVERSAMPLE)
               {
                 double Ntotal = estimate_total_yield(Mass, Sign, Degen, Baryon,
-                T, P, E, tau, ut, ux, uy, un, dat, dax, day, dan, bulkPi, muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+                tau, ut, ux, uy, un, dat, dax, day, dan, bulkPi, muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3, thermodynamic_average);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
@@ -932,7 +944,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               dat, dax, day, dan,
               pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
               muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3, thermodynamic_average);
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
@@ -1027,8 +1039,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               if(OVERSAMPLE)
               {
                 double Ntotal = estimate_total_yield(Mass, Sign, Degen, Baryon,
-                T, P, E, tau, ut, ux, uy, un, dat, dax, day, dan, bulkPi, muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+                tau, ut, ux, uy, un, dat, dax, day, dan, bulkPi, muB, nB, Vt, Vx, Vy, Vn, df_coeff,
+                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3, thermodynamic_average);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
@@ -1040,7 +1052,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               dat, dax, day, dan,
               pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
               muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
+              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3, thermodynamic_average);
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
