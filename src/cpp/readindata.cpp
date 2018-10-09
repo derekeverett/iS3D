@@ -22,6 +22,7 @@ FO_data_reader::FO_data_reader(ParameterReader* paraRdr_in, string path_in)
   pathToInput = path_in;
   mode = paraRdr->getVal("mode"); //this determines whether the file read in has viscous hydro dissipative currents or viscous anisotropic dissipative currents
   dimension = paraRdr->getVal("dimension");
+  df_mode = paraRdr->getVal("df_mode");
   include_baryon = paraRdr->getVal("include_baryon");
   include_bulk_deltaf = paraRdr->getVal("include_bulk_deltaf");
   include_shear_deltaf = paraRdr->getVal("include_shear_deltaf");
@@ -190,11 +191,11 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
   muBavg /= total_surface_volume;
   nBavg /= total_surface_volume;
 
-  printf("Tavg = %f GeV\n", Tavg);
-  printf("Eavg = %f GeV/fm^3\n", Eavg);
-  printf("Pavg = %f GeV/fm^3\n", Pavg);
-  printf("muBavg = %f GeV\n", muBavg);
-  printf("nBavg = %f fm^-3\n", nBavg);
+  // printf("Tavg = %f GeV\n", Tavg);
+  // printf("Eavg = %f GeV/fm^3\n", Eavg);
+  // printf("Pavg = %f GeV/fm^3\n", Pavg);
+  // printf("muBavg = %f GeV\n", muBavg);
+  // printf("nBavg = %f fm^-3\n", nBavg);
 
   // write averaged thermodynamic quantities to file
   ofstream thermal_average("average_thermodynamic_quantities.dat", ios_base::out);
@@ -634,7 +635,7 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
   return;
 }
 
-int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_ptr)
+int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_ptr, deltaf_coefficients df)
 {
   double eps = 1e-15;
   int Nparticle=0;
@@ -758,32 +759,106 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
   fclose(gla_file);
 
 
+  // average T and muB (GeV) (assumed to be ~ same for all cells)
+  double Tavg, Eavg, Pavg, muBavg, nBavg;
+  FILE * avg_thermo_file;
+  avg_thermo_file = fopen("average_thermodynamic_quantities.dat", "r");
+  if(avg_thermo_file == NULL) printf("Couldn't open average thermodynamic file\n");
+  fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg); 
+  fclose(avg_thermo_file);
+
+  double T = Tavg;       // GeV
+  double muB = muBavg;   // GeV
+  double E = Eavg;       // GeV / fm^3
+  double P = Pavg;       // GeV / fm^3
+  double nB = nBavg;     // fm^-3
+
+  double alphaB = muB / T; 
+  double baryon_enthalpy_ratio = nB / (E + P);
+
+
   // let's start with thermal density (finish this tomorrow)
 
   for(int i = 0; i < Nparticle; i++)
   {
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
-    double T = surf_ptr[0].T;
-    double alphaB = 0.0;
-    if(include_baryon) alphaB = surf_ptr[0].muB / surf_ptr[0].T;
-
+    
+    double mass = particle[i].mass;
     double degeneracy = (double)particle[i].gspin;
     double baryon = (double)particle[i].baryon;
     double sign = (double)particle[i].sign;
-    double mbar = particle[i].mass / T;
+    double mbar = mass / T;
 
+    // equilibrium density 
     double neq_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
-
-     //double N10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
-    //double J20_fact = degeneracy * pow(T,4) / two_pi2_hbarC3;
-
-    //double N10 = N10_fact * GaussThermal(N10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-    //double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
-
     double neq = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-    //double nlinear_correction = neq + (N10 * G) + (J20 * F / pow(T,2));
+
+    // bulk and diffusion density corrections
+    double dn_bulk = 0.0;
+    double dn_diff = 0.0; 
+
+    switch(df_mode)
+    {
+      case 1: // 14 moment (not sure what the status is)
+      {
+        double c0 = df.c0;
+        double c1 = df.c1;
+        double c2 = df.c2;
+        double c3 = df.c3;
+        double c4 = df.c4;
+
+        double J10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
+        double J20_fact = degeneracy * pow(T,4) / two_pi2_hbarC3;
+        double J30_fact = degeneracy * pow(T,5) / two_pi2_hbarC3;
+        double J31_fact = degeneracy * pow(T,5) / two_pi2_hbarC3 / 3.0;
+
+        double J10 =  J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+        double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+        // I don't have a = 3 yet (where did I make this file?)
+        //double J30 = J30_fact * GaussThermal(J30_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+        //double J31 = J31_fact * GaussThermal(J31_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+        double J30 = 0.0; 
+        double J31 = 0.0;
+
+        dn_bulk = ((c0 - c2) * mass * mass * J10 +  c1 * baryon * J20  +  (4.0 * c2 - c0) * J30);
+        // these coefficients need to be loaded.
+        // c3 ~ cV / V
+        // c4 ~ 2cW / V
+        dn_diff = baryon * c3 * neq * T  +  c4 * J31;   // not sure if this is right... 
+
+        break;
+      }
+      case 2: // Chapman-Enskog
+      case 3: // Modified
+      {
+        double F = df.F;
+        double G = df.G;
+        double betabulk = df.betabulk;
+        double betaV = df.betaV; 
+
+        double J10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
+        double J11_fact = degeneracy * pow(T,3) / two_pi2_hbarC3 / 3.0;
+        double J20_fact = degeneracy * pow(T,4) / two_pi2_hbarC3;
+
+        double J10 = J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+        double J11 = J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+        double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+
+        dn_bulk = (neq + (baryon * J10 * G) + (J20 * F / pow(T,2))) / betabulk;        
+        dn_diff = (neq * T * baryon_enthalpy_ratio  -  baryon * J11) / betaV;
+
+        break;
+      }
+      default:
+      {
+        cout << "Please choose df_mode = 1,2,3 in parameters.dat" << endl;
+        exit(-1);
+      }
+    } // df_mode 
 
     particle[i].equilibrium_density = neq;
+    particle[i].bulk_density = dn_bulk;
+    particle[i].diff_density = dn_diff; 
 
   }
 

@@ -35,7 +35,7 @@ Lab_Momentum::Lab_Momentum(lrf_momentum pLRF_in)
     pz_LRF = pLRF_in.z;
 }
 
-void Lab_Momentum::boost_pLRF_to_lab_frame(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un)
+void Lab_Momentum::boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut, double ux, double uy, double un)
 {
     double Xt = basis_vectors.Xt;   double Yx = basis_vectors.Yx;
     double Xx = basis_vectors.Xx;   double Yy = basis_vectors.Yy;
@@ -627,7 +627,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   //*********************************************************************************************
   void EmissionFunctionArray::calculate_spectra()
   {
-    cout << "calculate_spectra() has started ";
+    cout << "calculate_spectra() has started:\n\n";
     #ifdef _OPENMP
     //double sec = omp_get_wtime();
     #endif
@@ -636,9 +636,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     //fill arrays with all particle info and freezeout info to pass to function which will perform the integral
 
+    printf("Loading particle and freezeout surface arrays...\n");
+
     //particle info
     particle_info *particle;
-    double *Mass, *Sign, *Degen, *Baryon, *Equilibrium_Density;
+    double *Mass, *Sign, *Degen, *Baryon, *Equilibrium_Density, *Bulk_Density, *Diffusion_Density;
     int *MCID;
     Mass = (double*)calloc(number_of_chosen_particles, sizeof(double));
     Sign = (double*)calloc(number_of_chosen_particles, sizeof(double));
@@ -646,6 +648,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     Baryon = (double*)calloc(number_of_chosen_particles, sizeof(double));
     MCID = (int*)calloc(number_of_chosen_particles, sizeof(int));
     Equilibrium_Density = (double*)calloc(number_of_chosen_particles, sizeof(double));
+    Bulk_Density = (double*)calloc(number_of_chosen_particles, sizeof(double));
+    Diffusion_Density = (double*)calloc(number_of_chosen_particles, sizeof(double));
 
     for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
@@ -657,6 +661,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       Baryon[ipart] = particle->baryon;
       MCID[ipart] = particle->mc_id;
       Equilibrium_Density[ipart] = particle->equilibrium_density;
+      Bulk_Density[ipart] = particle->bulk_density;
+      Diffusion_Density[ipart] = particle->diff_density;
     }
 
     // averaged thermodynamic quantities
@@ -857,6 +863,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
+   
+
     // for sampling and modified thermal spectra
     // read in gauss laguerre roots and weights
     // for gauss laguerre quadrature
@@ -896,6 +904,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     double df_coeff[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
 
+
+
     if(MODE == 1) // viscous hydro
     {
       switch(DF_MODE)
@@ -908,12 +918,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[3] = df.c3;
           df_coeff[4] = df.c4;
 
-          // print coefficients
-          printf("\nc0 = %f\n", df_coeff[0]);
-          printf("c1 = %f\n", df_coeff[1]);
-          printf("c2 = %f\n", df_coeff[2]);
-          printf("c3 = %f\n", df_coeff[3]);
-          printf("c4 = %f\n", df_coeff[4]);
+          // // print coefficients
+          // printf("\nc0 = %f\n", df_coeff[0]);
+          // printf("c1 = %f\n", df_coeff[1]);
+          // printf("c2 = %f\n", df_coeff[2]);
+          // printf("c3 = %f\n", df_coeff[3]);
+          // printf("c4 = %f\n", df_coeff[4]);
 
           switch(OPERATION)
           {
@@ -930,21 +940,19 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               if(OVERSAMPLE)
               {
-                double Ntotal = estimate_total_yield(Mass, Sign, Degen, Baryon,
-                tau, ut, ux, uy, un, dat, dax, day, dan, bulkPi, muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3, thermodynamic_average);
+                double Ntotal = estimate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density,
+                tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
 
               particle_event_list.resize(Nevents);
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density,
+              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density,
               T, P, E, tau, x, y, eta, ut, ux, uy, un,
               dat, dax, day, dan,
               pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3, thermodynamic_average);
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
@@ -968,12 +976,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[3] = df.betaV;
           df_coeff[4] = df.betapi;
 
-          // print coefficients
-          printf("\nF = %f\n", df_coeff[0]);
-          printf("G = %f\n", df_coeff[1]);
-          printf("betabulk = %f\n", df_coeff[2]);
-          printf("betaV = %f\n", df_coeff[3]);
-          printf("betapi = %f\n", df_coeff[4]);
+          // // print coefficients
+          // printf("\nF = %f\n", df_coeff[0]);
+          // printf("G = %f\n", df_coeff[1]);
+          // printf("betabulk = %f\n", df_coeff[2]);
+          // printf("betaV = %f\n", df_coeff[3]);
+          // printf("betapi = %f\n", df_coeff[4]);
 
           switch(OPERATION)
           {
@@ -1015,11 +1023,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[4] = df.betapi;
 
           // print coefficients
-          printf("\nF = %f\n", df_coeff[0]);
-          printf("G = %f\n", df_coeff[1]);
-          printf("betabulk = %f\n", df_coeff[2]);
-          printf("betaV = %f\n", df_coeff[3]);
-          printf("betapi = %f\n", df_coeff[4]);
+          // printf("\nF = %f\n", df_coeff[0]);
+          // printf("G = %f\n", df_coeff[1]);
+          // printf("betabulk = %f\n", df_coeff[2]);
+          // printf("betaV = %f\n", df_coeff[3]);
+          // printf("betapi = %f\n", df_coeff[4]);
 
           switch(OPERATION)
           {
@@ -1034,25 +1042,24 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             }
             case 2: // sample
             {
-              printf("sampling particles with feqmod...\n");
 
               if(OVERSAMPLE)
               {
-                double Ntotal = estimate_total_yield(Mass, Sign, Degen, Baryon,
-                tau, ut, ux, uy, un, dat, dax, day, dan, bulkPi, muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-                pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3, thermodynamic_average);
+                double Ntotal = estimate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density,
+                tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
 
               particle_event_list.resize(Nevents);
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density,
+              printf("Sampling particles with feqmod...\n");
+
+              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density,
               T, P, E, tau, x, y, eta, ut, ux, uy, un,
               dat, dax, day, dan,
               pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3, thermodynamic_average);
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
@@ -1112,8 +1119,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       dat, dax, day, dan,
       wtx, wty, wtn, wxy, wxn, wyn);
 
-    printline();
-
 
     //write the results to file
     if (OPERATION == 1)
@@ -1137,7 +1142,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     if (MODE == 5) write_polzn_vector_toFile();
 
-    cout << "Freeing freezeout surface memory.." << endl;
+    cout << "Freeing freezeout surface memory..." << endl;
     // free memory
     free(Mass);
     free(Sign);
@@ -1214,5 +1219,5 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     //sec = omp_get_wtime() - sec;
     #endif
     sw.toc();
-    cout << "calculate_spectra() took " << sw.takeTime() << " seconds." << endl;
+    cout << "\ncalculate_spectra() took " << sw.takeTime() << " seconds." << endl;
   }

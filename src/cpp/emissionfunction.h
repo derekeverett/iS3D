@@ -14,14 +14,6 @@ using namespace std;
 
 typedef struct
 {
-  double t;   // dsigmaLRF.t
-  double x;   // dsigmaLRF.x
-  double y;   // dsigmaLRF.y
-  double z;   // dsigmaLRF.z
-} lrf_dsigma;
-
-typedef struct
-{
   double E;   // u.p
   double x;   // pLRF.x
   double y;   // pLRF.y
@@ -39,7 +31,7 @@ class Lab_Momentum
     // constructor
     Lab_Momentum(lrf_momentum pLRF_in);
     // boost pLRF to the lab frame
-    void boost_pLRF_to_lab_frame(Milne_Basis_Vectors basis_vectors, double ut, double ux, double uy, double un);
+    void boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut, double ux, double uy, double un);
 
 };
 
@@ -52,7 +44,7 @@ typedef struct
   double slope;
 } MT_fit_parameters;
 
-// thermal particle density (expanding BE/FD distributions)
+// thermal particle density (don't need anymore...expanding BE/FD distributions)
 double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem, double mbar, int jmax, double two_pi2_hbarC3);
 
 
@@ -153,31 +145,27 @@ public:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
   // estimate total particle yield from freezeout surface -> number of events to sample
-  double estimate_total_yield(double *, double *, double *, double *,
-  double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
-  int, double *, double *, double *, double *, double *, double *, double *);
+  double estimate_total_yield(double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo);
 
   // sample momentum with feq + df
-  lrf_momentum sample_momentum(double mass, double sign, double baryon, double T, double alphaB, dsigma_Vector ds, Shear_Stress_Tensor pimunu, double bulkPi, Baryon_Diffusion_Current Vmu, double shear_coeff);
+  lrf_momentum sample_momentum(long * pk_acceptances, long * pk_samples, long * angle_acceptances, long * angle_samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double shear_coeff, double baryon_enthalpy_ratio);
 
   // sample momentum with feqmod
-  lrf_momentum sample_momentum_feqmod(double mass, double sign, double baryon, double T_mod, double alphaB_mod, dsigma_Vector ds, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
+  lrf_momentum sample_momentum_feqmod(long * mod_acceptances, long * mod_samples, double mass, double sign, double baryon, double T_mod, double alphaB_mod, Surface_Element_Vector dsigma, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
 
   // computes rvisc weight df correction
-  double compute_df_weight(lrf_momentum pLRF, double mass, double sign, double baryon, double T, double alphaB, Shear_Stress_Tensor pimunu, double bulkPi, Baryon_Diffusion_Current Vmu, double shear_coeff);
+  double compute_df_weight(lrf_momentum pLRF, double mass, double sign, double baryon, double T, double alphaB, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double shear_coeff, double baryon_enthalpy_ratio);
 
   // momentum rescaling (used by feqmod momentum sampler)
-  lrf_momentum rescale_momentum(lrf_momentum pmod, double mass_squared, double baryon, Shear_Stress_Tensor pimunu, Baryon_Diffusion_Current Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
+  lrf_momentum rescale_momentum(lrf_momentum pmod, double mass_squared, double baryon, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
 
 
   // sample particles with feq + df or feqmod
-  void sample_dN_pTdpTdphidy(double *, double *, double *, double *, int *, double *,
-    double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
-    double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *, double *,
-    int, double *, double *, double *, double *, double *, double *, double *);
-
+  void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density,
+  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
+  double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
+  double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo,
+  double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average);
   // sample particles with feqmod
   /*
   void sample_dN_pTdpTdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
