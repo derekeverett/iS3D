@@ -34,6 +34,19 @@ int main(int argc, char *argv[])
 
   string pathToInput = "input";
 
+  // cout << atan2(0,1) << endl;
+  // cout << atan2(1,1) << endl;
+  // cout << atan2(1,0) << endl;
+  // cout << atan2(1,-1) << endl;
+  // cout << atan2(0,-1) << endl;
+  // cout << atan2(-1,-1) + 2.0*M_PI << endl;
+  // cout << atan2(-1,0) + 2.0*M_PI << endl;
+  // cout << atan2(-1,1) + 2.0*M_PI << endl;
+  // cout << atan2(-0.0001,0.9999) + 2.0*M_PI  << endl;
+
+  // exit(-1);
+
+
   // load freeze out information
   FO_data_reader freeze_out_data(paraRdr, pathToInput);
 
@@ -69,7 +82,7 @@ int main(int argc, char *argv[])
   Table pT_tab("tables/pT_single_table.dat"); // pT value and weight table
   Table phi_tab("tables/phi_0_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
-  Table eta_tab("tables/eta_trapezoid_table_41pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
+  Table eta_tab("tables/eta_trapezoid_table_57pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
 
   //efa.do_resonance_decays(particle_data);

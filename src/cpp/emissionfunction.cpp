@@ -559,29 +559,36 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   {
     printf("Writing sampled momentum list to file...\n");
 
+    ofstream spectraFile("results/momentum_list.dat", ios_base::out);
+
+    //write the header
+    spectraFile << "y" << "\t" << "phi_over_pi" << "\t" << "pT" << "\n";
+
     for(int ievent = 0; ievent < Nevents; ievent++)
     {
-      char filename[255] = "";
-      sprintf(filename, "results/momentum_list_%d.dat", ievent + 1);
+      int N = particle_event_list[ievent].size();
 
-      //ofstream spectraFile(filename, ios_base::app);
-      ofstream spectraFile(filename, ios_base::out);
-
-      int num_particles = particle_event_list[ievent].size();
-
-      //write the header
-      spectraFile << "E" << "\t" << "px" << "\t" << "py" << "\t" << "pz" << "\n";
-
-      for(int ipart = 0; ipart < num_particles; ipart++)
+      for(int n = 0; n < N; n++)
       {
-        double E = particle_event_list[ievent][ipart].E;
-        double px = particle_event_list[ievent][ipart].px;
-        double py = particle_event_list[ievent][ipart].py;
-        double pz = particle_event_list[ievent][ipart].pz;
-        spectraFile << scientific <<  setw(5) << setprecision(8) << E << "\t" << px << "\t" << py << "\t" << pz << "\n";
+        double E = particle_event_list[ievent][n].E;
+        double px = particle_event_list[ievent][n].px;
+        double py = particle_event_list[ievent][n].py;
+        double pz = particle_event_list[ievent][n].pz;
+
+        double y = 0.5 * log((E + pz) / (E - pz));
+        double phi_over_pi = atan2(py, px) / M_PI;
+        if(phi_over_pi < 0.0) phi_over_pi += 2.0;
+        double pT = sqrt(px * px + py * py);
+
+        double yCut = 5.0;  // rapidity cut
+        if(fabs(y) <= yCut)
+        {
+          spectraFile << scientific <<  setw(5) << setprecision(6) << y << "\t" << phi_over_pi << "\t" << pT << "\n";
+        }
+        
       }//ipart
-      spectraFile.close();
     } // ievent
+    spectraFile.close();
   }
 
 /*
@@ -992,14 +999,21 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             }
             case 2: // sample
             {
-              /*
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID,
-              T, P, E, tau, x, y, eta, ut, ux, uy, un,
-              dat, dax, day, dan,
-              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff,
-              pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2, pbar_root3, pbar_weight3);
-              */
+              if(OVERSAMPLE)
+              {
+                double Ntotal = estimate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density,
+                tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn);
+
+                Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
+              }
+
+              particle_event_list.resize(Nevents);
+
+              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
+
+              //write_particle_list_toFile();
+              //write_particle_list_OSC();
+              write_momentum_list_toFile();
               break;
             }
             default:

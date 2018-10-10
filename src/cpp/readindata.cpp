@@ -738,24 +738,30 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
    // set Gauss Laguerre roots-weights
   FILE * gla_file;
   char header[300];
-  gla_file = fopen("gla12_roots_weights_64_pts.dat", "r");
+  gla_file = fopen("tables/gla123_roots_weights_64_pts.dat", "r");
   if(gla_file == NULL) printf("Couldn't open Gauss-Laguerre roots/weights file\n");
 
   int pbar_pts;
-  fscanf(gla_file, "%d\n", &pbar_pts);  // get # quadrature pts
 
+  // get # quadrature pts
+  fscanf(gla_file, "%d\n", &pbar_pts);
+
+  // Gauss Laguerre roots-weights
   double pbar_root1[pbar_pts];
   double pbar_weight1[pbar_pts];
   double pbar_root2[pbar_pts];
   double pbar_weight2[pbar_pts];
+  double pbar_root3[pbar_pts];
+  double pbar_weight3[pbar_pts];
 
-  fgets(header, 100, gla_file);        // skip the next 2 headers
+  // skip the next 2 headers
+  fgets(header, 100, gla_file);
   fgets(header, 100, gla_file);
 
-  for(int i = 0; i < pbar_pts; i++)    // load roots/weights
-  {
-    fscanf(gla_file, "%lf\t\t%lf\t\t%lf\t\t%lf\n", &pbar_root1[i], &pbar_weight1[i], &pbar_root2[i], &pbar_weight2[i]);
-  }
+  // load roots/weights
+  for (int i = 0; i < pbar_pts; i++) fscanf(gla_file, "%lf\t\t%lf\t\t%lf\t\t%lf\t\t%lf\t\t%lf\n", &pbar_root1[i], &pbar_weight1[i], &pbar_root2[i], &pbar_weight2[i], &pbar_root3[i], &pbar_weight3[i]);
+
+  // close file
   fclose(gla_file);
 
 
@@ -814,11 +820,8 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
 
         double J10 =  J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
         double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
-        // I don't have a = 3 yet (where did I make this file?)
-        //double J30 = J30_fact * GaussThermal(J30_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
-        //double J31 = J31_fact * GaussThermal(J31_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
-        double J30 = 0.0; 
-        double J31 = 0.0;
+        double J30 = J30_fact * GaussThermal(J30_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+        double J31 = J31_fact * GaussThermal(J31_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
 
         dn_bulk = ((c0 - c2) * mass * mass * J10 +  c1 * baryon * J20  +  (4.0 * c2 - c0) * J30);
         // these coefficients need to be loaded.

@@ -93,6 +93,9 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
     }
   }
 
+  // did I make a mistake here? 
+
+
   // df corrections
   double df_shear = 0.0;
   double df_shear_max = 0.0;
@@ -116,18 +119,19 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
 
     if(DF_MODE == 1)
     {
-      df_shear = feqbar * pimunu_pmu_pnu / shear14_coeff;
-      df_shear_max = sign_factor * E * E * pi_magnitude / shear14_coeff;
+      df_shear = pimunu_pmu_pnu / shear14_coeff;
+      df_shear_max = E * E * pi_magnitude / shear14_coeff;
     }
-    else if(DF_MODE == 2)
+    else if(DF_MODE == 2) 
     {
       df_shear = pimunu_pmu_pnu / (2.0 * E * betapi * T);
       df_shear_max = E * pi_magnitude / (2.0 * fabs(betapi) * T);
     }
   }
+
   if(INCLUDE_BULK_DELTAF)
   {
-    double bulkPi_magnitude = fabs(bulkPi);
+    double bulkPi_magnitude = fabs(bulkPi); // this might not work for bulk since it's isotropic in angle 
 
     if(DF_MODE == 1)
     {
@@ -137,11 +141,11 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
     else if(DF_MODE == 2)
     {
       double T2 = T * T;
-
       df_bulk = (baryon * G + F * E / T2 + (E - mass_squared / E) / (3.0 * T)) * bulkPi / betabulk;
       df_bulk_max = (fabs(baryon * G) + fabs(F) * E / T2 + (E - mass_squared / E) / (3.0 * T)) * bulkPi_magnitude / fabs(betabulk);
     }
   }
+
   if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
   {
     // Vmu LRF components
@@ -317,7 +321,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum(long * pk_acceptances, long 
 
     double phi = phi_distribution(generator);
     double costheta = costheta_distribution(generator);
-    double sintheta = sqrt(1.0 - costheta * costheta);
+    double sintheta = sqrt(fabs(1.0 - costheta * costheta));
 
     // pLRF components
     pLRF.E = E;
