@@ -670,7 +670,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     FILE * avg_thermo_file;
     avg_thermo_file = fopen("average_thermodynamic_quantities.dat", "r");
     if(avg_thermo_file == NULL) printf("Couldn't open average thermodynamic file\n");
-    fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg); 
+    fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg);
     fclose(avg_thermo_file);
 
     double thermodynamic_average[5] = {Tavg, Eavg, Pavg, muBavg, nBavg};
@@ -863,7 +863,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
-   
+
 
     // for sampling and modified thermal spectra
     // read in gauss laguerre roots and weights
@@ -948,11 +948,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               particle_event_list.resize(Nevents);
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density,
-              T, P, E, tau, x, y, eta, ut, ux, uy, un,
-              dat, dax, day, dan,
-              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff, thermodynamic_average);
+              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
@@ -1055,11 +1051,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               printf("Sampling particles with feqmod...\n");
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density,
-              T, P, E, tau, x, y, eta, ut, ux, uy, un,
-              dat, dax, day, dan,
-              pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff, thermodynamic_average);
+              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
