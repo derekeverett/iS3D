@@ -585,7 +585,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         {
           spectraFile << scientific <<  setw(5) << setprecision(6) << y << "\t" << phi_over_pi << "\t" << pT << "\n";
         }
-        
+
       }//ipart
     } // ievent
     spectraFile.close();
@@ -955,7 +955,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               particle_event_list.resize(Nevents);
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
+               printf("Sampling particles with df 14 moment...\n");
+
+              // set the seed and generator
+              unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+              default_random_engine generator(seed);
+
+              sample_dN_pTdpTdphidy(generator, Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
@@ -1009,7 +1015,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               particle_event_list.resize(Nevents);
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
+              printf("Sampling particles with df Chapman Enskog...\n");
+
+              // set the seed and generator
+              unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+              default_random_engine generator(seed);
+
+              sample_dN_pTdpTdphidy(generator, Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
@@ -1065,7 +1077,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               printf("Sampling particles with feqmod...\n");
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
+              // set the seed and generator
+              unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+              default_random_engine generator(seed);
+
+              sample_dN_pTdpTdphidy(generator, Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
