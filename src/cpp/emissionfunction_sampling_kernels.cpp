@@ -51,9 +51,9 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
 {
   // pLRF components
   double E = pLRF.E;
-  double px = pLRF.x;
-  double py = pLRF.y;
-  double pz = pLRF.z;
+  double px = pLRF.px;
+  double py = pLRF.py;
+  double pz = pLRF.pz;
 
   double feqbar = 1.0 - sign / (exp(E/T) + sign);   // 1 - sign . feq (bosons, fermions have sign = -1, 1)
   double sign_factor = (3.0 - sign) / 2.0;          // 1 for fermions, 2 for bosons
@@ -304,11 +304,11 @@ lrf_momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
 
     // pLRF components
     pLRF.E = E;
-    pLRF.x = p * sintheta * cos(phi);
-    pLRF.y = p * sintheta * sin(phi);
-    pLRF.z = p * costheta;
+    pLRF.px = p * sintheta * cos(phi);
+    pLRF.py = p * sintheta * sin(phi);
+    pLRF.pz = p * costheta;
 
-    double pdsigma_abs = fabs(E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
+    double pdsigma_abs = fabs(E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
     double rideal = pdsigma_abs / (E * ds_magnitude);
 
     double rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
@@ -338,9 +338,9 @@ lrf_momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
 lrf_momentum EmissionFunctionArray::rescale_momentum(lrf_momentum pmod, double mass_squared, double baryon, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio)
 {
     double Emod = pmod.E;
-    double pxmod = pmod.x;
-    double pymod = pmod.y;
-    double pzmod = pmod.z;
+    double pxmod = pmod.px;
+    double pymod = pmod.py;
+    double pzmod = pmod.pz;
 
     // LRF shear stress components
     double pixx = pimunu.pixx_LRF;
@@ -359,15 +359,15 @@ lrf_momentum EmissionFunctionArray::rescale_momentum(lrf_momentum pmod, double m
     lrf_momentum pLRF;
 
     // Default ideal (no viscous corrections)
-    pLRF.x = pxmod;
-    pLRF.y = pymod;
-    pLRF.z = pzmod;
+    pLRF.px = pxmod;
+    pLRF.py = pymod;
+    pLRF.pz = pzmod;
 
     // rescale momentum with viscous transformation M(pmod):
-    pLRF.x += (shear_coeff * (pixx * pxmod + pixy * pymod + pixz * pzmod) + bulk_coeff * pxmod + diff_coeff * Vx);
-    pLRF.y += (shear_coeff * (pixy * pxmod + piyy * pymod + piyz * pzmod) + bulk_coeff * pymod + diff_coeff * Vy);
-    pLRF.z += (shear_coeff * (pixz * pxmod + piyz * pymod + pizz * pzmod) + bulk_coeff * pzmod + diff_coeff * Vz);
-    pLRF.E = sqrt(mass_squared + pLRF.x * pLRF.x + pLRF.y * pLRF.y + pLRF.z * pLRF.z);
+    pLRF.px += (shear_coeff * (pixx * pxmod + pixy * pymod + pixz * pzmod) + bulk_coeff * pxmod + diff_coeff * Vx);
+    pLRF.py += (shear_coeff * (pixy * pxmod + piyy * pymod + piyz * pzmod) + bulk_coeff * pymod + diff_coeff * Vy);
+    pLRF.pz += (shear_coeff * (pixz * pxmod + piyz * pymod + pizz * pzmod) + bulk_coeff * pzmod + diff_coeff * Vz);
+    pLRF.E = sqrt(mass_squared + pLRF.px * pLRF.px + pLRF.py * pLRF.py + pLRF.pz * pLRF.pz);
 
     return pLRF;
 }
@@ -421,14 +421,14 @@ lrf_momentum EmissionFunctionArray::sample_momentum_feqmod(default_random_engine
 
       // modified pLRF components
       pLRF_mod.E = E_mod;
-      pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
-      pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
-      pLRF_mod.z = p_mod * costheta_mod;
+      pLRF_mod.px = p_mod * sintheta_mod * cos(phi_mod);
+      pLRF_mod.py = p_mod * sintheta_mod * sin(phi_mod);
+      pLRF_mod.pz = p_mod * costheta_mod;
 
       // momentum rescaling
       pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
 
-      double pdsigma_abs = fabs(pLRF.E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
+      double pdsigma_abs = fabs(pLRF.E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
       double rideal = pdsigma_abs / (pLRF.E * ds_magnitude);
 
       //here the pion weight should include the Bose enhancement factor
@@ -525,14 +525,14 @@ lrf_momentum EmissionFunctionArray::sample_momentum_feqmod(default_random_engine
       double sintheta_mod = sqrt(1.0 - costheta_mod * costheta_mod);
 
       pLRF_mod.E = E_mod;
-      pLRF_mod.x = p_mod * sintheta_mod * cos(phi_mod);
-      pLRF_mod.y = p_mod * sintheta_mod * sin(phi_mod);
-      pLRF_mod.z = p_mod * costheta_mod;
+      pLRF_mod.px = p_mod * sintheta_mod * cos(phi_mod);
+      pLRF_mod.py = p_mod * sintheta_mod * sin(phi_mod);
+      pLRF_mod.pz = p_mod * costheta_mod;
 
       // momentum rescaling
       pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
 
-      double pdsigma_abs = fabs(pLRF.E * dst - pLRF.x * dsx - pLRF.y * dsy - pLRF.z * dsz);
+      double pdsigma_abs = fabs(pLRF.E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
       double rideal = pdsigma_abs / (pLRF.E * ds_magnitude);
 
       double weight_heavy = rideal * (p_mod / E_mod) * exp(E_mod / T_mod) / (exp(E_mod / T_mod) + sign);

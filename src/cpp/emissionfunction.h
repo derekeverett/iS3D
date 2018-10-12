@@ -16,24 +16,27 @@ using namespace std;
 typedef struct
 {
   double E;   // u.p
-  double x;   // pLRF.x
-  double y;   // pLRF.y
-  double z;   // pLRF.z
+  double px;   // pLRF.x
+  double py;   // pLRF.y
+  double pz;   // pLRF.z
 } lrf_momentum;
 
 class Lab_Momentum
 {
-  private:
-    double E_LRF, px_LRF, py_LRF, pz_LRF; // LRF momentum components
+  private:                    // LRF momentum components
+    double E_LRF;
+    double px_LRF;
+    double py_LRF;
+    double pz_LRF;
 
   public:                     // contravariant lab frame momentum p^mu (milne):
-    double ptau, px, py, pn;  // p^tau, p^x, p^y, p^eta
+    double ptau;              // p^tau
+    double px;                // p^x
+    double py;                // p^y
+    double pn;                // p^eta
 
-    // constructor
     Lab_Momentum(lrf_momentum pLRF_in);
-    // boost pLRF to the lab frame
     void boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut, double ux, double uy, double un);
-
 };
 
 typedef struct

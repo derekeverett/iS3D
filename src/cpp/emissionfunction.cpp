@@ -30,9 +30,9 @@ using namespace std;
 Lab_Momentum::Lab_Momentum(lrf_momentum pLRF_in)
 {
     E_LRF = pLRF_in.E;
-    px_LRF = pLRF_in.x;
-    py_LRF = pLRF_in.y;
-    pz_LRF = pLRF_in.z;
+    px_LRF = pLRF_in.px;
+    py_LRF = pLRF_in.py;
+    pz_LRF = pLRF_in.pz;
 }
 
 void Lab_Momentum::boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut, double ux, double uy, double un)
