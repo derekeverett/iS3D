@@ -154,7 +154,7 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
   //double viscous_weight = (1.0 + df) / (1.0 + df_max);
 
   if(fabs(df) > 1.0) df = max(-1.0, min(df, 1.0));
-  
+
 
   // regulate df
   //if(fabs(df) > 1.0) viscous_weight = (1.0 + max(-1.0, min(df, 1.0))) / (1.0 + min(df_max, 1.0));
@@ -201,7 +201,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       double l3 = log(r3);
 
       double p = - T * (l1 + l2 + l3);
-      double phi = 2.0 * M_PI * pow((l1 + l2) / (l1 + l2 + l3), 2);   
+      double phi = 2.0 * M_PI * pow((l1 + l2) / (l1 + l2 + l3), 2);
       double costheta = (l1 - l2) / (l1 + l2);
 
       double E = sqrt(p * p + mass_squared);
@@ -229,7 +229,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
 
       double rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
 
-  
+
 
       double weight_light = exp(p/T) / (exp(E/T) + sign) * rideal * rvisc;
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -786,7 +786,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
 
 
 
-void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo,double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average)
+void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average)
   {
     int npart = number_of_chosen_particles;
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
@@ -967,19 +967,24 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       // set milne basis vectors
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
 
-      double Xt = basis_vectors.Xt;
-      double Xx = basis_vectors.Xx;
-      double Xy = basis_vectors.Xy;
-      double Xn = basis_vectors.Xn;
-      double Yx = basis_vectors.Yx;
-      double Yy = basis_vectors.Yy;
-      double Zt = basis_vectors.Zt;
-      double Zn = basis_vectors.Zn;
-
+      // tested orthogonality:
+      // double Xt = basis_vectors.Xt;
+      // double Xx = basis_vectors.Xx;
+      // double Xy = basis_vectors.Xy;
+      // double Xn = basis_vectors.Xn;
+      // double Yx = basis_vectors.Yx;
+      // double Yy = basis_vectors.Yy;
+      // double Zt = basis_vectors.Zt;
+      // double Zn = basis_vectors.Zn;
 
       //cout << setprecision(15) << Xt * Xt - Xx * Xx - Xy * Xy - tau2 * Xn * Xn << endl;
       //cout << setprecision(15) << - Yx * Yx - Yy * Yy << endl;
       //cout << setprecision(15) << Zt * Zt - tau2 * Zn * Zn << endl;
+      //cout << setprecision(15) << Xt * ut - Xx * ux - Xy * uy - tau2 * Xn * un << endl;
+      //cout << setprecision(15) << -Xx * Yx - Xy * Yy << endl;
+      //cout << setprecision(15) << Xt * Zt - tau2 * Xn * Zn << endl;
+      //cout << setprecision(15) << - Yx * ux - Yy * uy << endl;
+      //cout << setprecision(15) << Zt * ut - tau2 * Zn * un << endl;
 
       // dsigma / delta_eta_weight class
       Surface_Element_Vector dsigma(dat, dax, day, dan);
