@@ -62,11 +62,11 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
 
   // df corrections
   double df_shear = 0.0;
-  double df_shear_max = 0.0;
+  //double df_shear_max = 0.0;
   double df_bulk = 0.0;
-  double df_bulk_max = 0.0;
+  //double df_bulk_max = 0.0;
   double df_diff = 0.0;
-  double df_diff_max = 0.0;
+  //double df_diff_max = 0.0;
 
   if(INCLUDE_SHEAR_DELTAF)
   {
@@ -84,20 +84,20 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
     if(DF_MODE == 1)
     {
       df_shear = pimunu_pmu_pnu / shear14_coeff;
-      df_shear_max = E * E * pi_magnitude / shear14_coeff;
+      //df_shear_max = E * E * pi_magnitude / shear14_coeff;
     }
     else if(DF_MODE == 2)
     {
       double betapi = df_coeff[4];
 
       df_shear = pimunu_pmu_pnu / (2.0 * E * betapi * T);
-      df_shear_max = E * pi_magnitude / (2.0 * fabs(betapi) * T);
+      //df_shear_max = E * pi_magnitude / (2.0 * fabs(betapi) * T);
     }
   }
 
   if(INCLUDE_BULK_DELTAF)
   {
-    double bulkPi_magnitude = fabs(bulkPi); // this might not work for bulk since it's isotropic in angle
+    double bulkPi_magnitude = fabs(bulkPi); 
 
     if(DF_MODE == 1)
     {
@@ -106,7 +106,7 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
       double c2 = df_coeff[2];
 
       df_bulk = ((c0 - c2) * mass_squared + (baryon * c1 + (4.0 * c2 - c0) * E) * E) * bulkPi;
-      df_bulk_max = (fabs((c0 - c2)) * mass_squared + (fabs(baryon * c1) + fabs((4.0 * c2 - c0)) * E) * E) * bulkPi_magnitude;
+      //df_bulk_max = (fabs((c0 - c2)) * mass_squared + (fabs(baryon * c1) + fabs((4.0 * c2 - c0)) * E) * E) * bulkPi_magnitude;
     }
     else if(DF_MODE == 2)
     {
@@ -116,7 +116,7 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
 
       double T2 = T * T;
       df_bulk = (baryon * G + F * E / T2 + (E - mass_squared / E) / (3.0 * T)) * bulkPi / betabulk;
-      df_bulk_max = (fabs(baryon * G) + fabs(F) * E / T2 + (E - mass_squared / E) / (3.0 * T)) * bulkPi_magnitude / fabs(betabulk);
+      //df_bulk_max = (fabs(baryon * G) + fabs(F) * E / T2 + (E - mass_squared / E) / (3.0 * T)) * bulkPi_magnitude / fabs(betabulk);
     }
   }
 
@@ -136,35 +136,33 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
       double c4 = df_coeff[4];
 
       df_diff = (baryon * c3 + c4 * E) * Vmu_pmu;
-      df_diff_max = (fabs(baryon * c3) + fabs(c4) * E) * E * V_magnitude;
+      //df_diff_max = (fabs(baryon * c3) + fabs(c4) * E) * E * V_magnitude;
     }
     else if(DF_MODE == 2)
     {
       double betaV = df_coeff[3];
 
       df_diff = (baryon_enthalpy_ratio - baryon / E) * Vmu_pmu / betaV;
-      df_diff_max = (fabs(baryon_enthalpy_ratio) * E - fabs(baryon)) * V_magnitude / fabs(betaV);
+      //df_diff_max = (fabs(baryon_enthalpy_ratio) * E - fabs(baryon)) * V_magnitude / fabs(betaV);
     }
   }
 
   double df = feqbar * (df_shear + df_bulk + df_diff);
   //double df_max = sign_factor * (df_shear_max + df_bulk_max + df_diff_max);
 
-
-  //double viscous_weight = (1.0 + df) / (1.0 + df_max);
-
-  if(fabs(df) > 1.0) df = max(-1.0, min(df, 1.0));
-
-
-  // regulate df
-  //if(fabs(df) > 1.0) viscous_weight = (1.0 + max(-1.0, min(df, 1.0))) / (1.0 + min(df_max, 1.0));
+  if(fabs(df) > 1.0) df = max(-1.0, min(df, 1.0));  // regulate df
 
   return (1.0 + df) / 2.0;
 
+  //double viscous_weight = (1.0 + df) / (1.0 + df_max);
+  //if(fabs(df) > 1.0) viscous_weight = (1.0 + max(-1.0, min(df, 1.0))) / (1.0 + min(df_max, 1.0));
+  //return viscous_weight
 }
 
 lrf_momentum EmissionFunctionArray::sample_momentum(default_random_engine& generator, long * pk_acceptances, long * pk_samples, long * angle_acceptances, long * angle_samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double * df_coeff, double shear14_coeff, double baryon_enthalpy_ratio)
 {
+  double two_pi = 2.0 * M_PI; 
+
   // sampled LRF momentum
   lrf_momentum pLRF;
 
@@ -201,7 +199,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       double l3 = log(r3);
 
       double p = - T * (l1 + l2 + l3);
-      double phi = 2.0 * M_PI * pow((l1 + l2) / (l1 + l2 + l3), 2);
+      double phi = two_pi * pow((l1 + l2) / (l1 + l2 + l3), 2);
       double costheta = (l1 - l2) / (l1 + l2);
 
       double E = sqrt(p * p + mass_squared);
@@ -225,69 +223,120 @@ lrf_momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       pLRF.pz = p * costheta;
 
       double pdsigma_abs = fabs(E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
+
       double rideal = pdsigma_abs / (E * ds_magnitude);
-
       double rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
-
-
 
       double weight_light = exp(p/T) / (exp(E/T) + sign) * rideal * rvisc;
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-      if(fabs(weight_light - 0.5) > 0.5)
-      {
-        //printf("Error: weight_light = %f out of bounds\n", weight_light);
-      }
+      if(fabs(weight_light - 0.5) > 0.5) printf("Error: weight_light = %f out of bounds\n", weight_light);
 
-      // check p acceptance
+      // check pLRF acceptance
       if(propose < weight_light)
       {
         *pk_acceptances = (*pk_acceptances) + 1;
         break;
       }
 
-    } // p rejection loop
+    } // rejection loop
 
   } // sampling light hadron p
 
+  // heavy hadrons (use variable transformation described in LongGang's notes)
+  else
+  {
+    // determine which part of integrand dominates
+    double I1 = mass_squared;
+    double I2 = 2.0 * mass * T;
+    double I3 = 2.0 * T * T;
+    double Itot = I1 + I2 + I3;
 
+    double I1_over_Itot = I1 / Itot;
+    double I1_plus_I2_over_Itot = (I1 + I2) / Itot;
 
-  // sample angles uniformly until accepted
-  // while(rejected)
-  // {
-  //   *angle_samples = (*angle_samples) + 1;
+    // sample k until accepted
+    while(rejected)
+    {
+      *pk_samples = (*pk_samples) + 1;
 
-  //   double phi = phi_distribution(generator);
-  //   double costheta = costheta_distribution(generator);
-  //   double sintheta = sqrt(1.0 - costheta * costheta);
+      double k, phi, costheta;   // kinetic energy, angles
 
-  //   // pLRF components
-  //   pLRF.E = E;
-  //   pLRF.px = p * sintheta * cos(phi);
-  //   pLRF.py = p * sintheta * sin(phi);
-  //   pLRF.pz = p * costheta;
+      double propose_distribution = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-  //   double pdsigma_abs = fabs(E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
-  //   double rideal = pdsigma_abs / (E * ds_magnitude);
+      // randomly select distributions to sample k from based on integrated weights
+      if(propose_distribution < I1_over_Itot)
+      {
+        // draw k from distribution exp(-k/T) . dk by sampling r1 uniformly from [0,1):
+        // sample direction uniformly 
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-  //   double rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
+        k = - T * log(r1);
+        phi = phi_distribution(generator);
+        costheta = costheta_distribution(generator);
 
-  //   double weight_angle = rideal * rvisc;
-  //   double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+      } // distribution 1 (very heavy)
+      else if(propose_distribution < I1_plus_I2_over_Itot)
+      {
+        // draw (k, phi) from k.exp(-k/T).dk by sampling (r1,r2) uniformly from [0,1):
+        // sample costheta uniformly
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-  //   if(fabs(weight_angle - 0.5) > 0.5)
-  //   {
-  //     printf("Error: weight_angle = %f out of bounds\n", weight_angle);
-  //   }
+        double l1 = log(r1);
+        double l2 = log(r2);
 
-  //   // check angles' acceptance
-  //   if(propose < weight_angle)
-  //   {
-  //     *angle_acceptances = (*angle_acceptances) + 1;
-  //     break;
-  //   }
+        k = - T * (l1 + l2);
+        phi = two_pi * l1 / (l1 + l2);
+        costheta = costheta_distribution(generator);
 
-  // } // angles rejection loop
+      } // distribution 2 (moderately heavy)
+      else
+      {
+        // draw (k, phi, costheta) from k^2.exp(-k/T).dk by sampling (r1,r2,r3) uniformly from [0,1):
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        double l1 = log(r1);
+        double l2 = log(r2);
+        double l3 = log(r3);
+
+        k = - T * (l1 + l2 + l3);
+        phi = two_pi * pow((l1 + l2) / (l1 + l2 + l3), 2);  
+        costheta = (l1 - l2) / (l1 + l2);
+
+      } // distribution 3 (light)
+
+      double E = k + mass;
+      double p = sqrt(E * E - mass_squared);
+      double sintheta = sqrt(1.0 - costheta * costheta);
+
+      pLRF.E = E;
+      pLRF.px = p * sintheta * cos(phi);
+      pLRF.py = p * sintheta * sin(phi);
+      pLRF.pz = p * costheta;
+
+      double pdsigma_abs = fabs(E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
+
+      double rideal = pdsigma_abs / (E * ds_magnitude);
+      double rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
+
+      double weight_heavy = p/E * exp(E/T) / (exp(E/T) + sign) * rideal * rvisc;
+      double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      if(fabs(weight_heavy - 0.5) > 0.5) printf("Error: weight_heavy = %f out of bounds\n", weight_heavy);
+
+      // check pLRF acceptance
+      if(propose < weight_heavy)
+      {
+        *pk_acceptances = (*pk_acceptances) + 1;
+        break;
+      }
+
+    } // rejection loop
+
+  } // sampling heavy hadrons
 
   return pLRF;
 
