@@ -34,10 +34,16 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
 {
   deltaf_coefficients df_data;
 
-  // T and muB (fm^-1) (assumed to be ~ same for all cells)
-  double T_FO = surface[0].T / hbarC;
-  double muB_FO = 0.0;
-  if(include_baryon) muB_FO = surface[0].muB / hbarC;
+  // average T and muB (fm^-1) (assumed to be ~ same for all cells)
+  double Tavg, Eavg, Pavg, muBavg, nBavg;
+  FILE * avg_thermo_file;
+  avg_thermo_file = fopen("average_thermodynamic_quantities.dat", "r");
+  if(avg_thermo_file == NULL) printf("Couldn't open average thermodynamic file\n");
+  fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg); 
+  fclose(avg_thermo_file);
+
+  double T_FO = Tavg / hbarC;
+  double muB_FO = muBavg / hbarC; 
 
 
   printf("Reading in ");

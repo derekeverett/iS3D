@@ -12,6 +12,7 @@
 #include "arsenal.h"
 #include "ParameterReader.h"
 #include "Table.h"
+#include "gaussThermal.h"
 
 using namespace std;
 
@@ -21,6 +22,7 @@ FO_data_reader::FO_data_reader(ParameterReader* paraRdr_in, string path_in)
   pathToInput = path_in;
   mode = paraRdr->getVal("mode"); //this determines whether the file read in has viscous hydro dissipative currents or viscous anisotropic dissipative currents
   dimension = paraRdr->getVal("dimension");
+  df_mode = paraRdr->getVal("df_mode");
   include_baryon = paraRdr->getVal("include_baryon");
   include_bulk_deltaf = paraRdr->getVal("include_bulk_deltaf");
   include_shear_deltaf = paraRdr->getVal("include_shear_deltaf");
@@ -61,6 +63,15 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
   double dummy;
   surfdat_stream << pathToInput << "/surface.dat";
   ifstream surfdat(surfdat_stream.str().c_str());
+
+  // average thermodynamic quantities on surface
+  double Tavg = 0.0;
+  double Eavg = 0.0;
+  double Pavg = 0.0;
+  double muBavg = 0.0; 
+  double nBavg = 0.0;
+  double total_surface_volume = 0.0; 
+
   for (long i = 0; i < length; i++)
   {
     // contravariant spacetime position
@@ -90,11 +101,16 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
 
     // thermodynamic quantities at freeze out
     surfdat >> dummy;
-    surf_ptr[i].E = dummy * hbarC; //energy density
+    double E = dummy * hbarC; //energy density
     surfdat >> dummy;
-    surf_ptr[i].T = dummy * hbarC; //Temperature
+    double T = dummy * hbarC; //temperature
     surfdat >> dummy;
-    surf_ptr[i].P = dummy * hbarC; //pressure
+    double P = dummy * hbarC; //pressure
+    
+    surf_ptr[i].E = E;
+    surf_ptr[i].T = T;
+    surf_ptr[i].P = P;
+    
 
     //file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
     // dissipative quantities at freeze out
@@ -122,28 +138,72 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surf_ptr[i].pinn = dummy * hbarC;
 
     surfdat >> dummy;
-    surf_ptr[i].bulkPi = dummy * hbarC; //bulk pressure
+    surf_ptr[i].bulkPi = dummy * hbarC; // bulk pressure
+
+    double muB = 0.0; // nonzero if include_baryon
+    double nB = 0.0;  // effectively defaulted to zero if no diffusion correction needed  (even if include_baryon)
 
     if (include_baryon)
     {
       surfdat >> dummy;
-      surf_ptr[i].muB = dummy * hbarC; //baryon chemical potential
+      muB = dummy * hbarC;              // baryon chemical potential
+      surf_ptr[i].muB = muB;
     }
     if (include_baryondiff_deltaf)
     {
-      surfdat >> dummy;
-      surf_ptr[i].nB = dummy * hbarC; //baryon density
-      surfdat >> dummy;
-      surf_ptr[i].Vt = dummy * hbarC; //four contravariant components of baryon diffusion vector
-      surfdat >> dummy;
-      surf_ptr[i].Vx = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].Vy = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].Vn = dummy * hbarC;
+      surfdat >> nB;                    // baryon density           
+      surf_ptr[i].nB = nB;
+      surfdat >> surf_ptr[i].Vt;        // four contravariant components of baryon diffusion vector
+      surfdat >> surf_ptr[i].Vx;
+      surfdat >> surf_ptr[i].Vy;
+      surfdat >> surf_ptr[i].Vn;        // fixed units on 10/8 (overlooked)
     }
+
+    // getting average thermodynamic quantities
+    double tau = surf_ptr[i].tau;
+    double ux = surf_ptr[i].ux;
+    double uy = surf_ptr[i].uy;
+    double un = surf_ptr[i].un;
+    double ut = sqrt(1.0 + ux * ux + uy * uy + tau * tau * un * un);  // enforce normalization
+    double dat = surf_ptr[i].dat;
+    double dax = surf_ptr[i].dax;
+    double day = surf_ptr[i].day;
+    double dan = surf_ptr[i].dan;
+
+    double udsigma = ut * dat + ux * dax + uy * day + un * dan; 
+    double dsigma_dsigma = dat * dat - dax * dax - day * day - dan * dan / (tau * tau); 
+    double dsigma_magnitude = fabs(udsigma) + sqrt(fabs(udsigma * udsigma - dsigma_dsigma)); 
+
+    total_surface_volume += dsigma_magnitude; 
+
+    Eavg += (E * dsigma_magnitude);
+    Tavg += (T * dsigma_magnitude);
+    Pavg += (P * dsigma_magnitude);
+    muBavg += (muB * dsigma_magnitude);
+    nBavg += (nB * dsigma_magnitude);
+    
   }
   surfdat.close();
+
+  Tavg /= total_surface_volume;
+  Eavg /= total_surface_volume;
+  Pavg /= total_surface_volume;
+  muBavg /= total_surface_volume;
+  nBavg /= total_surface_volume;
+
+  // printf("Tavg = %f GeV\n", Tavg);
+  // printf("Eavg = %f GeV/fm^3\n", Eavg);
+  // printf("Pavg = %f GeV/fm^3\n", Pavg);
+  // printf("muBavg = %f GeV\n", muBavg);
+  // printf("nBavg = %f fm^-3\n", nBavg);
+
+  // write averaged thermodynamic quantities to file
+  ofstream thermal_average("average_thermodynamic_quantities.dat", ios_base::out);
+  thermal_average << setprecision(15) << Tavg << "\n" << Eavg << "\n" << Pavg << "\n" << muBavg << "\n" << nBavg;
+  thermal_average.close(); 
+
+
+
   return;
 }
 
@@ -220,16 +280,11 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
     }
     if (include_baryondiff_deltaf)
     {
-      surfdat >> dummy;
-      surf_ptr[i].nB = dummy * hbarC; //baryon density
-      surfdat >> dummy;
-      surf_ptr[i].Vt = dummy * hbarC; //four contravariant components of baryon diffusion vector
-      surfdat >> dummy;
-      surf_ptr[i].Vx = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].Vy = dummy * hbarC;
-      surfdat >> dummy;
-      surf_ptr[i].Vn = dummy * hbarC;
+      surfdat >> surf_ptr[i].nB;       //baryon density
+      surfdat >> surf_ptr[i].Vt;       //four contravariant components of baryon diffusion vector
+      surfdat >> surf_ptr[i].Vx;
+      surfdat >> surf_ptr[i].Vy;
+      surfdat >> surf_ptr[i].Vn;       // fixed units on 10/8 (overlooked)
     }
 
     //thermal vorticity w^\mu\nu , should be dimensionless...
@@ -580,7 +635,7 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
   return;
 }
 
-int FO_data_reader::read_resonances_list(particle_info* particle)
+int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_ptr, deltaf_coefficients df)
 {
   double eps = 1e-15;
   int Nparticle=0;
@@ -674,5 +729,141 @@ int FO_data_reader::read_resonances_list(particle_info* particle)
     if (particle[i].baryon == 0) particle[i].sign = -1;
     else particle[i].sign = 1;
   }
-  return(Nparticle);
+
+
+  // need to think about what goes here:
+  // the viscous number terms depend on df_mode (so do a switch statement)
+  // I think I need an extension of the gla_root file to a = 3
+
+   // set Gauss Laguerre roots-weights
+  FILE * gla_file;
+  char header[300];
+  gla_file = fopen("tables/gla123_roots_weights_64_pts.dat", "r");
+  if(gla_file == NULL) printf("Couldn't open Gauss-Laguerre roots/weights file\n");
+
+  int pbar_pts;
+
+  // get # quadrature pts
+  fscanf(gla_file, "%d\n", &pbar_pts);
+
+  // Gauss Laguerre roots-weights
+  double pbar_root1[pbar_pts];
+  double pbar_weight1[pbar_pts];
+  double pbar_root2[pbar_pts];
+  double pbar_weight2[pbar_pts];
+  double pbar_root3[pbar_pts];
+  double pbar_weight3[pbar_pts];
+
+  // skip the next 2 headers
+  fgets(header, 100, gla_file);
+  fgets(header, 100, gla_file);
+
+  // load roots/weights
+  for (int i = 0; i < pbar_pts; i++) fscanf(gla_file, "%lf\t\t%lf\t\t%lf\t\t%lf\t\t%lf\t\t%lf\n", &pbar_root1[i], &pbar_weight1[i], &pbar_root2[i], &pbar_weight2[i], &pbar_root3[i], &pbar_weight3[i]);
+
+  // close file
+  fclose(gla_file);
+
+
+  // average T and muB (GeV) (assumed to be ~ same for all cells)
+  double Tavg, Eavg, Pavg, muBavg, nBavg;
+  FILE * avg_thermo_file;
+  avg_thermo_file = fopen("average_thermodynamic_quantities.dat", "r");
+  if(avg_thermo_file == NULL) printf("Couldn't open average thermodynamic file\n");
+  fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg); 
+  fclose(avg_thermo_file);
+
+  double T = Tavg;       // GeV
+  double muB = muBavg;   // GeV
+  double E = Eavg;       // GeV / fm^3
+  double P = Pavg;       // GeV / fm^3
+  double nB = nBavg;     // fm^-3
+
+  double alphaB = muB / T; 
+  double baryon_enthalpy_ratio = nB / (E + P);
+
+
+  // let's start with thermal density (finish this tomorrow)
+
+  for(int i = 0; i < Nparticle; i++)
+  {
+    double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
+    
+    double mass = particle[i].mass;
+    double degeneracy = (double)particle[i].gspin;
+    double baryon = (double)particle[i].baryon;
+    double sign = (double)particle[i].sign;
+    double mbar = mass / T;
+
+    // equilibrium density 
+    double neq_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
+    double neq = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+
+    // bulk and diffusion density corrections
+    double dn_bulk = 0.0;
+    double dn_diff = 0.0; 
+
+    switch(df_mode)
+    {
+      case 1: // 14 moment (not sure what the status is)
+      {
+        double c0 = df.c0;
+        double c1 = df.c1;
+        double c2 = df.c2;
+        double c3 = df.c3;
+        double c4 = df.c4;
+
+        double J10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
+        double J20_fact = degeneracy * pow(T,4) / two_pi2_hbarC3;
+        double J30_fact = degeneracy * pow(T,5) / two_pi2_hbarC3;
+        double J31_fact = degeneracy * pow(T,5) / two_pi2_hbarC3 / 3.0;
+
+        double J10 =  J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+        double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+        double J30 = J30_fact * GaussThermal(J30_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+        double J31 = J31_fact * GaussThermal(J31_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+
+        dn_bulk = ((c0 - c2) * mass * mass * J10 +  c1 * baryon * J20  +  (4.0 * c2 - c0) * J30);
+        // these coefficients need to be loaded.
+        // c3 ~ cV / V
+        // c4 ~ 2cW / V
+        dn_diff = baryon * c3 * neq * T  +  c4 * J31;   // not sure if this is right... 
+
+        break;
+      }
+      case 2: // Chapman-Enskog
+      case 3: // Modified
+      {
+        double F = df.F;
+        double G = df.G;
+        double betabulk = df.betabulk;
+        double betaV = df.betaV; 
+
+        double J10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
+        double J11_fact = degeneracy * pow(T,3) / two_pi2_hbarC3 / 3.0;
+        double J20_fact = degeneracy * pow(T,4) / two_pi2_hbarC3;
+
+        double J10 = J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+        double J11 = J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+        double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+
+        dn_bulk = (neq + (baryon * J10 * G) + (J20 * F / pow(T,2))) / betabulk;        
+        dn_diff = (neq * T * baryon_enthalpy_ratio  -  baryon * J11) / betaV;
+
+        break;
+      }
+      default:
+      {
+        cout << "Please choose df_mode = 1,2,3 in parameters.dat" << endl;
+        exit(-1);
+      }
+    } // df_mode 
+
+    particle[i].equilibrium_density = neq;
+    particle[i].bulk_density = dn_bulk;
+    particle[i].diff_density = dn_diff; 
+
+  }
+
+  return Nparticle;
 }

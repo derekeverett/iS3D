@@ -34,7 +34,20 @@ int main(int argc, char *argv[])
 
   string pathToInput = "input";
 
-  //load freeze out information
+  // cout << atan2(0,1) << endl;
+  // cout << atan2(1,1) << endl;
+  // cout << atan2(1,0) << endl;
+  // cout << atan2(1,-1) << endl;
+  // cout << atan2(0,-1) << endl;
+  // cout << atan2(-1,-1) + 2.0*M_PI << endl;
+  // cout << atan2(-1,0) + 2.0*M_PI << endl;
+  // cout << atan2(-1,1) + 2.0*M_PI << endl;
+  // cout << atan2(-0.0001,0.9999) + 2.0*M_PI  << endl;
+
+  // exit(-1);
+
+
+  // load freeze out information
   FO_data_reader freeze_out_data(paraRdr, pathToInput);
 
   long FO_length = 0;
@@ -43,14 +56,15 @@ int main(int argc, char *argv[])
   FO_surf* surf_ptr = new FO_surf[FO_length];
   freeze_out_data.read_surf_switch(FO_length, surf_ptr);
 
-  particle_info *particle_data = new particle_info [Maxparticle];
-  int Nparticle = freeze_out_data.read_resonances_list(particle_data); //number of resonances in pdg file
-
-  // load delta-f coefficients:
+  // load delta-f coefficients
   deltaf_coefficients df;
   string pathTodeltaf = "deltaf_coefficients";
   DeltafReader deltaf(paraRdr, pathTodeltaf);
   df = deltaf.load_coefficients(surf_ptr, FO_length);
+
+  // load particle info
+  particle_info *particle_data = new particle_info [Maxparticle];
+  int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr, df); //number of resonances in pdg file
 
   cout << "Finished reading files" << endl;
   printline();
