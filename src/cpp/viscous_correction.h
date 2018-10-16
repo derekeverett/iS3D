@@ -4,7 +4,8 @@
 class Milne_Basis
 {
   public:
-    // spatial basis vectors: X^mu, Y^mu, Z^mu (nonzero components)
+    // milne basis vectors: U^mu, X^mu, Y^mu, Z^mu (nonzero components)
+    double Ut, Ux, Uy, Un;
     double Xt, Xx, Xy, Xn;
     double Yx, Yy;
     double Zt, Zn;
@@ -17,8 +18,8 @@ class Shear_Stress
   private:  // pi^munu contravariant milne components:
     double pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn;
 
-  public:   // LRF components: pi_ij = Xi.pi.Xj
-    double pixx_LRF, pixy_LRF, pixz_LRF, piyy_LRF, piyz_LRF, pizz_LRF;
+  public:   // LRF components: pi_tt = U.pi.U, pi_ti = U.pi.Xi, pi_ij = Xi.pi.Xj
+    double pitt_LRF, pitx_LRF, pity_LRF, pitz_LRF, pixx_LRF, pixy_LRF, pixz_LRF, piyy_LRF, piyz_LRF, pizz_LRF;
     double pi_magnitude;  // sqrt(pi.pi)
 
     Shear_Stress(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in);

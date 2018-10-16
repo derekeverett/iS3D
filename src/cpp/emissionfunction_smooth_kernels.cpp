@@ -142,6 +142,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     double *dN_pTdpTdphidy_all;
     dN_pTdpTdphidy_all = (double*)calloc((long long int)npart * (long long int)FO_chunk * (long long int)pT_tab_length * (long long int)phi_tab_length * (long long int)y_tab_length, sizeof(double));
 
+    double error = 0.0;
+
     //loop over bite size chunks of FO surface
     for (int n = 0; n < (FO_length / FO_chunk) + 1; n++)
     {
@@ -230,6 +232,27 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             if(DF_MODE == 2) baryon_enthalpy_ratio = nB / (E + P);
           }
         }
+
+        double uperp =  sqrt(ux2 + uy2);
+        double utperp = sqrt(1.0 + uperp * uperp);
+
+        Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
+
+        double Xt = basis_vectors.Xt;
+        double Xx = basis_vectors.Xx;
+        double Xy = basis_vectors.Xy;
+        double Xn = basis_vectors.Xn;
+        double Yx = basis_vectors.Yx;
+        double Yy = basis_vectors.Yy;
+        double Zt = basis_vectors.Zt;
+        double Zn = basis_vectors.Zn;
+
+        Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
+        pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
+        //pimunu.compute_pimunu_max();
+
+        //cout << setprecision(15) << pimunu.pitx_LRF << endl;
+
 
         // evaluate shear and bulk coefficients (temperature dependent)
         double shear_coeff = 0.0;
@@ -372,8 +395,38 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       double df_shear = 0.0;
                       if(INCLUDE_SHEAR_DELTAF)
                       {
-                        double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
-                        + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
+                        double E = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
+                        double pX = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;  // -x.p
+                        double pY = Yx * px  +  Yy * py;                                // -y.p
+                        double pZ = -Zt * pt  +  Zn * tau2_pn;                          // -z.p
+
+                        double pitt_LRF = pimunu.pitt_LRF;
+                        double pitx_LRF = pimunu.pitx_LRF;
+                        double pity_LRF = pimunu.pity_LRF;
+                        double pitz_LRF = pimunu.pitz_LRF;
+                        double pixx_LRF = pimunu.pixx_LRF;
+                        double pixy_LRF = pimunu.pixy_LRF;
+                        double pixz_LRF = pimunu.pixz_LRF;
+                        double piyy_LRF = pimunu.piyy_LRF;
+                        double piyz_LRF = pimunu.piyz_LRF;
+                        double pizz_LRF = pimunu.pizz_LRF;
+
+                        double pimunu_pmu_pnu =  pitt_LRF * E * E  +  pixx_LRF * pX * pX  +  piyy_LRF * pY * pY  +  pizz_LRF * pZ * pZ
+                        + 2.0 * (-(pitx_LRF * pX  +  pity_LRF * pY) * E  +  pixy_LRF * pX * pY  +  pZ * (pixz_LRF * pX  +  piyz_LRF * pY  -  pitz_LRF * E));
+
+
+                        // double pimunu_pmu_pnu2 = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
+                        // + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
+
+                        // if(fabs(pimunu_pmu_pnu - pimunu_pmu_pnu2) > error)
+                        // {
+                        //   error = fabs(pimunu_pmu_pnu - pimunu_pmu_pnu2);
+                        //   cout << setprecision(15) << error << endl;
+                        // }
+
+
+                        //double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
+                        //+ 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
                         df_shear = shear_coeff * pimunu_pmu_pnu / pdotu;
                       }
                       double df_bulk = 0.0;

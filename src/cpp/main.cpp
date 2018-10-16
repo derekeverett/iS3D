@@ -34,19 +34,6 @@ int main(int argc, char *argv[])
 
   string pathToInput = "input";
 
-  // cout << atan2(0,1) << endl;
-  // cout << atan2(1,1) << endl;
-  // cout << atan2(1,0) << endl;
-  // cout << atan2(1,-1) << endl;
-  // cout << atan2(0,-1) << endl;
-  // cout << atan2(-1,-1) + 2.0*M_PI << endl;
-  // cout << atan2(-1,0) + 2.0*M_PI << endl;
-  // cout << atan2(-1,1) + 2.0*M_PI << endl;
-  // cout << atan2(-0.0001,0.9999) + 2.0*M_PI  << endl;
-
-  // exit(-1);
-
-
   // load freeze out information
   FO_data_reader freeze_out_data(paraRdr, pathToInput);
 

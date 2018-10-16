@@ -27,7 +27,7 @@ using namespace std;
 
 // Class Lab_Momentum
 //------------------------------------------
-Lab_Momentum::Lab_Momentum(lrf_momentum pLRF_in)
+Lab_Momentum::Lab_Momentum(LRF_Momentum pLRF_in)
 {
     E_LRF = pLRF_in.E;
     px_LRF = pLRF_in.px;
@@ -465,10 +465,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           for (int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pT_tab->get(1,ipT + 1);
-            double pT_gauss_weight = pT_tab->get(2, ipT + 1); 
+            double pT_gauss_weight = pT_tab->get(2, ipT + 1);
 
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
-            
+
             dN_dphidy += pT_gauss_weight * pT * dN_pTdpTdphidy[iS3D];
           } //ipT
           spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << dN_dphidy << "\n";
@@ -514,7 +514,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             double phip_gauss_weight = phi_tab->get(2, iphip + 1);
 
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
-            
+
             dN_pTdpTdy += phip_gauss_weight * dN_pTdpTdphidy[iS3D];
           } //iphip
           spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << pT << "\t" << dN_pTdpTdy << "\n";
@@ -556,13 +556,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           for(int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pT_tab->get(1, ipT + 1);
-            double pT_gauss_weight = pT_tab->get(2, ipT + 1); 
+            double pT_gauss_weight = pT_tab->get(2, ipT + 1);
 
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
-            
+
             dN_dy += phip_gauss_weight * pT_gauss_weight * pT * dN_pTdpTdphidy[iS3D];
           } //ipT
-          
+
         } //iphip
         spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << dN_dy << "\n";
       } //iy
