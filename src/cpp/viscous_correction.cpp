@@ -8,24 +8,29 @@ using namespace std;
 
 Milne_Basis::Milne_Basis(double ut, double ux, double uy, double un, double uperp, double utperp, double tau)
 {
-      Xx = 1.0; Xy = 0.0;
-      Yx = 0.0; Yy = 1.0;
+    Ut = ut;
+    Ux = ux;
+    Uy = uy;
+    Un = un;
 
-      double sinhL = tau * un / utperp;
-      double coshL = ut / utperp;
+    Xx = 1.0; Xy = 0.0;
+    Yx = 0.0; Yy = 1.0;
 
-      Xt = uperp * coshL;
-      Xn = uperp * sinhL / tau;
-      Zt = sinhL;
-      Zn = coshL / tau;
+    double sinhL = tau * un / utperp;
+    double coshL = ut / utperp;
 
-      if(uperp > 1.e-5) // stops (ux=0)/(uperp=0) nans for first FO cells with no initial transverse flow
-      {
-        Xx = utperp * ux / uperp;
-        Xy = utperp * uy / uperp;
-        Yx = - uy / uperp;
-        Yy = ux / uperp;
-      }
+    Xt = uperp * coshL;
+    Xn = uperp * sinhL / tau;
+    Zt = sinhL;
+    Zn = coshL / tau;
+
+    if(uperp > 1.e-5) // stops (ux=0)/(uperp=0) nans for first FO cells with no initial transverse flow
+    {
+    Xx = utperp * ux / uperp;
+    Xy = utperp * uy / uperp;
+    Yx = - uy / uperp;
+    Yy = ux / uperp;
+    }
 }
 
 Surface_Element_Vector::Surface_Element_Vector(double dsigmat_in, double dsigmax_in, double dsigmay_in, double dsigman_in)
@@ -70,18 +75,41 @@ Shear_Stress::Shear_Stress(double pitt_in, double pitx_in, double pity_in, doubl
 
 void Shear_Stress::boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2)
 {
+    double Ut = basis_vectors.Ut;
+    double Ux = basis_vectors.Ux;
+    double Uy = basis_vectors.Uy;
+    double Un = basis_vectors.Un;
     double Xt = basis_vectors.Xt;   double Yx = basis_vectors.Yx;
     double Xx = basis_vectors.Xx;   double Yy = basis_vectors.Yy;
     double Xy = basis_vectors.Xy;   double Zt = basis_vectors.Zt;
     double Xn = basis_vectors.Xn;   double Zn = basis_vectors.Zn;
 
+    // compute the pitt_LRF components (they should be zero or numerically very small)
+    /*
+    pitt_LRF = pitt*Ut*Ut + pixx*Ux*Ux + piyy*Uy*Uy + tau2*tau2*pinn*Un*Un
+            + 2.0 * (-Ut*(pitx*Ux + pity*Uy) + pixy*Ux*Uy + tau2*Un*(pixn*Ux + piyn*Uy - pitn*Ut));
+
+    pitx_LRF = -Xt*(Ut*pitt - Ux*pitx - Uy*pity - tau2*Un*pitn) + Xx*(Ut*pitx - Ux*pixx - Uy*pixy - tau2*Un*pixn)
+            + Xy*(Ut*pity - Ux*pixy - Uy*piyy - tau2*Un*piyn) + tau2*Zn*(Ut*pitn - Ux*pixn - Uy*piyn - tau2*Un*pinn);
+
+    pity_LRF = Yx*(Ut*pitx - Ux*pixx - Uy*pixy - tau2*Un*pixn) + Yy*(Ut*pity - Ux*pixy - Uy*piyy - tau2*Un*piyn);
+
+    pitz_LRF = -Zt*(Ut*pitt - Ux*pitx - Uy*pity - tau2*Un*pitn) + tau2*Zn*(Ut*pitn - Ux*pixn - Uy*piyn - tau2*Un*pinn);
+    */
+
     pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
-            + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
-    pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xy + pixy*Xx + piyy*Xy + tau2*piyn*Xn);
-    pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xn - piyn*Xy - tau2*pinn*Xn);
-    piyy_LRF = pixx*Yx*Yx + piyy*Yy*Yy + 2.0*pixy*Yx*Yy;
-    piyz_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
+            + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt)); // seems correct
+
+    pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xt + pixy*Xx + piyy*Xy + tau2*piyn*Xn); // fixed bug on 10/16
+
+    pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xx - piyn*Xy - tau2*pinn*Xn);  // fixed bug on 10/16
+
+    piyy_LRF = pixx*Yx*Yx + 2.0*pixy*Yx*Yy + piyy*Yy*Yy;    // seems correct
+
+    piyz_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);   // seems correct
+
     pizz_LRF = - (pixx_LRF + piyy_LRF);
+
 }
 
 void Shear_Stress::compute_pimunu_max()

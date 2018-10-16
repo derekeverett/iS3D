@@ -27,7 +27,7 @@ using namespace std;
 
 // Class Lab_Momentum
 //------------------------------------------
-Lab_Momentum::Lab_Momentum(lrf_momentum pLRF_in)
+Lab_Momentum::Lab_Momentum(LRF_Momentum pLRF_in)
 {
     E_LRF = pLRF_in.E;
     px_LRF = pLRF_in.px;
