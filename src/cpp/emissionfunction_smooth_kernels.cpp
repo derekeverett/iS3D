@@ -411,18 +411,21 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                         double piyz_LRF = pimunu.piyz_LRF;
                         double pizz_LRF = pimunu.pizz_LRF;
 
-                        double pimunu_pmu_pnu =  pitt_LRF * E * E  +  pixx_LRF * pX * pX  +  piyy_LRF * pY * pY  +  pizz_LRF * pZ * pZ
-                        + 2.0 * (-(pitx_LRF * pX  +  pity_LRF * pY) * E  +  pixy_LRF * pX * pY  +  pZ * (pixz_LRF * pX  +  piyz_LRF * pY  -  pitz_LRF * E));
+                        // double pimunu_pmu_pnu =  pitt_LRF * E * E  +  pixx_LRF * pX * pX  +  piyy_LRF * pY * pY  +  pizz_LRF * pZ * pZ
+                        // + 2.0 * (-(pitx_LRF * pX  +  pity_LRF * pY) * E  +  pixy_LRF * pX * pY  +  pZ * (pixz_LRF * pX  +  piyz_LRF * pY  -  pitz_LRF * E));
+
+                        double pimunu_pmu_pnu =  pixx_LRF * pX * pX  +  piyy_LRF * pY * pY  +  pizz_LRF * pZ * pZ
+                        + 2.0 * (pixy_LRF * pX * pY  +  pZ * (pixz_LRF * pX  +  piyz_LRF * pY));
 
 
-                        // double pimunu_pmu_pnu2 = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
-                        // + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
+                        double pimunu_pmu_pnu2 = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
+                        + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
 
-                        // if(fabs(pimunu_pmu_pnu - pimunu_pmu_pnu2) > error)
-                        // {
-                        //   error = fabs(pimunu_pmu_pnu - pimunu_pmu_pnu2);
-                        //   cout << setprecision(15) << error << endl;
-                        // }
+                        if(fabs(pimunu_pmu_pnu - pimunu_pmu_pnu2) > error)
+                        {
+                          error = fabs(pimunu_pmu_pnu - pimunu_pmu_pnu2);
+                          cout << setprecision(15) << error << endl;
+                        }
 
 
                         //double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
@@ -797,13 +800,30 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         if(INCLUDE_SHEAR_DELTAF)
         {
            // pimunu in the LRF: piij = Xi.pi.Xj
-          double pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau4*pinn*Xn*Xn
-                  + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
-          double pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xy + pixy*Xx + piyy*Xy + tau2*piyn*Xn);
-          double pixn_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xn - piyn*Xy - tau2*pinn*Xn);
-          double piyy_LRF = pixx*Yx*Yx + piyy*Yy*Yy + 2.0*pixy*Yx*Yy;
-          double piyn_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
+          // double pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau4*pinn*Xn*Xn
+          //         + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
+          // double pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xy + pixy*Xx + piyy*Xy + tau2*piyn*Xn);
+          // double pixn_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xn - piyn*Xy - tau2*pinn*Xn);
+          // double piyy_LRF = pixx*Yx*Yx + piyy*Yy*Yy + 2.0*pixy*Yx*Yy;
+          // double piyn_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
+          // double pinn_LRF = - (pixx_LRF + piyy_LRF);
+
+          double pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
+            + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt)); // seems correct
+
+          double pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xt + pixy*Xx + piyy*Xy + tau2*piyn*Xn); // fixed bug on 10/16
+
+          double pixn_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xx - piyn*Xy - tau2*pinn*Xn);  // fixed bug on 10/16
+
+          double piyy_LRF = pixx*Yx*Yx + 2.0*pixy*Yx*Yy + piyy*Yy*Yy;    // seems correct
+
+          double piyn_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);   // seems correct
+
           double pinn_LRF = - (pixx_LRF + piyy_LRF);
+
+
+
+
 
           // add shear matrix elements ~ piij
           double shear_fact = 0.5 / betapi;

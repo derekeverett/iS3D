@@ -19,7 +19,11 @@ class Shear_Stress
     double pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn;
 
   public:   // LRF components: pi_tt = U.pi.U, pi_ti = U.pi.Xi, pi_ij = Xi.pi.Xj
-    double pitt_LRF, pitx_LRF, pity_LRF, pitz_LRF, pixx_LRF, pixy_LRF, pixz_LRF, piyy_LRF, piyz_LRF, pizz_LRF;
+    double pitt_LRF = 0.0;
+    double pitx_LRF = 0.0;
+    double pity_LRF = 0.0;
+    double pitz_LRF = 0.0;
+    double pixx_LRF, pixy_LRF, pixz_LRF, piyy_LRF, piyz_LRF, pizz_LRF;
     double pi_magnitude;  // sqrt(pi.pi)
 
     Shear_Stress(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in);
