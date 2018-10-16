@@ -98,7 +98,7 @@ double EmissionFunctionArray::compute_df_weight(LRF_Momentum pLRF, double mass_s
 
   if(INCLUDE_BULK_DELTAF)
   {
-    //double bulkPi_magnitude = fabs(bulkPi);
+    double bulkPi_magnitude = fabs(bulkPi);
 
     if(DF_MODE == 1)
     {
@@ -825,9 +825,6 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
     return 0.99 * Ntot;   // assume ~ 99% of particles have p.dsigma > 0
 
   }
-
-
-
 
 
 void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average)

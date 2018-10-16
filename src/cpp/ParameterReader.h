@@ -27,5 +27,4 @@ class ParameterReader
     void echo(); // print out all parameters to the screen
 };
 
-
 #endif
