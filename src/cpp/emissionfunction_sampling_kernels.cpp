@@ -832,12 +832,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     int npart = number_of_chosen_particles;
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
 
-
     // for testing: fix the seed and generator
     //unsigned seed = chrono::system_clock::now().time_since_epoch().count();
     unsigned seed = 1;
     default_random_engine generator(seed);
-
 
     int eta_pts = 1;
     if(DIMENSION == 2) eta_pts = eta_tab_length;                   // extension in eta

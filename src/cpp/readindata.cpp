@@ -93,7 +93,6 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     }
 
     // contravariant flow velocity
-    surfdat >> surf_ptr[i].ut;
     surfdat >> surf_ptr[i].ux;
     surfdat >> surf_ptr[i].uy;
     surfdat >> surf_ptr[i].un;
@@ -110,19 +109,6 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surf_ptr[i].T = T;
     surf_ptr[i].P = P;
 
-
-    //file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
-    // dissipative quantities at freeze out
-    //if (include_shear_deltaf)
-    //{
-    surfdat >> dummy;
-    surf_ptr[i].pitt = dummy * hbarC; //ten contravariant components of shear stress tensor
-    surfdat >> dummy;
-    surf_ptr[i].pitx = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pity = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pitn = dummy * hbarC;
     surfdat >> dummy;
     surf_ptr[i].pixx = dummy * hbarC;
     surfdat >> dummy;
@@ -133,8 +119,6 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surf_ptr[i].piyy = dummy * hbarC;
     surfdat >> dummy;
     surf_ptr[i].piyn = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pinn = dummy * hbarC;
 
     surfdat >> dummy;
     surf_ptr[i].bulkPi = dummy * hbarC; // bulk pressure
@@ -226,7 +210,6 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
     }
 
     // contravariant flow velocity
-    surfdat >> surf_ptr[i].ut;
     surfdat >> surf_ptr[i].ux;
     surfdat >> surf_ptr[i].uy;
     surfdat >> surf_ptr[i].un;
@@ -240,14 +223,6 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
     surf_ptr[i].P = dummy * hbarC; //pressure
 
     surfdat >> dummy;
-    surf_ptr[i].pitt = dummy * hbarC; //ten contravariant components of shear stress tensor
-    surfdat >> dummy;
-    surf_ptr[i].pitx = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pity = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pitn = dummy * hbarC;
-    surfdat >> dummy;
     surf_ptr[i].pixx = dummy * hbarC;
     surfdat >> dummy;
     surf_ptr[i].pixy = dummy * hbarC;
@@ -257,8 +232,6 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
     surf_ptr[i].piyy = dummy * hbarC;
     surfdat >> dummy;
     surf_ptr[i].piyn = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pinn = dummy * hbarC;
 
     surfdat >> dummy;
     surf_ptr[i].bulkPi = dummy * hbarC; //bulk pressure
