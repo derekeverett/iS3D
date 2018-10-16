@@ -31,7 +31,6 @@ FO_data_reader::FO_data_reader(ParameterReader* paraRdr_in, string path_in)
 
 FO_data_reader::~FO_data_reader()
 {
-
 }
 
 int FO_data_reader::get_number_cells()
@@ -68,9 +67,9 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
   double Tavg = 0.0;
   double Eavg = 0.0;
   double Pavg = 0.0;
-  double muBavg = 0.0; 
+  double muBavg = 0.0;
   double nBavg = 0.0;
-  double total_surface_volume = 0.0; 
+  double total_surface_volume = 0.0;
 
   for (long i = 0; i < length; i++)
   {
@@ -90,7 +89,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     if(dimension == 2 && surf_ptr[i].dan != 0)
     {
       cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
-      exit(-1);
+      //exit(-1);
     }
 
     // contravariant flow velocity
@@ -106,11 +105,11 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     double T = dummy * hbarC; //temperature
     surfdat >> dummy;
     double P = dummy * hbarC; //pressure
-    
+
     surf_ptr[i].E = E;
     surf_ptr[i].T = T;
     surf_ptr[i].P = P;
-    
+
 
     //file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
     // dissipative quantities at freeze out
@@ -151,7 +150,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     }
     if (include_baryondiff_deltaf)
     {
-      surfdat >> nB;                    // baryon density           
+      surfdat >> nB;                    // baryon density
       surf_ptr[i].nB = nB;
       surfdat >> surf_ptr[i].Vt;        // four contravariant components of baryon diffusion vector
       surfdat >> surf_ptr[i].Vx;
@@ -170,18 +169,18 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     double day = surf_ptr[i].day;
     double dan = surf_ptr[i].dan;
 
-    double udsigma = ut * dat + ux * dax + uy * day + un * dan; 
-    double dsigma_dsigma = dat * dat - dax * dax - day * day - dan * dan / (tau * tau); 
-    double dsigma_magnitude = fabs(udsigma) + sqrt(fabs(udsigma * udsigma - dsigma_dsigma)); 
+    double udsigma = ut * dat + ux * dax + uy * day + un * dan;
+    double dsigma_dsigma = dat * dat - dax * dax - day * day - dan * dan / (tau * tau);
+    double dsigma_magnitude = fabs(udsigma) + sqrt(fabs(udsigma * udsigma - dsigma_dsigma));
 
-    total_surface_volume += dsigma_magnitude; 
+    total_surface_volume += dsigma_magnitude;
 
     Eavg += (E * dsigma_magnitude);
     Tavg += (T * dsigma_magnitude);
     Pavg += (P * dsigma_magnitude);
     muBavg += (muB * dsigma_magnitude);
     nBavg += (nB * dsigma_magnitude);
-    
+
   }
   surfdat.close();
 
@@ -191,19 +190,10 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
   muBavg /= total_surface_volume;
   nBavg /= total_surface_volume;
 
-  // printf("Tavg = %f GeV\n", Tavg);
-  // printf("Eavg = %f GeV/fm^3\n", Eavg);
-  // printf("Pavg = %f GeV/fm^3\n", Pavg);
-  // printf("muBavg = %f GeV\n", muBavg);
-  // printf("nBavg = %f fm^-3\n", nBavg);
-
   // write averaged thermodynamic quantities to file
   ofstream thermal_average("average_thermodynamic_quantities.dat", ios_base::out);
   thermal_average << setprecision(15) << Tavg << "\n" << Eavg << "\n" << Pavg << "\n" << muBavg << "\n" << nBavg;
-  thermal_average.close(); 
-
-
-
+  thermal_average.close();
   return;
 }
 
@@ -232,7 +222,7 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
     if(dimension == 2 && surf_ptr[i].dan != 0)
     {
       cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
-      exit(-1);
+      //exit(-1);
     }
 
     // contravariant flow velocity
@@ -328,7 +318,7 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
     if(dimension == 2 && surf_ptr[i].dan != 0)
     {
       cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
-      exit(-1);
+      //exit(-1);
     }
 
     // contravariant flow velocity
@@ -400,10 +390,7 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
   for(long i = 0; i < FO_length; i++)
   {
     // file format: (x^mu, da_mu, u^mu, E, T, P, pl, pi^munu, W^mu, bulkPi)
-
-
     // need to add (pl, Wmu, aL, Lambda) to the struct
-
     // Make sure all the units are correct
 
     // contravariant Milne spacetime position
@@ -421,7 +408,7 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
     if(dimension == 2 && surface[i].dan != 0)
     {
       cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
-      exit(-1);
+      //exit(-1);
     }
 
     // contravariant fluid velocity
@@ -433,15 +420,12 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
     // energy density
     surface_data >> data;
     surface[i].E = data * hbarC;     // (fm^-4 -> GeV/fm^3)
-
     // temperature
     surface_data >> T;               // store T for (aL,Lambda) calculation
     surface[i].T = T * hbarC;        // (fm^-1 -> GeV)
-
     // equilibrium pressure
     surface_data >> P;               // store P for (aL,Lambda) calculation
     surface[i].P = P * hbarC;        // (fm^-4 -> GeV/fm^3)
-
     // longitudinal pressure
     surface_data >> PL;              // store pl for (aL,Lambda) calculation
     surface[i].PL = PL * hbarC;      // (fm^-4 -> GeV/fm^3)
@@ -497,7 +481,6 @@ void FO_data_reader::read_surf_VAH_PLMatch(long FO_length, FO_surf * surface)
       exit(-1);
     }
 
-
   } // i
   // close file
   surface_data.close();
@@ -521,7 +504,6 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
     // (x^mu, da_mu, u^mu, e, T, pl, pt, pi^munu, W^mu, Lambda, at, al, muB, upsilonB, nB, nBl, V^mu)
 
     // need to make mode option for FO_surf struct
-
     // Make sure all the units are correct
 
     // contravariant Milne spacetime position
@@ -760,17 +742,15 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
 
   // load roots/weights
   for (int i = 0; i < pbar_pts; i++) fscanf(gla_file, "%lf\t\t%lf\t\t%lf\t\t%lf\t\t%lf\t\t%lf\n", &pbar_root1[i], &pbar_weight1[i], &pbar_root2[i], &pbar_weight2[i], &pbar_root3[i], &pbar_weight3[i]);
-
   // close file
   fclose(gla_file);
-
 
   // average T and muB (GeV) (assumed to be ~ same for all cells)
   double Tavg, Eavg, Pavg, muBavg, nBavg;
   FILE * avg_thermo_file;
   avg_thermo_file = fopen("average_thermodynamic_quantities.dat", "r");
   if(avg_thermo_file == NULL) printf("Couldn't open average thermodynamic file\n");
-  fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg); 
+  fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg);
   fclose(avg_thermo_file);
 
   double T = Tavg;       // GeV
@@ -779,7 +759,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
   double P = Pavg;       // GeV / fm^3
   double nB = nBavg;     // fm^-3
 
-  double alphaB = muB / T; 
+  double alphaB = muB / T;
   double baryon_enthalpy_ratio = nB / (E + P);
 
 
@@ -788,20 +768,20 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
   for(int i = 0; i < Nparticle; i++)
   {
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
-    
+
     double mass = particle[i].mass;
     double degeneracy = (double)particle[i].gspin;
     double baryon = (double)particle[i].baryon;
     double sign = (double)particle[i].sign;
     double mbar = mass / T;
 
-    // equilibrium density 
+    // equilibrium density
     double neq_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
     double neq = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
 
     // bulk and diffusion density corrections
     double dn_bulk = 0.0;
-    double dn_diff = 0.0; 
+    double dn_diff = 0.0;
 
     switch(df_mode)
     {
@@ -827,8 +807,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
         // these coefficients need to be loaded.
         // c3 ~ cV / V
         // c4 ~ 2cW / V
-        dn_diff = baryon * c3 * neq * T  +  c4 * J31;   // not sure if this is right... 
-
+        dn_diff = baryon * c3 * neq * T  +  c4 * J31;   // not sure if this is right...
         break;
       }
       case 2: // Chapman-Enskog
@@ -837,7 +816,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
         double F = df.F;
         double G = df.G;
         double betabulk = df.betabulk;
-        double betaV = df.betaV; 
+        double betaV = df.betaV;
 
         double J10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
         double J11_fact = degeneracy * pow(T,3) / two_pi2_hbarC3 / 3.0;
@@ -847,7 +826,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
         double J11 = J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
         double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
 
-        dn_bulk = (neq + (baryon * J10 * G) + (J20 * F / pow(T,2))) / betabulk;        
+        dn_bulk = (neq + (baryon * J10 * G) + (J20 * F / pow(T,2))) / betabulk;
         dn_diff = (neq * T * baryon_enthalpy_ratio  -  baryon * J11) / betaV;
 
         break;
@@ -857,12 +836,11 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
         cout << "Please choose df_mode = 1,2,3 in parameters.dat" << endl;
         exit(-1);
       }
-    } // df_mode 
+    } // df_mode
 
     particle[i].equilibrium_density = neq;
     particle[i].bulk_density = dn_bulk;
-    particle[i].diff_density = dn_diff; 
-
+    particle[i].diff_density = dn_diff;
   }
 
   return Nparticle;

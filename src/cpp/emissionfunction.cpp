@@ -220,9 +220,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
 
-
   void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile(int *MCID)
-
   {
     printf("Writing thermal spectra to file...\n");
     //write 3D spectra in block format, different blocks for different species,
@@ -459,16 +457,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         for (int iphip = 0; iphip < phi_tab_length; iphip++)
         {
           double phip = phi_tab->get(1,iphip + 1);
-
           double dN_dphidy = 0.0;
 
           for (int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pT_tab->get(1,ipT + 1);
-            double pT_gauss_weight = pT_tab->get(2, ipT + 1); 
+            double pT_gauss_weight = pT_tab->get(2, ipT + 1);
 
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
-            
+
             dN_dphidy += pT_gauss_weight * pT * dN_pTdpTdphidy[iS3D];
           } //ipT
           spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << dN_dphidy << "\n";
@@ -505,7 +502,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         for(int ipT = 0; ipT < pT_tab_length; ipT++)
         {
           double pT = pT_tab->get(1, ipT + 1);
-
           double dN_pTdpTdy = 0.0;
 
           for (int iphip = 0; iphip < phi_tab_length; iphip++)
@@ -514,7 +510,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             double phip_gauss_weight = phi_tab->get(2, iphip + 1);
 
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
-            
+
             dN_pTdpTdy += phip_gauss_weight * dN_pTdpTdphidy[iS3D];
           } //iphip
           spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << pT << "\t" << dN_pTdpTdy << "\n";
@@ -556,13 +552,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           for(int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pT_tab->get(1, ipT + 1);
-            double pT_gauss_weight = pT_tab->get(2, ipT + 1); 
+            double pT_gauss_weight = pT_tab->get(2, ipT + 1);
 
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
-            
+
             dN_dy += phip_gauss_weight * pT_gauss_weight * pT * dN_pTdpTdphidy[iS3D];
           } //ipT
-          
+
         } //iphip
         spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << dN_dy << "\n";
       } //iy
@@ -724,7 +720,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         {
           spectraFile << scientific <<  setw(5) << setprecision(6) << y << "\t" << phi_over_pi << "\t" << pT << "\n";
         }
-
       }//ipart
     } // ievent
     spectraFile.close();
@@ -820,8 +815,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     fclose(avg_thermo_file);
 
     double thermodynamic_average[5] = {Tavg, Eavg, Pavg, muBavg, nBavg};
-
-    //cout << Tavg << "\t" << Eavg << "\t" << Pavg << "\t" << muBavg << "\t" << nBavg << endl;
 
     // freezeout info
     FO_surf *surf = &surf_ptr[0];
@@ -1009,8 +1002,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
-
-
     // for sampling and modified thermal spectra
     // read in gauss laguerre roots and weights
     // for gauss laguerre quadrature
@@ -1049,9 +1040,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     double df_coeff[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
-
-
-
     if(MODE == 1) // viscous hydro
     {
       switch(DF_MODE)
@@ -1064,16 +1052,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[3] = df.c3;
           df_coeff[4] = df.c4;
 
-          // // print coefficients
-          // printf("\nc0 = %f\n", df_coeff[0]);
-          // printf("c1 = %f\n", df_coeff[1]);
-          // printf("c2 = %f\n", df_coeff[2]);
-          // printf("c3 = %f\n", df_coeff[3]);
-          // printf("c4 = %f\n", df_coeff[4]);
-
           switch(OPERATION)
           {
-            case 1: // thermal
+            case 1: // smooth CF
             {
               calculate_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon,
               T, P, E, tau, eta, ut, ux, uy, un,
@@ -1082,7 +1063,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               muB, nB, Vt, Vx, Vy, Vn, df_coeff);
               break;
             }
-            case 2: // sample
+            case 2: // sampler
             {
               if(OVERSAMPLE)
               {
@@ -1094,12 +1075,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               particle_event_list.resize(Nevents);
 
-               printf("Sampling particles with df 14 moment...\n");
+              printf("Sampling particles with df 14 moment...\n");
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
-              //write_particle_list_OSC();
+              write_particle_list_OSC();
               write_momentum_list_toFile();
 
               break;
@@ -1120,7 +1101,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[3] = df.betaV;
           df_coeff[4] = df.betapi;
 
-          // // print coefficients
+          // print coefficients
           printf("\nF = %lf\n", df_coeff[0]);
           printf("G = %lf\n", df_coeff[1]);
           printf("betabulk = %lf\n", df_coeff[2]);
@@ -1129,7 +1110,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
           switch(OPERATION)
           {
-            case 1: // thermal
+            case 1: // smooth CF
             {
               calculate_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon,
               T, P, E, tau, eta, ut, ux, uy, un,
@@ -1138,7 +1119,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               muB, nB, Vt, Vx, Vy, Vn, df_coeff);
               break;
             }
-            case 2: // sample
+            case 2: // sampler
             {
               if(OVERSAMPLE)
               {
@@ -1155,7 +1136,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
-              //write_particle_list_OSC();
+              write_particle_list_OSC();
               write_momentum_list_toFile();
               break;
             }
@@ -1175,25 +1156,18 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[3] = df.betaV;
           df_coeff[4] = df.betapi;
 
-          // print coefficients
-          // printf("\nF = %f\n", df_coeff[0]);
-          // printf("G = %f\n", df_coeff[1]);
-          // printf("betabulk = %f\n", df_coeff[2]);
-          // printf("betaV = %f\n", df_coeff[3]);
-          // printf("betapi = %f\n", df_coeff[4]);
-
           switch(OPERATION)
           {
-            case 1: // thermal
+            case 1: // smooth CF
             {
               calculate_dN_ptdptdphidy_feqmod(Mass, Sign, Degen, Baryon,
               T, P, E, tau, eta, ux, uy, un,
               dat, dax, day, dan,
               pixx, pixy, pixn, piyy, piyn, bulkPi,
               muB, nB, Vx, Vy, Vn, df_coeff, pbar_pts, pbar_root1, pbar_root2, pbar_weight1, pbar_weight2);
-                break;
+              break;
             }
-            case 2: // sample
+            case 2: // sampler
             {
 
               if(OVERSAMPLE)
@@ -1211,9 +1185,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
-              //write_particle_list_OSC();
+              write_particle_list_OSC();
               write_momentum_list_toFile();
-
 
               break;
             }
@@ -1236,7 +1209,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     {
       switch(OPERATION)
       {
-        case 1: // thermal
+        case 1: // smooth CF
         {
           calculate_dN_pTdpTdphidy_VAH_PL(Mass, Sign, Degen,
               tau, eta, ux, uy, un,
@@ -1246,7 +1219,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
           break;
         }
-        case 2: // sample
+        case 2: // sampler
         {
           sample_dN_pTdpTdphidy_VAH_PL(Mass, Sign, Degen,
                 tau, eta, ux, uy, un,
@@ -1291,7 +1264,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         write_dN_dpTdphidy_with_resonance_decays_toFile();
       }
     }
-    //else if (OPERATION == 2) {write_particle_list_toFile(); write_particle_list_OSC(); write_momentum_list_toFile();}
 
     if (MODE == 5) write_polzn_vector_toFile();
 

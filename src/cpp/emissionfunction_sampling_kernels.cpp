@@ -97,7 +97,7 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
 
   if(INCLUDE_BULK_DELTAF)
   {
-    double bulkPi_magnitude = fabs(bulkPi); 
+    double bulkPi_magnitude = fabs(bulkPi);
 
     if(DF_MODE == 1)
     {
@@ -161,7 +161,7 @@ double EmissionFunctionArray::compute_df_weight(lrf_momentum pLRF, double mass_s
 
 lrf_momentum EmissionFunctionArray::sample_momentum(default_random_engine& generator, long * pk_acceptances, long * pk_samples, long * angle_acceptances, long * angle_samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double * df_coeff, double shear14_coeff, double baryon_enthalpy_ratio)
 {
-  double two_pi = 2.0 * M_PI; 
+  double two_pi = 2.0 * M_PI;
 
   // sampled LRF momentum
   lrf_momentum pLRF;
@@ -268,7 +268,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       if(propose_distribution < I1_over_Itot)
       {
         // draw k from distribution exp(-k/T) . dk by sampling r1 uniformly from [0,1):
-        // sample direction uniformly 
+        // sample direction uniformly
         double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
 
         k = - T * log(r1);
@@ -303,7 +303,7 @@ lrf_momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
         double l3 = log(r3);
 
         k = - T * (l1 + l2 + l3);
-        phi = two_pi * pow((l1 + l2) / (l1 + l2 + l3), 2);  
+        phi = two_pi * pow((l1 + l2) / (l1 + l2 + l3), 2);
         costheta = (l1 - l2) / (l1 + l2);
 
       } // distribution 3 (light)
@@ -830,9 +830,6 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
     return 0.99 * Ntot;   // assume ~ 99% of particles have p.dsigma > 0
 
   }
-
-
-
 
 
 void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average)

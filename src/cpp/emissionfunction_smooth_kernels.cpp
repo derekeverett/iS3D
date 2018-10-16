@@ -134,8 +134,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       }
     } // DF_MODE
 
-
-
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spectra for each surface cell in a chunk, for all particle species
     int npart = number_of_chosen_particles;
@@ -406,7 +404,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     pdotdsigma_f_eta_sum += (pdotdsigma * f);
                   }
 
-
                 } // ieta
 
                 long long int iSpectra = (long long int)icell + (long long int)endFO * ((long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy)));
@@ -451,8 +448,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     //free memory
     free(dN_pTdpTdphidy_all);
   }
-
-
 
 
   void EmissionFunctionArray::calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
@@ -1020,7 +1015,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     free(dN_pTdpTdphidy_all);
   }
 
-    // haven't defined in the header yet...
     void EmissionFunctionArray::calculate_dN_pTdpTdphidy_VAH_PL(double *Mass, double *Sign, double *Degeneracy,
       double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
       double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *T_fo,
@@ -1074,7 +1068,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
           for (int iy = 0; iy < y_pts; iy++) yValues[iy] = y_tab->get(1, iy + 1);
         }
-
 
         //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
         //to hold the spectra for each surface cell in a chunk, for all particle species
@@ -1153,7 +1146,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
               double sign = Sign[ipart];
               double degeneracy = Degeneracy[ipart];
 
-
               for (int ipT = 0; ipT < pT_tab_length; ipT++)
               {
                 // set transverse radial momentum and transverse mass (GeV)
@@ -1201,7 +1193,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       #endif
 
                       double Ea = sqrt(pdotu * pdotu  +  xiL * pdotz * pdotz);
-
                       double fa = 1.0 / ( exp(Ea / Lambda) + sign);
 
                       // residual viscous corrections

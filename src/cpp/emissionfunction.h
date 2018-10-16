@@ -51,14 +51,6 @@ typedef struct
 // thermal particle density (don't need anymore...expanding BE/FD distributions)
 double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem, double mbar, int jmax, double two_pi2_hbarC3);
 
-
-
-
-
-
-
-
-
 class EmissionFunctionArray
 {
 private:
@@ -111,10 +103,8 @@ public:
   EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients df_in);
   ~EmissionFunctionArray();
 
-
   // main function
   void calculate_spectra();
-
 
   // continuous spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
@@ -141,8 +131,6 @@ public:
     double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
   //:::::::::::::::::::::::::::::::::::::::::::::::::
-
-
 
 
   // sampling spectra routines:
@@ -185,15 +173,11 @@ public:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
 
-
-
   // spin polarization:
   void calculate_spin_polzn(double *Mass, double *Sign, double *Degeneracy,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
   double *wtx_fo, double *wty_fo, double *wtn_fo, double *wxy_fo, double *wxn_fo, double *wyn_fo);
-
-
 
 
   // write to file functions:
@@ -206,7 +190,6 @@ public:
   void write_dN_dy_toFile(int *MCID);
   void write_polzn_vector_toFile(); //write components of spin polarization vector to file
 
-
   void write_dN_dpTdphidy_toFile(int *MCID);   // write 3D spectra to file in experimental bins
   void write_dN_dpTdphidy_with_resonance_decays_toFile();   // write 3D spectra to file in experimental bins (w/ resonance decay effects)
   void write_particle_list_toFile();  // write sampled particle list
@@ -214,8 +197,6 @@ public:
   void write_momentum_list_toFile();  // write sampled momentum list
 
   //:::::::::::::::::::::::::::::::::::::::::::::::::
-
-
 
 
   // resonance decay routine:
@@ -244,7 +225,6 @@ public:
   int particle_chosen_index(int particle_index);
 
   //:::::::::::::::::::::::::::::::::::::::::::::::::
-
 
 };
 

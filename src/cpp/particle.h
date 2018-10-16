@@ -47,7 +47,7 @@ public:
   //cartesian coordinates
   double t = 0.0;
   double z = 0.0;
-  
+
   //cartesian momentum four vector
   double E = 0.0;
   double px = 0.0;
