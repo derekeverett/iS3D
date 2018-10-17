@@ -5,7 +5,7 @@
 #include<vector>
 #include<random>
 #include "Table.h"
-#include "main.h"
+#include "iS3DWrapper.h"
 #include "ParameterReader.h"
 #include "deltafReader.h"
 #include "particle.h"
@@ -71,6 +71,7 @@ private:
 
   int OVERSAMPLE; // whether or not to iteratively oversample surface
   long int MIN_NUM_HADRONS; //min number of particles summed over all samples
+  long int SAMPLER_SEED; //the seed for the particle sampler. If chosen < 0, seed set with clocktime 
   int Nevents;              // number of sampled events
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;

@@ -7,7 +7,7 @@
 #include<iomanip>
 #include<stdlib.h>
 
-#include "main.h"
+#include "iS3DWrapper.h"
 #include "readindata.h"
 #include "arsenal.h"
 #include "ParameterReader.h"

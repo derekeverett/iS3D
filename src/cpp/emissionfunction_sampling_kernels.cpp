@@ -13,7 +13,7 @@
 #ifdef _OMP
 #include <omp.h>
 #endif
-#include "main.h"
+#include "iS3DWrapper.h"
 #include "readindata.h"
 #include "emissionfunction.h"
 #include "Stopwatch.h"
@@ -831,10 +831,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
   {
     int npart = number_of_chosen_particles;
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
+    //set seed
+    unsigned seed;
+    if (SAMPLER_SEED < 0) seed = chrono::system_clock::now().time_since_epoch().count();
+    else seed = SAMPLER_SEED;
 
-    // for testing: fix the seed and generator
-    //unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-    unsigned seed = 1;
     default_random_engine generator(seed);
 
     int eta_pts = 1;

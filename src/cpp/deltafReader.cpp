@@ -7,7 +7,7 @@
 #include<iomanip>
 #include<stdlib.h>
 
-#include "main.h"
+#include "iS3DWrapper.h"
 #include "deltafReader.h"
 #include "ParameterReader.h"
 #include "readindata.h"
@@ -39,11 +39,11 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
   FILE * avg_thermo_file;
   avg_thermo_file = fopen("average_thermodynamic_quantities.dat", "r");
   if(avg_thermo_file == NULL) printf("Couldn't open average thermodynamic file\n");
-  fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg); 
+  fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg);
   fclose(avg_thermo_file);
 
   double T_FO = Tavg / hbarC;
-  double muB_FO = muBavg / hbarC; 
+  double muB_FO = muBavg / hbarC;
 
 
   printf("Reading in ");
