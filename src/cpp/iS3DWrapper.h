@@ -55,7 +55,7 @@ class IS3D {
   //depending on parameters, will either do smooth cooper
   //frye integral (w or w/o res decays)
   // or sampler
-  int run_particlization();
+  int run_particlization(int fo_from_file);
 
   //read the freezeout surface from disk 'input/surface.dat'
   void read_fo_surf_from_file();
