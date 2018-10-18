@@ -1080,7 +1080,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
-              write_particle_list_OSC();
+              //write_particle_list_OSC();
               write_momentum_list_toFile();
 
               break;
@@ -1136,7 +1136,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
-              write_particle_list_OSC();
+              //write_particle_list_OSC();
               write_momentum_list_toFile();
               break;
             }
@@ -1185,7 +1185,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               //write_particle_list_toFile();
-              write_particle_list_OSC();
+              //write_particle_list_OSC();
               write_momentum_list_toFile();
 
               break;
@@ -1248,9 +1248,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       write_dN_pTdpTdphidy_toFile(MCID);
       write_dN_dpTdphidy_toFile(MCID);
 
-      write_dN_dphidy_toFile(MCID);
-      write_dN_dy_toFile(MCID);
-      write_dN_pTdpTdy_toFile(MCID);
+      //write_dN_dphidy_toFile(MCID);
+      //write_dN_dy_toFile(MCID);
+      //write_dN_pTdpTdy_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)

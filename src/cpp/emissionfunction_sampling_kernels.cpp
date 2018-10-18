@@ -822,7 +822,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
 
     } // freezeout cells (icell)
 
-    return 0.99 * Ntot;   // assume ~ 99% of particles have p.dsigma > 0
+    return 0.98 * Ntot;   // assume ~ 98% of particles have p.dsigma > 0
 
   }
 
