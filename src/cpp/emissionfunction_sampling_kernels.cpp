@@ -227,7 +227,12 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       double pdsigma_abs = fabs(E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
 
       double rideal = pdsigma_abs / (E * ds_magnitude);
-      double rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
+      double rvisc = 1.0;
+
+      if(INCLUDE_SHEAR_DELTAF || INCLUDE_BULK_DELTAF || INCLUDE_BARYONDIFF_DELTAF)
+      {
+        rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
+      }
 
       double weight_light = exp(p/T) / (exp(E/T) + sign) * rideal * rvisc;
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
@@ -320,8 +325,13 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
 
       double pdsigma_abs = fabs(E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
 
-      double rideal = pdsigma_abs / (E * ds_magnitude);
-      double rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
+      double rideal = pdsigma_abs / (E * ds_magnitude); 
+      double rvisc = 1.0;
+      
+      if(INCLUDE_SHEAR_DELTAF || INCLUDE_BULK_DELTAF || INCLUDE_BARYONDIFF_DELTAF)
+      {
+        rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
+      }
 
       double weight_heavy = p/E * exp(E/T) / (exp(E/T) + sign) * rideal * rvisc;
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
