@@ -325,9 +325,9 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
 
       double pdsigma_abs = fabs(E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
 
-      double rideal = pdsigma_abs / (E * ds_magnitude); 
+      double rideal = pdsigma_abs / (E * ds_magnitude);
       double rvisc = 1.0;
-      
+
       if(INCLUDE_SHEAR_DELTAF || INCLUDE_BULK_DELTAF || INCLUDE_BARYONDIFF_DELTAF)
       {
         rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
@@ -784,9 +784,10 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
     double Ntot = 0.0;                    // total particle yield (includes p.dsigma < 0 particles)
 
     #pragma omp parallel for
-    for (long icell = 0; icell < FO_length; icell++)
+    for(long icell = 0; icell < FO_length; icell++)
     {
       double tau = tau_fo[icell];         // longitudinal proper time
+      double tau2 = tau * tau;
 
       double dat = dat_fo[icell];         // covariant normal surface vector dsigma_mu
       double dax = dax_fo[icell];
@@ -796,7 +797,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
       double ux = ux_fo[icell];           // contravariant fluid velocity u^mu
       double uy = uy_fo[icell];           // enforce normalization
       double un = un_fo[icell];           // u^eta (fm^-1)
-      double ut = sqrt(1.0 + ux * ux + uy * uy + tau * tau * un * un); //u^tau
+      double ut = sqrt(1.0 +  ux * ux  + uy * uy  +  tau2 * un * un); //u^tau
 
       double bulkPi = 0.0;                // bulk pressure (GeV/fm^3)
 
@@ -812,12 +813,12 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
         Vx = Vx_fo[icell];
         Vy = Vy_fo[icell];
         Vn = Vn_fo[icell];
-        Vt = (Vx * ux + Vy * uy + tau * tau * Vn * un) / ut;
+        Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
       }
 
       // udotdsigma and Vdotdsigma w/o delta_eta_weight factor
-      double udsigma = ut * dat + ux * dax + uy * day + un * dan;
-      double Vdsigma = Vt * dat + Vx * dax + Vy * day + Vn * dan;
+      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
+      double Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
 
       // total number of hadrons / delta_eta_weight in FO_cell
       double dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;
@@ -832,7 +833,9 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
 
     } // freezeout cells (icell)
 
-    return 0.98 * Ntot;   // assume ~ 98% of particles have p.dsigma > 0
+    mean_yield = Ntot;           // includes backflow particles
+
+    return 0.98 * mean_yield;    // assume ~ 98% of particles have p.dsigma > 0
 
   }
 
@@ -1074,6 +1077,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         {
           int N_hadrons = poisson_hadrons(generator);           // sample total number of hadrons in FO cell
 
+          particle_yield_list[ievent] += N_hadrons;             // add sampled hadrons to yield list (includes p.dsigma < 0)
+
           for(int n = 0; n < N_hadrons; n++)
           {
             // mean number of particles of species ipart / delta_eta_weight
@@ -1144,7 +1149,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             if(pdsigma >= 0.0)
             {
               double sinheta = sinh(eta);
-              double cosheta = sqrt(1.0 + sinheta * sinheta);
+              double cosheta = sqrt(1.0  +  sinheta * sinheta);
 
               // add sampled particle to particle_event_list
               Sampled_Particle new_particle;
@@ -1161,12 +1166,12 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               new_particle.px = pLab.px;
               new_particle.py = pLab.py;
 
-              double pz = tau * pLab.pn * cosheta + pLab.ptau * sinheta;
+              double pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
               new_particle.pz = pz;
               //new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
               //is it possible for this to be too small or negative?
               //try enforcing mass shell condition on E
-              new_particle.E = sqrt(mass * mass + pLab.px * pLab.px + pLab.py * pLab.py + pz * pz);
+              new_particle.E = sqrt(mass * mass  +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
 
               //add to particle_event_list
               //CAREFUL push_back is not a thread-safe operation

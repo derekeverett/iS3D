@@ -85,6 +85,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
     OVERSAMPLE = paraRdr->getVal("oversample");
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
+    TEST_POISSON = paraRdr->getVal("test_poisson");
     Nevents = 1;    // default value for number of sampled events
 
     particles = particles_in;
@@ -725,6 +726,25 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
+  void EmissionFunctionArray::write_yield_list_toFile()
+  {
+    printf("Writing mean yield and sampled yield list to file...\n");
+
+    ofstream average_yield("results/mean_yield.dat", ios_base::out);
+    average_yield << mean_yield << endl;
+    average_yield.close();
+
+    ofstream yield_list("results/yield_list.dat", ios_base::out);
+    yield_list << "sampled particle yield\n"; // write the header
+
+    for(int ievent = 0; ievent < Nevents; ievent++)
+    {
+      yield_list << particle_yield_list[ievent] << endl;
+    }
+
+    yield_list.close();
+  }
+
 /*
   void EmissionFunctionArray::synchronize_particle_list_and_write()
   {
@@ -1074,6 +1094,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               }
 
               particle_event_list.resize(Nevents);
+              particle_yield_list.resize(Nevents,0);
 
               printf("Sampling particles with df 14 moment...\n");
 
@@ -1082,6 +1103,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               //write_particle_list_toFile();
               //write_particle_list_OSC();
               write_momentum_list_toFile();
+              write_yield_list_toFile();
 
               break;
             }
@@ -1130,6 +1152,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               }
 
               particle_event_list.resize(Nevents);
+              particle_yield_list.resize(Nevents,0);
 
               printf("Sampling particles with df Chapman Enskog...\n");
 
@@ -1138,6 +1161,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               //write_particle_list_toFile();
               //write_particle_list_OSC();
               write_momentum_list_toFile();
+              write_yield_list_toFile();
               break;
             }
             default:
@@ -1179,6 +1203,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               }
 
               particle_event_list.resize(Nevents);
+              particle_yield_list.resize(Nevents,0);
+
 
               printf("Sampling particles with feqmod...\n");
 
@@ -1187,6 +1213,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               //write_particle_list_toFile();
               //write_particle_list_OSC();
               write_momentum_list_toFile();
+              write_yield_list_toFile();
 
               break;
             }

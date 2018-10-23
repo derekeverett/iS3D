@@ -66,10 +66,10 @@ int main(int argc, char *argv[])
 
   printline();
 
-  Table pT_tab("tables/pT_single_table.dat"); // pT value and weight table
+  Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
   Table phi_tab("tables/phi_0_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
-  Table eta_tab("tables/eta_trapezoid_table_57pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
+  Table eta_tab("tables/eta_trapezoid_table_41pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
 
   efa.calculate_spectra();
