@@ -32,7 +32,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
   double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo,
-  double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff)
+  double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average)
   {
     printf("computing thermal spectra from vhydro with df...\n\n");
 
@@ -87,6 +87,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
       for (int iy = 0; iy < y_pts; iy++) yValues[iy] = y_tab->get(1, iy + 1);
     }
+
+    // average thermodynamic quantities
+    double Tavg = thermodynamic_average[0];
+    double Eavg = thermodynamic_average[1];
+    double Pavg = thermodynamic_average[2];
+    double muBavg = thermodynamic_average[3];
+    double nBavg = thermodynamic_average[4];
 
     // Set df coefficients from df_coeff (temperature dependent part below)
     // 14 moment
@@ -177,80 +184,66 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double un = un_fo[icell_glb];
         double ux2 = ux * ux;
         double uy2 = uy * uy;
-        double ut = sqrt(fabs(1.0 + ux2 + uy2 + tau2*un*un));
+        double ut = sqrt(1.0 + ux2 + uy2 + tau2*un*un);
         double ut2 = ut * ut;
-        double u0 = sqrt(fabs(1.0 + ux2 + uy2));
+        double uperp =  sqrt(ux2 + uy2);
+        double utperp = sqrt(1.0  +  uperp * uperp);
 
-        double udotdsigma = ut * dat + ux * dax + uy * day + un * dan;
+        double udotdsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
 
-        double T = T_fo[icell_glb];             // temperature
-        double E = E_fo[icell_glb];             // energy density
-        double P = P_fo[icell_glb];             // pressure
+        double T = Tavg;                        // temperature
+        double E = Eavg;                        // energy density
+        double P = Pavg;                        // pressure
 
-        //double pitt = pitt_fo[icell_glb];     // pi^munu
-        //double pitx = pitx_fo[icell_glb];     // enforce orthogonality and tracelessness
-        //double pity = pity_fo[icell_glb];
-        //double pitn = pitn_fo[icell_glb];
-        double pixx = pixx_fo[icell_glb];
-        double pixy = pixy_fo[icell_glb];
-        double pixn = pixn_fo[icell_glb];
-        double piyy = piyy_fo[icell_glb];
-        double piyn = piyn_fo[icell_glb];
-        //double pinn = pinn_fo[icell_glb];
-        double pinn = (pixx*(ux2 - ut2) + piyy*(uy2 - ut2) + 2.0*(pixy*ux*uy + tau2*un*(pixn*ux + piyn*uy))) / (tau2 * u0 * u0);
-        double pitn = (pixn*ux + piyn*uy + tau2*pinn*un) / ut;
-        double pity = (pixy*ux + piyy*uy + tau2*piyn*un) / ut;
-        double pitx = (pixx*ux + pixy*uy + tau2*pixn*un) / ut;
-        double pitt = (pitx*ux + pity*uy + tau2*pitn*un) / ut;
+        // double T = T_fo[icell_glb];            
+        // double E = E_fo[icell_glb];         
+        // double P = P_fo[icell_glb];       
 
-        double bulkPi = bulkPi_fo[icell_glb];   // bulk pressure
+        double pitt = 0.0;                      // contravariant shear stress tensor pi^munu (GeV/fm^3)
+        double pitx = 0.0;                      // enforce orthogonality pi.u = 0
+        double pity = 0.0;                      // and tracelessness Tr(pi) = 0
+        double pitn = 0.0;
+        double pixx = 0.0;
+        double pixy = 0.0;
+        double pixn = 0.0;
+        double piyy = 0.0;
+        double piyn = 0.0;
+        double pinn = 0.0;
 
-        double muB = 0.0;                       // baryon chemical potential
-        double alphaB = 0.0;
-        double nB = 0.0;                        // net baryon density
+        if(INCLUDE_SHEAR_DELTAF)
+        {
+          pixx = pixx_fo[icell_glb];
+          pixy = pixy_fo[icell_glb];
+          pixn = pixn_fo[icell_glb];
+          piyy = piyy_fo[icell_glb];
+          piyn = piyn_fo[icell_glb];
+          pinn = (pixx * (ux2 - ut2) + piyy * (uy2 - ut2) + 2.0 * (pixy * ux * uy + tau2 * un * (pixn * ux + piyn * uy))) / (tau2 * utperp * utperp);
+          pitn = (pixn * ux + piyn * uy + tau2 * pinn * un) / ut;
+          pity = (pixy * ux + piyy * uy + tau2 * piyn * un) / ut;
+          pitx = (pixx * ux + pixy * uy + tau2 * pixn * un) / ut;
+          pitt = (pitx * ux + pity * uy + tau2 * pitn * un) / ut;
+        }
+
+        double bulkPi = 0.0;                    // bulk pressure (GeV/fm^3)
+
+        if(INCLUDE_BULK_DELTAF) bulkPi = bulkPi_fo[icell_glb];
+
+        double muB = muBavg;                    // baryon chemical potential
+        double alphaB = muB / T;
+        double nB = nBavg;                      // net baryon density
         double Vt = 0.0;                        // baryon diffusion
         double Vx = 0.0;                        // enforce orthogonality
         double Vy = 0.0;
         double Vn = 0.0;
-        double baryon_enthalpy_ratio = 0.0;
+        double baryon_enthalpy_ratio = nB / (E + P);
 
-        if(INCLUDE_BARYON)
+        if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
         {
-          muB = muB_fo[icell_glb];
-          alphaB = muB / T;
-
-          if(INCLUDE_BARYONDIFF_DELTAF)
-          {
-            nB = nB_fo[icell_glb];
-            Vx = Vx_fo[icell_glb];
-            Vy = Vy_fo[icell_glb];
-            Vn = Vn_fo[icell_glb];
-            //Vt = Vt_fo[icell_glb];
-            Vt = (Vx*ux + Vy*uy + tau2*Vn*un) / ut;
-            if(DF_MODE == 2) baryon_enthalpy_ratio = nB / (E + P);
-          }
+          Vx = Vx_fo[icell_glb];
+          Vy = Vy_fo[icell_glb];
+          Vn = Vn_fo[icell_glb];
+          Vt = (Vx*ux + Vy*uy + tau2*Vn*un) / ut;
         }
-
-        double uperp =  sqrt(ux2 + uy2);
-        double utperp = sqrt(1.0 + uperp * uperp);
-
-        Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
-
-        double Xt = basis_vectors.Xt;
-        double Xx = basis_vectors.Xx;
-        double Xy = basis_vectors.Xy;
-        double Xn = basis_vectors.Xn;
-        double Yx = basis_vectors.Yx;
-        double Yy = basis_vectors.Yy;
-        double Zt = basis_vectors.Zt;
-        double Zn = basis_vectors.Zn;
-
-        Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
-        pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
-        //pimunu.compute_pimunu_max();
-
-        //cout << setprecision(15) << pimunu.pitx_LRF << endl;
-
 
         // evaluate shear and bulk coefficients (temperature dependent)
         double shear_coeff = 0.0;
@@ -393,41 +386,9 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       double df_shear = 0.0;
                       if(INCLUDE_SHEAR_DELTAF)
                       {
-                        double E = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
-                        double pX = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;  // -x.p
-                        double pY = Yx * px  +  Yy * py;                                // -y.p
-                        double pZ = -Zt * pt  +  Zn * tau2_pn;                          // -z.p
-
-                        double pitt_LRF = pimunu.pitt_LRF;
-                        double pitx_LRF = pimunu.pitx_LRF;
-                        double pity_LRF = pimunu.pity_LRF;
-                        double pitz_LRF = pimunu.pitz_LRF;
-                        double pixx_LRF = pimunu.pixx_LRF;
-                        double pixy_LRF = pimunu.pixy_LRF;
-                        double pixz_LRF = pimunu.pixz_LRF;
-                        double piyy_LRF = pimunu.piyy_LRF;
-                        double piyz_LRF = pimunu.piyz_LRF;
-                        double pizz_LRF = pimunu.pizz_LRF;
-
-                        // double pimunu_pmu_pnu =  pitt_LRF * E * E  +  pixx_LRF * pX * pX  +  piyy_LRF * pY * pY  +  pizz_LRF * pZ * pZ
-                        // + 2.0 * (-(pitx_LRF * pX  +  pity_LRF * pY) * E  +  pixy_LRF * pX * pY  +  pZ * (pixz_LRF * pX  +  piyz_LRF * pY  -  pitz_LRF * E));
-
-                        double pimunu_pmu_pnu =  pixx_LRF * pX * pX  +  piyy_LRF * pY * pY  +  pizz_LRF * pZ * pZ
-                        + 2.0 * (pixy_LRF * pX * pY  +  pZ * (pixz_LRF * pX  +  piyz_LRF * pY));
-
-
-                        double pimunu_pmu_pnu2 = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
+                        double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
                         + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
 
-                        if(fabs(pimunu_pmu_pnu - pimunu_pmu_pnu2) > error)
-                        {
-                          error = fabs(pimunu_pmu_pnu - pimunu_pmu_pnu2);
-                          cout << setprecision(15) << error << endl;
-                        }
-
-
-                        //double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
-                        //+ 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
                         df_shear = shear_coeff * pimunu_pmu_pnu / pdotu;
                       }
                       double df_bulk = 0.0;
@@ -510,7 +471,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
     double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
     double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
-    double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_root2, double * pbar_weight1, double * pbar_weight2)
+    double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_root2, double * pbar_weight1, double * pbar_weight2, double *thermodynamic_average)
   {
     printf("computing thermal spectra from vhydro with feqmod...\n\n");
 

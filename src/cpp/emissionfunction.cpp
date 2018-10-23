@@ -85,7 +85,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
     OVERSAMPLE = paraRdr->getVal("oversample");
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
-    TEST_POISSON = paraRdr->getVal("test_poisson");
     Nevents = 1;    // default value for number of sampled events
 
     particles = particles_in;
@@ -1080,7 +1079,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               T, P, E, tau, eta, ut, ux, uy, un,
               dat, dax, day, dan,
               pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff);
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff, thermodynamic_average);
               break;
             }
             case 2: // sampler
@@ -1094,7 +1093,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               }
 
               particle_event_list.resize(Nevents);
-              particle_yield_list.resize(Nevents,0);
+              particle_yield_list.resize(Nevents, 0);
 
               printf("Sampling particles with df 14 moment...\n");
 
@@ -1138,7 +1137,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               T, P, E, tau, eta, ut, ux, uy, un,
               dat, dax, day, dan,
               pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-              muB, nB, Vt, Vx, Vy, Vn, df_coeff);
+              muB, nB, Vt, Vx, Vy, Vn, df_coeff, thermodynamic_average);
               break;
             }
             case 2: // sampler
@@ -1152,7 +1151,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               }
 
               particle_event_list.resize(Nevents);
-              particle_yield_list.resize(Nevents,0);
+              particle_yield_list.resize(Nevents, 0);
 
               printf("Sampling particles with df Chapman Enskog...\n");
 
@@ -1188,7 +1187,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               T, P, E, tau, eta, ux, uy, un,
               dat, dax, day, dan,
               pixx, pixy, pixn, piyy, piyn, bulkPi,
-              muB, nB, Vx, Vy, Vn, df_coeff, pbar_pts, pbar_root1, pbar_root2, pbar_weight1, pbar_weight2);
+              muB, nB, Vx, Vy, Vn, df_coeff, pbar_pts, pbar_root1, pbar_root2, pbar_weight1, pbar_weight2, thermodynamic_average);
               break;
             }
             case 2: // sampler
@@ -1203,7 +1202,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               }
 
               particle_event_list.resize(Nevents);
-              particle_yield_list.resize(Nevents,0);
+              particle_yield_list.resize(Nevents, 0);
 
 
               printf("Sampling particles with feqmod...\n");
