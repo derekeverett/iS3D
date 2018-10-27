@@ -49,7 +49,7 @@ typedef struct
 } MT_fit_parameters;
 
 // thermal particle density (don't need anymore...expanding BE/FD distributions)
-//double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem, double mbar, int jmax, double two_pi2_hbarC3);
+double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
 
 class EmissionFunctionArray
 {
