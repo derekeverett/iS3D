@@ -201,8 +201,8 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       pLRF.pz = p * costheta;
 
       // p.dsigma * Heaviside(p.dsigma)
-      double pdsigma_Heaviside = fabs(E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
-      //if(pdsigma_Heaviside < 0.0) pdsigma_Heaviside = 0.0;
+      double pdsigma_Heaviside = E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
+      if(pdsigma_Heaviside < 0.0) pdsigma_Heaviside = 0.0;
 
       double rideal = pdsigma_Heaviside / (E * ds_magnitude);
       double rvisc = 1.0;
