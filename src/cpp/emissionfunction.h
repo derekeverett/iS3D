@@ -48,8 +48,11 @@ typedef struct
   double slope;
 } MT_fit_parameters;
 
-// thermal particle density (don't need anymore...expanding BE/FD distributions)
+// thermal particle density (just for crosschecking)
 double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
+
+// thermal particle density with outflow only (needed if enforce p.dsigma > 0)
+double equilibrium_density_outflow(double mbar_squared, double sign, double chem, double dsigmaTime_over_dsigmaSpace, double * pbar_root1, double * pbar_exp_pbar_weight1, const int pbar_pts);
 
 class EmissionFunctionArray
 {
