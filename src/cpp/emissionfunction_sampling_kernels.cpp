@@ -53,7 +53,7 @@ double equilibrium_particle_density(double mass, double degeneracy, double sign,
 
 double equilibrium_density_outflow(double mbar_squared, double sign, double chem, double dsigmaTime_over_dsigmaSpace, double * pbar_root1, double * pbar_exp_pbar_weight1, const int pbar_pts)
 {
-  // enforces p.dsigma > 0, which makes neq_outflow > neq in freezeout cell
+  // enforces p.dsigma > 0, which makes neq_outflow > neq for spacelike freezeout cells 
   // this function is called for spacelike freezeout cells (dsigmaTime_over_dsigmaSpace < 1)
 
   double neq_outflow = 0.0;
@@ -86,7 +86,9 @@ double EmissionFunctionArray::compute_df_weight(LRF_Momentum pLRF, double mass_s
   double pimunu_pmu_pnu = px * px * pixx  +  py * py * piyy  +  pz * pz * pizz  +  2.0 * (px * py * pixy  +  px * pz * pixz  +  py * pz * piyz);
 
   // Vmu LRF components
-  double Vx = Vmu.Vx_LRF;   double Vy = Vmu.Vy_LRF;   double Vz = Vmu.Vz_LRF;
+  double Vx = Vmu.Vx_LRF;   
+  double Vy = Vmu.Vy_LRF;   
+  double Vz = Vmu.Vz_LRF;
 
   double Vmu_pmu = - (px * Vx  +  py * Vy  +  pz * Vz);
 
@@ -125,6 +127,7 @@ double EmissionFunctionArray::compute_df_weight(LRF_Momentum pLRF, double mass_s
     }
     default:
     {
+      printf("\nViscous weight error: please set df_mode = (1,2)\n");
       exit(-1);
     }
   } // DF_MODE
@@ -198,7 +201,8 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       pLRF.pz = p * costheta;
 
       // p.dsigma * Heaviside(p.dsigma)
-      double pdsigma_Heaviside = max(0.0, E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
+      double pdsigma_Heaviside = fabs(E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
+      //if(pdsigma_Heaviside < 0.0) pdsigma_Heaviside = 0.0;
 
       double rideal = pdsigma_Heaviside / (E * ds_magnitude);
       double rvisc = 1.0;
@@ -211,7 +215,7 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       double weight_light = exp(p/T) / (exp(E/T) + sign) * rideal * rvisc;
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
-      if(fabs(weight_light - 0.5) > 0.5) printf("Error: weight_light = %f out of bounds\n", weight_light);
+      if(fabs(weight_light - 0.5) > 0.5) printf("Error: weight_light = %lf out of bounds\n", weight_light);
 
       // check pLRF acceptance
       if(propose < weight_light)
@@ -310,7 +314,8 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       pLRF.pz = p * costheta;
 
       // p.dsigma * Heaviside(p.dsigma)
-      double pdsigma_Heaviside = max(0.0, E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
+      double pdsigma_Heaviside = E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
+      if(pdsigma_Heaviside < 0.0) pdsigma_Heaviside = 0.0;
 
       double rideal = pdsigma_Heaviside / (E * ds_magnitude);
       double rvisc = 1.0;
@@ -527,7 +532,9 @@ LRF_Momentum EmissionFunctionArray::rescale_momentum(LRF_Momentum pmod, double m
     double pixz = pimunu.pixz_LRF;  double pizz = pimunu.pizz_LRF;
 
     // LRF baryon diffusion components
-    double Vx = Vmu.Vx_LRF;   double Vy = Vmu.Vy_LRF;   double Vz = Vmu.Vz_LRF;
+    double Vx = Vmu.Vx_LRF;
+    double Vy = Vmu.Vy_LRF;
+    double Vz = Vmu.Vz_LRF;
     diff_coeff *= (E_mod * baryon_enthalpy_ratio  +  baryon);
 
     LRF_Momentum pLRF;
@@ -923,12 +930,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double un = un_fo[icell];           // u^eta (fm^-1)
       double ut = sqrt(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un); //u^tau
 
-
       double ut2 = ut * ut;               // useful expressions
       double ux2 = ux * ux;
       double uy2 = uy * uy;
-      double uperp =  sqrt(ux2 + uy2);
-      double utperp = sqrt(1.0  +  uperp * uperp);
+      double uperp =  sqrt(ux * ux  +  uy * uy);
+      double utperp = sqrt(1.0  +  ux * ux  +  uy * uy);
 
       double T = Tavg;                    // temperature (GeV)
       double E = Eavg;                    // energy density (GeV/fm^3)
@@ -959,13 +965,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         pitt = (pitx * ux  +  pity * uy  +  tau2 * pitn * un) / ut;
       }
 
-      // testing orthogonality and tracelessness (checked)
-      //cout << setprecision(15) << pitt * ut - pitx * ux - pity * uy - tau2 * pitn * un << endl;
-      //cout << setprecision(15) << pitx * ut - pixx * ux - pixy * uy - tau2 * pixn * un << endl;
-      //cout << setprecision(15) << pity * ut - pixy * ux - piyy * uy - tau2 * piyn * un << endl;
-      //cout << setprecision(15) << pitn * ut - pixn * ux - piyn * uy - tau2 * pinn * un << endl;
-      //cout << setprecision(15) << pitt - pixx - piyy - tau2 * pinn << endl;
-
       double bulkPi = 0.0;                // bulk pressure (GeV/fm^3)
 
       if(INCLUDE_BULK_DELTAF) bulkPi = bulkPi_fo[icell];
@@ -987,45 +986,24 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
       }
 
-      // set milne basis vectors
+      // milne basis class
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
-
-      // testing orthogonality (checked)
-
-      /*
-      double Xt = basis_vectors.Xt;
-      double Xx = basis_vectors.Xx;
-      double Xy = basis_vectors.Xy;
-      double Xn = basis_vectors.Xn;
-      double Yx = basis_vectors.Yx;
-      double Yy = basis_vectors.Yy;
-      double Zt = basis_vectors.Zt;
-      double Zn = basis_vectors.Zn;
-      */
-
-      //cout << setprecision(15) << Xt * Xt - Xx * Xx - Xy * Xy - tau2 * Xn * Xn << endl;
-      //cout << setprecision(15) << - Yx * Yx - Yy * Yy << endl;
-      //cout << setprecision(15) << Zt * Zt - tau2 * Zn * Zn << endl;
-      //cout << setprecision(15) << Xt * ut - Xx * ux - Xy * uy - tau2 * Xn * un << endl;
-      //cout << setprecision(15) << -Xx * Yx - Xy * Yy << endl;
-      //cout << setprecision(15) << Xt * Zt - tau2 * Xn * Zn << endl;
-      //cout << setprecision(15) << - Yx * ux - Yy * uy << endl;
-      //cout << setprecision(15) << Zt * ut - tau2 * Zn * un << endl;
+      basis_vectors.test_orthonormality(tau2);
 
       // dsigma / delta_eta_weight class
       Surface_Element_Vector dsigma(dat, dax, day, dan);
       dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
-      dsigma.compute_dsigma_max();
-
+      dsigma.compute_dsigma_magnitude();
+  
       // shear stress class
       Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
+      pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
       pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
-      pimunu.compute_pimunu_max();
 
       // baryon diffusion class
       Baryon_Diffusion Vmu(Vt, Vx, Vy, Vn);
+      Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
       Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
-      Vmu.compute_Vmu_max();
 
       // (udotdsigma, Vdotdsigma) / delta_eta_weight
       double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
@@ -1040,6 +1018,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         if(udsigma <= 0.0) break;                               // skip over cells with u.dsigma < 0
 
         double eta = etaValues[ieta];
+        double sinheta = sinh(eta);
+        double cosheta = sqrt(1.0  +  sinheta * sinheta);
+
         double delta_eta_weight = etaDeltaWeights[ieta];
         double dN_tot = delta_eta_weight * dn_tot;              // total mean number of hadrons in FO cell
 
@@ -1134,9 +1115,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             new_particle.y = y;
             new_particle.eta = eta;
 
-            double sinheta = sinh(eta);
-            double cosheta = sqrt(1.0  +  sinheta * sinheta);
-
             new_particle.t = tau * cosheta;
             new_particle.z = tau * sinheta;
 
@@ -1165,14 +1143,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
     } // freezeout cells (icell)
 
-    if(DF_MODE == 1 || DF_MODE == 2)
-    {
-      printf("Conventional momentum sampling efficiency = %lf\n", (double)acceptances / (double)samples);
-    }
-    else if(DF_MODE == 3)
-    {
-      printf("Modified momentum sampling efficiency = %lf\n", (double)acceptances / (double)samples);
-    }
+    printf("Momentum sampling efficiency = %lf\n", (double)acceptances / (double)samples);
 
 }
 
