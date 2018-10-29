@@ -40,14 +40,14 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     int FO_chunk = 10000;                             // size of chunk
 
     // phi arrays
-    double cosphi_table[phi_tab_length];
-    double sinphi_table[phi_tab_length];
+    double cosphiValues[phi_tab_length];
+    double sinphiValues[phi_tab_length];
 
     for(int iphip = 0; iphip < phi_tab_length; iphip++)
     {
       double phi = phi_tab -> get(1, iphip + 1);
-      cosphi_table[iphip] = cos(phi);
-      sinphi_table[iphip] = sin(phi);
+      cosphiValues[iphip] = cos(phi);
+      sinphiValues[iphip] = sin(phi);
     }
 
     // pT array
@@ -71,8 +71,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     double yValues[y_pts];
     double etaValues[eta_pts];
     double etaDeltaWeights[eta_pts];    // eta_weight * delta_eta
-
-    double delta_eta = (eta_tab -> get(1,2)) - (eta_tab -> get(1,1));  // assume uniform grid
+    double delta_eta = fabs((eta_tab -> get(1,2)) - (eta_tab -> get(1,1)));  // assume uniform grid
 
     if(DIMENSION == 2)
     {
@@ -138,16 +137,15 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     double *dN_pTdpTdphidy_all;
     dN_pTdpTdphidy_all = (double*)calloc((long long int)npart * (long long int)FO_chunk * (long long int)pT_tab_length * (long long int)phi_tab_length * (long long int)y_tab_length, sizeof(double));
 
-    double error = 0.0;
 
     //loop over bite size chunks of FO surface
-    for (int n = 0; n < (FO_length / FO_chunk) + 1; n++)
+    for(int n = 0; n < (FO_length / FO_chunk) + 1; n++)
     {
       printf("Progress: finished chunk %d of %ld \n", n, FO_length / FO_chunk);
       int endFO = FO_chunk;
-      if (n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); // don't go out of array bounds
+      if(n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); // don't go out of array bounds
       #pragma omp parallel for
-      for (int icell = 0; icell < endFO; icell++) // cell index inside each chunk
+      for(int icell = 0; icell < endFO; icell++) // cell index inside each chunk
       {
         int icell_glb = n * FO_chunk + icell;     // global FO cell index
 
@@ -175,13 +173,15 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double un = un_fo[icell_glb];
         double ut = sqrt(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un);
 
+        double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;  // u.dsigma / delta_eta_weight
+
+        if(udsigma < 0.0) continue;             // skip cells with u.dsigma < 0
+
         double ux2 = ux * ux;                   // useful expressions
         double uy2 = uy * uy;
         double ut2 = ut * ut;
         double uperp =  sqrt(ux * ux  +  uy * uy);
         double utperp = sqrt(1.0  +  ux * ux  +  uy * uy);
-
-        double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;  // u.dsigma / delta_eta_weight
 
         double T = Tavg;                        // temperature (GeV)
         double E = Eavg;                        // energy density (GeV/fm^3)
@@ -265,9 +265,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         // now loop over all particle species and momenta
         for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
-        {
-          if(udsigma <= 0.0) break;               // skip cells with u.dsigma < 0
-
+        {       
           // set particle properties
           double mass = Mass[ipart];              // mass (GeV)
           double mass2 = mass * mass;
@@ -279,13 +277,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           for(int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pTValues[ipT];              // p_T (GeV)
-            double mT = sqrt(mass2 + pT * pT);      // m_T (GeV)
+            double mT = sqrt(mass2  +  pT * pT);    // m_T (GeV)
             double mT_over_tau = mT / tau;
 
             for(int iphip = 0; iphip < phi_tab_length; iphip++)
             {
-              double px = pT * cosphi_table[iphip]; // p^x
-              double py = pT * sinphi_table[iphip]; // p^y
+              double px = pT * cosphiValues[iphip]; // p^x
+              double py = pT * sinphiValues[iphip]; // p^y
 
               for(int iy = 0; iy < y_pts; iy++)
               {
@@ -299,11 +297,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double eta = etaValues[ieta];
                   double delta_eta_weight = etaDeltaWeights[ieta];
 
-                  double pt = mT * cosh(y - eta);          // p^\tau
-                  double pn = mT_over_tau * sinh(y - eta); // p^\eta
+                  double pt = mT * cosh(y - eta);          // p^\tau (GeV)
+                  double pn = mT_over_tau * sinh(y - eta); // p^\eta (GeV^2)
                   double tau2_pn = tau2 * pn;
 
                   double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
+
+                  if(pdotdsigma <= 0.0) continue;          // enforce outflow 
 
                   double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;  // u.p
 
@@ -347,12 +347,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     }
                   } // DF_MODE
 
-                  double f = feq * (1.0 + df);  // distribution function with df correction
+                  double f = feq * (1.0 + df);  // distribution function with linear df correction
 
-                  if(pdotdsigma > 0.0)
-                  {
-                    pdotdsigma_f_eta_sum += (pdotdsigma * f);
-                  }
+                  pdotdsigma_f_eta_sum += (pdotdsigma * f); 
+
 
                 } // eta points (ieta)
 
@@ -392,7 +390,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   long long int iSpectra = (long long int)icell + (long long int)endFO * iS3D;
                   dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[iSpectra];
 
-                } // freezeout cells in the chunk (icell)
+                } // sum over freezeout cells in the chunk (icell)
 
                 dN_pTdpTdphidy[iS3D] += dN_pTdpTdphidy_tmp; // sum over all chunks
 
@@ -404,7 +402,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         } // particle species (ipart)
 
-      } // only do reduction if chunk size is nonzero
+      } // do reduction step if chunk size is nonzero if(endFO != 0)
 
     } // FO surface chunks (n)
 
@@ -426,27 +424,33 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     int FO_chunk = 10000;
 
-    int breakdown = 0; // counts how many times feqmod breaks down
+    double detA_min = DETA_MIN;   // default value for minimum detA
+    int breakdown = 0;            // # times feqmod breaks down
 
-    // Set momentum, spacetime rapidity (2+1d) points from tables
+    // phi arrays
+    double cosphiValues[phi_tab_length];
+    double sinphiValues[phi_tab_length];
 
-    // cos(phi), sin(phi) arrays
-    double trig_phi_table[phi_tab_length][2]; // 2: 0,1-> cos,sin
-    for (int j = 0; j < phi_tab_length; j++)
+    for(int iphip = 0; iphip < phi_tab_length; iphip++)
     {
-      double phi = phi_tab->get(1,j+1);
-      trig_phi_table[j][0] = cos(phi);
-      trig_phi_table[j][1] = sin(phi);
+      double phi = phi_tab -> get(1, iphip + 1);
+      cosphiValues[iphip] = cos(phi);
+      sinphiValues[iphip] = sin(phi);
     }
 
     // pT array
     double pTValues[pT_tab_length];
-    for(int ipT = 0; ipT < pT_tab_length; ipT++) pTValues[ipT] = pT_tab->get(1,ipT+1);
 
-    // y and eta arrays (default 3+1d)
-    int y_pts = y_tab_length;
+    for(int ipT = 0; ipT < pT_tab_length; ipT++)
+    {
+      pTValues[ipT] = pT_tab -> get(1, ipT + 1);
+    }
+
+    // y and eta arrays
+    int y_pts = y_tab_length;    // default points for 3+1d
     int eta_pts = 1;
-    if(DIMENSION == 2)  // pts for 2+1d
+
+    if(DIMENSION == 2)
     {
       y_pts = 1;
       eta_pts = eta_tab_length;
@@ -454,39 +458,52 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     double yValues[y_pts];
     double etaValues[eta_pts];
-    double etaDeltaWeights[eta_pts]; // eta_weight * delta_eta
+    double etaDeltaWeights[eta_pts];    // eta_weight * delta_eta
 
-    if(DIMENSION == 3)
-    {
-      etaValues[0] = 0.0;       // will load eta_fo later
-      etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
-      for(int iy = 0; iy < y_pts; iy++) yValues[iy] = y_tab->get(1,iy+1);
-    }
-    else if(DIMENSION == 2)
+    if(DIMENSION == 2)
     {
       yValues[0] = 0.0;
+
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
-        etaValues[ieta] = eta_tab->get(1,ieta+1);
-        // assume uniform eta interval
-        double delta_eta = fabs(eta_tab->get(1,2) - eta_tab->get(1,1));
-        double eta_weight = eta_tab->get(2,ieta+1);
+        etaValues[ieta] = eta_tab -> get(1, ieta + 1);
+
+        // assume uniform grid 
+        double delta_eta = fabs((eta_tab -> get(1,2)) - (eta_tab -> get(1,1)));  
+        double eta_weight = eta_tab -> get(2, ieta + 1);
 
         etaDeltaWeights[ieta] = eta_weight * delta_eta;
+        //cout << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
+      }
+    }
+    else if(DIMENSION == 3)
+    {
+      etaValues[0] = 0.0;       // below, will load eta_fo
+      etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
+      for(int iy = 0; iy < y_pts; iy++)
+      {
+        yValues[iy] = y_tab->get(1, iy + 1);
       }
     }
 
-    if(chosen_pion0.size() == 0 || chosen_pion0[0] != 0)
+    // pi-0 meson should be the first particle in chosen_particles.dat
+    // to help track whether its density goes negative for large negative bulk pressures
+    int chosen_index_pion0 = chosen_pion0[0];
+
+    if(!(chosen_pion0.size() == 1 && chosen_index_pion0 == 0))
     {
-      // since pion-0 is most susceptible to negative particle densities
-      // (one of the feqmod breakdown criteria) at large negative bulk pressure
-      printf("Error: please put pion-0 (mc_id = 111) at the top of PDG/chosen_particles.dat before calculating...\n");
+      printf("Error: put pion-0 (mc_id = 111) at the top of PDG/chosen_particles.dat...\n");
       exit(-1);
     }
 
-    int chosen_index_pion0 = chosen_pion0[0];
+    // average thermodynamic quantities
+    double Tavg = thermodynamic_average[0];
+    double Eavg = thermodynamic_average[1];
+    double Pavg = thermodynamic_average[2];
+    double muBavg = thermodynamic_average[3];
+    double nBavg = thermodynamic_average[4];
 
-    // set the df coefficients
+    // feqmod coefficients
     double F = df_coeff[0];           // bulk coefficients
     double G = df_coeff[1];
     double betabulk = df_coeff[2];
@@ -520,14 +537,14 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           exit(-1);
         }
 
-        // set freezeout info to local varibles to reduce memory access outside cache:
+        // set freezeout info to local variables to reduce memory access outside cache:
         double tau = tau_fo[icell_glb];     // longitudinal proper time
         double tau2 = tau * tau;
-
         if(DIMENSION == 3)
         {
           etaValues[0] = eta_fo[icell_glb]; // spacetime rapidity from freezeout cell
         }
+
         double dat = dat_fo[icell_glb];     // covariant normal surface vector
         double dax = dax_fo[icell_glb];
         double day = day_fo[icell_glb];
@@ -538,17 +555,21 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double un = un_fo[icell_glb];
         double ut = sqrt(1.0 +  ux * ux  +  uy * uy  +  tau2 * un * un);
 
+        double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;   // udotdsigma / delta_eta_weight
+
+        if(udsigma < 0.0) continue;         // skip cells with u.dsigma < 0
+
         double ut2 = ut * ut;               // useful expressions
         double ux2 = ux * ux;
         double uy2 = uy * uy;
-        double uperp = sqrt(ux2 + uy2);
-        double utperp = sqrt(1.0  +  uperp * uperp);
+        double uperp = sqrt(ux * ux  +  uy * uy);
+        double utperp = sqrt(1.0  +   ux * ux  +  uy * uy);
 
-        double T = T_fo[icell_glb];         // temperature
-        double P = P_fo[icell_glb];         // pressure
-        double E = E_fo[icell_glb];         // energy density
+        double T = Tavg;                    // temperature (GeV)
+        double P = Pavg;                    // pressure (GeV/fm^3)
+        double E = Eavg;                    // energy density (GeV/fm^3)
 
-        double pitt = 0.0;                  // contravariant shear stress tensor pi^munu (GeV/fm^3)
+        double pitt = 0.0;                  // contravariant shear stress tensor pi^munu 
         double pitx = 0.0;                  // enforce orthogonality pi.u = 0
         double pity = 0.0;                  // and tracelessness Tr(pi) = 0
         double pitn = 0.0;
@@ -577,36 +598,26 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         if(INCLUDE_BULK_DELTAF) bulkPi = bulkPi_fo[icell_glb];
 
-        double muB = 0.0;                       // baryon chemical potential
-        double alphaB = 0.0;                    // muB / T
-        double nB = 0.0;                        // net baryon density
-        double Vt = 0.0;                        // baryon diffusion
+        double muB = muBavg;                // baryon chemical potential (GeV)
+        double alphaB = muB / T;            // muB / T
+        double nB = nBavg;                  // net baryon density (fm^-3)
+        double Vt = 0.0;                    // net baryon diffusion 
         double Vx = 0.0;
         double Vy = 0.0;
         double Vn = 0.0;
-        double baryon_enthalpy_ratio = 0.0;
+        double baryon_enthalpy_ratio = nB / (E + P);
 
-        if(INCLUDE_BARYON)
+        if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
         {
-          muB = muB_fo[icell_glb];
-          alphaB = muB / T;
-
-          if(INCLUDE_BARYONDIFF_DELTAF)
-          {
-            nB = nB_fo[icell_glb];
-            Vx = Vx_fo[icell_glb];
-            Vy = Vy_fo[icell_glb];
-            Vn = Vn_fo[icell_glb];
-            Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
-            baryon_enthalpy_ratio = nB / (E + P);
-          }
+          Vx = Vx_fo[icell_glb];
+          Vy = Vy_fo[icell_glb];
+          Vn = Vn_fo[icell_glb];
+          Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
         }
 
-        // udotdsigma / delta_eta_weight
-        double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
-
-        // set milne basis vectors
+        // milne basis class
         Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
+        basis_vectors.test_orthonormality(tau2);
 
         double Xt = basis_vectors.Xt;   double Yx = basis_vectors.Yx;
         double Xx = basis_vectors.Xx;   double Yy = basis_vectors.Yy;
@@ -615,34 +626,39 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         // shear stress class
         Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
+        pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
         pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
 
         // baryon diffusion class
         Baryon_Diffusion Vmu(Vt, Vx, Vy, Vn);
+        Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
         Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
 
-        // modified temperature and chemical potential
-        double T_mod = T  +  F * bulkPi / betabulk;
-        double alphaB_mod = alphaB  +  G * bulkPi / betabulk;
+        double T_mod = T  +  F * bulkPi / betabulk;                 // modified temperature
+        double alphaB_mod = alphaB  +  G * bulkPi / betabulk;       // modified muB/T
 
-        // linearized Chapman Enskog shear and bulk coefficients
+        // linearized df coefficients
         double shear_coeff = 0.5 / (betapi * T);
-        double bulk0_coeff = F / (T * T * betabulk);
+        double bulk0_coeff = F / (T * T * betabulk); 
         double bulk1_coeff = G / betabulk;
         double bulk2_coeff = 1.0 / (3.0 * T * betabulk);
 
-        double pixx_LRF = pimunu.pixx_LRF;    // pimunu LRF components
-        double pixy_LRF = pimunu.pixy_LRF;
-        double pixz_LRF = pimunu.pixz_LRF;
-        double piyy_LRF = pimunu.piyy_LRF;
-        double piyz_LRF = pimunu.piyz_LRF;
-        double pizz_LRF = pimunu.pizz_LRF;
+        // pimunu and Vmu LRF components
+        double pixx_LRF = pimunu.pixx_LRF;  double piyy_LRF = pimunu.piyy_LRF;    
+        double pixy_LRF = pimunu.pixy_LRF;  double piyz_LRF = pimunu.piyz_LRF;
+        double pixz_LRF = pimunu.pixz_LRF;  double pizz_LRF = pimunu.pizz_LRF;
+        
+        double Vx_LRF = Vmu.Vx_LRF;                                
+        double Vy_LRF = Vmu.Vy_LRF;
+        double Vz_LRF = Vmu.Vz_LRF;
 
-        double shear_fact = 0.5 / betapi;
-        double bulk_term = bulkPi / (3.0 * betabulk);
+      
+        // local momentum transformation matrix Mij = Aij
+        // Aij = ideal + shear + bulk is symmetric
+        // Mij is not symmetric if include baryon diffusion (leave for future work)
 
-        // momentum rescaling matrix Mij = Aij for now
-        // - Aij is symmetric, Mij is not symmetric if include baryon diffusion
+        double shear_fact = 0.5 / betapi;                           // coefficients in Aij
+        double bulk_term = bulkPi / (3.0 * betabulk); 
 
         double Axx = 1.0  +  pixx_LRF * shear_fact  +  bulk_term;
         double Axy = pixy_LRF * shear_fact;
@@ -654,24 +670,19 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double Azy = Ayz;
         double Azz = 1.0  +  pizz_LRF * shear_fact  +  bulk_term;
 
-        // baryon diffusion correction is more complicated b/c it depends on p^prime
-
-        // evaluate detA (only depends on ideal + shear + bulk)
         double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
 
         // momentum rescaling matrix (so far, w/ shear and bulk corrections only)
         double ** M = (double**)calloc(3, sizeof(double*));
         for(int i = 0; i < 3; i++) M[i] = (double*)calloc(3, sizeof(double));
 
-        int permutation[3]; // permutation vector for LUP decomposition
-
-        // set M-matrix
+        // set Mij matrix
         M[0][0] = Axx;  M[0][1] = Axy;  M[0][2] = Axz;
         M[1][0] = Ayx;  M[1][1] = Ayy;  M[1][2] = Ayz;
         M[2][0] = Azx;  M[2][1] = Azy;  M[2][2] = Azz;
 
-        // LUP decompose M once
-        LUP_decomposition(M, 3, permutation);
+        int permutation[3];                   // permutation vector for LUP decomposition
+        LUP_decomposition(M, 3, permutation); // LUP decompose M once
 
          // prefactors for equilibrium, linear bulk correction and modified densities
         double neq_fact = T * T * T / two_pi2_hbarC3;;
@@ -680,26 +691,24 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double N10_fact = neq_fact;
         double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
 
-        bool negative_pions = false;
+        //bool negative_pions = false;
 
         // loop over hadrons
         for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
         {
-          if(udsigma <= 0.0) break;               // skip cells with u.dsigma < 0
-
           // set particle properties
-          double mass = Mass[ipart];              // mass in GeV
+          double mass = Mass[ipart];              // mass (GeV)
           double mass2 = mass * mass;
           double sign = Sign[ipart];              // quantum statistics sign
           double degeneracy = Degeneracy[ipart];  // spin degeneracy
           double baryon = Baryon[ipart];          // baryon number
 
-          double chem = baryon * alphaB;          // chemical potential term in feq (for linear CE)
+          double chem = baryon * alphaB;          // chemical potential term in feq 
           double chem_mod = baryon * alphaB_mod;  // chemical potential term in feqmod
 
           // modified renormalization factor
-          double renorm = 1.0;
-          double n_linear_over_neq = 1.0;
+          double renorm = 1.0 / detA;             // default (shear only)
+          double n_linear = 1.0;
 
           if(INCLUDE_BULK_DELTAF)
           {
@@ -710,181 +719,178 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             double N10 = baryon * N10_fact * degeneracy * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
             double J20 = J20_fact * degeneracy * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
 
-            double dn = dn_fact * (neq + (N10 * G) + (J20 * F / T / T));
-            double n_linear = neq + dn;
-            n_linear_over_neq = n_linear / neq;
+            n_linear = neq  +  dn_fact * (neq  +  N10 * G  +  J20 * F / T / T);
+
             double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
 
             renorm = n_linear / n_mod;
           }
-          else
+          
+          if(ipart == chosen_index_pion0 && n_linear < 0.0)
           {
-            renorm = 1.0 / detA;
+            detA_min = max(detA_min, detA);   // update min value of detA if pi-0 density goes negative
           }
 
-          if(ipart == chosen_index_pion0 && n_linear_over_neq < 0.0 && !negative_pions)
-          {
-            negative_pions = true;
-          }
-
-          //if((detA < DETA_MIN || negative_pions) && ipart == chosen_index_pion0)
-          if((detA < DETA_MIN || negative_pions || T_mod <= 0.0) && ipart == chosen_index_pion0)
+          if(detA <= detA_min || T_mod <= 0.0)
           {
             breakdown++;
-            cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cells at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\tnegative pions = " << negative_pions << endl;
+            cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << endl;
           }
 
-
-          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          for(int ipT = 0; ipT < pT_tab_length; ipT++)
           {
-            // transverse radial momentum and transverse mass
-            double pT = pTValues[ipT];
-            double mT = sqrt(mass2 + pT * pT);
+            double pT = pTValues[ipT];              // p_T (GeV)
+            double mT = sqrt(mass2  +  pT * pT);    // m_T (GeV)
             double mT_over_tau = mT / tau;
 
-            for (int iphip = 0; iphip < phi_tab_length; iphip++)
+            for(int iphip = 0; iphip < phi_tab_length; iphip++)
             {
-              double cosphi = trig_phi_table[iphip][0];
-              double sinphi = trig_phi_table[iphip][1];
-              double px = pT * cosphi;  // p^x
-              double py = pT * sinphi;  // p^y
+              double px = pT * cosphiValues[iphip]; // p^x
+              double py = pT * sinphiValues[iphip]; // p^y
 
-              for (int iy = 0; iy < y_pts; iy++)
+              for(int iy = 0; iy < y_pts; iy++)
               {
-                double y = yValues[iy];             // y
-                double pdotdsigma_f_eta_sum = 0.0;  // reset sum to zero
+                double y = yValues[iy];             
 
-                // integrate over eta (flexible for 2+1 or 3+1 hydro)
+                double pdotdsigma_f_eta_sum = 0.0;  // Cooper Frye integral over eta
+
+                // integrate over eta
                 for(int ieta = 0; ieta < eta_pts; ieta++)
                 {
-                  double eta = etaValues[ieta];                     // eta point
-                  double delta_eta_weight = etaDeltaWeights[ieta];  // delta_eta * eta_weight (trapezoid rule)
+                  double eta = etaValues[ieta];                     
+                  double delta_eta_weight = etaDeltaWeights[ieta];  // trapezoid rule
 
-                  // all vector components are CONTRAVARIANT EXCEPT the surface
-                  // normal vector dat, dax, day, dan, which are COVARIANT
-                  double pt = mT * cosh(y - eta);           // p^tau
-                  double pn = mT_over_tau * sinh(y - eta);  // p^eta
+                  double pt = mT * cosh(y - eta);          // p^\tau (GeV)
+                  double pn = mT_over_tau * sinh(y - eta); // p^\eta (GeV^2)
                   double tau2_pn = tau2 * pn;
-                  // momentum vector is contravariant, surface normal vector is COVARIANT
+
                   double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan);
-                  // distribution feq(1+df) or feqmod
-                  double f;
 
-                  // calculate f:
-                  // if feqmod breaks down, do chapman enskog instead
-                  if(detA < DETA_MIN || negative_pions || T_mod <= 0.0)
+                  if(pdotdsigma <= 0.0) continue;         // enforce outflow 
+                  
+                  double f;                               // feqmod (if breakdown do feq(1+df))
+
+                  // calculate feqmod
+                  if(detA > detA_min && T_mod > 0.0)
                   {
-                     double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
-                     double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
-                     double df_shear = 0.0;
-                     if(INCLUDE_SHEAR_DELTAF)
-                     {
-                       double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
-                       + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
-                       df_shear = shear_coeff * pimunu_pmu_pnu / pdotu;
-                     }
-                     double df_bulk = 0.0;
-                     if(INCLUDE_BULK_DELTAF)
-                     {
-                       if(!INCLUDE_BARYON) df_bulk = (bulk0_coeff * pdotu  +  bulk2_coeff * (pdotu - mass2 / pdotu)) * bulkPi;
-                       else df_bulk = (bulk0_coeff * pdotu  +  baryon * bulk1_coeff  +  bulk2_coeff * (pdotu - mass2 / pdotu)) * bulkPi;
-                     }
-                     double df_baryondiff = 0.0;
-                     if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
-                     {
-                       double Vmu_pmu = Vt * pt   -   Vx * px   -   Vy * py   -   Vn * tau2_pn;
-                       df_baryondiff = (baryon_enthalpy_ratio  -  baryon / pdotu) * Vmu_pmu / betaV;
-                     }
-                     double feqbar = 1.0  -  sign * feq;
-                     double df = feqbar * (df_shear + df_bulk + df_baryondiff);
+                    // LRF momentum components pi_LRF = - Xi.p
+                    double px_LRF = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;
+                    double py_LRF = Yx * px  +  Yy * py;                              
+                    double pz_LRF = -Zt * pt  +  Zn * tau2_pn;                        
 
-                     // regulate df option
-                     if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0));
+                    double pLRF_mod[3] = {px_LRF, py_LRF, pz_LRF};            
+                    
+                    LUP_solve(M, 3, permutation, pLRF_mod); // solve the matrix equation pi_LRF = Mij.pj_LRF
 
-                     f = feq * (1.0 + df);
-                  }
-                  else
-                  {
-                    // local momentum
-                    double pX = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;  // -x.p
-                    double pY = Yx * px  +  Yy * py;                                // -y.p
-                    double pZ = -Zt * pt  +  Zn * tau2_pn;                          // -z.p
-                    double pmod[3] = {pX, pY, pZ};
-                    // solve the matrix equation: pi = Mij.pmodj
-                    LUP_solve(M, 3, permutation, pmod);
-                    // pmod stored in p
-                    double pXmod2 = pmod[0] * pmod[0];
-                    double pYmod2 = pmod[1] * pmod[1];
-                    double pZmod2 = pmod[2] * pmod[2];
-                    // effective LRF energy
-                    double Emod = sqrt(mass2 + pXmod2 + pYmod2 + pZmod2);
+                    double px_LRF_mod2 = pLRF_mod[0] * pLRF_mod[0];
+                    double py_LRF_mod2 = pLRF_mod[1] * pLRF_mod[1];
+                    double pz_LRF_mod2 = pLRF_mod[2] * pLRF_mod[2];
+                    
+                    double E_mod = sqrt(mass2 + px_LRF_mod2 + py_LRF_mod2 + pz_LRF_mod2);
 
-                    // modified equilibrium distribution
-                    f = renorm / (exp(Emod / T_mod  -  chem_mod) + sign);
+                    f = renorm / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
 
                     // test accuracy of the matrix solver
-                    double pX_test = Axx * pmod[0] + Axy * pmod[1] + Axz * pmod[2];
-                    double pY_test = Ayx * pmod[0] + Ayy * pmod[1] + Ayz * pmod[2];
-                    double pZ_test = Azx * pmod[0] + Azy * pmod[1] + Azz * pmod[2];
+                    double px_LRF_test = Axx * pLRF_mod[0]  +  Axy * pLRF_mod[1]  +  Axz * pLRF_mod[2];
+                    double py_LRF_test = Ayx * pLRF_mod[0]  +  Ayy * pLRF_mod[1]  +  Ayz * pLRF_mod[2];
+                    double pz_LRF_test = Azx * pLRF_mod[0]  +  Azy * pLRF_mod[1]  +  Azz * pLRF_mod[2];
 
-                    double dpX = pX - pX_test;
-                    double dpY = pY - pY_test;
-                    double dpZ = pZ - pZ_test;
+                    double dpX = px_LRF - px_LRF_test;
+                    double dpY = py_LRF - py_LRF_test;
+                    double dpZ = pz_LRF - pz_LRF_test;
 
                     double dp = sqrt(dpX * dpX  +  dpY * dpY  +  dpZ * dpZ);
-                    double p = sqrt(pX * pX  +  pY * pY  +  pZ * pZ);
+                    double p = sqrt(px_LRF * px_LRF  +  py_LRF * py_LRF  +  pz_LRF * pz_LRF);
 
                     if(dp / p > 1.e-6)
                     {
-                      printf("Error: dp / p = %f not accurate enough; please adjust detA_max (increase)\n", dp / p);
+                      printf("Error: dp / p = %f not accurate enough\n", dp / p);
                       exit(-1);
                     }
-
                   }
-                  if(pdotdsigma > 0.0) pdotdsigma_f_eta_sum += (pdotdsigma * f);
+                  // if feqmod breaks down switch to chapman enskog instead
+                  else
+                  {
+                    double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
+                    double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
+                    double feqbar = 1.0  -  sign * feq;
+                    
+                     // pi^munu.p_mu.p_nu
+                    double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
+                    + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
 
-                } // ieta
+                    // V^mu.p_mu
+                    double Vmu_pmu = Vt * pt  -  Vx * px  -  Vy * py  -  Vn * tau2_pn;
+
+                    double df_shear = shear_coeff * pimunu_pmu_pnu / pdotu;
+                    double df_bulk = (bulk0_coeff * pdotu  +  bulk1_coeff * baryon +  bulk2_coeff * (pdotu  -  mass2 / pdotu)) * bulkPi;
+                    double df_diff = (baryon_enthalpy_ratio  -  baryon / pdotu) * Vmu_pmu / betaV;
+
+                    double df = feqbar * (df_shear + df_bulk + df_diff);
+
+                    if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
+
+                    f = feq * (1.0 + df);
+                  }               
+                  
+                  pdotdsigma_f_eta_sum += (pdotdsigma * f); // add contribution to integral
+
+                } // eta points (ieta)
 
                 long long int iSpectra = (long long int)icell + (long long int)endFO * ((long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy)));
 
                 dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma_f_eta_sum);
 
-              } //iy
-            } //iphip
-          } //ipT
-        } //ipart
+              } // rapidity points (iy)
+
+            } // azimuthal angle points (iphip)
+
+          } // transverse momentum points (ipT)
+
+        } // particle species (ipart)
+
         free_2D(M,3);
-      } //icell
+
+      } // freezeout cells in the chunk (icell)
+
       if(endFO != 0)
       {
-        //now perform the reduction over cells
+        // now perform the reduction over cells
         #pragma omp parallel for collapse(3)
         #pragma acc kernels
-        for (int ipart = 0; ipart < npart; ipart++)
+        for(int ipart = 0; ipart < npart; ipart++)
         {
-          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          for(int ipT = 0; ipT < pT_tab_length; ipT++)
           {
-            for (int iphip = 0; iphip < phi_tab_length; iphip++)
+            for(int iphip = 0; iphip < phi_tab_length; iphip++)
             {
-              for (int iy = 0; iy < y_pts; iy++)
+              for(int iy = 0; iy < y_pts; iy++)
               {
-                //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
                 long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
-                double dN_pTdpTdphidy_tmp = 0.0; //reduction variable
+
+                double dN_pTdpTdphidy_tmp = 0.0; // reduction variable
+
                 #pragma omp simd reduction(+:dN_pTdpTdphidy_tmp)
-                for (int icell = 0; icell < endFO; icell++)
+                for(int icell = 0; icell < endFO; icell++)
                 {
-                  //long long int iSpectra = icell + (endFO * ipart) + (endFO * npart * ipT) + (endFO * npart * pT_tab_length * iphip) + (endFO * npart * pT_tab_length * phi_tab_length * iy);
                   long long int iSpectra = (long long int)icell + (long long int)endFO * iS3D;
                   dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[iSpectra];
-                }//icell
-                dN_pTdpTdphidy[iS3D] += dN_pTdpTdphidy_tmp; //sum over all chunks
-              }//iy
-            }//iphip
-          }//ipT
-        }//ipart species
-      } //if (endFO != 0 )
-    }//n FO chunk
+
+                } // sum over freezeout cells in the chunk (icell)
+
+                dN_pTdpTdphidy[iS3D] += dN_pTdpTdphidy_tmp; // sum over all chunks
+
+              } // rapidity points (iy)
+
+            } // azimuthal angle points (iphip)
+
+          } // transverse momentum points (ipT)
+
+        } // particle species (ipart)
+
+      } // do reduction step if chunk size is nonzero if(endFO != 0)
+
+    } // FO surface chunks (n)
 
     cout << setw(5) << setprecision(4) << "\nfeqmod breaks down for the first " << breakdown << " cells\n" << endl;
 

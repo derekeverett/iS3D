@@ -137,7 +137,7 @@ double EmissionFunctionArray::compute_df_weight(LRF_Momentum pLRF, double mass_s
 
   double df = feqbar * (df_shear + df_bulk + df_diff);
 
-  df = max(-1.0, min(df, 1.0));  // regulate df
+  df = max(-1.0, min(df, 1.0));  // regulate |df| <= 1
 
   return (1.0 + df) / 2.0;
 }
@@ -201,8 +201,7 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       pLRF.pz = p * costheta;
 
       // p.dsigma * Heaviside(p.dsigma)
-      double pdsigma_Heaviside = E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
-      if(pdsigma_Heaviside < 0.0) pdsigma_Heaviside = 0.0;
+      double pdsigma_Heaviside = max(0.0, E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
 
       double rideal = pdsigma_Heaviside / (E * ds_magnitude);
       double rvisc = 1.0;
@@ -314,8 +313,7 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       pLRF.pz = p * costheta;
 
       // p.dsigma * Heaviside(p.dsigma)
-      double pdsigma_Heaviside = E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
-      if(pdsigma_Heaviside < 0.0) pdsigma_Heaviside = 0.0;
+      double pdsigma_Heaviside = max(0.0, E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
 
       double rideal = pdsigma_Heaviside / (E * ds_magnitude);
       double rvisc = 1.0;
@@ -730,9 +728,11 @@ LRF_Momentum EmissionFunctionArray::sample_momentum_feqmod(default_random_engine
 
 
 
-double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo)
+double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo)
   {
     printf("Estimating total particle yield...\n");
+
+    double four_pi2_hbarC3 = 4.0 * pow(M_PI,2) * pow(hbarC,3);
 
     int npart = number_of_chosen_particles;
 
@@ -749,7 +749,10 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
         etaDeltaWeights[ieta] = eta_weight * delta_eta;
       }
     }
-    else if(DIMENSION == 3) etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
+    else if(DIMENSION == 3)
+    {
+      etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
+    }
 
     double neq_tot = 0.0;                 // total equilibrium number / udsigma
     double dn_bulk_tot = 0.0;             // bulk correction / udsigma / bulkPi
@@ -781,11 +784,19 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
       double un = un_fo[icell];           // u^eta (fm^-1)
       double ut = sqrt(1.0 +  ux * ux  + uy * uy  +  tau2 * un * un); //u^tau
 
+      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan; // udotdsigma / delta_eta_weight
+
+      if(udsigma <= 0.0) continue;        // skip over cells with u.dsigma < 0
+
+      double T = Tavg;                    // temperature (GeV)
+
       double bulkPi = 0.0;                // bulk pressure (GeV/fm^3)
 
       if(INCLUDE_BULK_DELTAF) bulkPi = bulkPi_fo[icell];
 
-      double Vt = 0.0;                    // contravariant net baryon diffusion current V^mu (fm^-3)
+      double muB = muBavg;                // baryon chemical potential (GeV) 
+      double alphaB = muB / T; 
+      double Vt = 0.0;                    // contravariant net baryon diffusion current V^mu 
       double Vx = 0.0;                    // enforce orthogonality
       double Vy = 0.0;
       double Vn = 0.0;
@@ -798,26 +809,67 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
         Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
       }
 
-      // udotdsigma and Vdotdsigma w/o delta_eta_weight factor
-      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
+      // Vdotdsigma / delta_eta_weight
       double Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
 
-      // total number of hadrons / delta_eta_weight in FO_cell
-      double dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;
+      double uperp =  sqrt(ux * ux  +  uy * uy);            // useful expressions
+      double utperp = sqrt(1.0  +  ux * ux  +  uy * uy);
 
+      // milne basis class
+      Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
+      basis_vectors.test_orthonormality(tau2);
+
+      Surface_Element_Vector dsigma(dat, dax, day, dan);
+      dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
+      dsigma.compute_dsigma_magnitude();
+
+      double ds_time = dsigma.dsigmat_LRF;    // |ds_t|
+      double ds_space = dsigma.dsigma_space;  // |ds_i|
+
+      double ds_time_over_ds_space = ds_time / ds_space;
+
+      // total number of hadrons / delta_eta_weight in FO_cell
+      double dn_tot = 0.0; 
+
+      // outflow condition (p.dsigma > 0) doesn't affect timelike cells
+      if(ds_time / ds_space >= 1.0)
+      {
+        dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;
+      }
+      // outflow condition affects spacelike cells
+      else
+      {
+        double dn_eq_outflow_prefactor = T * T * T * ds_space / four_pi2_hbarC3;
+
+        // sum over hadrons
+        for(int ipart 0; ipart < npart; ipart++)
+        {
+          double mass = Mass[ipart];              // mass (GeV)
+          double mbar = mass / T;   
+          double mbar_squared = mbar * mbar; 
+          double degeneracy = Degeneracy[ipart];  // spin degeneracy
+          double sign = Sign[ipart];              // quantum statistics sign
+          double baryon = Baryon[ipart];          // baryon number 
+          double chem = baryon * alphaB;          // chemical potential term in feq
+
+          dn_tot += (degeneracy * dn_eq_outflow_prefactor * equilibrium_density_outflow(mbar_squared, sign, chem, ds_time_over_ds_space, pbar_root1, pbar_exp_pbar_weight1, pbar_pts));
+        } 
+
+      } // check outflow significance 
+
+
+      // add mean number of hadrons in FO cell to total yield
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
-        if(udsigma <= 0.0) break;
-        // add mean number of hadrons in FO cell to total yield
         Ntot += dn_tot * etaDeltaWeights[ieta];
-
-      } // eta points (ieta)
+      }
 
     } // freezeout cells (icell)
 
-    mean_yield = Ntot;           // includes backflow particles
+    mean_yield = Ntot;             // includes backflow particles (now try enforcing outflow)
 
-    return 0.98 * mean_yield;    // assume ~ 98% of particles have p.dsigma > 0
+    //return 0.98 * mean_yield;    // assume ~ 98% of particles have p.dsigma > 0
+    return mean_yield;
 
   }
 
@@ -930,6 +982,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double un = un_fo[icell];           // u^eta (fm^-1)
       double ut = sqrt(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un); //u^tau
 
+      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan; // udotdsigma / delta_eta_weight
+
+      if(udsigma <= 0.0) continue;        // skip over cells with u.dsigma < 0
+
       double ut2 = ut * ut;               // useful expressions
       double ux2 = ux * ux;
       double uy2 = uy * uy;
@@ -1005,8 +1061,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
       Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
 
-      // (udotdsigma, Vdotdsigma) / delta_eta_weight
-      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
+      // Vdotdsigma / delta_eta_weight
       double Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
 
       // total mean number  / delta_eta_weight of hadrons in FO cell
@@ -1015,8 +1070,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       // loop over eta points
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
-        if(udsigma <= 0.0) break;                               // skip over cells with u.dsigma < 0
-
         double eta = etaValues[ieta];
         double sinheta = sinh(eta);
         double cosheta = sqrt(1.0  +  sinheta * sinheta);
