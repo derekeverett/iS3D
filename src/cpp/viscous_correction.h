@@ -11,7 +11,7 @@ class Milne_Basis
     double Zt, Zn;
 
     Milne_Basis(double ut, double ux, double uy, double un, double uperp, double utperp, double tau);
-    void test_orthonormality(double tau2); 
+    void test_orthonormality(double tau2);
 };
 
 class Shear_Stress
@@ -61,6 +61,7 @@ class Surface_Element_Vector
     double dsigmay_LRF;       // - Y^mu . dsigma_mu
     double dsigmaz_LRF;       // - Z^mu . dsigma_mu
     double dsigma_magnitude;  // |u.dsigma| + sqrt((u.dsigma)^2 - dsigma.dsigma)
+    double dsigma_space;      // sqrt((u.dsigma)^2 - dsigma.dsigma)
 
     Surface_Element_Vector(double dsigmat_in, double dsigmax_in, double dsigmay_in, double dsigman_in);
     void boost_dsigma_to_lrf(Milne_Basis basis_vectors, double ut, double ux, double uy, double un);

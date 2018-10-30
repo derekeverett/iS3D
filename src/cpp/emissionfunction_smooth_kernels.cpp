@@ -70,7 +70,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     double yValues[y_pts];
     double etaValues[eta_pts];
-    double etaDeltaWeights[eta_pts];    // eta_weight * delta_eta
+    double etaTrapezoidWeights[eta_pts];    // eta_weight * delta_eta
     double delta_eta = fabs((eta_tab -> get(1,2)) - (eta_tab -> get(1,1)));  // assume uniform grid
 
     if(DIMENSION == 2)
@@ -80,14 +80,14 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
         etaValues[ieta] = eta_tab->get(1, ieta + 1);
-        etaDeltaWeights[ieta] = (eta_tab->get(2, ieta + 1)) * delta_eta;
+        etaTrapezoidWeights[ieta] = (eta_tab->get(2, ieta + 1)) * delta_eta;
         //cout << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
       }
     }
     else if(DIMENSION == 3)
     {
       etaValues[0] = 0.0;       // below, will load eta_fo
-      etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
+      etaTrapezoidWeights[0] = 1.0; // 1.0 for 3+1d
       for(int iy = 0; iy < y_pts; iy++)
       {
         yValues[iy] = y_tab->get(1, iy + 1);
@@ -265,7 +265,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         // now loop over all particle species and momenta
         for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
-        {       
+        {
           // set particle properties
           double mass = Mass[ipart];              // mass (GeV)
           double mass2 = mass * mass;
@@ -295,7 +295,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                 for(int ieta = 0; ieta < eta_pts; ieta++)
                 {
                   double eta = etaValues[ieta];
-                  double delta_eta_weight = etaDeltaWeights[ieta];
+                  double delta_eta_weight = etaTrapezoidWeights[ieta];
 
                   double pt = mT * cosh(y - eta);          // p^\tau (GeV)
                   double pn = mT_over_tau * sinh(y - eta); // p^\eta (GeV^2)
@@ -303,7 +303,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                   double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
 
-                  if(pdotdsigma <= 0.0) continue;          // enforce outflow 
+                  if(pdotdsigma <= 0.0) continue;          // enforce outflow
 
                   double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;  // u.p
 
@@ -349,7 +349,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                   double f = feq * (1.0 + df);  // distribution function with linear df correction
 
-                  pdotdsigma_f_eta_sum += (pdotdsigma * f); 
+                  pdotdsigma_f_eta_sum += (pdotdsigma * f);
 
 
                 } // eta points (ieta)
@@ -458,7 +458,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     double yValues[y_pts];
     double etaValues[eta_pts];
-    double etaDeltaWeights[eta_pts];    // eta_weight * delta_eta
+    double etaTrapezoidWeights[eta_pts];    // eta_weight * delta_eta
 
     if(DIMENSION == 2)
     {
@@ -468,18 +468,18 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       {
         etaValues[ieta] = eta_tab -> get(1, ieta + 1);
 
-        // assume uniform grid 
-        double delta_eta = fabs((eta_tab -> get(1,2)) - (eta_tab -> get(1,1)));  
+        // assume uniform grid
+        double delta_eta = fabs((eta_tab -> get(1,2)) - (eta_tab -> get(1,1)));
         double eta_weight = eta_tab -> get(2, ieta + 1);
 
-        etaDeltaWeights[ieta] = eta_weight * delta_eta;
+        etaTrapezoidWeights[ieta] = eta_weight * delta_eta;
         //cout << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
       }
     }
     else if(DIMENSION == 3)
     {
       etaValues[0] = 0.0;       // below, will load eta_fo
-      etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
+      etaTrapezoidWeights[0] = 1.0; // 1.0 for 3+1d
       for(int iy = 0; iy < y_pts; iy++)
       {
         yValues[iy] = y_tab->get(1, iy + 1);
@@ -569,7 +569,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double P = Pavg;                    // pressure (GeV/fm^3)
         double E = Eavg;                    // energy density (GeV/fm^3)
 
-        double pitt = 0.0;                  // contravariant shear stress tensor pi^munu 
+        double pitt = 0.0;                  // contravariant shear stress tensor pi^munu
         double pitx = 0.0;                  // enforce orthogonality pi.u = 0
         double pity = 0.0;                  // and tracelessness Tr(pi) = 0
         double pitn = 0.0;
@@ -601,7 +601,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double muB = muBavg;                // baryon chemical potential (GeV)
         double alphaB = muB / T;            // muB / T
         double nB = nBavg;                  // net baryon density (fm^-3)
-        double Vt = 0.0;                    // net baryon diffusion 
+        double Vt = 0.0;                    // net baryon diffusion
         double Vx = 0.0;
         double Vy = 0.0;
         double Vn = 0.0;
@@ -639,26 +639,26 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         // linearized df coefficients
         double shear_coeff = 0.5 / (betapi * T);
-        double bulk0_coeff = F / (T * T * betabulk); 
+        double bulk0_coeff = F / (T * T * betabulk);
         double bulk1_coeff = G / betabulk;
         double bulk2_coeff = 1.0 / (3.0 * T * betabulk);
 
         // pimunu and Vmu LRF components
-        double pixx_LRF = pimunu.pixx_LRF;  double piyy_LRF = pimunu.piyy_LRF;    
+        double pixx_LRF = pimunu.pixx_LRF;  double piyy_LRF = pimunu.piyy_LRF;
         double pixy_LRF = pimunu.pixy_LRF;  double piyz_LRF = pimunu.piyz_LRF;
         double pixz_LRF = pimunu.pixz_LRF;  double pizz_LRF = pimunu.pizz_LRF;
-        
-        double Vx_LRF = Vmu.Vx_LRF;                                
+
+        double Vx_LRF = Vmu.Vx_LRF;
         double Vy_LRF = Vmu.Vy_LRF;
         double Vz_LRF = Vmu.Vz_LRF;
 
-      
+
         // local momentum transformation matrix Mij = Aij
         // Aij = ideal + shear + bulk is symmetric
         // Mij is not symmetric if include baryon diffusion (leave for future work)
 
         double shear_fact = 0.5 / betapi;                           // coefficients in Aij
-        double bulk_term = bulkPi / (3.0 * betabulk); 
+        double bulk_term = bulkPi / (3.0 * betabulk);
 
         double Axx = 1.0  +  pixx_LRF * shear_fact  +  bulk_term;
         double Axy = pixy_LRF * shear_fact;
@@ -703,7 +703,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           double degeneracy = Degeneracy[ipart];  // spin degeneracy
           double baryon = Baryon[ipart];          // baryon number
 
-          double chem = baryon * alphaB;          // chemical potential term in feq 
+          double chem = baryon * alphaB;          // chemical potential term in feq
           double chem_mod = baryon * alphaB_mod;  // chemical potential term in feqmod
 
           // modified renormalization factor
@@ -725,7 +725,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
             renorm = n_linear / n_mod;
           }
-          
+
           if(ipart == chosen_index_pion0 && n_linear < 0.0)
           {
             detA_min = max(detA_min, detA);   // update min value of detA if pi-0 density goes negative
@@ -750,15 +750,15 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
               for(int iy = 0; iy < y_pts; iy++)
               {
-                double y = yValues[iy];             
+                double y = yValues[iy];
 
                 double pdotdsigma_f_eta_sum = 0.0;  // Cooper Frye integral over eta
 
                 // integrate over eta
                 for(int ieta = 0; ieta < eta_pts; ieta++)
                 {
-                  double eta = etaValues[ieta];                     
-                  double delta_eta_weight = etaDeltaWeights[ieta];  // trapezoid rule
+                  double eta = etaValues[ieta];
+                  double delta_eta_weight = etaTrapezoidWeights[ieta];  // trapezoid rule
 
                   double pt = mT * cosh(y - eta);          // p^\tau (GeV)
                   double pn = mT_over_tau * sinh(y - eta); // p^\eta (GeV^2)
@@ -766,8 +766,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                   double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan);
 
-                  if(pdotdsigma <= 0.0) continue;         // enforce outflow 
-                  
+                  if(pdotdsigma <= 0.0) continue;         // enforce outflow
+
                   double f;                               // feqmod (if breakdown do feq(1+df))
 
                   // calculate feqmod
@@ -775,17 +775,17 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   {
                     // LRF momentum components pi_LRF = - Xi.p
                     double px_LRF = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;
-                    double py_LRF = Yx * px  +  Yy * py;                              
-                    double pz_LRF = -Zt * pt  +  Zn * tau2_pn;                        
+                    double py_LRF = Yx * px  +  Yy * py;
+                    double pz_LRF = -Zt * pt  +  Zn * tau2_pn;
 
-                    double pLRF_mod[3] = {px_LRF, py_LRF, pz_LRF};            
-                    
+                    double pLRF_mod[3] = {px_LRF, py_LRF, pz_LRF};
+
                     LUP_solve(M, 3, permutation, pLRF_mod); // solve the matrix equation pi_LRF = Mij.pj_LRF
 
                     double px_LRF_mod2 = pLRF_mod[0] * pLRF_mod[0];
                     double py_LRF_mod2 = pLRF_mod[1] * pLRF_mod[1];
                     double pz_LRF_mod2 = pLRF_mod[2] * pLRF_mod[2];
-                    
+
                     double E_mod = sqrt(mass2 + px_LRF_mod2 + py_LRF_mod2 + pz_LRF_mod2);
 
                     f = renorm / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
@@ -814,7 +814,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
                     double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
                     double feqbar = 1.0  -  sign * feq;
-                    
+
                      // pi^munu.p_mu.p_nu
                     double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
                     + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
@@ -831,8 +831,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
 
                     f = feq * (1.0 + df);
-                  }               
-                  
+                  }
+
                   pdotdsigma_f_eta_sum += (pdotdsigma * f); // add contribution to integral
 
                 } // eta points (ieta)
@@ -931,7 +931,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         double yValues[y_pts];
         double etaValues[eta_pts];
-        double etaDeltaWeights[eta_pts];    // eta_weight * delta_eta
+        double etaTrapezoidWeights[eta_pts];    // eta_weight * delta_eta
 
         double delta_eta = (eta_tab->get(1,2)) - (eta_tab->get(1,1));  // assume uniform grid
 
@@ -941,14 +941,14 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           for(int ieta = 0; ieta < eta_pts; ieta++)
           {
             etaValues[ieta] = eta_tab->get(1, ieta + 1);
-            etaDeltaWeights[ieta] = (eta_tab->get(2, ieta + 1)) * delta_eta;
+            etaTrapezoidWeights[ieta] = (eta_tab->get(2, ieta + 1)) * delta_eta;
             //cout << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
           }
         }
         else if(DIMENSION == 3)
         {
           etaValues[0] = 0.0;       // below, will load eta_fo
-          etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
+          etaTrapezoidWeights[0] = 1.0; // 1.0 for 3+1d
           for (int iy = 0; iy < y_pts; iy++) yValues[iy] = y_tab->get(1, iy + 1);
         }
 
@@ -1053,7 +1053,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     for (int ieta = 0; ieta < eta_pts; ieta++)
                     {
                       double eta = etaValues[ieta];
-                      double delta_eta_weight = etaDeltaWeights[ieta];
+                      double delta_eta_weight = etaTrapezoidWeights[ieta];
 
                       double pt = mT * cosh(y - eta);
                       double pn = mT_over_tau * sinh(y - eta);

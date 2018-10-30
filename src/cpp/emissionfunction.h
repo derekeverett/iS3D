@@ -15,25 +15,25 @@ using namespace std;
 
 typedef struct
 {
-  double E;   // u.p
-  double px;   // pLRF.x
-  double py;   // pLRF.y
-  double pz;   // pLRF.z
+  double E;    // u.p
+  double px;   // -X.p
+  double py;   // -Y.p
+  double pz;   // -Z.p
 } LRF_Momentum;
 
 class Lab_Momentum
 {
-  private:                    // LRF momentum components
+  private:          // LRF momentum components
     double E_LRF;
     double px_LRF;
     double py_LRF;
     double pz_LRF;
 
-  public:                     // contravariant lab frame momentum p^mu (milne):
-    double ptau;              // p^tau
-    double px;                // p^x
-    double py;                // p^y
-    double pn;                // p^eta
+  public:           // contravariant lab frame momentum p^mu (milne)
+    double ptau;    // p^tau
+    double px;      // p^x
+    double py;      // p^y
+    double pn;      // p^eta
 
     Lab_Momentum(LRF_Momentum pLRF_in);
     void boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut, double ux, double uy, double un);
@@ -141,7 +141,7 @@ public:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
   // estimate total particle yield from freezeout surface -> number of events to sample
-  double estimate_total_yield(double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo);
+  double estimate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *thermodynamic_average, const int pbar_pts, double * pbar_root1, double * pbar_exp_weight1);
 
   // sample momentum with feq + df
   LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double * df_coeff, double shear14_coeff, double baryon_enthalpy_ratio);
@@ -157,7 +157,7 @@ public:
 
 
   // sample particles with feq + df or feqmod
-  void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average);
+  void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average, const int pbar_pts, double * pbar_root1, double * pbar_exp_weight1);
   // sample particles with feqmod
   /*
   void sample_dN_pTdpTdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
