@@ -51,6 +51,39 @@ double equilibrium_particle_density(double mass, double degeneracy, double sign,
   return neq;
 }
 
+// double EmissionFunctionArray::particle_density(double mass, double baryon, double sign, double alphaB, double bulkPi, double * df_coeff, double ds_time_over_ds_space, double * pbar_root1, double * pbar_exp_pbar_weight1, const int pbar_pts)
+// {
+//   // enforces p.dsigma > 0, which makes neq_outflow > neq for spacelike freezeout cells
+//   // this function is called for spacelike freezeout cells (dsigmaTime_over_dsigmaSpace < 1)
+
+  
+
+
+//   double c0 = df_coeff[0];
+//   double c1 = df_coeff[1];
+//   double c2 = df_coeff[2];
+
+//   double F = df_coeff[0];
+//   double G = df_coeff[1];
+//   double betabulk = df_coeff[2];
+
+//   double density = 0.0;
+
+//   // the gauss integration is not machine-precision perfect but good enough
+//   for(int i = 0; i < pbar_pts; i++)
+//   {
+//     double pbar = pbar_root1[i];
+//     double Ebar = sqrt(pbar * pbar  +  mbar_squared);
+
+//     double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
+
+//     neq_outflow += pbar_exp_pbar_weight1[i] * (ds_time_over_ds_space * pbar * (1.0 + costheta_star) - 0.5 * pbar * pbar / Ebar * (costheta_star * costheta_star - 1.0)) / (exp(Ebar - chem) + sign);
+//   }
+//   return neq_outflow; // external prefactor = degeneracy.ds_space.T^3 / (4.pi^2.hbar^3)
+// }
+
+
+
 double equilibrium_density_outflow(double mbar_squared, double sign, double chem, double ds_time_over_ds_space, double * pbar_root1, double * pbar_exp_pbar_weight1, const int pbar_pts)
 {
   // enforces p.dsigma > 0, which makes neq_outflow > neq for spacelike freezeout cells
@@ -153,6 +186,7 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
   bool rejected = true;
 
   double mass_squared = mass * mass;
+  double chem = baryon * alphaB;        // for mesons this is zero so there's no issue having it in the weight formula
 
   // uniform distributions in (phi, costheta) on standby:
   uniform_real_distribution<double> phi_distribution(0.0, two_pi);
@@ -211,7 +245,7 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
         rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
       }
 
-      double weight_light = exp(p/T) / (exp(E/T) + sign) * rideal * rvisc;
+      double weight_light = exp(p/T - chem) / (exp(E/T - chem) + sign) * rideal * rvisc;
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       if(fabs(weight_light - 0.5) > 0.5) printf("Error: weight_light = %lf out of bounds\n", weight_light);
@@ -323,7 +357,7 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
         rvisc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df_coeff, shear14_coeff, baryon_enthalpy_ratio);
       }
 
-      double weight_heavy = p/E * exp(E/T) / (exp(E/T) + sign) * rideal * rvisc;
+      double weight_heavy = p/E * exp(E/T - chem) / (exp(E/T - chem) + sign) * rideal * rvisc;
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       if(fabs(weight_heavy - 0.5) > 0.5) printf("Error: weight_heavy = %f out of bounds\n", weight_heavy);
@@ -557,6 +591,7 @@ LRF_Momentum EmissionFunctionArray::sample_momentum_feqmod(default_random_engine
   bool rejected = true;                       // for accept/reject loop
 
   double mass_squared = mass * mass;
+  double chem_mod = baryon * alphaB_mod;      // modified chemical potential term (relevant for baryons only which have fermi statistics)
 
    // uniform distributions in (phi_mod, costheta_mod) on standby
   uniform_real_distribution<double> phi_distribution(0.0, two_pi);
@@ -602,13 +637,14 @@ LRF_Momentum EmissionFunctionArray::sample_momentum_feqmod(default_random_engine
       // momentum rescaling
       pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
 
-      double pdsigma_abs = fabs(pLRF.E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
-      double rideal = pdsigma_abs / (pLRF.E * ds_magnitude);
 
-      //here the pion weight should include the Bose enhancement factor
-      //this formula assumes zero chemical potential mu = 0
-      //TO DO - generalize for nonzero chemical potential
-      double weight_light = rideal * exp(p_mod/T_mod) / (exp(E_mod/T_mod) + sign);
+      // p.dsigma * Heaviside(p.dsigma)
+      double pdsigma_Heaviside = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
+
+      double rideal = pdsigma_Heaviside / (pLRF.E * ds_magnitude);
+
+
+      double weight_light = rideal * exp(p_mod/T_mod - chem_mod) / (exp(E_mod/T_mod - chem_mod) + sign);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       if(fabs(weight_light - 0.5) > 0.5) printf("Error: weight = %f out of bounds\n", weight_light);
@@ -703,10 +739,12 @@ LRF_Momentum EmissionFunctionArray::sample_momentum_feqmod(default_random_engine
       // momentum rescaling
       pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
 
-      double pdsigma_abs = fabs(pLRF.E * dst - pLRF.px * dsx - pLRF.py * dsy - pLRF.pz * dsz);
-      double rideal = pdsigma_abs / (pLRF.E * ds_magnitude);
+      // p.dsigma * Heaviside(p.dsigma)
+      double pdsigma_Heaviside = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
 
-      double weight_heavy = rideal * (p_mod / E_mod) * exp(E_mod / T_mod) / (exp(E_mod / T_mod) + sign);
+      double rideal = pdsigma_Heaviside / (pLRF.E * ds_magnitude);
+
+      double weight_heavy = rideal * (p_mod / E_mod) * exp(E_mod/T_mod - chem_mod) / (exp(E_mod/T_mod - chem_mod) + sign);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       if(fabs(weight_heavy - 0.5) > 0.5) printf("Error: weight = %f out of bounds\n", weight_heavy);
@@ -976,7 +1014,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double tau2 = tau * tau;
       double x = x_fo[icell];
       double y = y_fo[icell];
-      if(DIMENSION == 3) etaValues[0] = eta_fo[icell];
+
+      if(DIMENSION == 3)
+      {
+        etaValues[0] = eta_fo[icell];
+      }
 
       double dat = dat_fo[icell];         // covariant normal surface vector dsigma_mu
       double dax = dax_fo[icell];
@@ -1092,12 +1134,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         {
           double mass = Mass[ipart];              // mass (GeV)
           double mbar = mass / T;
+          double mbar_squared = mbar * mbar; 
           double degeneracy = Degeneracy[ipart];  // spin degeneracy
           double sign = Sign[ipart];              // quantum statistics sign
           double baryon = Baryon[ipart];          // baryon number
           double chem = baryon * alphaB;          // chemical potential term in feq
 
-          dn_tot += (degeneracy * dn_eq_outflow_prefactor * equilibrium_density_outflow((mbar * mbar), sign, chem, ds_time_over_ds_space, pbar_root1, pbar_exp_weight1, pbar_pts));
+          dn_tot += (degeneracy * dn_eq_outflow_prefactor * equilibrium_density_outflow(mbar_squared, sign, chem, ds_time_over_ds_space, pbar_root1, pbar_exp_weight1, pbar_pts));
         }
 
       } // outflow condition
@@ -1115,7 +1158,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
         if(dN_tot <= 0.0) continue;                             // poisson mean value out of bounds
 
-        std::poisson_distribution<> poisson_hadrons(dN_tot);    // probability distribution for number of hadrons
+        std::poisson_distribution<int> poisson_hadrons(dN_tot); // probability distribution for number of hadrons
 
         // sample events for each FO cell
         for(int ievent = 0; ievent < Nevents; ievent++)
@@ -1138,7 +1181,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
               // hopefully there's a way to update it...
 
-              density_list[ipart] = udsigma * (neq + bulkPi * dn_bulk) - Vdsigma * dn_diff;
+              density_list[ipart] = udsigma * (neq  +  bulkPi * dn_bulk) - Vdsigma * dn_diff;
 
               // double mass = Mass[ipart];
               // double degeneracy = Degeneracy[ipart];

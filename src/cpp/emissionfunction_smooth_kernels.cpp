@@ -488,13 +488,18 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     // pi-0 meson should be the first particle in chosen_particles.dat
     // to help track whether its density goes negative for large negative bulk pressures
-    int chosen_index_pion0 = chosen_pion0[0];
-
-    if(!(chosen_pion0.size() == 1 && chosen_index_pion0 == 0))
+    if(!(chosen_pion0.size()== 1))
     {
       printf("Error: put pion-0 (mc_id = 111) at the top of PDG/chosen_particles.dat...\n");
       exit(-1);
     }
+    else if(chosen_pion0[0] != 0)
+    {
+      printf("Error: put pion-0 (mc_id = 111) at the top of PDG/chosen_particles.dat...\n");
+      exit(-1);
+    }
+
+    int chosen_index_pion0 = chosen_pion0[0];
 
     // average thermodynamic quantities
     double Tavg = thermodynamic_average[0];
