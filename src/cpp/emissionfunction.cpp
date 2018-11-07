@@ -718,6 +718,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         double yCut = 5.0;  // rapidity cut
         if(fabs(y) <= yCut)
         {
+          //spectraFile << scientific <<  setw(5) << setprecision(6) << pT << "\n";
           spectraFile << scientific <<  setw(5) << setprecision(6) << y << "\t" << phi_over_pi << "\t" << pT << "\n";
         }
       }//ipart
@@ -1080,6 +1081,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[3] = df.c3;
           df_coeff[4] = df.c4;
 
+          // print coefficients
+          printf("\nc0 = %lf\n", df_coeff[0]);
+          printf("c1 = %lf\n", df_coeff[1]);
+          printf("c2 = %lf\n", df_coeff[2]);
+          printf("c3 = %lf\n", df_coeff[3]);
+          printf("c4 = %lf\n", df_coeff[4]);
+          printf("2(E+P)T^2 = %lf\n", 2.0 * (Eavg + Pavg) * Tavg * Tavg);
+
           switch(OPERATION)
           {
             case 1: // smooth CF
@@ -1095,7 +1104,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               if(OVERSAMPLE)
               {
-                double Ntotal = estimate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn, thermodynamic_average, pbar_pts, pbar_root1, pbar_exp_weight1);
+                double Ntotal = estimate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn, thermodynamic_average, df_coeff, pbar_pts, pbar_root1, pbar_exp_weight1);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
@@ -1152,7 +1161,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               if(OVERSAMPLE)
               {
-                double Ntotal = estimate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn, thermodynamic_average, pbar_pts, pbar_root1, pbar_exp_weight1);
+                double Ntotal = estimate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn, thermodynamic_average, df_coeff, pbar_pts, pbar_root1, pbar_exp_weight1);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
@@ -1186,6 +1195,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           df_coeff[3] = df.betaV;
           df_coeff[4] = df.betapi;
 
+          // print coefficients
+          printf("\nF = %lf\n", df_coeff[0]);
+          printf("G = %lf\n", df_coeff[1]);
+          printf("betabulk = %lf\n", df_coeff[2]);
+          printf("betaV = %lf\n", df_coeff[3]);
+          printf("betapi = %lf\n", df_coeff[4]);
+
           switch(OPERATION)
           {
             case 1: // smooth CF
@@ -1201,7 +1217,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               if(OVERSAMPLE)
               {
-                double Ntotal = estimate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn, thermodynamic_average, pbar_pts, pbar_root1, pbar_exp_weight1);
+                double Ntotal = estimate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn, thermodynamic_average, df_coeff, pbar_pts, pbar_root1, pbar_exp_weight1);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
