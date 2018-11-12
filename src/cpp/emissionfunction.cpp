@@ -11,7 +11,7 @@
 #ifdef _OMP
 #include <omp.h>
 #endif
-#include "iS3DWrapper.h"
+#include "iS3D.h"
 #include "readindata.h"
 #include "emissionfunction.h"
 #include "Stopwatch.h"
@@ -87,7 +87,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
     SAMPLER_SEED = paraRdr->getVal("sampler_seed");
     if (OPERATION == 2) printf("Sampler seed set to %d \n", SAMPLER_SEED);
-     
+
     Nevents = 1;    // default value for number of sampled events
 
     particles = particles_in;
@@ -1082,7 +1082,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
-              //write_particle_list_toFile();
+              write_particle_list_toFile();
               write_particle_list_OSC();
               write_momentum_list_toFile();
 
@@ -1138,7 +1138,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
-              //write_particle_list_toFile();
+              write_particle_list_toFile();
               write_particle_list_OSC();
               write_momentum_list_toFile();
               break;
@@ -1187,7 +1187,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
-              //write_particle_list_toFile();
+              write_particle_list_toFile();
               write_particle_list_OSC();
               write_momentum_list_toFile();
 

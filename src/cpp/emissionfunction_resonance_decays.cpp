@@ -24,7 +24,7 @@
 #ifdef _OMP
 #include <omp.h>
 #endif
-#include "iS3DWrapper.h"
+#include "iS3D.h"
 #include "readindata.h"
 #include "emissionfunction.h"
 #include "Stopwatch.h"

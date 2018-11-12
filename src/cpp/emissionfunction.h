@@ -5,7 +5,7 @@
 #include<vector>
 #include<random>
 #include "Table.h"
-#include "iS3DWrapper.h"
+#include "iS3D.h"
 #include "ParameterReader.h"
 #include "deltafReader.h"
 #include "particle.h"

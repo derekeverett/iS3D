@@ -2,7 +2,7 @@
 #ifndef READINDATA_H
 #define READINDATA_H
 
-#include "iS3DWrapper.h"
+#include "iS3D.h"
 #include "ParameterReader.h"
 #include <fstream>
 

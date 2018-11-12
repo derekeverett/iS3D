@@ -7,10 +7,10 @@ set (SOURCES
     emissionfunction_sampling_kernels.cpp
     emissionfunction_smooth_kernels.cpp
     gaussThermal.cpp
-    iS3DWrapper.cpp
+    iS3D.cpp
     ParameterReader.cpp
     readindata.cpp
-    RuniS3DWrapper.cpp
+    RuniS3D.cpp
     Table.cpp
     viscous_correction.cpp
     )
