@@ -82,7 +82,7 @@ int IS3D::run_particlization(int fo_from_file)
   // Read-in parameters
   cout << "Reading in parameters:\n" << endl;
   ParameterReader *paraRdr = new ParameterReader;
-  paraRdr->readFromFile("parameters.dat");
+  paraRdr->readFromFile("iS3D_parameters.dat");
   //paraRdr->readFromArguments(argc, argv);
   paraRdr->echo();
   printline();
