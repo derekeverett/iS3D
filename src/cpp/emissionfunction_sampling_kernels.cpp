@@ -215,15 +215,14 @@ double EmissionFunctionArray::particle_density_outflow_new(double mass, double d
   double mbar_squared = mbar * mbar;
   double chem = baryon * alphaB;
 
-  double n_outflow = 0.0;
-
-  double c0 = df_coeff[0];  // df_coeff is one of them
+  double c0 = df_coeff[0];  // df_coeff is one of them...
   double c1 = df_coeff[1];
   double c2 = df_coeff[2];
 
   double F = df_coeff[0];
   double G = df_coeff[1];
   double betabulk = df_coeff[2];
+  double bulk_coeff = bulkPi / (3.0 * betabulk);
 
   double c0_minus_c2_mass2 = (c0 - c2) * mass_squared;
   double baryon_c1  = baryon * c1;
@@ -234,22 +233,18 @@ double EmissionFunctionArray::particle_density_outflow_new(double mass, double d
   double three_T = 3.0 * T;
   double bulkPi_over_betabulk = bulkPi / betabulk;
 
-  // the gauss integration is not machine-precision perfect but good enough
+  double n_outflow = 0.0;
+
+  // the integration routine is not machine-precision perfect but good enough (~ 0.01% error)
   for(int i = 0; i < gauss_pts; i++)
   {
-    double x = gauss_legendre_root[i];  // x should never be 1 (or else pbar = inf)
+    double x = gauss_legendre_root[i];  // x should never be 1.0 (or else pbar = inf)
     double s = (1.0 - x) / 2.0;
     double pbar = (1.0 - s) / s;
+    double Ebar = sqrt(pbar * pbar +  mbar_squared);
 
-    double pbar_squared = pbar * pbar;
-    double pbar_cubed = pbar_squared * pbar;
-    double Ebar = sqrt(pbar_squared  +  mbar_squared);
-
-    double E = Ebar * T;
-
-    double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
-
-    double df_bulk = 0.0;
+    double feq = 1.0 / (exp(Ebar - chem) + sign);
+    double feqbar = 1.0 - sign * feq;
 
     if(INCLUDE_BULK_DELTAF)
     {
@@ -257,13 +252,38 @@ double EmissionFunctionArray::particle_density_outflow_new(double mass, double d
       {
         case 1: // 14 moment
         {
-          df_bulk = (c0_minus_c2_mass2  +  (baryon_c1  +  fourc2_minus_c0 * E) * E) * bulkPi;
+          double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
+          double E = Ebar * T;
+
+          double df = feqbar * (c0_minus_c2_mass2  +  (baryon_c1  +  fourc2_minus_c0 * E) * E) * bulkPi;
+          df = max(-1.0, min(df, 1.0)); // regulate df
+
+          n_outflow += 0.5 * gauss_legendre_weight[i] * (ds_time_over_ds_space * pbar * pbar * (1.0 + costheta_star) - 0.5 * pbar * pbar * pbar / Ebar * (costheta_star * costheta_star  -  1.0)) * feq * (1.0 + df) / (s * s);
+
           break;
         }
         case 2: // Chapman Enskog
+        {
+          double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
+          double E = Ebar * T;
+
+          double df = feqbar * (baryon_G  +  F_over_T2 * E  +  (E  -  mass_squared / E) / three_T) * bulkPi_over_betabulk;
+          df = max(-1.0, min(df, 1.0)); // regulate df
+
+          n_outflow += 0.5 * gauss_legendre_weight[i] * (ds_time_over_ds_space * pbar * pbar * (1.0 + costheta_star) - 0.5 * pbar * pbar * pbar / Ebar * (costheta_star * costheta_star  -  1.0)) * feq * (1.0 + df) / (s * s);
+          break;
+        }
         case 3: // modified
         {
-          df_bulk = (baryon_G  +  F_over_T2 * E  +  (E  -  mass_squared / E) / three_T) * bulkPi_over_betabulk;
+          double mass_mod = mass / (1.0 + bulk_coeff);
+          double Ebar_mod = sqrt(pbar * pbar  +  mass_mod * mass_mod);
+          double costheta_star_mod = min(1.0, Ebar_mod * ds_time_over_ds_space / pbar);
+
+          double feqmod = feq;  // effectively..
+
+          // last thing I need is the linearized bulk density (pass the argument)
+
+          n_outflow += 0.5 * gauss_legendre_weight[i] * (ds_time_over_ds_space * pbar * pbar * (1.0 + costheta_star_mod) - 0.5 * pbar * pbar * pbar / Ebar_mod * (costheta_star_mod * costheta_star_mod  -  1.0)) * feqmod / (s * s);
           break;
         }
         default:
@@ -272,19 +292,9 @@ double EmissionFunctionArray::particle_density_outflow_new(double mass, double d
         }
       }
     }
-
-    double feq = 1.0 / (exp(Ebar - chem) + sign);
-
-    double feqbar = 1.0 - sign * feq;
-
-    double df = feqbar * df_bulk;
-
-    df = max(-1.0, min(df, 1.0)); // regulate df
-
-    n_outflow += 0.5 * gauss_legendre_weight[i] * (ds_time_over_ds_space * pbar_squared * (1.0 + costheta_star) - 0.5 * pbar_cubed / Ebar * (costheta_star * costheta_star - 1.0)) * feq * (1.0 + df) / (s * s);
-
   }
   // external prefactor = degeneracy.ds_space.T^3 / (4.pi^2.hbar^3)
+  // either T or Tmod would be passed to T here
 
   return n_outflow * degeneracy * ds_space * T * T * T / four_pi2_hbarC3;
 }
