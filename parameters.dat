@@ -27,8 +27,8 @@ include_shear_deltaf      	= 1   # switch to include delta f correction from she
 include_baryondiff_deltaf 	= 0   # switch to include delta f correction from baryon diffusion current
 regulate_deltaf           	= 0   # if on, force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
 
-deta_min 			= 0    	 # minimum value of detA (feqmod break down)
-detc_min 			= 1.e-3  # minimum value of detC (famod break down)
+deta_min 			= 1.e-6    	 # minimum value of detA (feqmod break down)
+detc_min 			= 1.e-6  # minimum value of detC (famod break down)
 
 group_particles             = 0	    # group particles with the similar mass and to speed up calculations
 particle_diff_tolerance     = 0.01  # grouping particle mass tolerance
@@ -37,4 +37,4 @@ do_resonance_decays	    = 0      #switch for resonance decays after thermal spec
 lightest_particle 	    = 211    #PDG MC ID of lightest particle for resonance decay feed-down
 
 oversample		    = 1      #run sampler iteratively until total number of hadrons across
-min_num_hadrons		    = 1.e+5  #across all samples >= min_num_hadrons 
+min_num_hadrons		    = 1.4e+7  #across all samples >= min_num_hadrons 
