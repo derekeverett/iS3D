@@ -85,6 +85,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
     OVERSAMPLE = paraRdr->getVal("oversample");
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
+    SAMPLER_SEED = paraRdr->getVal("sampler_seed");
+    if (OPERATION == 2) printf("Sampler seed set to %d \n", SAMPLER_SEED);
+    
     Nevents = 1;    // default value for number of sampled events
 
     particles = particles_in;

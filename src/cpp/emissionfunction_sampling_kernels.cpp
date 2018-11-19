@@ -1209,17 +1209,16 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
 void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average, const int pbar_pts, double * pbar_root1, double * pbar_exp_weight1)
   {
     int npart = number_of_chosen_particles;
-
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
     double four_pi2_hbarC3 = 4.0 * pow(M_PI,2) * pow(hbarC,3);
+    //set seed
+    unsigned seed;
+    if (SAMPLER_SEED < 0) seed = chrono::system_clock::now().time_since_epoch().count();
+    else seed = SAMPLER_SEED;
 
-    // for testing: fix the seed and generator
-    //unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-    unsigned seed = 1;
     default_random_engine generator_poisson(seed);
     default_random_engine generator_type(seed);
     default_random_engine generator_momentum(seed);
-
 
     int eta_pts = 1;
     if(DIMENSION == 2) eta_pts = eta_tab_length;                   // extension in eta
@@ -1305,11 +1304,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double tau2 = tau * tau;
       double x = x_fo[icell];
       double y = y_fo[icell];
-
-      if(DIMENSION == 3)
-      {
-        etaValues[0] = eta_fo[icell];
-      }
+      if(DIMENSION == 3) etaValues[0] = eta_fo[icell];
 
       double dat = dat_fo[icell];         // covariant normal surface vector dsigma_mu
       double dax = dax_fo[icell];
@@ -1387,6 +1382,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
       basis_vectors.test_orthonormality(tau2);
 
+      // dsigma / delta_eta_weight class
+      Surface_Element_Vector dsigma(dat, dax, day, dan);
+      dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
+      dsigma.compute_dsigma_magnitude();
+
       // shear stress class
       Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
       pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
@@ -1396,11 +1396,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       Baryon_Diffusion Vmu(Vt, Vx, Vy, Vn);
       Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
       Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
-
-      // dsigma / delta_eta_weight class
-      Surface_Element_Vector dsigma(dat, dax, day, dan);
-      dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
-      dsigma.compute_dsigma_magnitude();
 
       // total mean number  / delta_eta_weight of hadrons in FO cell
       //double dn_tot = udsigma * (neq_tot  +  bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;
@@ -1468,23 +1463,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               double dn_bulk = Bulk_Density[ipart];
               double dn_diff = Diffusion_Density[ipart];
 
-              // hopefully there's a way to update it...
-
               density_list[ipart] = udsigma * (neq  +  bulkPi * dn_bulk) - Vdsigma * dn_diff;
-
-              // double mass = Mass[ipart];
-              // double degeneracy = Degeneracy[ipart];
-              // double sign = Sign[ipart];
-              // double baryon = Baryon[ipart];
-              // double chem = baryon * alphaB;
-
-              // cout << setprecision(15) << neq << "\t" << equilibrium_particle_density(mass, degeneracy, sign, T, chem) << endl;
             }
 
             // discrete probability distribution for particle types (weights ~ dN_ipart / dN_tot)
             std::discrete_distribution<int> particle_type(density_list.begin(), density_list.end());
 
-            int chosen_index = particle_type(generator_type);        // chosen index of sampled particle type
+            int chosen_index = particle_type(generator_type);   // chosen index of sampled particle type
             double mass = Mass[chosen_index];                   // mass of sampled particle in GeV
             double sign = Sign[chosen_index];                   // quantum statistics sign
             double baryon = Baryon[chosen_index];               // baryon number
