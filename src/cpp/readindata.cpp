@@ -262,7 +262,7 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
   return;
 }
 
-// 3+1D MUSIC boost invariant format
+// MUSIC boost invariant format
 void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
 {
   ostringstream surfdat_stream;
@@ -297,11 +297,12 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
     surf_ptr[i].day = dummy * surf_ptr[i].tau;
     surfdat >> dummy;
     surf_ptr[i].dan = dummy * surf_ptr[i].tau;
-    if(dimension == 2 && surf_ptr[i].dan != 0)
+    if (dimension == 2 && i == 0 && surf_ptr[i].dan != 0)
     {
-      cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
-      //exit(-1);
+      cout << "dsigma_eta is not zero in first cell. Setting all dsigma_eta to zero!" << endl;
+      surf_ptr[i].dan = 0.0;
     }
+    if (dimension == 2 && surf_ptr[i].dan != 0) surf_ptr[i].dan = 0.0;
 
     // contravariant flow velocity
     surfdat >> surf_ptr[i].ut;
@@ -324,7 +325,7 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
     double P = dummy * T - E;
     surf_ptr[i].P = P; // p = T*s - e
 
-    double nB = 0.0; 
+    double nB = 0.0;
 
     // ten contravariant components of shear stress tensor
     surfdat >> dummy;

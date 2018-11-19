@@ -9,7 +9,6 @@ int main(int argc, char *argv[])
 
   //run iS3D
   //if argument == 1, freeeout surface is read from file
-  //otherwise freezeout surface is read from memory 
+  //otherwise freezeout surface is read from memory
   particlization.run_particlization(1);
-
 }

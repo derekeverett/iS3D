@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include "particle.h"
 
 const double hbarC = 0.197327053;  //GeV*fm
 
@@ -12,9 +13,9 @@ const int Maxdecaypart = 5;
 
 
 class IS3D {
-  private:
+private:
 
-  public:
+public:
   IS3D();
   ~IS3D();
 
@@ -51,11 +52,14 @@ class IS3D {
 
   std::vector<double> Pi; //bulk pressure
 
+  //vector to store final particle list for all events
+  std::vector<Sampled_Particle> final_particles_;
+
   //this calls the particlization routine
   //depending on parameters, will either do smooth cooper
   //frye integral (w or w/o res decays)
   // or sampler
-  int run_particlization(int fo_from_file);
+  void run_particlization(int fo_from_file);
 
   //read the freezeout surface from disk 'input/surface.dat'
   void read_fo_surf_from_file();
@@ -84,6 +88,7 @@ class IS3D {
                                 std::vector<double> pinn_in,
                                 std::vector<double> Pi_in
                                 );
+  //void set_particle_list(std::vector< std::vector<Sampled_Particle> > list_in);
 };
 
 #endif

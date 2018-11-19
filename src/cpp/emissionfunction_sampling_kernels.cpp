@@ -773,7 +773,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Equilibrium_Density, 
 
     double Ntot = 0.0;                    // total particle yield (includes p.dsigma < 0 particles)
 
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for (long icell = 0; icell < FO_length; icell++)
     {
       double tau = tau_fo[icell];         // longitudinal proper time
@@ -915,7 +915,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     long samples = 0;
 
     //loop over all freezeout cells
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for(long icell = 0; icell < FO_length; icell++)
     {
       double tau = tau_fo[icell];         // FO cell coordinates

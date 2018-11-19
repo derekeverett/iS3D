@@ -71,7 +71,7 @@ private:
 
   int OVERSAMPLE; // whether or not to iteratively oversample surface
   long int MIN_NUM_HADRONS; //min number of particles summed over all samples
-  long int SAMPLER_SEED; //the seed for the particle sampler. If chosen < 0, seed set with clocktime 
+  long int SAMPLER_SEED; //the seed for the particle sampler. If chosen < 0, seed set with clocktime
   int Nevents;              // number of sampled events
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
@@ -105,7 +105,7 @@ public:
   ~EmissionFunctionArray();
 
   // main function
-  void calculate_spectra();
+  void calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in);
 
   // continuous spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::

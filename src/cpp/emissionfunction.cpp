@@ -769,7 +769,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 */
 
   //*********************************************************************************************
-  void EmissionFunctionArray::calculate_spectra()
+  void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
     #ifdef _OPENMP
@@ -1043,7 +1043,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     double df_coeff[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
-    if(MODE == 1) // viscous hydro
+    if( (MODE == 1) || (MODE == 4) ) // viscous hydro
     {
       switch(DF_MODE)
       {
@@ -1072,20 +1072,18 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               {
                 double Ntotal = estimate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density,
                 tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn);
-
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
 
               particle_event_list.resize(Nevents);
-
               printf("Sampling particles with df 14 moment...\n");
-
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
 
               write_particle_list_toFile();
               write_particle_list_OSC();
               write_momentum_list_toFile();
 
+              particle_event_list_in = particle_event_list[0];
               break;
             }
             default:
@@ -1135,12 +1133,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               particle_event_list.resize(Nevents);
 
               printf("Sampling particles with df Chapman Enskog...\n");
-
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
-
               write_particle_list_toFile();
               write_particle_list_OSC();
               write_momentum_list_toFile();
+
+              particle_event_list_in = particle_event_list[0];
+
               break;
             }
             default:
@@ -1177,19 +1176,17 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               {
                 double Ntotal = estimate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density,
                 tau, ux, uy, un, dat, dax, day, dan, bulkPi, Vx, Vy, Vn);
-
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
 
               particle_event_list.resize(Nevents);
-
               printf("Sampling particles with feqmod...\n");
-
               sample_dN_pTdpTdphidy(Mass, Sign, Degen, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average);
-
               write_particle_list_toFile();
               write_particle_list_OSC();
               write_momentum_list_toFile();
+
+              particle_event_list_in = particle_event_list[0];
 
               break;
             }

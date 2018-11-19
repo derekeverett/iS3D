@@ -26,6 +26,13 @@ IS3D::~IS3D()
 {
 }
 
+/*
+void IS3D::set_particle_list(std::vector< std::vector<Sampled_Particle> > list_in)
+{
+  IS3D::final_particles_ = list_in;
+}
+*/
+
 void IS3D::read_fo_surf_from_memory(
                               std::vector<double> tau_in,
                               std::vector<double> x_in,
@@ -73,7 +80,7 @@ void IS3D::read_fo_surf_from_memory(
   Pi = Pi_in;
 }
 
-int IS3D::run_particlization(int fo_from_file)
+void IS3D::run_particlization(int fo_from_file)
 {
   cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
   cout << "Derek Everett, Mike McNelis, Sameed Pervaiz and Lipei Du (2018)" << endl;
@@ -166,11 +173,19 @@ int IS3D::run_particlization(int fo_from_file)
   Table eta_tab("tables/eta_trapezoid_table_41pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
 
-  efa.calculate_spectra();
+  std::vector<Sampled_Particle> particle_event_list_in;
+  //particle_event_list_in.resize(0);
+  efa.calculate_spectra(particle_event_list_in);
+
+  //copy final particle list to memory to pass to JETSCAPE module
+  cout << "Copying final particle list to memory" << endl;
+  cout << "Particle list contains " << particle_event_list_in.size() << " particles" << endl;
+  final_particles_ = particle_event_list_in;
 
   delete [] surf_ptr;
   delete paraRdr;
 
   printline();
   cout << "Done calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
+
 }
