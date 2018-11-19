@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
   // Read-in parameters
   cout << "Reading in parameters:\n" << endl;
   ParameterReader *paraRdr = new ParameterReader;
-  paraRdr->readFromFile("parameters.dat");
+  paraRdr->readFromFile("iS3D_parameters.dat");
   paraRdr->readFromArguments(argc, argv);
   paraRdr->echo();
   printline();
