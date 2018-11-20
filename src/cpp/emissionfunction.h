@@ -15,25 +15,25 @@ using namespace std;
 
 typedef struct
 {
-  double E;   // u.p
-  double px;   // pLRF.x
-  double py;   // pLRF.y
-  double pz;   // pLRF.z
+  double E;    // u.p
+  double px;   // -X.p
+  double py;   // -Y.p
+  double pz;   // -Z.p
 } LRF_Momentum;
 
 class Lab_Momentum
 {
-  private:                    // LRF momentum components
+  private:          // LRF momentum components
     double E_LRF;
     double px_LRF;
     double py_LRF;
     double pz_LRF;
 
-  public:                     // contravariant lab frame momentum p^mu (milne):
-    double ptau;              // p^tau
-    double px;                // p^x
-    double py;                // p^y
-    double pn;                // p^eta
+  public:           // contravariant lab frame momentum p^mu (milne)
+    double ptau;    // p^tau
+    double px;      // p^x
+    double py;      // p^y
+    double pn;      // p^eta
 
     Lab_Momentum(LRF_Momentum pLRF_in);
     void boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut, double ux, double uy, double un);
@@ -48,8 +48,11 @@ typedef struct
   double slope;
 } MT_fit_parameters;
 
-// thermal particle density (don't need anymore...expanding BE/FD distributions)
-//double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem, double mbar, int jmax, double two_pi2_hbarC3);
+// thermal particle density (just for crosschecking)
+double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
+
+// thermal particle density with outflow only (needed if enforce p.dsigma > 0)
+//double equilibrium_density_outflow(double mbar_squared, double sign, double chem, double dsigmaTime_over_dsigmaSpace, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
 
 class EmissionFunctionArray
 {
@@ -73,6 +76,7 @@ private:
   long int MIN_NUM_HADRONS; //min number of particles summed over all samples
   long int SAMPLER_SEED; //the seed for the particle sampler. If chosen < 0, seed set with clocktime
   int Nevents;              // number of sampled events
+  double mean_yield;        // mean number of particles emitted from freezeout surface (includes backflow)
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
@@ -83,9 +87,9 @@ private:
   double *St, *Sx, *Sy, *Sn; //to hold the polarization vector of all species
   double *Snorm; //the normalization of the polarization vector of all species
 
-  std::vector<Sampled_Particle> particle_list; // to hold sampled particle list
-
+  std::vector<Sampled_Particle> particle_list;                        // to hold sampled particle list (inactive)
   std::vector< std::vector<Sampled_Particle> > particle_event_list;   // holds sampled particle list of all events
+  std::vector<int> particle_yield_list;                               // particle yield for all events (includes p.dsigma particles)
 
   vector<int> chosen_pion0;             // stores chosen particle index of pion0 (for tracking feqmod breakdown)
 
@@ -115,14 +119,14 @@ public:
     double *, double *, double *, double *, double *, double *, double *, double *, double *,
     double *, double *, double *, double *,
     double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double*, double*);
+    double *, double *, double *, double *, double *, double*, double*, double *);
 
   // continuous spectra with feqmod
   void calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
     double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
     double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
     double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
-    double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_root2, double * pbar_weight1, double * pbar_weight2);
+    double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_root2, double * pbar_weight1, double * pbar_weight2, double *thermodynamic_average);
 
   // continuous spectra with fa + dft
   void calculate_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
@@ -137,8 +141,14 @@ public:
   // sampling spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
+  double particle_density(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_time, double * df_coeff, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
+
+  double particle_density_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
+
+  double particle_density_outflow_new(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff);
+
   // estimate total particle yield from freezeout surface -> number of events to sample
-  double estimate_total_yield(double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo);
+  double estimate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *thermodynamic_average, double * df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_exp_weight1);
 
   // sample momentum with feq + df
   LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double * df_coeff, double shear14_coeff, double baryon_enthalpy_ratio);
@@ -154,7 +164,7 @@ public:
 
 
   // sample particles with feq + df or feqmod
-  void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average);
+  void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average, const int pbar_pts, double * pbar_root1, double * pbar_exp_weight1);
   // sample particles with feqmod
   /*
   void sample_dN_pTdpTdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
@@ -196,6 +206,7 @@ public:
   void write_particle_list_toFile();  // write sampled particle list
   void write_particle_list_OSC(); //write sampled particle list in OSCAR format for UrQMD/SMASH
   void write_momentum_list_toFile();  // write sampled momentum list
+  void write_yield_list_toFile();     // write mean yield and sampled yield list to files
 
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 

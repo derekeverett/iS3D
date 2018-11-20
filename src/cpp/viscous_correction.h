@@ -11,6 +11,7 @@ class Milne_Basis
     double Zt, Zn;
 
     Milne_Basis(double ut, double ux, double uy, double un, double uperp, double utperp, double tau);
+    void test_orthonormality(double tau2);
 };
 
 class Shear_Stress
@@ -28,6 +29,7 @@ class Shear_Stress
 
     Shear_Stress(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in);
     void boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2);
+    void test_pimunu_orthogonality_and_tracelessness(double ut, double ux, double uy, double un, double tau2);
     void compute_pimunu_max();
 };
 
@@ -43,6 +45,7 @@ class Baryon_Diffusion
 
     Baryon_Diffusion(double Vt_in, double Vx_in, double Vy_in, double Vn_in);
     void boost_Vmu_to_lrf(Milne_Basis basis_vectors, double tau2);
+    void test_Vmu_orthogonality(double ut, double ux, double uy, double un, double tau2);
     void compute_Vmu_max();
 };
 
@@ -58,10 +61,11 @@ class Surface_Element_Vector
     double dsigmay_LRF;       // - Y^mu . dsigma_mu
     double dsigmaz_LRF;       // - Z^mu . dsigma_mu
     double dsigma_magnitude;  // |u.dsigma| + sqrt((u.dsigma)^2 - dsigma.dsigma)
+    double dsigma_space;      // sqrt((u.dsigma)^2 - dsigma.dsigma)
 
     Surface_Element_Vector(double dsigmat_in, double dsigmax_in, double dsigmay_in, double dsigman_in);
     void boost_dsigma_to_lrf(Milne_Basis basis_vectors, double ut, double ux, double uy, double un);
-    void compute_dsigma_max();
+    void compute_dsigma_magnitude();
 };
 
 #endif
