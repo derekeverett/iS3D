@@ -97,6 +97,11 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     }
 
     // contravariant flow velocity
+
+
+    surfdat >> surf_ptr[i].ut;  // this line is old file format
+
+
     surfdat >> surf_ptr[i].ux;
     surfdat >> surf_ptr[i].uy;
     surfdat >> surf_ptr[i].un;
