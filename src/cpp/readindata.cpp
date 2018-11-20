@@ -7,7 +7,7 @@
 #include<iomanip>
 #include<stdlib.h>
 
-#include "main.h"
+#include "iS3D.h"
 #include "readindata.h"
 #include "arsenal.h"
 #include "ParameterReader.h"
@@ -97,7 +97,6 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     }
 
     // contravariant flow velocity
-    surfdat >> surf_ptr[i].ut;
     surfdat >> surf_ptr[i].ux;
     surfdat >> surf_ptr[i].uy;
     surfdat >> surf_ptr[i].un;
@@ -114,7 +113,6 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surfdat >> dummy;
     double P = dummy * hbarC; //pressure
     surf_ptr[i].P = P;
-
 
     //file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
     // dissipative quantities at freeze out
@@ -263,7 +261,6 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
     }
 
     // contravariant flow velocity
-    surfdat >> surf_ptr[i].ut;
     surfdat >> surf_ptr[i].ux;
     surfdat >> surf_ptr[i].uy;
     surfdat >> surf_ptr[i].un;
@@ -277,14 +274,6 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
     surf_ptr[i].P = dummy * hbarC; //pressure
 
     surfdat >> dummy;
-    surf_ptr[i].pitt = dummy * hbarC; //ten contravariant components of shear stress tensor
-    surfdat >> dummy;
-    surf_ptr[i].pitx = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pity = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pitn = dummy * hbarC;
-    surfdat >> dummy;
     surf_ptr[i].pixx = dummy * hbarC;
     surfdat >> dummy;
     surf_ptr[i].pixy = dummy * hbarC;
@@ -294,8 +283,6 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
     surf_ptr[i].piyy = dummy * hbarC;
     surfdat >> dummy;
     surf_ptr[i].piyn = dummy * hbarC;
-    surfdat >> dummy;
-    surf_ptr[i].pinn = dummy * hbarC;
 
     surfdat >> dummy;
     surf_ptr[i].bulkPi = dummy * hbarC; //bulk pressure
@@ -326,13 +313,22 @@ void FO_data_reader::read_surf_VH_Vorticity(long length, FO_surf* surf_ptr)
   return;
 }
 
-// 3+1D MUSIC boost invariant format
+// MUSIC boost invariant format
 void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
 {
   ostringstream surfdat_stream;
   double dummy;
   surfdat_stream << pathToInput << "/surface.dat";
   ifstream surfdat(surfdat_stream.str().c_str());
+
+  // average thermodynamic quantities on surface
+  double Tavg = 0.0;
+  double Eavg = 0.0;
+  double Pavg = 0.0;
+  double muBavg = 0.0;
+  double nBavg = 0.0;
+  double total_surface_volume = 0.0;
+
   for (long i = 0; i < length; i++)
   {
     // contravariant spacetime position
@@ -352,11 +348,12 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
     surf_ptr[i].day = dummy * surf_ptr[i].tau;
     surfdat >> dummy;
     surf_ptr[i].dan = dummy * surf_ptr[i].tau;
-    if(dimension == 2 && surf_ptr[i].dan != 0)
+    if (dimension == 2 && i == 0 && surf_ptr[i].dan != 0)
     {
-      cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
-      //exit(-1);
+      cout << "dsigma_eta is not zero in first cell. Setting all dsigma_eta to zero!" << endl;
+      surf_ptr[i].dan = 0.0;
     }
+    if (dimension == 2 && surf_ptr[i].dan != 0) surf_ptr[i].dan = 0.0;
 
     // contravariant flow velocity
     surfdat >> surf_ptr[i].ut;
@@ -367,13 +364,19 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
 
     // thermodynamic quantities at freeze out
     surfdat >> dummy;
-    surf_ptr[i].E = dummy * hbarC;                         // energy density
+    double E = dummy * hbarC;
+    surf_ptr[i].E = E;                         // energy density
     surfdat >> dummy;
-    surf_ptr[i].T = dummy * hbarC;                         // temperature
+    double T = dummy * hbarC;
+    surf_ptr[i].T = T;                         // temperature
     surfdat >> dummy;
-    surf_ptr[i].muB = dummy * hbarC;                       // baryon chemical potential
-    surfdat >> dummy;                                      // entropy density
-    surf_ptr[i].P = dummy * surf_ptr[i].T - surf_ptr[i].E; // p = T*s - e
+    double muB = dummy * hbarC;
+    surf_ptr[i].muB = muB;                       // baryon chemical potential
+    surfdat >> dummy;                            // entropy density
+    double P = dummy * T - E;
+    surf_ptr[i].P = P; // p = T*s - e
+
+    double nB = 0.0;
 
     // ten contravariant components of shear stress tensor
     surfdat >> dummy;
@@ -401,9 +404,42 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
     surfdat >> dummy;
     surf_ptr[i].bulkPi = dummy * hbarC;
 
+    // getting average thermodynamic quantities
+    double tau = surf_ptr[i].tau;
+    double ux = surf_ptr[i].ux;
+    double uy = surf_ptr[i].uy;
+    double un = surf_ptr[i].un;
+    double ut = sqrt(1.0 + ux * ux + uy * uy + tau * tau * un * un);  // enforce normalization
+    double dat = surf_ptr[i].dat;
+    double dax = surf_ptr[i].dax;
+    double day = surf_ptr[i].day;
+    double dan = surf_ptr[i].dan;
 
+    double udsigma = ut * dat + ux * dax + uy * day + un * dan;
+    double dsigma_dsigma = dat * dat - dax * dax - day * day - dan * dan / (tau * tau);
+    double dsigma_magnitude = fabs(udsigma) + sqrt(fabs(udsigma * udsigma - dsigma_dsigma));
+
+    total_surface_volume += dsigma_magnitude;
+
+    Eavg += (E * dsigma_magnitude);
+    Tavg += (T * dsigma_magnitude);
+    Pavg += (P * dsigma_magnitude);
+    muBavg += (muB * dsigma_magnitude);
+    nBavg += (nB * dsigma_magnitude);
   }
   surfdat.close();
+
+  Tavg /= total_surface_volume;
+  Eavg /= total_surface_volume;
+  Pavg /= total_surface_volume;
+  muBavg /= total_surface_volume;
+  nBavg /= total_surface_volume;
+
+  // write averaged thermodynamic quantities to file
+  ofstream thermal_average("average_thermodynamic_quantities.dat", ios_base::out);
+  thermal_average << setprecision(15) << Tavg << "\n" << Eavg << "\n" << Pavg << "\n" << muBavg << "\n" << nBavg;
+  thermal_average.close();
+
   return;
 }
 

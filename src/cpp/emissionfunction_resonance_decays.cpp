@@ -24,7 +24,7 @@
 #ifdef _OMP
 #include <omp.h>
 #endif
-#include "main.h"
+#include "iS3D.h"
 #include "readindata.h"
 #include "emissionfunction.h"
 #include "Stopwatch.h"
@@ -2163,8 +2163,3 @@ MT_fit_parameters EmissionFunctionArray::estimate_MT_function_of_dNdypTdpTdphi(i
 
     return MT_params;
 }
-
-
-
-
-

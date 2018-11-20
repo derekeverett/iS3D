@@ -13,11 +13,10 @@
 #choose a compiler.
 #CC = pgc++ # pgi compiler for openacc support
 CC = g++
-#CC = icpc # intel compiler tends to perform much better than gcc
+#CC = icpc # icpc slower than g++ for sampler? (10/16/18)
 
 #choose flags corresponding to compiler
-CFLAGS= -std=c++11 -O3 -lgsl -lgslcblas -lm # for g++
-#CFLAGS= -std=c++11 -march=native -O3 -lgsl -lgslcblas # for icpc
+CFLAGS= -std=c++11 -O3 -fopenmp -lgsl -lgslcblas -lm # for g++
 #CFLAGS= -std=c++11 -qopenmp -O3 -lgsl -lgslcblas # for icpc
 #CFLAGS= -acc -fast -Minfo -ta=nvidia,time # for pgi
 #CFLAGS= -acc -fast -ta=tesla:managed # for pgi, also uses unified memory
@@ -33,8 +32,8 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS3D.e
 endif
 
-SRC   =	main.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp emissionfunction_polzn_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp viscous_correction.cpp emissionfunction_resonance_decays.cpp
-INC   = main.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h gaussThermal.h viscous_correction.h
+SRC   =	RuniS3D.cpp iS3D.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp emissionfunction_polzn_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp viscous_correction.cpp emissionfunction_resonance_decays.cpp
+INC   = iS3D.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h gaussThermal.h viscous_correction.h
 
 
 # -------------------------------------------------
@@ -81,15 +80,15 @@ install:	$(TARGET)
 		cp $(TARGET) $(INSTPATH)
 
 # --------------- Dependencies -------------------
-./main.cpp: main.h Table.h readindata.h emissionfunction.h arsenal.h ParameterReader.h
+./RuniS3D.cpp: iS3D.h
+./iS3D.cpp: iS3D.h Table.h readindata.h emissionfunction.h arsenal.h ParameterReader.h
 ./arsenal.cpp: arsenal.h
-./emissionfunction.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
-./emissionfunction_smooth_kernels.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
-./emissionfunction_polzn_kernels.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
-./emissionfunction_sampling_kernels.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h viscous_correction.h
+./emissionfunction.cpp: iS3D.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
+./emissionfunction_smooth_kernels.cpp: iS3D.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
+./emissionfunction_polzn_kernels.cpp: iS3D.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h
+./emissionfunction_sampling_kernels.cpp: iS3D.h readindata.h emissionfunction.h Stopwatch.h arsenal.h Table.h gaussThermal.h viscous_correction.h
 ./Table.cpp: Table.h arsenal.h
-./readindata.cpp: main.h readindata.h arsenal.h Table.h ParameterReader.h
+./readindata.cpp: iS3D.h readindata.h arsenal.h Table.h ParameterReader.h
 ./ParameterReader.cpp: arsenal.h ParameterReader.h
 ./gaussThermal.cpp: gaussThermal.h
-./emissionfunction_resonance_decays.cpp: main.h readindata.h emissionfunction.h Stopwatch.h arsenal.h ParameterReader.h
-
+./emissionfunction_resonance_decays.cpp: iS3D.h readindata.h emissionfunction.h Stopwatch.h arsenal.h ParameterReader.h

@@ -13,7 +13,7 @@
 #ifdef _OMP
 #include <omp.h>
 #endif
-#include "main.h"
+#include "iS3D.h"
 #include "readindata.h"
 #include "emissionfunction.h"
 #include "Stopwatch.h"
@@ -1101,8 +1101,8 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
 
     double Ntot = 0.0;                    // total particle yield (includes p.dsigma < 0 particles)
 
-    #pragma omp parallel for
-    for(long icell = 0; icell < FO_length; icell++)
+    //#pragma omp parallel for
+    for (long icell = 0; icell < FO_length; icell++)
     {
       double tau = tau_fo[icell];         // longitudinal proper time
       double tau2 = tau * tau;
@@ -1211,6 +1211,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     int npart = number_of_chosen_particles;
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
     double four_pi2_hbarC3 = 4.0 * pow(M_PI,2) * pow(hbarC,3);
+
     //set seed
     unsigned seed;
     if (SAMPLER_SEED < 0) seed = chrono::system_clock::now().time_since_epoch().count();
@@ -1297,7 +1298,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     long samples = 0;
 
     //loop over all freezeout cells
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for(long icell = 0; icell < FO_length; icell++)
     {
       double tau = tau_fo[icell];         // FO cell coordinates

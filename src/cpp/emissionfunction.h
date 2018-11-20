@@ -5,7 +5,7 @@
 #include<vector>
 #include<random>
 #include "Table.h"
-#include "main.h"
+#include "iS3D.h"
 #include "ParameterReader.h"
 #include "deltafReader.h"
 #include "particle.h"
@@ -109,7 +109,7 @@ public:
   ~EmissionFunctionArray();
 
   // main function
-  void calculate_spectra();
+  void calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in);
 
   // continuous spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::

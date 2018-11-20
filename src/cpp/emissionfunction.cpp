@@ -11,7 +11,7 @@
 #ifdef _OMP
 #include <omp.h>
 #endif
-#include "main.h"
+#include "iS3D.h"
 #include "readindata.h"
 #include "emissionfunction.h"
 #include "Stopwatch.h"
@@ -789,7 +789,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 */
 
   //*********************************************************************************************
-  void EmissionFunctionArray::calculate_spectra()
+  void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
     #ifdef _OPENMP
@@ -1072,7 +1072,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     double df_coeff[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
-    if(MODE == 1) // viscous hydro
+    if( (MODE == 1) || (MODE == 4) ) // viscous hydro
     {
       switch(DF_MODE)
       {
@@ -1119,11 +1119,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average, pbar_pts, pbar_root1, pbar_exp_weight1);
 
-              //write_particle_list_toFile();
-              //write_particle_list_OSC();
+              write_particle_list_toFile();
+              write_particle_list_OSC();
               write_momentum_list_toFile();
               write_yield_list_toFile();
 
+              particle_event_list_in = particle_event_list[0];
               break;
             }
             default:
@@ -1176,10 +1177,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average, pbar_pts, pbar_root1, pbar_exp_weight1);
 
-              //write_particle_list_toFile();
-              //write_particle_list_OSC();
+              write_particle_list_toFile();
+              write_particle_list_OSC();
               write_momentum_list_toFile();
               write_yield_list_toFile();
+
+              particle_event_list_in = particle_event_list[0];
+              
               break;
             }
             default:
@@ -1232,10 +1236,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average, pbar_pts, pbar_root1, pbar_exp_weight1);
 
-              //write_particle_list_toFile();
-              //write_particle_list_OSC();
+              write_particle_list_toFile();
+              write_particle_list_OSC();
               write_momentum_list_toFile();
               write_yield_list_toFile();
+
+              particle_event_list_in = particle_event_list[0];
 
               break;
             }

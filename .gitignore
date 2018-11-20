@@ -1,6 +1,5 @@
 results
 input
-parameters.dat
 oversampling
 *.sublime-project
 *.o
@@ -8,4 +7,4 @@ oversampling
 tags
 *.e
 *.*~
-.DS_Store
+*.DS_Store
