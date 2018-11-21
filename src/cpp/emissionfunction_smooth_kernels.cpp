@@ -180,7 +180,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double ux2 = ux * ux;                   // useful expressions
         double uy2 = uy * uy;
         double ut2 = ut * ut;
-        double uperp =  sqrt(ux * ux  +  uy * uy);
         double utperp = sqrt(1.0  +  ux * ux  +  uy * uy);
 
         double T = Tavg;                        // temperature (GeV)
@@ -478,7 +477,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     }
     else if(DIMENSION == 3)
     {
-      etaValues[0] = 0.0;       // below, will load eta_fo
+      etaValues[0] = 0.0;           // below, will load eta_fo
       etaTrapezoidWeights[0] = 1.0; // 1.0 for 3+1d
       for(int iy = 0; iy < y_pts; iy++)
       {
