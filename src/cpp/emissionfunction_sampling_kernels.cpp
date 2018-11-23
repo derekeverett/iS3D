@@ -52,151 +52,7 @@ double equilibrium_particle_density(double mass, double degeneracy, double sign,
 }
 
 
-double EmissionFunctionArray::particle_density(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_time, double * df_coeff, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts)
-{
-  // density with regulated bulk correction so far (neq + dn_bulk_reg)
-
-  double two_pi2_hbarC3 = 2.0 * pow(M_PI, 2) * pow(hbarC, 3);
-
-  double mass_squared = mass * mass;
-  double mbar = mass / T;
-  double mbar_squared = mbar * mbar;
-  double chem = baryon * alphaB;
-
-  double density = 0.0;
-
-  double c0 = df_coeff[0];  // df_coeff is one of them
-  double c1 = df_coeff[1];
-  double c2 = df_coeff[2];
-
-  double F = df_coeff[0];
-  double G = df_coeff[1];
-  double betabulk = df_coeff[2];
-
-  // gauss laguerre (a = 1) integration
-  for(int i = 0; i < pbar_pts; i++)
-  {
-    double pbar = pbar_root1[i];
-    double Ebar = sqrt(pbar * pbar  +  mbar_squared);
-
-    double E = Ebar * T;
-
-    double df_bulk = 0.0;
-
-    if(INCLUDE_BULK_DELTAF)
-    {
-      switch(DF_MODE)
-      {
-        case 1: // 14 moment
-        {
-          df_bulk = ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2  -  c0) * E) * E) * bulkPi;
-          break;
-        }
-        case 2: // Chapman Enskog
-        {
-          df_bulk = (baryon * G  +  F * E / T / T  +  (E  -  mass_squared / E) / (3.0 * T)) * bulkPi / betabulk;
-          break;
-        }
-        default:
-        {
-          printf("\nParticle density outflow error: please set df_mode = (1,2)\n"); exit(-1);
-        }
-      }
-    }
-
-    double feq = 1.0 / (exp(Ebar - chem) + sign);
-
-    double df = max(-1.0, min((1.0 - sign * feq) * df_bulk, 1.0)); // regulate df
-
-    density += pbar_exp_weight1[i] * pbar * feq * (1.0 + df);
-
-  }
-  double prefactor = degeneracy * ds_time * T * T * T / two_pi2_hbarC3;
-
-  density *= prefactor;
-
-  return density; // external prefactor = degeneracy.ds_time.T^3 / (2.pi^2.hbar^3)
-}
-
-
-double EmissionFunctionArray::particle_density_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts)
-{
-  // enforces p.dsigma > 0, which makes (neq + dn_bulk_reg)_outflow > neq + dn_bulk_reg for spacelike freezeout cells
-  // this function is called for spacelike freezeout cells (dsigmaTime_over_dsigmaSpace < 1)
-
-  double four_pi2_hbarC3 = 4.0 * pow(M_PI, 2) * pow(hbarC, 3);
-
-
-  double mass_squared = mass * mass;
-  double mbar = mass / T;
-  double mbar_squared = mbar * mbar;
-  double chem = baryon * alphaB;
-
-  double n_outflow = 0.0;
-
-  double c0 = df_coeff[0];  // df_coeff is one of them
-  double c1 = df_coeff[1];
-  double c2 = df_coeff[2];
-
-  double F = df_coeff[0];
-  double G = df_coeff[1];
-  double betabulk = df_coeff[2];
-
-
-  // the gauss integration is not machine-precision perfect but good enough
-  for(int i = 0; i < pbar_pts; i++)
-  {
-    double pbar = pbar_root1[i];
-    double Ebar = sqrt(pbar * pbar  +  mbar_squared);
-
-    double E = Ebar * T;
-
-    double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
-
-    double df_bulk = 0.0;
-
-    if(INCLUDE_BULK_DELTAF)
-    {
-      switch(DF_MODE)
-      {
-        case 1: // 14 moment
-        {
-          df_bulk = ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2  -  c0) * E) * E) * bulkPi;
-          break;
-        }
-        case 2: // Chapman Enskog
-        case 3: // modified
-        {
-          df_bulk = (baryon * G  +  F * E / T / T  +  (E  -  mass_squared / E) / (3.0 * T)) * bulkPi / betabulk;
-          break;
-        }
-        default:
-        {
-          printf("\nParticle density outflow error: please set df_mode = (1,2)\n"); exit(-1);
-        }
-      }
-    }
-
-    double feq = 1.0 / (exp(Ebar - chem) + sign);
-
-    double feqbar = 1.0 - sign * feq;
-
-    double df = feqbar * df_bulk;
-
-    df = max(-1.0, min(df, 1.0)); // regulate df
-
-    n_outflow += pbar_exp_weight1[i] * (ds_time_over_ds_space * pbar * (1.0 + costheta_star) - 0.5 * pbar * pbar / Ebar * (costheta_star * costheta_star - 1.0)) * feq * (1.0 + df);
-
-  }
-  double prefactor = degeneracy * ds_space * T * T * T / four_pi2_hbarC3;
-
-  n_outflow *= prefactor;
-
-  return n_outflow; // external prefactor = degeneracy.ds_space.T^3 / (4.pi^2.hbar^3)
-}
-
-
-double EmissionFunctionArray::particle_density_outflow_new(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double bulk_density)
+double EmissionFunctionArray::particle_density_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double bulk_density)
 {
   // enforces p.dsigma > 0, which makes (neq + dn_bulk_reg)_outflow > neq + dn_bulk_reg for spacelike freezeout cells
   // this function is called for spacelike freezeout cells (dsigmaTime_over_dsigmaSpace < 1)
@@ -204,6 +60,8 @@ double EmissionFunctionArray::particle_density_outflow_new(double mass, double d
   double four_pi2_hbarC3 = 4.0 * pow(M_PI, 2) * pow(hbarC, 3);
 
   const int gauss_pts = 24;
+
+  // hard coded roots
 
   double gauss_legendre_root[gauss_pts] = {-0.99518721999702, -0.97472855597131, -0.93827455200273, -0.8864155270044, -0.8200019859739, -0.74012419157855, -0.64809365193698, -0.54542147138884, -0.43379350762605, -0.31504267969616, -0.19111886747362, -0.064056892862606, 0.06405689286261, 0.19111886747362, 0.31504267969616, 0.43379350762605, 0.54542147138884, 0.64809365193698, 0.74012419157855, 0.8200019859739, 0.8864155270044, 0.93827455200273, 0.97472855597131, 0.99518721999702};
 
@@ -230,12 +88,13 @@ double EmissionFunctionArray::particle_density_outflow_new(double mass, double d
   double F_over_T2 = F / T / T;
   double three_T = 3.0 * T;
   double bulkPi_over_betabulk = bulkPi / betabulk;
-
   double bulk_coeff = bulkPi / (3.0 * betabulk);
-  double alphaB_mod = alphaB  +  bulkPi * G / betabulk;
-  double chem_mod = baryon * alphaB_mod;
+
   double T_mod = T  +  bulkPi * F / betabulk;
   double mbar_mod = mass / T_mod;
+
+  double alphaB_mod = alphaB  +  bulkPi * G / betabulk;
+  double chem_mod = baryon * alphaB_mod;
 
   double n_outflow = 0.0;
 
@@ -279,7 +138,7 @@ double EmissionFunctionArray::particle_density_outflow_new(double mass, double d
         n_outflow += 0.5 * gauss_legendre_weight[i] * (ds_time_over_ds_space * pbar * pbar * (1.0 + costheta_star) - 0.5 * pbar * pbar * pbar / Ebar * (costheta_star * costheta_star  -  1.0)) * feq * (1.0 + df) / (s * s);
         break;
       }
-      case 3: // modified
+      case 3: // modified (not yet complete)
       {
         double Ebar_mod = sqrt(pbar * pbar  +  mbar_mod * mbar_mod);
         double mbar_bulk = mbar_mod / (1.0 + bulk_coeff);
@@ -910,9 +769,7 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
 
           double bulk_density = Bulk_Density[ipart];
 
-          //dn_tot += particle_density_outflow(mass, degeneracy, sign, baryon, T, alphaB, bulkPi, ds_space, ds_time_over_ds_space, df_coeff, pbar_root1, pbar_exp_weight1, pbar_pts);
-
-          dn_tot += particle_density_outflow_new(mass, degeneracy, sign, baryon, T, alphaB, bulkPi, ds_space, ds_time_over_ds_space, df_coeff, bulk_density);
+          dn_tot += particle_density_outflow(mass, degeneracy, sign, baryon, T, alphaB, bulkPi, ds_space, ds_time_over_ds_space, df_coeff, bulk_density);
         }
 
       } // outflow correction
@@ -1138,7 +995,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       {
         dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;
       }
-      else // spacelike cell (so far only equilibrium)
+      else // spacelike cell
       {
         for(int ipart = 0; ipart < npart; ipart++)
         {
@@ -1150,9 +1007,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
           double bulk_density = Bulk_Density[ipart];
 
-          //dn_tot += particle_density_outflow(mass, degeneracy, sign, baryon, T, alphaB, bulkPi, ds_space, ds_time_over_ds_space, df_coeff, pbar_root1, pbar_exp_weight1, pbar_pts);
-
-          dn_tot += particle_density_outflow_new(mass, degeneracy, sign, baryon, T, alphaB, bulkPi, ds_space, ds_time_over_ds_space, df_coeff, bulk_density);
+          dn_tot += particle_density_outflow(mass, degeneracy, sign, baryon, T, alphaB, bulkPi, ds_space, ds_time_over_ds_space, df_coeff, bulk_density);
         }
 
       } // outflow condition

@@ -141,11 +141,7 @@ public:
   // sampling spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
-  double particle_density(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_time, double * df_coeff, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
-
-  double particle_density_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
-
-  double particle_density_outflow_new(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double bulk_density);
+  double particle_density_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double bulk_density);
 
   // estimate total particle yield from freezeout surface -> number of events to sample
   double estimate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *thermodynamic_average, double * df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_exp_weight1);

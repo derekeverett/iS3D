@@ -262,6 +262,35 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           }
         }
 
+
+        // print all the variables in this loop
+
+        /*
+        cout << setprecision(15) << tau << endl;
+        cout << setprecision(15) << tau2 << endl;
+        cout << setprecision(15) << dat << endl;
+        cout << setprecision(15) << dax << endl;
+        cout << setprecision(15) << day << endl;
+        cout << setprecision(15) << dan << endl;
+        cout << setprecision(15) << ux << endl;
+        cout << setprecision(15) << uy << endl;
+        cout << setprecision(15) << un << endl;
+        cout << setprecision(15) << ut << endl;
+        cout << setprecision(15) << udsigma << endl;
+        cout << setprecision(15) << utperp << endl;
+        cout << setprecision(15) << T << endl;
+        cout << setprecision(15) << E << endl;
+        cout << setprecision(15) << P << endl;
+
+        exit(-1);
+        */
+
+
+
+
+
+
+
         // now loop over all particle species and momenta
         for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
         {
@@ -561,7 +590,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;   // udotdsigma / delta_eta_weight
 
-        if(udsigma < 0.0) continue;         // skip cells with u.dsigma < 0
+        if(udsigma <= 0.0) continue;         // skip cells with u.dsigma < 0
 
         double ut2 = ut * ut;               // useful expressions
         double ux2 = ux * ux;
@@ -735,7 +764,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             detA_min = max(detA_min, detA);   // update min value of detA if pi-0 density goes negative
           }
 
-          if(detA <= detA_min || T_mod <= 0.0)
+          if((detA <= detA_min || T_mod <= 0.0) && ipart == chosen_index_pion0)
           {
             breakdown++;
             cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << endl;
@@ -775,7 +804,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double f;                               // feqmod (if breakdown do feq(1+df))
 
                   // calculate feqmod
-                  if(detA > detA_min && T_mod > 0.0)
+                  //if(detA > detA_min && T_mod > 0.0)
+                  if(detA >= 1.e-3 && renorm >= 0.0)
                   {
                     // LRF momentum components pi_LRF = - Xi.p
                     double px_LRF = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;
@@ -794,6 +824,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                     f = renorm / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
 
+                    /*
                     // test accuracy of the matrix solver
                     double px_LRF_test = Axx * pLRF_mod[0]  +  Axy * pLRF_mod[1]  +  Axz * pLRF_mod[2];
                     double py_LRF_test = Ayx * pLRF_mod[0]  +  Ayy * pLRF_mod[1]  +  Ayz * pLRF_mod[2];
@@ -811,6 +842,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       printf("Error: dp / p = %f not accurate enough\n", dp / p);
                       exit(-1);
                     }
+                    */
                   }
                   // if feqmod breaks down switch to chapman enskog instead
                   else
