@@ -175,7 +175,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;  // u.dsigma / delta_eta_weight
 
-        if(udsigma < 0.0) continue;             // skip cells with u.dsigma < 0
+        if(udsigma <= 0.0) continue;             // skip cells with u.dsigma < 0
 
         double ux2 = ux * ux;                   // useful expressions
         double uy2 = uy * uy;
@@ -685,7 +685,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double Vy_LRF = Vmu.Vy_LRF;
         double Vz_LRF = Vmu.Vz_LRF;
 
-
         // local momentum transformation matrix Mij = Aij
         // Aij = ideal + shear + bulk is symmetric
         // Mij is not symmetric if include baryon diffusion (leave for future work)
@@ -705,6 +704,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
 
+        double detA_bulk = (1.0 + bulk_term) * (1.0 + bulk_term) * (1.0 + bulk_term);
+
         // momentum rescaling matrix (so far, w/ shear and bulk corrections only)
         double ** M = (double**)calloc(3, sizeof(double*));
         for(int i = 0; i < 3; i++) M[i] = (double*)calloc(3, sizeof(double));
@@ -718,7 +719,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         LUP_decomposition(M, 3, permutation); // LUP decompose M once
 
          // prefactors for equilibrium, linear bulk correction and modified densities
-        double neq_fact = T * T * T / two_pi2_hbarC3;;
+        double neq_fact = T * T * T / two_pi2_hbarC3;
         double dn_fact = bulkPi / betabulk;
         double J20_fact = T * neq_fact;
         double N10_fact = neq_fact;
@@ -761,13 +762,15 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
           if(ipart == chosen_index_pion0 && n_linear < 0.0)
           {
-            detA_min = max(detA_min, detA);   // update min value of detA if pi-0 density goes negative
+            //negative_pions = true;
+            detA_min = max(detA_min, detA_bulk);   // update min value of detA if pi-0 density goes negative
           }
 
-          if((detA <= detA_min || T_mod <= 0.0) && ipart == chosen_index_pion0)
+          if(detA <= detA_min && ipart == chosen_index_pion0)
+          //if((detA <= DETA_MIN || negative_pions) && ipart == chosen_index_pion0)
           {
             breakdown++;
-            cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << endl;
+            cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\t detA_min = " << detA_min << endl;
           }
 
           for(int ipT = 0; ipT < pT_tab_length; ipT++)
@@ -804,8 +807,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double f;                               // feqmod (if breakdown do feq(1+df))
 
                   // calculate feqmod
-                  //if(detA > detA_min && T_mod > 0.0)
-                  if(detA >= 1.e-3 && renorm >= 0.0)
+                  if(detA > detA_min)
+                  //if(detA >= DETA_MIND && !negative_pions)
                   {
                     // LRF momentum components pi_LRF = - Xi.p
                     double px_LRF = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;
@@ -825,7 +828,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     f = renorm / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
 
                     /*
-                    // test accuracy of the matrix solver
+                    // test accuracy of the matrix solver (it works pretty well)
                     double px_LRF_test = Axx * pLRF_mod[0]  +  Axy * pLRF_mod[1]  +  Axz * pLRF_mod[2];
                     double py_LRF_test = Ayx * pLRF_mod[0]  +  Ayy * pLRF_mod[1]  +  Ayz * pLRF_mod[2];
                     double pz_LRF_test = Azx * pLRF_mod[0]  +  Azy * pLRF_mod[1]  +  Azz * pLRF_mod[2];
