@@ -51,6 +51,9 @@ typedef struct
 // thermal particle density (just for crosschecking)
 double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
 
+// determine if linear pion0 density goes negative
+bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pion0, double bulkPi, double F, double betabulk);
+
 // thermal particle density with outflow only (needed if enforce p.dsigma > 0)
 //double equilibrium_density_outflow(double mbar_squared, double sign, double chem, double dsigmaTime_over_dsigmaSpace, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
 
@@ -69,6 +72,9 @@ private:
   double DETA_MIN;
   int GROUP_PARTICLES;
   double PARTICLE_DIFF_TOLERANCE;
+
+  double MASS_PION0;
+
   int LIGHTEST_PARTICLE; //mcid of lightest resonance to calculate in decay feed-down
   int DO_RESONANCE_DECAYS; // smooth resonance decays option
 
@@ -91,7 +97,7 @@ private:
   std::vector< std::vector<Sampled_Particle> > particle_event_list;   // holds sampled particle list of all events
   std::vector<int> particle_yield_list;                               // particle yield for all events (includes p.dsigma particles)
 
-  vector<int> chosen_pion0;             // stores chosen particle index of pion0 (for tracking feqmod breakdown)
+  //vector<int> chosen_pion0;             // stores chosen particle index of pion0 (for tracking feqmod breakdown)
 
   int *chosen_particles_01_table;       // has length Nparticle, 0 means miss, 1 means include
   int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table
@@ -160,7 +166,7 @@ public:
 
 
   // sample particles with feq + df or feqmod
-  void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average, const int pbar_pts, double * pbar_root1, double * pbar_exp_weight1);
+  void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average, const int pbar_pts, double * pbar_root1, double * pbar_weight1, double * pbar_root2, double * pbar_weight2);
   // sample particles with feqmod
   /*
   void sample_dN_pTdpTdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,

@@ -131,6 +131,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       }
     } // DF_MODE
 
+
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spectra for each surface cell in a chunk, for all particle species
     int npart = number_of_chosen_particles;
@@ -263,34 +264,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         }
 
 
-        // print all the variables in this loop
-
-        /*
-        cout << setprecision(15) << tau << endl;
-        cout << setprecision(15) << tau2 << endl;
-        cout << setprecision(15) << dat << endl;
-        cout << setprecision(15) << dax << endl;
-        cout << setprecision(15) << day << endl;
-        cout << setprecision(15) << dan << endl;
-        cout << setprecision(15) << ux << endl;
-        cout << setprecision(15) << uy << endl;
-        cout << setprecision(15) << un << endl;
-        cout << setprecision(15) << ut << endl;
-        cout << setprecision(15) << udsigma << endl;
-        cout << setprecision(15) << utperp << endl;
-        cout << setprecision(15) << T << endl;
-        cout << setprecision(15) << E << endl;
-        cout << setprecision(15) << P << endl;
-
-        exit(-1);
-        */
-
-
-
-
-
-
-
         // now loop over all particle species and momenta
         for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
         {
@@ -356,7 +329,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       double df_diff = (c3 * baryon  +  c4 * pdotu) * Vmu_pmu;
 
                       df = feqbar * (df_shear + df_bulk + df_diff);
-                      if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
+
                       break;
                     }
                     case 2: // Chapman enskog
@@ -366,7 +339,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       double df_diff = (baryon_enthalpy_ratio  -  baryon / pdotu) * Vmu_pmu / betaV;
 
                       df = feqbar * (df_shear + df_bulk + df_diff);
-                      if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
                       break;
                     }
                     default:
@@ -374,6 +346,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       printf("Error: set df_mode = (1,2) in parameters.dat\n"); exit(-1);
                     }
                   } // DF_MODE
+
+                  if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
 
                   double f = feq * (1.0 + df);  // distribution function with linear df correction
 
@@ -516,6 +490,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     // pi-0 meson should be the first particle in chosen_particles.dat
     // to help track whether its density goes negative for large negative bulk pressures
+    /*
     if(!(chosen_pion0.size()== 1))
     {
       printf("Error: put pion-0 (mc_id = 111) at the top of PDG/chosen_particles.dat...\n");
@@ -528,6 +503,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     }
 
     int chosen_index_pion0 = chosen_pion0[0];
+    */
 
     // average thermodynamic quantities
     double Tavg = thermodynamic_average[0];
@@ -542,6 +518,17 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     double betabulk = df_coeff[2];
     double betaV = df_coeff[3];       // diffusion coefficient
     double betapi = df_coeff[4];      // shear coefficient
+
+
+    // calculate linear pion0 density terms (neq_pion0, J20_pion0)
+    // this is for the function is_linear_pion0_density_negative()
+    double mbar_pion0 = MASS_PION0 / Tavg;
+    double T3_over_two_pi2_hbar3 = pow(Tavg, 3) / two_pi2_hbarC3;
+    double T4_over_two_pi2_hbar3 = pow(Tavg, 4) / two_pi2_hbarC3;
+
+    double neq_pion0 = T3_over_two_pi2_hbar3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
+    double J20_pion0 = T4_over_two_pi2_hbar3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
+
 
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spectra for each surface cell in a chunk, for all particle species
@@ -725,7 +712,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double N10_fact = neq_fact;
         double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
 
-        //bool negative_pions = false;
+        bool negative_pion = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+
 
         // loop over hadrons
         for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
@@ -760,16 +748,15 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             renorm = n_linear / n_mod;
           }
 
-          if(ipart == chosen_index_pion0 && n_linear < 0.0)
+          if(negative_pion || n_linear < 0.0)
           {
-            //negative_pions = true;
-            detA_min = max(detA_min, detA_bulk);   // update min value of detA if pi-0 density goes negative
+            detA_min = max(detA_min, detA_bulk); // update min value if pion0 (or other missed particle ipart) density negative
           }
 
-          if(detA <= detA_min && ipart == chosen_index_pion0)
-          //if((detA <= DETA_MIN || negative_pions) && ipart == chosen_index_pion0)
+          if(detA <= detA_min && ipart == number_of_chosen_particles - 1)
+          //if((detA <= DETA_MIN || negative_pions) && ipart == chosen_index_pion0) // old
           {
-            breakdown++;
+            breakdown++;  // only count breakdown once
             cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\t detA_min = " << detA_min << endl;
           }
 

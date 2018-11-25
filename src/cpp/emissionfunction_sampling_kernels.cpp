@@ -30,28 +30,6 @@
 using namespace std;
 
 
-double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem)
-{
-  // may want to use a direct gauss quadrature instead
-
-  double neq = 0.0;
-  double sign_factor = -sign;
-  int jmax = 20;
-  double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
-  double mbar = mass / T;
-
-  for(int j = 1; j < jmax; j++)            // sum truncated expansion of Bose-Fermi distribution
-  {
-    double k = (double)j;
-    sign_factor *= (-sign);
-    neq += sign_factor * exp(k * chem) * gsl_sf_bessel_Kn(2, k * mbar) / k;
-  }
-  neq *= degeneracy * mass * mass * T / two_pi2_hbarC3;
-
-  return neq;
-}
-
-
 double EmissionFunctionArray::particle_density_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double bulk_density)
 {
   // enforces p.dsigma > 0, which makes (neq + dn_bulk_reg)_outflow > neq + dn_bulk_reg for spacelike freezeout cells
@@ -790,11 +768,15 @@ double EmissionFunctionArray::estimate_total_yield(double *Mass, double *Sign, d
   }
 
 
-void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average, const int pbar_pts, double * pbar_root1, double * pbar_exp_weight1)
+void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average, const int pbar_pts, double * pbar_root1, double * pbar_weight1, double * pbar_root2, double * pbar_weight2)
   {
     int npart = number_of_chosen_particles;
     double two_pi2_hbarC3 = 2.0 * pow(M_PI,2) * pow(hbarC,3);
     double four_pi2_hbarC3 = 4.0 * pow(M_PI,2) * pow(hbarC,3);
+
+    long feqmod_breakdown_count = 0;
+
+    double detA_min = DETA_MIN;   // default value
 
     // set seed
     unsigned seed;
@@ -864,6 +846,20 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         exit(-1);
       }
     }
+
+
+
+    // calculate linear pion0 density terms (neq_pion0, J20_pion0)
+    // this is for the function is_linear_pion0_density_negative()
+    double mbar_pion0 = MASS_PION0 / Tavg;
+    double T3_over_two_pi2_hbar3 = pow(Tavg, 3) / two_pi2_hbarC3;
+    double T4_over_two_pi2_hbar3 = pow(Tavg, 4) / two_pi2_hbarC3;
+
+    double neq_pion0 = T3_over_two_pi2_hbar3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
+    double J20_pion0 = T4_over_two_pi2_hbar3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
+
+
+
 
     // compute contributions to total mean hadron number / cell volume
     double neq_tot = 0.0;                      // total equilibrium number / udsigma
@@ -981,6 +977,43 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       Baryon_Diffusion Vmu(Vt, Vx, Vy, Vn);
       Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
       Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
+
+
+
+      // feqmod breakdown switching criteria
+      //::::::::::::::::::::::::::::::::::::::::::::::::::::::
+      double pixx_LRF = pimunu.pixx_LRF;  double piyy_LRF = pimunu.piyy_LRF;
+      double pixy_LRF = pimunu.pixy_LRF;  double piyz_LRF = pimunu.piyz_LRF;
+      double pixz_LRF = pimunu.pixz_LRF;  double pizz_LRF = pimunu.pizz_LRF;
+
+      double shear_mod_coeff = 0.5 / betapi;
+      double bulk_mod_coeff = bulkPi / (3.0 * betabulk);
+
+      double Axx = 1.0  +  pixx_LRF * shear_mod_coeff  +  bulk_mod_coeff;
+      double Axy = pixy_LRF * shear_mod_coeff;
+      double Axz = pixz_LRF * shear_mod_coeff;
+      double Ayy = 1.0  +  piyy_LRF * shear_mod_coeff  +  bulk_mod_coeff;
+      double Ayz = piyz_LRF * shear_mod_coeff;
+      double Azz = 1.0  +  pizz_LRF * shear_mod_coeff  +  bulk_mod_coeff;
+
+      double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
+      double detA_bulk = pow(1.0 + bulk_mod_coeff, 3);
+
+      bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+
+      if(pion_density_negative) detA_min = max(detA_min, detA_bulk);
+
+      bool feqmod_breaks_down = false;
+
+      if(detA <= detA_min) feqmod_breaks_down = true;
+
+      if(feqmod_breaks_down)
+      {
+        feqmod_breakdown_count++;
+        cout << feqmod_breakdown_count << endl;
+      }
+      //::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 
 
       double ds_time = dsigma.dsigmat_LRF;
