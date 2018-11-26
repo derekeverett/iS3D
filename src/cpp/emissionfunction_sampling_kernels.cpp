@@ -1026,7 +1026,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       if(ds_time / ds_space >= 1.0) // null/timelike cell
       {
-        dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;
+        dn_tot = udsigma * (neq_tot + bulkPi * dn_bulk_tot) - Vdsigma * dn_diff_tot;  // this might be wrong bc it could be negative?
       }
       else // spacelike cell
       {

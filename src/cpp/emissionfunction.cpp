@@ -109,7 +109,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     INCLUDE_BULK_DELTAF = paraRdr->getVal("include_bulk_deltaf");
     INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
     INCLUDE_BARYONDIFF_DELTAF = paraRdr->getVal("include_baryondiff_deltaf");
+
     REGULATE_DELTAF = paraRdr->getVal("regulate_deltaf");
+    OUTFLOW = paraRdr->getVal("outflow");
+
     DETA_MIN = paraRdr->getVal("deta_min");
     GROUP_PARTICLES = paraRdr->getVal("group_particles");
     PARTICLE_DIFF_TOLERANCE = paraRdr->getVal("particle_diff_tolerance");

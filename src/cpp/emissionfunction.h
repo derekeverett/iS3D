@@ -67,7 +67,10 @@ private:
   int DF_MODE;  // delta-f type
   int DIMENSION; // hydro d+1 dimensions (2+1 or 3+1)
   int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
+
   int REGULATE_DELTAF;
+  int OUTFLOW;
+
   int INCLUDE_BARYON;
   double DETA_MIN;
   int GROUP_PARTICLES;

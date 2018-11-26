@@ -304,7 +304,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                   double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
 
-                  if(pdotdsigma <= 0.0) continue;          // enforce outflow
+                  if(OUTFLOW)
+                  {
+                    if(pdotdsigma <= 0.0) continue;        // enforce outflow
+                  }
 
                   double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;  // u.p
 
@@ -789,9 +792,12 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                   double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan);
 
-                  if(pdotdsigma <= 0.0) continue;         // enforce outflow
+                  if(OUTFLOW)
+                  {
+                    if(pdotdsigma <= 0.0) continue;        // enforce outflow
+                  }
 
-                  double f;                               // feqmod (if breakdown do feq(1+df))
+                  double f;                                // feqmod (if breakdown do feq(1+df))
 
                   // calculate feqmod
                   if(detA > detA_min)

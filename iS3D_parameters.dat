@@ -25,7 +25,9 @@ include_baryon            	= 0   # switch to include baryon chemical potential i
 include_bulk_deltaf       	= 1   # switch to include bulk df correction (or residual bulk for VAH)
 include_shear_deltaf      	= 1   # switch to include shear df correction (or residual pi~ and W_perp for VAH)
 include_baryondiff_deltaf 	= 0   # switch to include baryon diffusion df correction
+
 regulate_deltaf           	= 0   # if on, force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
+outflow 					= 0	  # switch to enforce p.dsigma > 0 in the smooth cooper frye formula
 
 deta_min 			= 1.e-3  # minimum value of detA (feqmod break down)
 detc_min 			= 1.e-3  # minimum value of detC (famod break down)
