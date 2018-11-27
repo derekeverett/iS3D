@@ -167,7 +167,7 @@ void IS3D::run_particlization(int fo_from_file)
 
   printline();
 
-  Table pT_tab("tables/pT_single2_table.dat"); // pT value and weight table
+  Table pT_tab("tables/pT_single_table.dat"); // pT value and weight table
   Table phi_tab("tables/phi_0_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
   Table eta_tab("tables/eta_trapezoid_table_41pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule

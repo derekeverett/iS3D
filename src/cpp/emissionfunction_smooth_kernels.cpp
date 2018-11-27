@@ -142,7 +142,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     //loop over bite size chunks of FO surface
     for(int n = 0; n < (FO_length / FO_chunk) + 1; n++)
     {
-      printf("Progress: finished chunk %d of %ld \n", n, FO_length / FO_chunk);
       int endFO = FO_chunk;
       if(n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); // don't go out of array bounds
       #pragma omp parallel for
@@ -186,6 +185,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double T = Tavg;                        // temperature (GeV)
         double E = Eavg;                        // energy density (GeV/fm^3)
         double P = Pavg;                        // pressure (GeV/fm^3)
+
+        cout << setprecision(15) << T << endl;
+
+        exit(-1);
 
         double pitt = 0.0;                      // contravariant shear stress tensor pi^munu (GeV/fm^3)
         double pitx = 0.0;                      // enforce orthogonality pi.u = 0
@@ -409,6 +412,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
       } // do reduction step if chunk size is nonzero if(endFO != 0)
 
+      printf("Progress: finished chunk %d of %ld \n", n, FO_length / FO_chunk);
+
     } // FO surface chunks (n)
 
     // free memory
@@ -544,7 +549,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     //loop over bite size chunks of FO surface
     for (int n = 0; n < (FO_length / FO_chunk) + 1; n++)
     {
-      printf("Progress: Finished chunk %d of %ld \n", n, FO_length / FO_chunk);
       int endFO = FO_chunk;
       if (n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); //don't go out of array bounds
       #pragma omp parallel for
@@ -580,7 +584,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;   // udotdsigma / delta_eta_weight
 
-        if(udsigma <= 0.0) continue;         // skip cells with u.dsigma < 0
+        if(udsigma <= 0.0) continue;        // skip cells with u.dsigma < 0
 
         double ut2 = ut * ut;               // useful expressions
         double ux2 = ux * ux;
@@ -741,6 +745,9 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             double mbar_mod = mass / T_mod;
 
             double neq = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+
+            
+
             double N10 = baryon * N10_fact * degeneracy * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
             double J20 = J20_fact * degeneracy * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
 
@@ -820,7 +827,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                     f = renorm / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
 
-                    /*
                     // test accuracy of the matrix solver (it works pretty well)
                     double px_LRF_test = Axx * pLRF_mod[0]  +  Axy * pLRF_mod[1]  +  Axz * pLRF_mod[2];
                     double py_LRF_test = Ayx * pLRF_mod[0]  +  Ayy * pLRF_mod[1]  +  Ayz * pLRF_mod[2];
@@ -838,7 +844,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       printf("Error: dp / p = %f not accurate enough\n", dp / p);
                       exit(-1);
                     }
-                    */
+
                   }
                   // if feqmod breaks down switch to chapman enskog instead
                   else
@@ -922,9 +928,11 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
       } // do reduction step if chunk size is nonzero if(endFO != 0)
 
+      printf("Progress: finished chunk %d of %ld \n", n, FO_length / FO_chunk);
+
     } // FO surface chunks (n)
 
-    cout << setw(5) << setprecision(4) << "\nfeqmod breaks down for the first " << breakdown << " cells\n" << endl;
+    cout << setw(5) << setprecision(4) << "\nfeqmod breaks down for " << breakdown << " cells\n" << endl;
 
     //free memory
     free(dN_pTdpTdphidy_all);
