@@ -186,10 +186,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double E = Eavg;                        // energy density (GeV/fm^3)
         double P = Pavg;                        // pressure (GeV/fm^3)
 
-        cout << setprecision(15) << T << endl;
-
-        exit(-1);
-
         double pitt = 0.0;                      // contravariant shear stress tensor pi^munu (GeV/fm^3)
         double pitx = 0.0;                      // enforce orthogonality pi.u = 0
         double pity = 0.0;                      // and tracelessness Tr(pi) = 0
@@ -293,7 +289,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
               {
                 double y = yValues[iy];
 
-                double pdotdsigma_f_eta_sum = 0.0;         // Cooper Frye integral over eta
+                double pdotdsigma_f_eta_sum = 0.0;          // Cooper Frye integral over eta
 
                 // sum over eta
                 for(int ieta = 0; ieta < eta_pts; ieta++)
@@ -301,16 +297,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double eta = etaValues[ieta];
                   double delta_eta_weight = etaTrapezoidWeights[ieta];
 
-                  double pt = mT * cosh(y - eta);          // p^\tau (GeV)
-                  double pn = mT_over_tau * sinh(y - eta); // p^\eta (GeV^2)
+                  double pt = mT * cosh(y - eta);           // p^\tau (GeV)
+                  double pn = mT_over_tau * sinh(y - eta);  // p^\eta (GeV^2)
                   double tau2_pn = tau2 * pn;
 
                   double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
 
-                  if(OUTFLOW)
-                  {
-                    if(pdotdsigma <= 0.0) continue;        // enforce outflow
-                  }
+                  if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
 
                   double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;  // u.p
 
@@ -719,7 +712,26 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double N10_fact = neq_fact;
         double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
 
-        bool negative_pion = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+        bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+
+        if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
+
+        bool feqmod_breaks_down = false;
+
+        if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
+
+        if(feqmod_breaks_down)
+        {
+
+          breakdown++;
+          cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\t detA_min = " << detA_min << endl;
+
+          // if((INCLUDE_SHEAR_DELTAF && INCLUDE_BULK_DELTAF) && !pion_density_negative)
+          // {
+          //   printf("Error: shear + bulk feqmod has positive pions\n");
+          //   exit(-1);
+          // }
+        }
 
 
         // loop over hadrons
@@ -737,7 +749,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
           // modified renormalization factor
           double renorm = 1.0 / detA;             // default (shear only)
-          double n_linear = 1.0;
 
           if(INCLUDE_BULK_DELTAF)
           {
@@ -746,28 +757,15 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
             double neq = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
 
-            
-
             double N10 = baryon * N10_fact * degeneracy * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+
             double J20 = J20_fact * degeneracy * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
 
-            n_linear = neq  +  dn_fact * (neq  +  N10 * G  +  J20 * F / T / T);
+            double n_linear = neq  +  dn_fact * (neq  +  N10 * G  +  J20 * F / T / T);
 
             double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
 
             renorm = n_linear / n_mod;
-          }
-
-          if(negative_pion || n_linear < 0.0)
-          {
-            detA_min = max(detA_min, detA_bulk); // update min value if pion0 (or other missed particle ipart) density negative
-          }
-
-          if(detA <= detA_min && ipart == number_of_chosen_particles - 1)
-          //if((detA <= DETA_MIN || negative_pions) && ipart == chosen_index_pion0) // old
-          {
-            breakdown++;  // only count breakdown once
-            cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\t detA_min = " << detA_min << endl;
           }
 
           for(int ipT = 0; ipT < pT_tab_length; ipT++)
@@ -799,15 +797,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                   double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan);
 
-                  if(OUTFLOW)
-                  {
-                    if(pdotdsigma <= 0.0) continue;        // enforce outflow
-                  }
+                  if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
 
-                  double f;                                // feqmod (if breakdown do feq(1+df))
+                  double f;                                   // feqmod (if breakdown do feq(1+df))
 
                   // calculate feqmod
-                  if(detA > detA_min)
+                  if(!feqmod_breaks_down)
+                  //if(detA > 0.001 && !pion_density_negative)
                   //if(detA >= DETA_MIND && !negative_pions)
                   {
                     // LRF momentum components pi_LRF = - Xi.p
@@ -839,10 +835,11 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     double dp = sqrt(dpX * dpX  +  dpY * dpY  +  dpZ * dpZ);
                     double p = sqrt(px_LRF * px_LRF  +  py_LRF * py_LRF  +  pz_LRF * pz_LRF);
 
-                    if(dp / p > 1.e-6)
+                    // is it not accurate enough?...
+                    if(dp / p > 1.e-10)
                     {
-                      printf("Error: dp / p = %f not accurate enough\n", dp / p);
-                      exit(-1);
+                      cout << "Error: dp / p = " << setprecision(16) << dp / p << " not accurate enough at tau = " << tau << " fm/c:"<< endl;
+                      //exit(-1);
                     }
 
                   }
@@ -855,7 +852,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                      // pi^munu.p_mu.p_nu
                     double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
-                    + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
+                     + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
 
                     // V^mu.p_mu
                     double Vmu_pmu = Vt * pt  -  Vx * px  -  Vy * py  -  Vn * tau2_pn;
@@ -878,6 +875,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                 long long int iSpectra = (long long int)icell + (long long int)endFO * ((long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy)));
 
                 dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma_f_eta_sum);
+
 
               } // rapidity points (iy)
 
