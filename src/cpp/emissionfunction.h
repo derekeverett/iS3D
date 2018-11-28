@@ -151,7 +151,7 @@ public:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
   // particle density in freezeout cell with regulated df and outflow corrections (p.dsigma > 0)
-  double particle_density_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double equilibrium_density, double bulk_density, double detA, double modified_density, bool feqmod_breaks_down);
+  double particle_density_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Shear_Stress pimunu, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double equilibrium_density, double bulk_density, double detA, double modified_density, bool feqmod_breaks_down);
 
   // calculate total particle yield from freezeout surface -> number of events to sample
   double calculate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *thermodynamic_average, double * df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_exp_weight1);
