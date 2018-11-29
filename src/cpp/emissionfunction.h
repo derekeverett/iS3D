@@ -51,8 +51,11 @@ typedef struct
 // thermal particle density (just for crosschecking)
 double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
 
-// determine if linear pion0 density goes negative
+double compute_detA(Shear_Stress pimunu, double bulkPi, double betapi, double betabulk);
+
 bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pion0, double bulkPi, double F, double betabulk);
+
+bool does_feqmod_breakdown(double detA, double detA_min, bool pion_density_negative);
 
 // thermal particle density with outflow only (needed if enforce p.dsigma > 0)
 //double equilibrium_density_outflow(double mbar_squared, double sign, double chem, double dsigmaTime_over_dsigmaSpace, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
@@ -150,11 +153,13 @@ public:
   // sampling spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
-  // particle density in freezeout cell with regulated df and outflow corrections (p.dsigma > 0)
-  double particle_density_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Shear_Stress pimunu, double bulkPi, double ds_space, double ds_time_over_ds_space, double * df_coeff, double equilibrium_density, double bulk_density, double detA, double modified_density, bool feqmod_breaks_down);
+  // particle number in freezeout cell with regulated df and outflow corrections (p.dsigma > 0)
+  double particle_number_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, double * df_coeff, double shear14_coeff, double equilibrium_density, double bulk_density, double T_mod, double alphaB_mod, double detA, double modified_density, bool feqmod_breaks_down);
+
+
 
   // calculate total particle yield from freezeout surface -> number of events to sample
-  double calculate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *thermodynamic_average, double * df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_exp_weight1);
+  double calculate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *thermodynamic_average, double * df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_weight1, double * pbar_root2, double * pbar_weight2);
 
   // sample momentum with feq + df
   LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double * df_coeff, double shear14_coeff, double baryon_enthalpy_ratio);

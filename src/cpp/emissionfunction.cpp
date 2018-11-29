@@ -70,18 +70,50 @@ double equilibrium_particle_density(double mass, double degeneracy, double sign,
   return neq;
 }
 
+double compute_detA(Shear_Stress pimunu, double bulkPi, double betapi, double betabulk)
+{
+  double pixx_LRF = pimunu.pixx_LRF;  double piyy_LRF = pimunu.piyy_LRF;
+  double pixy_LRF = pimunu.pixy_LRF;  double piyz_LRF = pimunu.piyz_LRF;
+  double pixz_LRF = pimunu.pixz_LRF;  double pizz_LRF = pimunu.pizz_LRF;
+
+  double shear_mod_coeff = 0.5 / betapi;
+  double bulk_mod_coeff = bulkPi / (3.0 * betabulk);
+
+  double Axx = 1.0  +  pixx_LRF * shear_mod_coeff  +  bulk_mod_coeff;
+  double Axy = pixy_LRF * shear_mod_coeff;
+  double Axz = pixz_LRF * shear_mod_coeff;
+  double Ayy = 1.0  +  piyy_LRF * shear_mod_coeff  +  bulk_mod_coeff;
+  double Ayz = piyz_LRF * shear_mod_coeff;
+  double Azz = 1.0  +  pizz_LRF * shear_mod_coeff  +  bulk_mod_coeff;
+
+  double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
+
+  return detA;
+}
+
 bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pion0, double bulkPi, double F, double betabulk)
 {
-  // calculate the pion-0 density by itself
-  // that way I don't need to include multiple particles when testing single particle spectra
+  // determine if linear pion0 density goes negative
+
+  // calculate the pion-0 density by itself: that way I don't need to include multiple particles when testing single particle spectra
 
   double dn_pion0 = bulkPi * (neq_pion0  +  J20_pion0 * F / T / T) / betabulk;
 
   double nlinear_pion0 = neq_pion0 + dn_pion0;
 
   if(nlinear_pion0 < 0.0) return true;
-  else return false;
+  
+  return false;
 }
+
+bool does_feqmod_breakdown(double detA, double detA_min, bool pion_density_negative)
+{
+  if(detA <= detA_min || pion_density_negative) return true;
+  
+  return false;
+}
+
+
 
 
 
@@ -1151,7 +1183,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               if(OVERSAMPLE)
               {
-                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, thermodynamic_average, df_coeff, pbar_pts, pbar_root1, pbar_exp_weight1);
+                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, thermodynamic_average, df_coeff, pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
@@ -1209,7 +1241,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               if(OVERSAMPLE)
               {
-                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, thermodynamic_average, df_coeff, pbar_pts, pbar_root1, pbar_exp_weight1);
+                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, thermodynamic_average, df_coeff, pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
@@ -1268,7 +1300,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               if(OVERSAMPLE)
               {
-                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, thermodynamic_average, df_coeff, pbar_pts, pbar_root1, pbar_exp_weight1);
+                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, thermodynamic_average, df_coeff, pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }

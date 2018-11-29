@@ -54,10 +54,12 @@ class Surface_Element_Vector
     double dsigmaz_LRF;       // - Z^mu . dsigma_mu
     double dsigma_magnitude;  // |u.dsigma| + sqrt((u.dsigma)^2 - dsigma.dsigma)
     double dsigma_space;      // sqrt((u.dsigma)^2 - dsigma.dsigma)
+    double costheta_LRF;      // cosine of polar angle of dsigma-3-vector in LRF 
 
     Surface_Element_Vector(double dsigmat_in, double dsigmax_in, double dsigmay_in, double dsigman_in);
     void boost_dsigma_to_lrf(Milne_Basis basis_vectors, double ut, double ux, double uy, double un);
     void compute_dsigma_magnitude();
+    void compute_dsigma_lrf_polar_angle(); 
 };
 
 #endif

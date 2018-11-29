@@ -86,6 +86,14 @@ void Surface_Element_Vector::compute_dsigma_magnitude()
     dsigma_magnitude = fabs(dsigmat_LRF) + dsigma_space;
 }
 
+void Surface_Element_Vector::compute_dsigma_lrf_polar_angle()
+{
+    dsigma_space = sqrt(dsigmax_LRF * dsigmax_LRF  +  dsigmay_LRF * dsigmay_LRF  +  dsigmaz_LRF * dsigmaz_LRF);
+   
+    costheta_LRF = dsigmaz_LRF / dsigma_space; 
+}
+
+
 Shear_Stress::Shear_Stress(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in)
 {
     pitt = pitt_in;
