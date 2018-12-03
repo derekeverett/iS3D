@@ -798,7 +798,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
    // set Gauss Laguerre roots-weights
   FILE * gla_file;
   char header[300];
-  gla_file = fopen("tables/gla123_roots_weights_64_pts.dat", "r");
+  gla_file = fopen("tables/gla123_roots_weights_32_pts.dat", "r");
   if(gla_file == NULL) printf("Couldn't open Gauss-Laguerre roots/weights file\n");
 
   int pbar_pts;
