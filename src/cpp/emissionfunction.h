@@ -208,7 +208,7 @@ public:
   void write_dN_pTdpTdphidy_toFile(int *MCID); // write invariant 3D spectra to file
   void write_dN_pTdpTdphidy_with_resonance_decays_toFile(); // write invariant 3D spectra to file (w/ resonance decay effects)
   void write_dN_dphidy_toFile(int *MCID);
-  void write_dN_pTdpTdy_toFile(int *MCID);
+  void write_dN_twopipTdpTdy_toFile(int *MCID);
   void write_dN_dy_toFile(int *MCID);
   void write_polzn_vector_toFile(); //write components of spin polarization vector to file
 

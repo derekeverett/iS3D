@@ -22,10 +22,8 @@ Milne_Basis::Milne_Basis(double ut, double ux, double uy, double un, double uper
 
     if(uperp > 1.e-5) // stops (ux=0)/(uperp=0) nans for first FO cells with no initial transverse flow
     {
-        Xx = utperp * ux / uperp;
-        Xy = utperp * uy / uperp;
-        Yx = - uy / uperp;
-        Yy = ux / uperp;
+        Xx = utperp * ux / uperp;   Yx = - uy / uperp;
+        Xy = utperp * uy / uperp;   Yy = ux / uperp;
     }
 }
 
@@ -87,9 +85,7 @@ void Surface_Element_Vector::compute_dsigma_magnitude()
 }
 
 void Surface_Element_Vector::compute_dsigma_lrf_polar_angle()
-{
-    dsigma_space = sqrt(dsigmax_LRF * dsigmax_LRF  +  dsigmay_LRF * dsigmay_LRF  +  dsigmaz_LRF * dsigmaz_LRF);
-   
+{  
     costheta_LRF = dsigmaz_LRF / dsigma_space; 
 }
 
