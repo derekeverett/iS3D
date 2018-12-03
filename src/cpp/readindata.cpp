@@ -114,25 +114,6 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     double P = dummy * hbarC; //pressure
     surf_ptr[i].P = P;
 
-    //file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
-    // dissipative quantities at freeze out
-    //if (include_shear_deltaf)
-    //{
-    surfdat >> dummy;
-    double pitt = dummy * hbarC;
-    surf_ptr[i].pitt = pitt;            // ten contravariant components of shear stress tensor
-
-    surfdat >> dummy;
-    double pitx = dummy * hbarC;
-    surf_ptr[i].pitx = pitx;
-
-    surfdat >> dummy;
-    double pity = dummy * hbarC;
-    surf_ptr[i].pity = pity;
-
-    surfdat >> dummy;
-    double pitn = dummy * hbarC;
-    surf_ptr[i].pitn = pitn;
 
     surfdat >> dummy;
     double pixx = dummy * hbarC;
@@ -153,10 +134,6 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surfdat >> dummy;
     double piyn = dummy * hbarC;
     surf_ptr[i].piyn = piyn;
-
-    surfdat >> dummy;
-    double pinn = dummy * hbarC;
-    surf_ptr[i].pinn = pinn;
 
     surfdat >> dummy;
     double bulkPi = dummy * hbarC;
@@ -206,9 +183,9 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     nBavg += (nB * dsigma_magnitude);
 
 
-    pimunuavg += (sqrt(fabs(pitt*pitt - 2.0*pitx*pitx - 2.0*pity*pity - 2.0*tau2*pitn*pitn + pixx*pixx + 2.0*pixy*pixy + 2.0*tau2*pixn*pixn + piyy*piyy + 2.0*tau2*piyn*piyn + tau2*tau2*pinn*pinn)) * dsigma_magnitude);
+    //pimunuavg += (sqrt(fabs(pitt*pitt - 2.0*pitx*pitx - 2.0*pity*pity - 2.0*tau2*pitn*pitn + pixx*pixx + 2.0*pixy*pixy + 2.0*tau2*pixn*pixn + piyy*piyy + 2.0*tau2*piyn*piyn + tau2*tau2*pinn*pinn)) * dsigma_magnitude);
 
-    bulkPiavg += (bulkPi * dsigma_magnitude);
+    //bulkPiavg += (bulkPi * dsigma_magnitude);
 
   }
   surfdat.close();
@@ -219,11 +196,11 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
   muBavg /= total_surface_volume;
   nBavg /= total_surface_volume;
 
-  pimunuavg /= total_surface_volume;
-  bulkPiavg /= total_surface_volume;
+  //pimunuavg /= total_surface_volume;
+  //bulkPiavg /= total_surface_volume;
 
-  printf("pimunuavg = %lf\n", pimunuavg);
-  printf("bulkPiavg = %lf\n", bulkPiavg);
+  //printf("pimunuavg = %lf\n", pimunuavg);
+  //printf("bulkPiavg = %lf\n", bulkPiavg);
 
   // write averaged thermodynamic quantities to file
   ofstream thermal_average("average_thermodynamic_quantities.dat", ios_base::out);
