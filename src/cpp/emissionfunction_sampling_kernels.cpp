@@ -39,25 +39,23 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
 
   // the feqmod formula is an approximation due to the complexity of the integral
 
+
   double four_pi2_hbarC3 = 4.0 * pow(M_PI, 2) * pow(hbarC, 3);
 
-  const int gauss_pts = 48;
+  const int gauss_pts = 24;
 
-  // hard coded roots/weights
-  // double gauss_legendre_root[gauss_pts] = {-0.99518721999702, -0.97472855597131, -0.93827455200273, -0.8864155270044, -0.8200019859739, -0.74012419157855, -0.64809365193698, -0.54542147138884, -0.43379350762605, -0.31504267969616, -0.19111886747362, -0.064056892862606, 0.06405689286261, 0.19111886747362, 0.31504267969616, 0.43379350762605, 0.54542147138884, 0.64809365193698, 0.74012419157855, 0.8200019859739, 0.8864155270044, 0.93827455200273, 0.97472855597131, 0.99518721999702};
+  //hard coded roots/weights
+  double gauss_legendre_root[gauss_pts] = {-0.99518721999702, -0.97472855597131, -0.93827455200273, -0.8864155270044, -0.8200019859739, -0.74012419157855, -0.64809365193698, -0.54542147138884, -0.43379350762605, -0.31504267969616, -0.19111886747362, -0.064056892862606, 0.06405689286261, 0.19111886747362, 0.31504267969616, 0.43379350762605, 0.54542147138884, 0.64809365193698, 0.74012419157855, 0.8200019859739, 0.8864155270044, 0.93827455200273, 0.97472855597131, 0.99518721999702};
 
-  // double gauss_legendre_weight[gauss_pts] = {0.01234122979999, 0.02853138862893, 0.0442774388174, 0.059298584915437, 0.0733464814111, 0.08619016153195, 0.0976186521041, 0.107444270116, 0.11550566805373, 0.1216704729278, 0.12583745634683, 0.1279381953468, 0.1279381953468, 0.1258374563468, 0.1216704729278, 0.1155056680537, 0.107444270116, 0.09761865210411, 0.08619016153195, 0.07334648141108, 0.05929858491544, 0.04427743881742, 0.02853138862893, 0.01234122979999};
-
-
-  double gauss_legendre_root[gauss_pts] = {-0.99877100725243,-0.99353017226635,-0.98412458372283,-0.97059159254625,-0.95298770316043,-0.93138669070655,-0.90587913671557,-0.8765720202742,-0.84358826162439,-0.80706620402944,-0.76715903251574,-0.72403413092382,-0.67787237963266,-0.62886739677651,-0.57722472608397,-0.52316097472223,-0.46690290475096,-0.40868648199072,-0.34875588629216,-0.28736248735546,-0.22476379039469,-0.16122235606889,-0.09700469920946,-0.032380170962869,0.03238017096287,0.0970046992095,0.1612223560689,0.2247637903947,0.2873624873555,0.3487558862922,0.40868648199072,0.46690290475096,0.52316097472223,0.57722472608397,0.62886739677651,0.67787237963266,0.72403413092382,0.76715903251574,0.80706620402944,0.84358826162439,
-0.87657202027425,0.90587913671557,0.93138669070655,0.95298770316043,0.97059159254625,0.98412458372283,0.99353017226635,0.99877100725243};
-
-  double gauss_legendre_weight[gauss_pts] = {0.00315334605231,0.00732755390128,0.01147723457923,0.01557931572294,0.019616160457356,0.02357076083932,0.0274265097084,0.0311672278328,0.0347772225648,0.03824135106583,0.04154508294346,0.04467456085669,0.04761665849249,0.05035903555385,0.052890189485194,0.05519950369998,0.057277292100403,0.0591148396984,0.06070443916589,
-0.06203942315989,0.06311419228625,0.06392423858465,0.06446616443595,0.0647376968127,0.0647376968127,0.064466164436,0.06392423858465,0.06311419228625,0.06203942315989,0.060704439165894,
-0.0591148396984,0.0572772921004,0.05519950369998,0.0528901894852,0.0503590355539,0.0476166584925,0.044674560856694,0.04154508294346,0.03824135106583,0.03477722256477,0.0311672278328,0.0274265097084,0.02357076083932,0.019616160457356,0.01557931572294,0.01147723457923,0.00732755390128,0.003153346052306};
+  double gauss_legendre_weight[gauss_pts] = {0.01234122979999, 0.02853138862893, 0.0442774388174, 0.059298584915437, 0.0733464814111, 0.08619016153195, 0.0976186521041, 0.107444270116, 0.11550566805373, 0.1216704729278, 0.12583745634683, 0.1279381953468, 0.1279381953468, 0.1258374563468, 0.1216704729278, 0.1155056680537, 0.107444270116, 0.09761865210411, 0.08619016153195, 0.07334648141108, 0.05929858491544, 0.04427743881742, 0.02853138862893, 0.01234122979999};
 
 
+//   double gauss_legendre_root[gauss_pts] = {-0.99877100725243,-0.99353017226635,-0.98412458372283,-0.97059159254625,-0.95298770316043,-0.93138669070655,-0.90587913671557,-0.8765720202742,-0.84358826162439,-0.80706620402944,-0.76715903251574,-0.72403413092382,-0.67787237963266,-0.62886739677651,-0.57722472608397,-0.52316097472223,-0.46690290475096,-0.40868648199072,-0.34875588629216,-0.28736248735546,-0.22476379039469,-0.16122235606889,-0.09700469920946,-0.032380170962869,0.03238017096287,0.0970046992095,0.1612223560689,0.2247637903947,0.2873624873555,0.3487558862922,0.40868648199072,0.46690290475096,0.52316097472223,0.57722472608397,0.62886739677651,0.67787237963266,0.72403413092382,0.76715903251574,0.80706620402944,0.84358826162439,
+// 0.87657202027425,0.90587913671557,0.93138669070655,0.95298770316043,0.97059159254625,0.98412458372283,0.99353017226635,0.99877100725243};
 
+//   double gauss_legendre_weight[gauss_pts] = {0.00315334605231,0.00732755390128,0.01147723457923,0.01557931572294,0.019616160457356,0.02357076083932,0.0274265097084,0.0311672278328,0.0347772225648,0.03824135106583,0.04154508294346,0.04467456085669,0.04761665849249,0.05035903555385,0.052890189485194,0.05519950369998,0.057277292100403,0.0591148396984,0.06070443916589,
+// 0.06203942315989,0.06311419228625,0.06392423858465,0.06446616443595,0.0647376968127,0.0647376968127,0.064466164436,0.06392423858465,0.06311419228625,0.06203942315989,0.060704439165894,
+// 0.0591148396984,0.0572772921004,0.05519950369998,0.0528901894852,0.0503590355539,0.0476166584925,0.044674560856694,0.04154508294346,0.03824135106583,0.03477722256477,0.0311672278328,0.0274265097084,0.02357076083932,0.019616160457356,0.01557931572294,0.01147723457923,0.00732755390128,0.003153346052306};
 
 
   double mass_squared = mass * mass;
@@ -68,9 +66,10 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
   double chem = baryon * alphaB;
 
   // pimunu LRF components
-  double pixx_LRF = pimunu.pixx_LRF;  double piyy_LRF = pimunu.piyy_LRF;
-  double pixy_LRF = pimunu.pixy_LRF;  double piyz_LRF = pimunu.piyz_LRF;
-  double pixz_LRF = pimunu.pixz_LRF;  double pizz_LRF = pimunu.pizz_LRF;
+  double pixx_LRF = pimunu.pixx_LRF;  
+  double piyy_LRF = pimunu.piyy_LRF;
+  double pizz_LRF = pimunu.pizz_LRF;
+  double pixz_LRF = pimunu.pixz_LRF;  
 
   // df_coeff is one of them
   double c0 = df_coeff[0];    double F = df_coeff[0];
@@ -96,6 +95,17 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
   double costheta_ds2 = costheta_ds * costheta_ds;
   double sintheta_ds = sqrt(fabs(1.0 - costheta_ds2));
 
+  // temporary test
+  // pizz_LRF = -0.008934/0.014314/sqrt(1.5)*shear14_coeff;
+  // pixx_LRF = - 0.5 * pizz_LRF;
+  // piyy_LRF = pixx_LRF;
+  // pixz_LRF = 0.0;
+
+  // ds_time_over_ds_space = 1.0/1.4;
+  // ds_space = 1.4;
+  // costheta_ds = 1.0;
+  // costheta_ds2 = 1.0;
+  // sintheta_ds = 0.0;
 
   // particle density with outflow and corrections
   double n_outflow = 0.0;
@@ -120,7 +130,7 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
 
 
         // timelike cells
-        if(ds_time_over_ds_space >= 1.0)
+        if(!OUTFLOW || ds_time_over_ds_space >= 1.0)
         {
           double df_bulk = ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
 
@@ -136,18 +146,32 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
           double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
           double costheta_star2 = costheta_star * costheta_star;
           double costheta_star3 = costheta_star2 * costheta_star;
+          double costheta_star4 = costheta_star3 * costheta_star;
 
-          // (phi, costheta) integrated df terms
-          // you get this funky expression after you rotate momentum space such that pz aligns with ds_space vector
-          double df_shear = 0.5 / shear14_coeff * p * p * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+          // (phi, costheta) integrated feq + df time and space terms
+          double feq_time = feq * (1.0 + costheta_star);
+          double feq_space = 0.5 * feq * (costheta_star2 - 1.0);
 
-          double df_bulk = ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
 
-          double df = feqbar * (df_shear + df_bulk);
+          double df_bulk = feq * feqbar * ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
+          double df_bulk_time = df_bulk * (1.0 + costheta_star);
+          double df_bulk_space = 0.5 * df_bulk * (costheta_star2 - 1.0);
 
-          df = max(-1.0, min(df, 1.0)); // regulate df
 
-          n_outflow += 0.5 * gauss_legendre_weight[i] * (ds_time_over_ds_space * pbar * pbar * (1.0 + costheta_star) - 0.5 * pbar * pbar * pbar / Ebar * (costheta_star2 - 1.0)) * feq * (1.0 + df) / (s * s);
+          double df_shear_time = 0.5 * feq * feqbar / shear14_coeff * p * p * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+
+          double df_shear_space = 0.5 * feq * feqbar / shear14_coeff * p * p * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+
+
+          double f_time = feq_time + df_shear_time + df_bulk_time;
+          double f_space = feq_space + df_shear_space + df_bulk_space; 
+
+          double integrand = ds_time_over_ds_space * f_time  -  pbar / Ebar * f_space;
+          double integrand_upper_bound = 2.0 * (ds_time_over_ds_space * feq_time  -  pbar / Ebar * feq_space);
+
+          integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
+
+          n_outflow += 0.5 * gauss_legendre_weight[i] * pbar * pbar * integrand / (s * s);
         }
 
         break;
@@ -164,7 +188,7 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
         double feqbar = 1.0 - sign * feq;
 
         // timelike cells
-        if(ds_time_over_ds_space >= 1.0)
+        if(!OUTFLOW || ds_time_over_ds_space >= 1.0)
         {
           double df_bulk = (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
 
@@ -180,18 +204,32 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
           double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
           double costheta_star2 = costheta_star * costheta_star;
           double costheta_star3 = costheta_star2 * costheta_star;
+          double costheta_star4 = costheta_star3 * costheta_star;
 
-          // (phi, costheta) integrated df terms
-          // you get this funky expression after you rotate momentum space such that pz aligns with ds_space vector
-          double df_shear = 0.25 * pbar * pbar / Ebar / betapi * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0/3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+          // (phi, costheta) integrated feq + df time and space terms
+          double feq_time = feq * (1.0 + costheta_star);
+          double feq_space = 0.5 * feq * (costheta_star2 - 1.0);
 
-          double df_bulk = (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
+          
+          double df_bulk = feq * feqbar * (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
+          double df_bulk_time = df_bulk * (1.0 + costheta_star);
+          double df_bulk_space = 0.5 * df_bulk * (costheta_star2 - 1.0);
 
-          double df = feqbar * (df_bulk + df_shear);
 
-          df = max(-1.0, min(df, 1.0));
+          double df_shear_time = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
 
-          n_outflow += 0.5 * gauss_legendre_weight[i] * (ds_time_over_ds_space * pbar * pbar * (1.0 + costheta_star) - 0.5 * pbar * pbar * pbar / Ebar * (costheta_star2 - 1.0)) * feq * (1.0 + df) / (s * s);
+          double df_shear_space = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+
+
+          double f_time = feq_time + df_shear_time + df_bulk_time;
+          double f_space = feq_space + df_shear_space + df_bulk_space; 
+
+          double integrand = ds_time_over_ds_space * f_time  -  pbar / Ebar * f_space;
+          double integrand_upper_bound = 2.0 * (ds_time_over_ds_space * feq_time  -  pbar / Ebar * feq_space);
+
+          integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
+
+          n_outflow += 0.5 * gauss_legendre_weight[i] * pbar * pbar * integrand / (s * s);
         }
 
         break;
@@ -207,7 +245,7 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
 
         double Ebar = sqrt(pbar * pbar +  mbar_squared);
 
-        if(ds_time_over_ds_space >= 1.0)
+        if(!OUTFLOW || ds_time_over_ds_space >= 1.0)
         {
           n_outflow += gauss_legendre_weight[i] * ds_time_over_ds_space * pbar_mod * pbar_mod * feqmod / (s * s);
         }
@@ -236,6 +274,8 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
   }
   else
   {
+    //cout << setprecision(15) << n_outflow * degeneracy * ds_space * T * T * T / four_pi2_hbarC3 << endl;
+    //exit(-1);
     return n_outflow * degeneracy * ds_space * T * T * T / four_pi2_hbarC3;
   }
 

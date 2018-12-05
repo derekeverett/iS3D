@@ -99,7 +99,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     // contravariant flow velocity
 
 
-    surfdat >> surf_ptr[i].ut;  // this line is old file format
+    //surfdat >> surf_ptr[i].ut;  // this line is old file format
 
 
     surfdat >> surf_ptr[i].ux;
@@ -123,12 +123,13 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     // dissipative quantities at freeze out
     //if (include_shear_deltaf)
     //{
+    /*
     surfdat >> dummy;
     double pitt = dummy * hbarC;
     surf_ptr[i].pitt = pitt;            // ten contravariant components of shear stress tensor
 
     surfdat >> dummy;
-    double pitx = dummy * hbarC;
+    double pitx = dummy * hbarC;        // commented out is old file format
     surf_ptr[i].pitx = pitx;
 
     surfdat >> dummy;
@@ -138,6 +139,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surfdat >> dummy;
     double pitn = dummy * hbarC;
     surf_ptr[i].pitn = pitn;
+    */
 
     surfdat >> dummy;
     double pixx = dummy * hbarC;
@@ -159,9 +161,11 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     double piyn = dummy * hbarC;
     surf_ptr[i].piyn = piyn;
 
+    /*
     surfdat >> dummy;
-    double pinn = dummy * hbarC;
+    double pinn = dummy * hbarC;      // old format
     surf_ptr[i].pinn = pinn;
+    */
 
     surfdat >> dummy;
     double bulkPi = dummy * hbarC;
@@ -179,8 +183,8 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     if (include_baryondiff_deltaf)
     {
       surfdat >> nB;                    // baryon density
-      surf_ptr[i].nB = nB;
-      surfdat >> surf_ptr[i].Vt;        // four contravariant components of baryon diffusion vector
+      surf_ptr[i].nB = nB; 
+      //surfdat >> surf_ptr[i].Vt;        // four contravariant components of baryon diffusion vector
       surfdat >> surf_ptr[i].Vx;
       surfdat >> surf_ptr[i].Vy;
       surfdat >> surf_ptr[i].Vn;        // fixed units on 10/8 (overlooked)

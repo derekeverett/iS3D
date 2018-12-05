@@ -632,7 +632,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
 
-            dN_dy += phip_gauss_weight * pT_gauss_weight * pT * dN_pTdpTdphidy[iS3D];
+            dN_dy += phip_gauss_weight * pT_gauss_weight * dN_pTdpTdphidy[iS3D];
           } //ipT
 
         } //iphip
@@ -1377,11 +1377,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     if (OPERATION == 1)
     {
       write_dN_pTdpTdphidy_toFile(MCID);
-      write_dN_dpTdphidy_toFile(MCID);
+      //write_dN_dpTdphidy_toFile(MCID);
 
       //write_dN_dphidy_toFile(MCID);
-      //write_dN_dy_toFile(MCID);
-      write_dN_twopipTdpTdy_toFile(MCID);
+      write_dN_dy_toFile(MCID);
+      //write_dN_twopipTdpTdy_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)
