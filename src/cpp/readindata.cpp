@@ -141,6 +141,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surf_ptr[i].pitn = pitn;
     */
 
+
     surfdat >> dummy;
     double pixx = dummy * hbarC;
     surf_ptr[i].pixx = pixx;
@@ -168,6 +169,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     */
 
     surfdat >> dummy;
+
     double bulkPi = dummy * hbarC;
     surf_ptr[i].bulkPi = bulkPi; // bulk pressure
 
@@ -215,9 +217,9 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     nBavg += (nB * dsigma_magnitude);
 
 
-    pimunuavg += (sqrt(fabs(pitt*pitt - 2.0*pitx*pitx - 2.0*pity*pity - 2.0*tau2*pitn*pitn + pixx*pixx + 2.0*pixy*pixy + 2.0*tau2*pixn*pixn + piyy*piyy + 2.0*tau2*piyn*piyn + tau2*tau2*pinn*pinn)) * dsigma_magnitude);
+    //pimunuavg += (sqrt(fabs(pitt*pitt - 2.0*pitx*pitx - 2.0*pity*pity - 2.0*tau2*pitn*pitn + pixx*pixx + 2.0*pixy*pixy + 2.0*tau2*pixn*pixn + piyy*piyy + 2.0*tau2*piyn*piyn + tau2*tau2*pinn*pinn)) * dsigma_magnitude);
 
-    bulkPiavg += (bulkPi * dsigma_magnitude);
+    //bulkPiavg += (bulkPi * dsigma_magnitude);
 
   }
   surfdat.close();
@@ -228,11 +230,11 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
   muBavg /= total_surface_volume;
   nBavg /= total_surface_volume;
 
-  pimunuavg /= total_surface_volume;
-  bulkPiavg /= total_surface_volume;
+  //pimunuavg /= total_surface_volume;
+  //bulkPiavg /= total_surface_volume;
 
-  printf("pimunuavg = %lf\n", pimunuavg);
-  printf("bulkPiavg = %lf\n", bulkPiavg);
+  //printf("pimunuavg = %lf\n", pimunuavg);
+  //printf("bulkPiavg = %lf\n", bulkPiavg);
 
   // write averaged thermodynamic quantities to file
   ofstream thermal_average("average_thermodynamic_quantities.dat", ios_base::out);
