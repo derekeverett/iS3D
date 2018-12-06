@@ -1,6 +1,7 @@
 results
 input
 oversampling
+iS3D_parameters.dat
 *.sublime-project
 *.o
 *.out
@@ -8,3 +9,7 @@ tags
 *.e
 *.*~
 *.DS_Store
+src/.DS_Store
+src/iS3D.e
+src/cpp/obj
+iS3D
