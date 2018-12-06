@@ -16,7 +16,8 @@ CC = g++
 #CC = icpc # icpc slower than g++ for sampler? (10/16/18)
 
 #choose flags corresponding to compiler
-CFLAGS= -std=c++11 -O3 -fopenmp -lgsl -lgslcblas -lm # for g++
+#CFLAGS= -std=c++11 -O3 -fopenmp -lgsl -lgslcblas -lm # for g++
+CFLAGS= -std=c++11 -O3 -lgsl -lgslcblas -lm # for g++
 #CFLAGS= -std=c++11 -qopenmp -O3 -lgsl -lgslcblas # for icpc
 #CFLAGS= -acc -fast -Minfo -ta=nvidia,time # for pgi
 #CFLAGS= -acc -fast -ta=tesla:managed # for pgi, also uses unified memory

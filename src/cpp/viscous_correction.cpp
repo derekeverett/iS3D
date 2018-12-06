@@ -22,10 +22,8 @@ Milne_Basis::Milne_Basis(double ut, double ux, double uy, double un, double uper
 
     if(uperp > 1.e-5) // stops (ux=0)/(uperp=0) nans for first FO cells with no initial transverse flow
     {
-        Xx = utperp * ux / uperp;
-        Xy = utperp * uy / uperp;
-        Yx = - uy / uperp;
-        Yy = ux / uperp;
+        Xx = utperp * ux / uperp;   Yx = - uy / uperp;
+        Xy = utperp * uy / uperp;   Yy = ux / uperp;
     }
 }
 
@@ -86,6 +84,12 @@ void Surface_Element_Vector::compute_dsigma_magnitude()
     dsigma_magnitude = fabs(dsigmat_LRF) + dsigma_space;
 }
 
+void Surface_Element_Vector::compute_dsigma_lrf_polar_angle()
+{  
+    costheta_LRF = dsigmaz_LRF / dsigma_space; 
+}
+
+
 Shear_Stress::Shear_Stress(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in)
 {
     pitt = pitt_in;
@@ -128,20 +132,18 @@ void Shear_Stress::boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2)
     pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
             + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
 
-    pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xt + pixy*Xx + piyy*Xy + tau2*piyn*Xn); // fixed bug on 10/16
+    //pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xy + pixy*Xx + piyy*Xy + tau2*piyn*Xn); // wrong formula
+    //pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xn - piyn*Xy - tau2*pinn*Xn);  // wrong formula
 
-    pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xx - piyn*Xy - tau2*pinn*Xn);  // fixed bug on 10/16
+    pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xt + pixy*Xx + piyy*Xy + tau2*piyn*Xn); // fixed on 10/16
+
+    pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xx - piyn*Xy - tau2*pinn*Xn);  // fixed on 10/16
 
     piyy_LRF = pixx*Yx*Yx + 2.0*pixy*Yx*Yy + piyy*Yy*Yy;
 
     piyz_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
 
     pizz_LRF = - (pixx_LRF + piyy_LRF);
-}
-
-void Shear_Stress::compute_pimunu_max()
-{
-    pi_magnitude = sqrt(pixx_LRF * pixx_LRF  +  piyy_LRF * piyy_LRF  +  pizz_LRF * pizz_LRF  +  2.0 * (pixy_LRF * pixy_LRF  +  pixz_LRF * pixz_LRF  +  piyz_LRF * piyz_LRF));
 }
 
 Baryon_Diffusion::Baryon_Diffusion(double Vt_in, double Vx_in, double Vy_in, double Vn_in)
@@ -171,9 +173,4 @@ void Baryon_Diffusion::boost_Vmu_to_lrf(Milne_Basis basis_vectors, double tau2)
     Vx_LRF = - Vt * Xt  +  Vx * Xx  +  Vy * Xy  +  tau2 * Vn * Xn;
     Vy_LRF = Vx * Yx  +  Vy * Yy;
     Vz_LRF = - Vt * Zt  +  tau2 * Vn * Zn;
-}
-
-void Baryon_Diffusion::compute_Vmu_max()
-{
-    V_magnitude = sqrt(Vx_LRF * Vx_LRF  +  Vy_LRF * Vy_LRF  +  Vz_LRF * Vz_LRF);
 }

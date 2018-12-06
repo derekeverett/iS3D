@@ -97,6 +97,11 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     }
 
     // contravariant flow velocity
+
+
+    //surfdat >> surf_ptr[i].ut;  // this line is old file format
+
+
     surfdat >> surf_ptr[i].ux;
     surfdat >> surf_ptr[i].uy;
     surfdat >> surf_ptr[i].un;
@@ -113,6 +118,28 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     surfdat >> dummy;
     double P = dummy * hbarC; //pressure
     surf_ptr[i].P = P;
+
+    //file formatting may be easier if we force user to leave shear and bulk stresses in freezeout file
+    // dissipative quantities at freeze out
+    //if (include_shear_deltaf)
+    //{
+    /*
+    surfdat >> dummy;
+    double pitt = dummy * hbarC;
+    surf_ptr[i].pitt = pitt;            // ten contravariant components of shear stress tensor
+
+    surfdat >> dummy;
+    double pitx = dummy * hbarC;        // commented out is old file format
+    surf_ptr[i].pitx = pitx;
+
+    surfdat >> dummy;
+    double pity = dummy * hbarC;
+    surf_ptr[i].pity = pity;
+
+    surfdat >> dummy;
+    double pitn = dummy * hbarC;
+    surf_ptr[i].pitn = pitn;
+    */
 
 
     surfdat >> dummy;
@@ -135,7 +162,14 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     double piyn = dummy * hbarC;
     surf_ptr[i].piyn = piyn;
 
+    /*
     surfdat >> dummy;
+    double pinn = dummy * hbarC;      // old format
+    surf_ptr[i].pinn = pinn;
+    */
+
+    surfdat >> dummy;
+
     double bulkPi = dummy * hbarC;
     surf_ptr[i].bulkPi = bulkPi; // bulk pressure
 
@@ -151,8 +185,8 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     if (include_baryondiff_deltaf)
     {
       surfdat >> nB;                    // baryon density
-      surf_ptr[i].nB = nB;
-      surfdat >> surf_ptr[i].Vt;        // four contravariant components of baryon diffusion vector
+      surf_ptr[i].nB = nB; 
+      //surfdat >> surf_ptr[i].Vt;        // four contravariant components of baryon diffusion vector
       surfdat >> surf_ptr[i].Vx;
       surfdat >> surf_ptr[i].Vy;
       surfdat >> surf_ptr[i].Vn;        // fixed units on 10/8 (overlooked)
@@ -770,7 +804,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
    // set Gauss Laguerre roots-weights
   FILE * gla_file;
   char header[300];
-  gla_file = fopen("tables/gla123_roots_weights_64_pts.dat", "r");
+  gla_file = fopen("tables/gla123_roots_weights_32_pts.dat", "r");
   if(gla_file == NULL) printf("Couldn't open Gauss-Laguerre roots/weights file\n");
 
   int pbar_pts;
