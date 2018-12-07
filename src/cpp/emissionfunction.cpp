@@ -7,6 +7,7 @@
 #include <vector>
 #include <stdio.h>
 #include <random>
+#include <complex>
 #include <array>
 #ifdef _OMP
 #include <omp.h>
@@ -641,6 +642,75 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       spectraFile.close();
     }
   }
+
+
+
+  void EmissionFunctionArray::write_v2_toFile(int *MCID)
+  {
+    printf("Writing thermal v2(pT,y) to file...\n");
+
+    char filename[255] = "";
+   
+    int npart = number_of_chosen_particles;
+
+    int y_pts = y_tab_length;           // default 3+1d 
+    if(DIMENSION == 2) y_pts = 1;       // 2+1d (y = 0)
+
+    const complex<double> I(0.0,1.0);   // imaginary i
+
+    // write a separate file for each species
+    for(int ipart  = 0; ipart < npart; ipart++)
+    {
+      int mcid = MCID[ipart];
+      sprintf(filename, "results/v2_%d.dat", mcid);
+      ofstream v2_File(filename, ios_base::app);
+
+      for(int iy = 0; iy < y_pts; iy++)
+      {
+        double y = y_tab->get(1, iy + 1);
+        if(DIMENSION == 2) y = 0.0;
+
+        for(int ipT = 0; ipT < pT_tab_length; ipT++)
+        {
+          double pT = pT_tab->get(1, ipT + 1);
+
+          complex<double> V2_numerator;
+          double V2_denominator = 0.0;
+
+          // gauss legendre phip integration
+          for(int iphip = 0; iphip < phi_tab_length; iphip++)
+          {
+            // phip root/weight
+            double phip = phi_tab->get(1, iphip + 1);
+            double phip_weight = phi_tab->get(2, iphip + 1);
+
+            long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
+
+            V2_numerator += exp(2.0 * I * phip) * phip_weight * dN_pTdpTdphidy[iS3D];
+            V2_denominator += phip_weight * dN_pTdpTdphidy[iS3D];
+
+          } //iphip
+
+          complex<double> V2 = V2_numerator / V2_denominator;
+
+          if(V2_denominator < 1.e-15) V2 = 0.0;
+
+          double v2 = abs(V2);  // |V2|
+
+          v2_File << scientific <<  setw(5) << setprecision(8) << y << "\t" << pT << "\t" << v2 << "\n";
+
+        } //ipT
+
+        v2_File << "\n";
+
+      } //iy
+
+      v2_File.close();
+
+    }
+
+  }
+
 
 
   void EmissionFunctionArray::write_polzn_vector_toFile()
@@ -1380,8 +1450,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       //write_dN_dpTdphidy_toFile(MCID);
 
       //write_dN_dphidy_toFile(MCID);
-      write_dN_dy_toFile(MCID);
+      //write_dN_dy_toFile(MCID);
       //write_dN_twopipTdpTdy_toFile(MCID);
+
+      write_v2_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)

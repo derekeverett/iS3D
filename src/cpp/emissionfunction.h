@@ -210,6 +210,7 @@ public:
   void write_dN_dphidy_toFile(int *MCID);
   void write_dN_twopipTdpTdy_toFile(int *MCID);
   void write_dN_dy_toFile(int *MCID);
+  void write_v2_toFile(int *MCID);
   void write_polzn_vector_toFile(); //write components of spin polarization vector to file
 
   void write_dN_dpTdphidy_toFile(int *MCID);   // write 3D spectra to file in experimental bins
