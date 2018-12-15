@@ -1265,8 +1265,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average, pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
 
-              write_particle_list_toFile();
-              write_particle_list_OSC();
+             //// write_particle_list_toFile();
+              //write_particle_list_OSC();
               write_momentum_list_toFile();
               write_yield_list_toFile();
 
@@ -1323,8 +1323,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average, pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
 
-              write_particle_list_toFile();
-              write_particle_list_OSC();
+              //write_particle_list_toFile();
+              //write_particle_list_OSC();
               write_momentum_list_toFile();
               write_yield_list_toFile();
 
@@ -1382,8 +1382,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df_coeff, thermodynamic_average, pbar_pts, pbar_root1, pbar_weight1, pbar_root2, pbar_weight2);
 
-              write_particle_list_toFile();
-              write_particle_list_OSC();
+              //write_particle_list_toFile();
+              //write_particle_list_OSC();
               write_momentum_list_toFile();
               write_yield_list_toFile();
 
