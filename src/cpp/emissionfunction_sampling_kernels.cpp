@@ -42,11 +42,16 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
 
   double four_pi2_hbarC3 = 4.0 * pow(M_PI, 2) * pow(hbarC, 3);
 
+
+  // don't use odd # of points 
   const int gauss_pts = 24;
 
-  //hard coded roots/weights
+  //hard coded roots/weights 
+
+  // x_i
   double gauss_legendre_root[gauss_pts] = {-0.99518721999702, -0.97472855597131, -0.93827455200273, -0.8864155270044, -0.8200019859739, -0.74012419157855, -0.64809365193698, -0.54542147138884, -0.43379350762605, -0.31504267969616, -0.19111886747362, -0.064056892862606, 0.06405689286261, 0.19111886747362, 0.31504267969616, 0.43379350762605, 0.54542147138884, 0.64809365193698, 0.74012419157855, 0.8200019859739, 0.8864155270044, 0.93827455200273, 0.97472855597131, 0.99518721999702};
 
+  // w_i
   double gauss_legendre_weight[gauss_pts] = {0.01234122979999, 0.02853138862893, 0.0442774388174, 0.059298584915437, 0.0733464814111, 0.08619016153195, 0.0976186521041, 0.107444270116, 0.11550566805373, 0.1216704729278, 0.12583745634683, 0.1279381953468, 0.1279381953468, 0.1258374563468, 0.1216704729278, 0.1155056680537, 0.107444270116, 0.09761865210411, 0.08619016153195, 0.07334648141108, 0.05929858491544, 0.04427743881742, 0.02853138862893, 0.01234122979999};
 
 
@@ -71,13 +76,25 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
   double pizz_LRF = pimunu.pizz_LRF;
   double pixz_LRF = pimunu.pixz_LRF;  
 
+
+  // Lipei: include Vmu LRF components
+  // ???
+
+
+
+  // Lipei: fill in diffusion coefficents here (they're in df_coeff array)
+
   // df_coeff is one of them
   double c0 = df_coeff[0];    double F = df_coeff[0];
   double c1 = df_coeff[1];    double G = df_coeff[1];
   double c2 = df_coeff[2];    double betabulk = df_coeff[2];
                               double betapi = df_coeff[4];
 
-  // feqmod terms
+
+
+
+
+  // feqmod terms (Lipei doesn't care about feqmod)
   double bulk_coeff = bulkPi / (3.0 * betabulk);
   double mbar_mod = mass / T_mod;
   double chem_mod = baryon * alphaB_mod;
@@ -85,13 +102,19 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
   double n_linear = equilibrium_density  +  bulkPi * bulk_density;
   double renorm = n_linear / modified_density;
 
+
+
+
+
+
+
   // dsigma terms
-  double ds_time = dsigma.dsigmat_LRF;
-  double ds_space = dsigma.dsigma_space;
+  double ds_time = dsigma.dsigmat_LRF;                  // ds_t
+  double ds_space = dsigma.dsigma_space;                // |ds_i|
   double ds_time_over_ds_space = ds_time / ds_space;
 
   // rotation angles
-  double costheta_ds = dsigma.costheta_LRF;
+  double costheta_ds = dsigma.costheta_LRF;             // polar angle of ds_i 3-vector
   double costheta_ds2 = costheta_ds * costheta_ds;
   double sintheta_ds = sqrt(fabs(1.0 - costheta_ds2));
 
@@ -132,25 +155,47 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
         // timelike cells
         if(!OUTFLOW || ds_time_over_ds_space >= 1.0)
         {
+          // easy formula (eq. 30 for feq + df_bulk)
+
+
+
+
           double df_bulk = ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
 
-          double df = feqbar * df_bulk;
+          double df = feqbar * (df_bulk);
 
-          df = max(-1.0, min(df, 1.0)); // regulate df
+          df = max(-1.0, min(df, 1.0)); // regulate df <= |feq|
 
           n_outflow += gauss_legendre_weight[i] * ds_time_over_ds_space * pbar * pbar * feq * (1.0 + df) / (s * s);
+
+
+
+
+          // n_outflow = sum of two terms (one is a * (feq + df_bulk)  +  b * (df_diff))
+
+          // a ~ u.ds
+          // b ~ V.ds
+
         }
         // spacelike cells
         else
         {
-          double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
+          double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);     // cosO*
+
           double costheta_star2 = costheta_star * costheta_star;
           double costheta_star3 = costheta_star2 * costheta_star;
           double costheta_star4 = costheta_star3 * costheta_star;
 
           // (phi, costheta) integrated feq + df time and space terms
+
+
+
+
           double feq_time = feq * (1.0 + costheta_star);
           double feq_space = 0.5 * feq * (costheta_star2 - 1.0);
+
+
+
 
 
           double df_bulk = feq * feqbar * ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
@@ -158,20 +203,40 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
           double df_bulk_space = 0.5 * df_bulk * (costheta_star2 - 1.0);
 
 
+
+
+
           double df_shear_time = 0.5 * feq * feqbar / shear14_coeff * p * p * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
 
           double df_shear_space = 0.5 * feq * feqbar / shear14_coeff * p * p * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
 
 
+
+
+
+
+
           double f_time = feq_time + df_shear_time + df_bulk_time;
+
           double f_space = feq_space + df_shear_space + df_bulk_space; 
 
+
+
           double integrand = ds_time_over_ds_space * f_time  -  pbar / Ebar * f_space;
+
+
+
+
+
           double integrand_upper_bound = 2.0 * (ds_time_over_ds_space * feq_time  -  pbar / Ebar * feq_space);
 
           integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
 
+
+
+
           n_outflow += 0.5 * gauss_legendre_weight[i] * pbar * pbar * integrand / (s * s);
+
         }
 
         break;
@@ -267,6 +332,11 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
     }
 
   }
+
+
+  // resume
+
+
   // external prefactor = degeneracy.ds_space.T^3 / (4.pi^2.hbar^3) (or T_mod^3)
   if(DF_MODE == 3 && !feqmod_breaks_down)
   {
@@ -276,7 +346,11 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
   {
     //cout << setprecision(15) << n_outflow * degeneracy * ds_space * T * T * T / four_pi2_hbarC3 << endl;
     //exit(-1);
+
+
     return n_outflow * degeneracy * ds_space * T * T * T / four_pi2_hbarC3;
+
+
   }
 
 }
@@ -723,6 +797,195 @@ LRF_Momentum EmissionFunctionArray::sample_momentum_feqmod(default_random_engine
       double rideal = pdsigma_Heaviside / (pLRF.E * ds_magnitude);
 
       double weight_heavy = rideal * (p_mod/E_mod) * exp(E_mod/T_mod - chem_mod) / (exp(E_mod/T_mod - chem_mod) + sign);
+      double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      if(fabs(weight_heavy - 0.5) > 0.5) printf("Error: weight = %f out of bounds\n", weight_heavy);
+
+      // check pLRF acceptance
+      if(propose < weight_heavy) break;
+
+    } // rejection loop
+
+  } // sampling heavy hadrons
+
+  *acceptances = (*acceptances) + 1;
+
+  return pLRF;
+
+}
+
+
+LRF_Momentum EmissionFunctionArray::rescale_momentum_jonah(LRF_Momentum pmod, double mass_squared, Shear_Stress pimunu, double shear_coeff, double lambda)
+{
+    double E_mod = pmod.E;    double py_mod = pmod.py;
+    double px_mod = pmod.px;  double pz_mod = pmod.pz;
+
+    // LRF shear stress components
+    double pixx = pimunu.pixx_LRF;  double piyy = pimunu.piyy_LRF;
+    double pixy = pimunu.pixy_LRF;  double piyz = pimunu.piyz_LRF;
+    double pixz = pimunu.pixz_LRF;  double pizz = pimunu.pizz_LRF;
+
+    LRF_Momentum pLRF;
+
+    // local momentum transformation
+    pLRF.px = (1.0 + lambda) * px_mod  +  shear_coeff * (pixx * px_mod  +  pixy * py_mod  +  pixz * pz_mod);
+    pLRF.py = (1.0 + lambda) * py_mod  +  shear_coeff * (pixy * px_mod  +  piyy * py_mod  +  piyz * pz_mod);
+    pLRF.pz = (1.0 + lambda) * pz_mod  +  shear_coeff * (pixz * px_mod  +  piyz * py_mod  +  pizz * pz_mod);
+    pLRF.E = sqrt(mass_squared  +  pLRF.px * pLRF.px  +  pLRF.py * pLRF.py  +  pLRF.pz * pLRF.pz);
+
+    return pLRF;
+}
+
+
+
+LRF_Momentum EmissionFunctionArray::sample_momentum_feqmod_jonah(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double T, Surface_Element_Vector dsigma, Shear_Stress pimunu, double shear_coeff, double lambda)
+{
+  double two_pi = 2.0 * M_PI;
+  double mass_squared = mass * mass;
+
+   // uniform distributions in (phi_mod, costheta_mod) on standby
+  uniform_real_distribution<double> phi_distribution(0.0, two_pi);
+  uniform_real_distribution<double> costheta_distribution(-1.0, nextafter(1.0, numeric_limits<double>::max()));
+
+  // dsigma LRF components
+  double dst = dsigma.dsigmat_LRF;
+  double dsx = dsigma.dsigmax_LRF;
+  double dsy = dsigma.dsigmay_LRF;
+  double dsz = dsigma.dsigmaz_LRF;
+  double ds_magnitude = dsigma.dsigma_magnitude;
+
+  LRF_Momentum pLRF;                          // LRF momentum
+  LRF_Momentum pLRF_mod;                      // modified LRF momentum
+
+  bool rejected = true;
+
+  if(mass / T < 1.67)
+  {
+    while(rejected)
+    {
+      *samples = (*samples) + 1;
+      // draw (p_mod, phi_mod, costheta_mod) from p_mod^2.exp(-p_mod/T).dp_mod.dphi_mod.dcostheta_mod by sampling (r1,r2,r3)
+      double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+      double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+      double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      double l1 = log(r1);
+      double l2 = log(r2);
+      double l3 = log(r3);
+
+      double p_mod = - T * (l1 + l2 + l3);                            // modified momentum magnitude
+      double phi_mod = two_pi * pow((l1 + l2) / (l1 + l2 + l3), 2);   // modified angles
+      double costheta_mod = (l1 - l2) / (l1 + l2);
+
+      double E_mod = sqrt(p_mod * p_mod  +  mass_squared);            // modified energy
+      double sintheta_mod = sqrt(1.0 - costheta_mod * costheta_mod);
+
+      // modified pLRF components
+      pLRF_mod.E = E_mod;
+      pLRF_mod.px = p_mod * sintheta_mod * cos(phi_mod);
+      pLRF_mod.py = p_mod * sintheta_mod * sin(phi_mod);
+      pLRF_mod.pz = p_mod * costheta_mod;
+
+      // local momentum transformation
+      pLRF = rescale_momentum_jonah(pLRF_mod, mass_squared, pimunu, shear_coeff, lambda);
+
+      // p.dsigma * Heaviside(p.dsigma)
+      double pdsigma_Heaviside = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
+      double rideal = pdsigma_Heaviside / (pLRF.E * ds_magnitude);
+
+      double weight_light = rideal * exp(p_mod/T) / (exp(E_mod/T) + sign);
+      double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      if(fabs(weight_light - 0.5) > 0.5) printf("Error: weight = %f out of bounds\n", weight_light);
+
+      // check pLRF acceptance
+      if(propose < weight_light) break;
+
+    } // rejection loop
+
+  } // sampling pions
+
+  // heavy hadrons (use variable transformation described in LongGang's notes)
+  else
+  {
+    // modified integrated weights
+    double I1 = mass_squared;
+    double I2 = 2.0 * mass * T;
+    double I3 = 2.0 * T * T;
+    double Itot = I1 + I2 + I3;
+
+    double I1_over_Itot = I1 / Itot;
+    double I1_plus_I2_over_Itot = (I1 + I2) / Itot;
+
+    while(rejected)
+    {
+      double k_mod, phi_mod, costheta_mod;    // modified kinetic energy and angles
+
+      *samples = (*samples) + 1;
+
+      double propose_distribution = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+      // select distribution to sample from based on integrated weights
+      if(propose_distribution < I1_over_Itot)
+      {
+        // draw k_mod from exp(-k_mod/T).dk_mod by sampling r1
+        // sample modified direction uniformly
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        k_mod = - T * log(r1);
+        phi_mod = phi_distribution(generator);
+        costheta_mod = costheta_distribution(generator);
+
+      } // distribution 1 (very heavy)
+      else if(propose_distribution < I1_plus_I2_over_Itot)
+      {
+        // draw (k_mod, phi_mod) from k_mod.exp(-k_mod/T).dk_mod.dphi_mod by sampling (r1,r2)
+        // sample costheta_mod uniformly
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        double l1 = log(r1);
+        double l2 = log(r2);
+
+        k_mod = - T * (l1 + l2);
+        phi_mod = two_pi * l1 / (l1 + l2);
+        costheta_mod = costheta_distribution(generator);
+
+      } // distribution 2 (moderately heavy)
+      else
+      {
+        // draw (k_mod,phi_mod,costheta_mod) from k_mod^2.exp(-k_mod/T).dk_mod.dphi_mod.dcostheta_mod by sampling (r1,r2,r3)
+        double r1 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r2 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+        double r3 = 1.0 - generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+        double l1 = log(r1);
+        double l2 = log(r2);
+        double l3 = log(r3);
+
+        k_mod = - T * (l1 + l2 + l3);
+        phi_mod = two_pi * pow((l1 + l2) / (l1 + l2 + l3), 2);
+        costheta_mod = (l1 - l2) / (l1 + l2);
+
+      } // distribution 3 (light)
+
+      double E_mod = k_mod + mass;
+      double p_mod = sqrt(E_mod * E_mod  -  mass_squared);
+      double sintheta_mod = sqrt(1.0  -  costheta_mod * costheta_mod);
+
+      pLRF_mod.E = E_mod;
+      pLRF_mod.px = p_mod * sintheta_mod * cos(phi_mod);
+      pLRF_mod.py = p_mod * sintheta_mod * sin(phi_mod);
+      pLRF_mod.pz = p_mod * costheta_mod;
+
+      // local momentum transformation
+      pLRF = rescale_momentum_jonah(pLRF_mod, mass_squared, pimunu, shear_coeff, lambda);
+
+      // p.dsigma * Heaviside(p.dsigma)
+      double pdsigma_Heaviside = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
+      double rideal = pdsigma_Heaviside / (pLRF.E * ds_magnitude);
+
+      double weight_heavy = rideal * (p_mod/E_mod) * exp(E_mod/T) / (exp(E_mod/T) + sign);
       double propose = generate_canonical<double, numeric_limits<double>::digits>(generator);
 
       if(fabs(weight_heavy - 0.5) > 0.5) printf("Error: weight = %f out of bounds\n", weight_heavy);

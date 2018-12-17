@@ -164,14 +164,20 @@ public:
   // sample momentum with feq + df
   LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double * df_coeff, double shear14_coeff, double baryon_enthalpy_ratio);
 
-  // sample momentum with feqmod
+  // sample momentum with feqmod (Mike)
   LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T_mod, double alphaB_mod, Surface_Element_Vector dsigma, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
+
+  // sample momentum with feqmod (Jonah)
+  LRF_Momentum sample_momentum_feqmod_jonah(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double T, Surface_Element_Vector dsigma, Shear_Stress pimunu, double shear_coeff, double lambda);
 
   // computes rvisc weight df correction
   double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, double baryon, double T, double alphaB, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double * df_coeff, double shear_coeff, double baryon_enthalpy_ratio);
 
   // momentum rescaling (used by feqmod momentum sampler)
   LRF_Momentum rescale_momentum(LRF_Momentum pmod, double mass_squared, double baryon, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
+
+  // momentum rescaling (Jonah)
+  LRF_Momentum rescale_momentum_jonah(LRF_Momentum pmod, double mass_squared, Shear_Stress pimunu, double shear_coeff, double lambda);
 
 
   // sample particles with feq + df or feqmod

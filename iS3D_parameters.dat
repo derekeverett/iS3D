@@ -1,4 +1,4 @@
-operation					= 2		# operation
+operation					= 1		# operation
 									# 1 : performs smooth cooper frye resulting in dN/pTdpTdphidy
 									# 2 : performs sampling of particle distribution resulting in particle list
 
