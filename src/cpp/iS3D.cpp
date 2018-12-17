@@ -83,7 +83,7 @@ void IS3D::read_fo_surf_from_memory(
 void IS3D::run_particlization(int fo_from_file)
 {
   cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
-  cout << "Derek Everett, Mike McNelis, Sameed Pervaiz and Lipei Du (2018)" << endl;
+  cout << "Mike McNelis, Derek Everett, Sameed Pervaiz and Lipei Du (2018)" << endl;
   cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu" << endl;
   printline();
   // Read-in parameters
@@ -144,13 +144,6 @@ void IS3D::run_particlization(int fo_from_file)
     }
   }
 
-  // for(int i = 0; i < 301; i++)
-  // {
-  //   cout << (double)i * 0.02 << endl;
-  // }
-  // exit(-1);
-
-
   // load delta-f coefficients
   deltaf_coefficients df;
   string pathTodeltaf = "deltaf_coefficients";
@@ -181,7 +174,6 @@ void IS3D::run_particlization(int fo_from_file)
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
 
   std::vector<Sampled_Particle> particle_event_list_in;
-  //particle_event_list_in.resize(0);
   efa.calculate_spectra(particle_event_list_in);
 
   //copy final particle list to memory to pass to JETSCAPE module
@@ -194,5 +186,4 @@ void IS3D::run_particlization(int fo_from_file)
 
   printline();
   cout << "Done calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
-
 }
