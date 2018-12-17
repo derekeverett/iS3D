@@ -99,7 +99,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     // contravariant flow velocity
 
 
-    surfdat >> surf_ptr[i].ut;  // this line is old file format
+    //surfdat >> surf_ptr[i].ut;  // this line is old file format
 
 
     surfdat >> surf_ptr[i].ux;
@@ -123,7 +123,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     // dissipative quantities at freeze out
     //if (include_shear_deltaf)
     //{
-    
+    /*
     surfdat >> dummy;
     double pitt = dummy * hbarC;
     surf_ptr[i].pitt = pitt;            // ten contravariant components of shear stress tensor
@@ -140,6 +140,7 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     double pitn = dummy * hbarC;
     surf_ptr[i].pitn = pitn;
     
+    */
 
     surfdat >> dummy;
     double pixx = dummy * hbarC;
@@ -161,11 +162,11 @@ void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
     double piyn = dummy * hbarC;
     surf_ptr[i].piyn = piyn;
 
-    
+    /*
     surfdat >> dummy;
     double pinn = dummy * hbarC;      // old format
     surf_ptr[i].pinn = pinn;
-    
+    */
 
     surfdat >> dummy;
     double bulkPi = dummy * hbarC;
