@@ -11,6 +11,7 @@ double GaussThermal(double thermal_integrand(double pbar, double mbar, double al
 	return sum;
 }
 
+
 // equilibrium particle density
 double neq_int(double pbar, double mbar, double alphaB, double baryon, double sign)
 {
@@ -79,5 +80,48 @@ double J31_int(double pbar, double mbar, double alphaB, double baryon, double si
 	// gauss laguerre (a = 3)
 	return pbar * exp(pbar + Ebar - baryon * alphaB) / (qstat * qstat);
 }
+
+
+
+
+
+// for Jonah's coefficient calculation
+
+double Gauss1D_mod(double modified_1D_integrand(double pbar, double mbar, double lambda, double sign), double * pbar_root, double * pbar_weight, int pbar_pts, double mbar, double lambda, double sign)
+{
+	double sum = 0.0;
+	for(int k = 0; k < pbar_pts; k++) sum += pbar_weight[k] * modified_1D_integrand(pbar_root[k], mbar, lambda, sign);
+	return sum;
+}
+
+double E_mod_int(double pbar, double mbar, double lambda, double sign)
+{
+	double scale2 = (1.0 + lambda) * (1.0 + lambda);
+
+	double Ebar = sqrt(pbar*pbar + mbar*mbar);
+
+	return sqrt(pbar*pbar*scale2 + mbar*mbar) * exp(pbar) / (exp(Ebar) + sign);
+}
+
+double P_mod_int(double pbar, double mbar, double lambda, double sign)
+{
+	double scale2 = (1.0 + lambda) * (1.0 + lambda);
+
+	double Ebar = sqrt(pbar*pbar + mbar*mbar);
+
+	return pbar*pbar*scale2 / sqrt(pbar*pbar*scale2 + mbar*mbar) * exp(pbar) / (exp(Ebar) + sign);
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 

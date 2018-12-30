@@ -29,10 +29,10 @@
 using namespace std;
 
 void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
-  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
+  double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
-  double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo,
-  double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average)
+  double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
+  double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients * df, Plasma * QGP)
   {
     printf("computing thermal spectra from vhydro with df...\n\n");
 
@@ -94,42 +94,27 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       }
     }
 
-    // average thermodynamic quantities
-    double Tavg = thermodynamic_average[0];
-    double Eavg = thermodynamic_average[1];
-    double Pavg = thermodynamic_average[2];
-    double muBavg = thermodynamic_average[3];
-    double nBavg = thermodynamic_average[4];
+    // averaged thermodynamic quantities
+    double T = QGP->temperature;
+    double E = QGP->energy_density;
+    double P = QGP->pressure;
+    double muB = QGP->baryon_chemical_potential;
+    double nB = QGP->net_baryon_density;
+
+    double alphaB = muB / T;
 
     // set df coefficients
-    double c0, c1, c2, c3, c4;             // 14 moment
-    double F, G, betabulk, betaV, betapi;  // Chapman Enskog
+    double c0 = df->c0;        // 14 moment coefficients
+    double c1 = df->c1;
+    double c2 = df->c2;
+    double c3 = df->c3;
+    double c4 = df->c4;
 
-    switch(DF_MODE)
-    {
-      case 1: // 14 moment
-      {
-        c0 = df_coeff[0];       // bulk coefficients
-        c1 = df_coeff[1];
-        c2 = df_coeff[2];
-        c3 = df_coeff[3];       // diffusion coefficients
-        c4 = df_coeff[4];
-        break;
-      }
-      case 2: // Chapman enskog
-      {
-        F = df_coeff[0];        // bulk coefficients
-        G = df_coeff[1];
-        betabulk = df_coeff[2];
-        betaV = df_coeff[3];    // diffusion coeffficient
-        betapi = df_coeff[4];   // shear coefficient
-        break;
-      }
-      default:
-      {
-        printf("Error: set df_mode = (1,2) in parameters.dat\n"); exit(-1);
-      }
-    } // DF_MODE
+    double F = df->F;          // Chapman Enskog
+    double G = df->G;
+    double betabulk = df->betabulk;
+    double betaV = df->betaV;
+    double betapi = df->betapi;
 
 
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
@@ -182,10 +167,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double ut2 = ut * ut;
         double utperp = sqrt(1.0  +  ux * ux  +  uy * uy);
 
-        double T = Tavg;                        // temperature (GeV)
-        double E = Eavg;                        // energy density (GeV/fm^3)
-        double P = Pavg;                        // pressure (GeV/fm^3)
-
         double pitt = 0.0;                      // contravariant shear stress tensor pi^munu (GeV/fm^3)
         double pitx = 0.0;                      // enforce orthogonality pi.u = 0
         double pity = 0.0;                      // and tracelessness Tr(pi) = 0
@@ -215,9 +196,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         if(INCLUDE_BULK_DELTAF) bulkPi = bulkPi_fo[icell_glb];
 
-        double muB = muBavg;                    // baryon chemical potential
-        double alphaB = muB / T;
-        double nB = nBavg;                      // net baryon density
         double Vt = 0.0;                        // baryon diffusion
         double Vx = 0.0;                        // enforce orthogonality
         double Vy = 0.0;
@@ -415,15 +393,14 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
 
   void EmissionFunctionArray::calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
-    double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
+    double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
     double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
     double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
-    double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_root2, double * pbar_weight1, double * pbar_weight2, double *thermodynamic_average)
+    double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients *df, Plasma * QGP, Gauss_Laguerre * gla)
   {
     printf("computing thermal spectra from vhydro with feqmod...\n\n");
 
     double prefactor = pow(2.0 * M_PI * hbarC, -3);
-    double two_pi2_hbarC3 =  2.0 * pow(M_PI,2) * pow(hbarC,3);
 
     int FO_chunk = 10000;
 
@@ -489,43 +466,39 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       }
     }
 
-    // pi-0 meson should be the first particle in chosen_particles.dat
-    // to help track whether its density goes negative for large negative bulk pressures
-    /*
-    if(!(chosen_pion0.size()== 1))
-    {
-      printf("Error: put pion-0 (mc_id = 111) at the top of PDG/chosen_particles.dat...\n");
-      exit(-1);
-    }
-    else if(chosen_pion0[0] != 0)
-    {
-      printf("Error: put pion-0 (mc_id = 111) at the top of PDG/chosen_particles.dat...\n");
-      exit(-1);
-    }
+    /// gauss laguerre roots
+    const int pbar_pts = gla->points;
 
-    int chosen_index_pion0 = chosen_pion0[0];
-    */
+    double * pbar_root1 = gla->root[1];
+    double * pbar_root2 = gla->root[2];
 
-    // average thermodynamic quantities
-    double Tavg = thermodynamic_average[0];
-    double Eavg = thermodynamic_average[1];
-    double Pavg = thermodynamic_average[2];
-    double muBavg = thermodynamic_average[3];
-    double nBavg = thermodynamic_average[4];
+    double * pbar_weight1 = gla->weight[1];
+    double * pbar_weight2 = gla->weight[2];
+
+
+    // averaged thermodynamic quantities
+    double T = QGP->temperature;
+    double E = QGP->energy_density;
+    double P = QGP->pressure;
+    double muB = QGP->baryon_chemical_potential;
+    double nB = QGP->net_baryon_density;
+
+    double alphaB = muB / T;
+
 
     // feqmod coefficients
-    double F = df_coeff[0];           // bulk coefficients
-    double G = df_coeff[1];
-    double betabulk = df_coeff[2];
-    double betaV = df_coeff[3];       // diffusion coefficient
-    double betapi = df_coeff[4];      // shear coefficient
+    double F = df->F;               // bulk coefficients
+    double G = df->G;
+    double betabulk = df->betabulk;
+    double betaV = df->betaV;       // diffusion coefficient
+    double betapi = df->betapi;     // shear coefficient
 
 
     // calculate linear pion0 density terms (neq_pion0, J20_pion0)
     // this is for the function is_linear_pion0_density_negative()
-    double mbar_pion0 = MASS_PION0 / Tavg;
-    double T3_over_two_pi2_hbar3 = pow(Tavg, 3) / two_pi2_hbarC3;
-    double T4_over_two_pi2_hbar3 = pow(Tavg, 4) / two_pi2_hbarC3;
+    double mbar_pion0 = MASS_PION0 / T;
+    double T3_over_two_pi2_hbar3 = pow(T, 3) / two_pi2_hbarC3;
+    double T4_over_two_pi2_hbar3 = pow(T, 4) / two_pi2_hbarC3;
 
     double neq_pion0 = T3_over_two_pi2_hbar3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
     double J20_pion0 = T4_over_two_pi2_hbar3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
@@ -585,10 +558,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double uperp = sqrt(ux * ux  +  uy * uy);
         double utperp = sqrt(1.0  +   ux * ux  +  uy * uy);
 
-        double T = Tavg;                    // temperature (GeV)
-        double P = Pavg;                    // pressure (GeV/fm^3)
-        double E = Eavg;                    // energy density (GeV/fm^3)
-
         double pitt = 0.0;                  // contravariant shear stress tensor pi^munu
         double pitx = 0.0;                  // enforce orthogonality pi.u = 0
         double pity = 0.0;                  // and tracelessness Tr(pi) = 0
@@ -618,9 +587,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         if(INCLUDE_BULK_DELTAF) bulkPi = bulkPi_fo[icell_glb];
 
-        double muB = muBavg;                // baryon chemical potential (GeV)
-        double alphaB = muB / T;            // muB / T
-        double nB = nBavg;                  // net baryon density (fm^-3)
         double Vt = 0.0;                    // net baryon diffusion
         double Vx = 0.0;
         double Vy = 0.0;

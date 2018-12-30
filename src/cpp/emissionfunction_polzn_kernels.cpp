@@ -27,9 +27,9 @@
 using namespace std;
 
 void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, double *Degeneracy,
-  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
+  double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
-  double *wtx_fo, double *wty_fo, double *wtn_fo, double *wxy_fo, double *wxn_fo, double *wyn_fo)
+  double *wtx_fo, double *wty_fo, double *wtn_fo, double *wxy_fo, double *wxn_fo, double *wyn_fo, Plasma * QGP)
   {
     int FO_chunk = 10000;
 
@@ -80,6 +80,14 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
       for (int iy = 0; iy < y_pts; iy++) yValues[iy] = y_tab->get(1, iy + 1);
     }
 
+
+    double T = QGP->temperature;
+    double E = QGP->energy_density;
+    double P = QGP->pressure;
+
+
+
+
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spin polarization vector for each surface cell in a chunk, for all particle species
     int npart = number_of_chosen_particles;
@@ -126,10 +134,6 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
         double ut = sqrt(fabs(1.0 + ux2 + uy2 + tau2*un*un));
         double ut2 = ut * ut;
         double u0 = sqrt(fabs(1.0 + ux2 + uy2));
-
-        double T = T_fo[icell_glb];             // temperature
-        double E = E_fo[icell_glb];             // energy density
-        double P = P_fo[icell_glb];             // pressure
 
         //thermal vorticity components
         double wtx = wtx_fo[icell];

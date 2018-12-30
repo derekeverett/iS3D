@@ -83,7 +83,7 @@ void IS3D::read_fo_surf_from_memory(
 void IS3D::run_particlization(int fo_from_file)
 {
   cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
-  cout << "Mike McNelis, Derek Everett, Sameed Pervaiz and Lipei Du (2018)" << endl;
+  cout << "Derek Everett, Mike McNelis, Sameed Pervaiz and Lipei Du (2018)" << endl;
   cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu" << endl;
   printline();
   // Read-in parameters
@@ -144,15 +144,25 @@ void IS3D::run_particlization(int fo_from_file)
     }
   }
 
+  // for(int i = 0; i < 301; i++)
+  // {
+  //   cout << (double)i * 0.02 << endl;
+  // }
+  // exit(-1);
+
+
   // load delta-f coefficients
-  deltaf_coefficients df;
+  deltaf_coefficients * df = new deltaf_coefficients;
   string pathTodeltaf = "deltaf_coefficients";
   DeltafReader deltaf(paraRdr, pathTodeltaf);
-  df = deltaf.load_coefficients(surf_ptr, FO_length);
+  *df = deltaf.load_coefficients(surf_ptr, FO_length);
+
 
   // load particle info
   particle_info *particle_data = new particle_info [Maxparticle];
   int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr, df); //number of resonances in pdg file
+
+  jonah_coefficients jonah = compute_jonah_bulk_coefficients(particle_data, Nparticle); // I could move this elsewhere
 
   cout << "Finished reading files" << endl;
   printline();
@@ -167,13 +177,14 @@ void IS3D::run_particlization(int fo_from_file)
 
   printline();
 
-  Table pT_tab("tables/pT_single2_table.dat"); // pT value and weight table
-  Table phi_tab("tables/phi_gauss_legendre_table.dat"); // phi value and weight table
+  Table pT_tab("tables/pT_gauss_legendre_table.dat"); // pT value and weight table
+  Table phi_tab("tables/phi_0_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
   Table eta_tab("tables/eta_trapezoid_table_57pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
 
   std::vector<Sampled_Particle> particle_event_list_in;
+  //particle_event_list_in.resize(0);
   efa.calculate_spectra(particle_event_list_in);
 
   //copy final particle list to memory to pass to JETSCAPE module
@@ -186,4 +197,5 @@ void IS3D::run_particlization(int fo_from_file)
 
   printline();
   cout << "Done calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
+
 }

@@ -30,20 +30,23 @@ DeltafReader::~DeltafReader()
 
 }
 
+
 deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_length)
 {
   deltaf_coefficients df_data;
 
-  // average T and muB (fm^-1) (assumed to be ~ same for all cells)
-  double Tavg, Eavg, Pavg, muBavg, nBavg;
-  FILE * avg_thermo_file;
-  avg_thermo_file = fopen("average_thermodynamic_quantities.dat", "r");
-  if(avg_thermo_file == NULL) printf("Couldn't open average thermodynamic file\n");
-  fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg);
-  fclose(avg_thermo_file);
+  Plasma QGP;
+  QGP.load_thermodynamic_averages();
 
-  double T_FO = Tavg / hbarC;
-  double muB_FO = muBavg / hbarC;
+  double T = QGP.temperature;
+  double E = QGP.energy_density;
+  double P = QGP.pressure;
+  double muB = QGP.baryon_chemical_potential;
+
+  df_data.shear14_coeff = 2.0 * T * T * (E + P);
+
+  double T_FO = T / hbarC;
+  double muB_FO = muB / hbarC;    // the file units are in fm
 
 
   printf("Reading in ");
@@ -52,41 +55,17 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
   {
     printf("14-moment coefficients vhydro...\n");
     // coefficient files and names
-    FILE * c0_file;
-    FILE * c1_file;
-    FILE * c2_file;
-    FILE * c3_file;
-    FILE * c4_file;
-
-    char c0_name[255];
-    char c1_name[255];
-    char c2_name[255];
-    char c3_name[255];
-    char c4_name[255];
-
-    // for skipping header
-    char header[300];
-
-    // how to put pathTodeltaf in here
-
-    sprintf(c0_name, "%s", "deltaf_coefficients/vh/c0_df14_vh.dat");
-    sprintf(c1_name, "%s", "deltaf_coefficients/vh/c1_df14_vh.dat");
-    sprintf(c2_name, "%s", "deltaf_coefficients/vh/c2_df14_vh.dat");
-    sprintf(c3_name, "%s", "deltaf_coefficients/vh/c3_df14_vh.dat");
-    sprintf(c4_name, "%s", "deltaf_coefficients/vh/c4_df14_vh.dat");
-
-    c0_file = fopen(c0_name, "r");
-    c1_file = fopen(c1_name, "r");
-    c2_file = fopen(c2_name, "r");
-    c3_file = fopen(c3_name, "r");
-    c4_file = fopen(c4_name, "r");
+    FILE * c0_file = fopen("deltaf_coefficients/vh/c0_df14_vh.dat", "r");
+    FILE * c1_file = fopen("deltaf_coefficients/vh/c1_df14_vh.dat", "r");
+    FILE * c2_file = fopen("deltaf_coefficients/vh/c2_df14_vh.dat", "r");
+    FILE * c3_file = fopen("deltaf_coefficients/vh/c3_df14_vh.dat", "r");
+    FILE * c4_file = fopen("deltaf_coefficients/vh/c4_df14_vh.dat", "r");
 
     if(c0_file == NULL) printf("Couldn't open c0 coefficient file!\n");
     if(c1_file == NULL) printf("Couldn't open c1 coefficient file!\n");
     if(c2_file == NULL) printf("Couldn't open c2 coefficient file!\n");
     if(c3_file == NULL) printf("Couldn't open c3 coefficient file!\n");
     if(c4_file == NULL) printf("Couldn't open c4 coefficient file!\n");
-
 
     int nT = 0;
     int nB = 0;
@@ -100,15 +79,13 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
 
     if(!include_baryon) nB = 1;
 
-    //cout << nT << "\t" << nB << endl;
-
-    // skip the headers
+    // skip the header
+    char header[300];
     fgets(header, 100, c0_file);
     fgets(header, 100, c1_file);
     fgets(header, 100, c2_file);
     fgets(header, 100, c3_file);
     fgets(header, 100, c4_file);
-
 
     // T and muB arrays
     double T_array[nT];
@@ -162,7 +139,6 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
       if(found) break;
     } // iB
 
-    // close files
     fclose(c0_file);
     fclose(c1_file);
     fclose(c2_file);
@@ -175,41 +151,17 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
     printf("Chapman-Enskog coefficients vhydro...\n");
 
     // coefficient files and names
-    FILE * F_file;
-    FILE * G_file;
-    FILE * betabulk_file;
-    FILE * betaV_file;
-    FILE * betapi_file;
-
-    char F_name[255];
-    char G_name[255];
-    char betabulk_name[255];
-    char betaV_name[255];
-    char betapi_name[255];
-
-    // for skipping header
-    char header[300];
-
-    // how to take put pathTodeltaf in here?
-
-    sprintf(F_name, "%s", "deltaf_coefficients/vh/F_dfce_vh.dat");
-    sprintf(G_name, "%s", "deltaf_coefficients/vh/G_dfce_vh.dat");
-    sprintf(betabulk_name, "%s", "deltaf_coefficients/vh/betabulk_dfce_vh.dat");
-    sprintf(betaV_name, "%s", "deltaf_coefficients/vh/betaV_dfce_vh.dat");
-    sprintf(betapi_name, "%s", "deltaf_coefficients/vh/betapi_dfce_vh.dat");
-
-    F_file = fopen(F_name, "r");
-    G_file = fopen(G_name, "r");
-    betabulk_file = fopen(betabulk_name, "r");
-    betaV_file = fopen(betaV_name, "r");
-    betapi_file = fopen(betapi_name, "r");
+    FILE * F_file = fopen("deltaf_coefficients/vh/F_dfce_vh.dat", "r");
+    FILE * G_file = fopen("deltaf_coefficients/vh/G_dfce_vh.dat", "r");
+    FILE * betabulk_file = fopen("deltaf_coefficients/vh/betabulk_dfce_vh.dat", "r");
+    FILE * betaV_file = fopen("deltaf_coefficients/vh/betaV_dfce_vh.dat", "r");
+    FILE * betapi_file = fopen("deltaf_coefficients/vh/betapi_dfce_vh.dat", "r");
 
     if(F_file == NULL) printf("Couldn't open F coefficient file!\n");
     if(G_file == NULL) printf("Couldn't open G coefficient file!\n");
     if(betabulk_file == NULL) printf("Couldn't open betabulk coefficient file!\n");
     if(betaV_file == NULL) printf("Couldn't open betaV coefficient file!\n");
     if(betapi_file == NULL) printf("Couldn't open betapi coefficient file!\n");
-
 
     int nT = 0;
     int nB = 0;
@@ -223,15 +175,14 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
 
     if(!include_baryon) nB = 1;
 
-    //cout << nT << "\t" << nB << endl;
-
     // skip the headers
+    char header[300];
+
     fgets(header, 100, F_file);
     fgets(header, 100, G_file);
     fgets(header, 100, betabulk_file);
     fgets(header, 100, betaV_file);
     fgets(header, 100, betapi_file);
-
 
     // T and muB arrays
     double T_array[nT];
@@ -283,7 +234,6 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
       if(found) break;
     } //iB
 
-    // close files
     fclose(F_file);
     fclose(G_file);
     fclose(betabulk_file);

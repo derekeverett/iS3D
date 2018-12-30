@@ -1,5 +1,5 @@
 
-
+rm "average_thermodynamic_quantities.dat"
 rm -r results
 mkdir results
 
