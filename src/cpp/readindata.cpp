@@ -58,6 +58,37 @@ void Gauss_Laguerre::load_roots_and_weights(string file_name)
 }
 
 
+Gauss_Legendre::Gauss_Legendre()
+{
+  /////////////////////////
+}
+
+void Gauss_Legendre::load_roots_and_weights(string file_name)
+{
+  stringstream file;
+  file << file_name;
+
+  FILE * gauss_file = fopen(file.str().c_str(), "r");
+
+  if(gauss_file == NULL) printf("Error: couldn't open gauss legendre file\n");
+
+  fscanf(gauss_file, "%d", &points);
+
+  // allocate memory for the roots and weights
+  root = (double *)calloc(points, sizeof(double));
+  weight = (double *)calloc(points, sizeof(double));
+
+
+  // load the arrays
+  for(int i = 0; i < points; i++)
+  {
+    fscanf(gauss_file, "%lf\t%lf", &root[i], &weight[i]);
+  }
+
+  fclose(gauss_file);
+}
+
+
 Plasma::Plasma()
 {
   /////////////////////////

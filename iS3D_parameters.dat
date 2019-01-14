@@ -13,7 +13,7 @@ dimension  	= 2   	# this switch determines the dimensionality of the freezeout 
 	                # 2: boost invariant
 	                # 3: full 3+1D
 
-df_mode		  = 3	# mode for type of delta-f correction
+df_mode		  = 1	# mode for type of delta-f correction
 			# 1: 14-moment approximation viscous hydro
 			# 2: Chapman-Enskog expansion viscous hydro
 			# 3: Mike's modified equilibrium distribution

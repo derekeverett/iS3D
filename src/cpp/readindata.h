@@ -23,6 +23,19 @@ class Gauss_Laguerre
     void load_roots_and_weights(string file_name);
 };
 
+class Gauss_Legendre
+{
+  private:
+
+  public:
+    int points;  // # quadrature points
+    double * root;
+    double * weight;
+
+    Gauss_Legendre();
+    void load_roots_and_weights(string file_name);
+};
+
 class Plasma
 {
   private:
