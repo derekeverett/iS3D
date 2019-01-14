@@ -49,7 +49,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
   double muB_FO = muB / hbarC;    // the file units are in fm
 
 
-  printf("Reading in ");
+  printf("Reading in ");  // or I could compute these guys directly
 
   if(df_mode == 1)
   {
@@ -246,32 +246,11 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
     printf("14-moment coefficients vahydro PL...\n");
 
     // coefficient files and names
-    FILE * c0_file;
-    FILE * c1_file;
-    FILE * c2_file;
-    FILE * c3_file;
-    FILE * c4_file;
-
-    char c0_name[255];
-    char c1_name[255];
-    char c2_name[255];
-    char c3_name[255];
-    char c4_name[255];
-
-    // for skipping header
-    char header[300];
-
-    sprintf(c0_name, "%s", "deltaf_coefficients/vah/c0_vah1.dat");
-    sprintf(c1_name, "%s", "deltaf_coefficients/vah/c1_vah1.dat");
-    sprintf(c2_name, "%s", "deltaf_coefficients/vah/c2_vah1.dat");
-    sprintf(c3_name, "%s", "deltaf_coefficients/vah/c3_vah1.dat");
-    sprintf(c4_name, "%s", "deltaf_coefficients/vah/c4_vah1.dat");
-
-    c0_file = fopen(c0_name, "r");
-    c1_file = fopen(c1_name, "r");
-    c2_file = fopen(c2_name, "r");
-    c3_file = fopen(c3_name, "r");
-    c4_file = fopen(c4_name, "r");
+    FILE * c0_file = fopen("deltaf_coefficients/vah/c0_vah1.dat", "r");
+    FILE * c1_file = fopen("deltaf_coefficients/vah/c1_vah1.dat", "r");
+    FILE * c2_file = fopen("deltaf_coefficients/vah/c2_vah1.dat", "r");
+    FILE * c3_file = fopen("deltaf_coefficients/vah/c3_vah1.dat", "r");
+    FILE * c4_file = fopen("deltaf_coefficients/vah/c4_vah1.dat", "r");
 
     if(c0_file == NULL) printf("Couldn't open c0 coefficient file!\n");
     if(c1_file == NULL) printf("Couldn't open c1 coefficient file!\n");
@@ -292,6 +271,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
     //cout << nL << "\t" << naL << endl;
 
     //skip the header with labels and units
+    char header[300];
     fgets(header, 100, c0_file);
     fgets(header, 100, c1_file);
     fgets(header, 100, c2_file);

@@ -71,28 +71,29 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     double yValues[y_pts];
     double etaValues[eta_pts];
     double etaTrapezoidWeights[eta_pts];    // eta_weight * delta_eta
-    double delta_eta = fabs((eta_tab -> get(1,2)) - (eta_tab -> get(1,1)));  // assume uniform grid
+
+    etaValues[0] = 0.0;           // below, will load eta_fo
+    etaTrapezoidWeights[0] = 1.0; // 1.0 for 3+1d
+
+    for(int iy = 0; iy < y_pts; iy++)
+    {
+      yValues[iy] = y_tab->get(1, iy + 1);  // default
+    }
 
     if(DIMENSION == 2)
     {
       yValues[0] = 0.0;
 
+      // assume uniform grid
+      double delta_eta = eta_tab -> get(1,2) - eta_tab -> get(1,1);
+
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
         etaValues[ieta] = eta_tab->get(1, ieta + 1);
-        etaTrapezoidWeights[ieta] = (eta_tab->get(2, ieta + 1)) * delta_eta;
-        //cout << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
+        etaTrapezoidWeights[ieta] = (eta_tab->get(2, ieta + 1)) * fabs(delta_eta);
       }
     }
-    else if(DIMENSION == 3)
-    {
-      etaValues[0] = 0.0;       // below, will load eta_fo
-      etaTrapezoidWeights[0] = 1.0; // 1.0 for 3+1d
-      for(int iy = 0; iy < y_pts; iy++)
-      {
-        yValues[iy] = y_tab->get(1, iy + 1);
-      }
-    }
+
 
     // averaged thermodynamic quantities
     double T = QGP->temperature;

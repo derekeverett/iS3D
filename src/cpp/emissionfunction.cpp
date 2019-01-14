@@ -49,6 +49,34 @@ void Lab_Momentum::boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut,
 }
 //------------------------------------------
 
+
+double pion_thermal_weight_max(double mass, double T, double chem)
+{
+  // rescale the pion thermal weight by the max value if m/T < 0.8554 (the max is local)
+  // we assume no pion chemical potential (i.e. ignore non-equilibrium chemical potential EoS models)
+
+  if(chem != 0.0) printf("Error: pion has chemical potential\n");
+
+  double x = mass / T;  // x < 0.8554
+
+  double x2 = x * x;
+  double x3 = x2 * x;
+  double x4 = x3 * x;
+
+  // rational polynomial fit of the max value
+  double max = (143206.88623164667 - 95956.76008684626*x - 21341.937407169076*x2 + 14388.446116867359*x3 -
+     6083.775788504437*x4)/
+    (-0.3541350577684533 + 143218.69233952634*x - 24516.803600065778*x2 - 115811.59391199696*x3 +
+     35814.36403387459*x4);
+
+  if(x < 0.1) printf("Out of data interpolation range: extrapolating fit...\n");
+
+  double buffer = 1.000001; // small buffer to ensure rescaled thermal weight <= 1.0
+
+  return buffer * max;
+}
+
+
 double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem)
 {
   // may want to use a direct gauss quadrature instead

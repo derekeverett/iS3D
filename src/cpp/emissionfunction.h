@@ -48,6 +48,9 @@ typedef struct
   double slope;
 } MT_fit_parameters;
 
+
+double pion_thermal_weight_max(double mass, double T, double chem);
+
 // thermal particle density (just for crosschecking)
 double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
 

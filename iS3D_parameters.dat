@@ -1,4 +1,4 @@
-operation	= 1	# operation
+operation	= 2	# operation
 			# 1 : performs smooth cooper frye resulting in dN/pTdpTdphidy
 			# 2 : performs sampling of particle distribution resulting in particle list
 
@@ -16,10 +16,11 @@ dimension  	= 2   	# this switch determines the dimensionality of the freezeout 
 df_mode		  = 3	# mode for type of delta-f correction
 			# 1: 14-moment approximation viscous hydro
 			# 2: Chapman-Enskog expansion viscous hydro
-			# 3: Modified equilibrium distribution
-			# 4: 14-moment approximation vahydro (PL matching)
-			# 5: Chapman-Enskog expansion vahydro (PL, PT matching)
-			# 6: Modified anisotropic distribution
+			# 3: Mike's modified equilibrium distribution
+			# 4: Jonah's modified equilibrium distribution
+			# 5: 14-moment approximation vahydro (PL matching)
+			# 6: Chapman-Enskog expansion vahydro (PL, PT matching)
+			# 7: Modified anisotropic distribution
 
 include_baryon            	= 0   # switch to include baryon chemical potential in distribution function
 include_bulk_deltaf       	= 1   # switch to include bulk df correction (or residual bulk for VAH)
