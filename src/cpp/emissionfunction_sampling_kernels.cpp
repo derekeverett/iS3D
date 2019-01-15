@@ -302,15 +302,13 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
     } // df_mode
 
   }
-  // external prefactor = degeneracy.ds_space.T^3 / (4.pi^2.hbar^3) (or T_mod^3)
+  // prefactor
   if(df_mode == 3 && !feqmod_breaks_down)
   {
     return n_outflow * degeneracy * ds_space * detA * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
   }
   else
   {
-    //cout << setprecision(15) << n_outflow * degeneracy * ds_space * T * T * T / four_pi2_hbarC3 << endl;
-    //exit(-1);
     return n_outflow * degeneracy * ds_space * T * T * T / four_pi2_hbarC3;
   }
 
@@ -396,6 +394,9 @@ double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, do
 
 LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, deltaf_coefficients * df, double baryon_enthalpy_ratio, int df_mode)
 {
+  // samples the local rest frame momentum from a
+  // distribution with linear viscous corrections
+
   double mass_squared = mass * mass;
   double chem = baryon * alphaB;
 
@@ -416,6 +417,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
   double ds_magnitude = dsigma.dsigma_magnitude;
 
 
+  // local rest frame momentum
   LRF_Momentum pLRF;
 
 
@@ -443,8 +445,8 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       double phi = two_pi * pow((l1 + l2) / (l1 + l2 + l3), 2);
       double costheta = (l1 - l2) / (l1 + l2);
 
-      double E = sqrt(p * p  +  mass_squared);
-      double sintheta = sqrt(1.0  -  costheta * costheta);
+      double E = sqrt(p * p  +  mass_squared);              // energy
+      double sintheta = sqrt(1.0  -  costheta * costheta);  // sin(theta)
 
       // pLRF components
       pLRF.E = E;
@@ -461,6 +463,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
      
       double weight_light = w_eq * w_flux * w_visc;
 
+      // check if 0 <= weight <= 1
       if(fabs(weight_light - 0.5) > 0.5) printf("Error: weight_light = %lf out of bounds\n", weight_light);
 
       // check pLRF acceptance
@@ -540,9 +543,9 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
         exit(-1);
       }
 
-      double E = k + mass;
-      double p = sqrt(E * E  -  mass_squared);
-      double sintheta = sqrt(1.0  -  costheta * costheta);
+      double E = k + mass;                                    // energy
+      double p = sqrt(E * E  -  mass_squared);                // momentum magnitude
+      double sintheta = sqrt(1.0  -  costheta * costheta);    // sin(theta)
 
       // pLRF components
       pLRF.E = E;
@@ -559,6 +562,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
       double weight_heavy = w_eq * w_flux * w_visc;
 
+      // check if 0 <= weight <= 1
       if(fabs(weight_heavy - 0.5) > 0.5) printf("Error: weight_heavy = %f out of bounds\n", weight_heavy);
 
       // check pLRF acceptance
@@ -575,36 +579,45 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 }
 
 
-LRF_Momentum rescale_momentum(LRF_Momentum pmod, double mass_squared, double baryon, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio)
+LRF_Momentum rescale_momentum(LRF_Momentum pLRF_mod, double mass_squared, double baryon, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_mod, double diff_mod, double baryon_enthalpy_ratio)
 {
-    double E_mod = pmod.E;    double py_mod = pmod.py;
-    double px_mod = pmod.px;  double pz_mod = pmod.pz;
+    double E_mod = pLRF_mod.E;    
+    double px_mod = pLRF_mod.px;  
+    double py_mod = pLRF_mod.py;
+    double pz_mod = pLRF_mod.pz;
 
     // LRF shear stress components
-    double pixx = pimunu.pixx_LRF;  double piyy = pimunu.piyy_LRF;
-    double pixy = pimunu.pixy_LRF;  double piyz = pimunu.piyz_LRF;
-    double pixz = pimunu.pixz_LRF;  double pizz = pimunu.pizz_LRF;
+    double pixx = pimunu.pixx_LRF;  
+    double pixy = pimunu.pixy_LRF;  
+    double pixz = pimunu.pixz_LRF; 
+    double piyy = pimunu.piyy_LRF;
+    double piyz = pimunu.piyz_LRF;
+    double pizz = pimunu.pizz_LRF;
 
     // LRF baryon diffusion components
     double Vx = Vmu.Vx_LRF;
     double Vy = Vmu.Vy_LRF;
     double Vz = Vmu.Vz_LRF;
-    diff_coeff *= (E_mod * baryon_enthalpy_ratio  +  baryon);
+    diff_mod *= (E_mod * baryon_enthalpy_ratio  +  baryon);
 
     LRF_Momentum pLRF;
 
     // local momentum transformation
-    pLRF.px = (1.0 + bulk_coeff) * px_mod  +  shear_coeff * (pixx * px_mod  +  pixy * py_mod  +  pixz * pz_mod)  +  diff_coeff * Vx;
-    pLRF.py = (1.0 + bulk_coeff) * py_mod  +  shear_coeff * (pixy * px_mod  +  piyy * py_mod  +  piyz * pz_mod)  +  diff_coeff * Vy;
-    pLRF.pz = (1.0 + bulk_coeff) * pz_mod  +  shear_coeff * (pixz * px_mod  +  piyz * py_mod  +  pizz * pz_mod)  +  diff_coeff * Vz;
+    // p_i = A_ij * p_mod_j  +  E_mod * q_i  +  b * T * a_i
+    pLRF.px = (1.0 + bulk_mod) * px_mod  +  shear_mod * (pixx * px_mod  +  pixy * py_mod  +  pixz * pz_mod)  +  diff_mod * Vx;
+    pLRF.py = (1.0 + bulk_mod) * py_mod  +  shear_mod * (pixy * px_mod  +  piyy * py_mod  +  piyz * pz_mod)  +  diff_mod * Vy;
+    pLRF.pz = (1.0 + bulk_mod) * pz_mod  +  shear_mod * (pixz * px_mod  +  piyz * py_mod  +  pizz * pz_mod)  +  diff_mod * Vz;
     pLRF.E = sqrt(mass_squared  +  pLRF.px * pLRF.px  +  pLRF.py * pLRF.py  +  pLRF.pz * pLRF.pz);
 
     return pLRF;
 }
 
 
-LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T_mod, double alphaB_mod, Surface_Element_Vector dsigma, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio)
+LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T_mod, double alphaB_mod, Surface_Element_Vector dsigma, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_mod, double bulk_mod, double diff_mod, double baryon_enthalpy_ratio)
 {
+  // samples the local rest frame momentum
+  // from a modified equilibrium distribution
+
   double mass_squared = mass * mass;
   double chem_mod = baryon * alphaB_mod;
 
@@ -623,14 +636,14 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
   double dsz = dsigma.dsigmaz_LRF;
   double ds_magnitude = dsigma.dsigma_magnitude;
 
-  LRF_Momentum pLRF;                          // LRF momentum
-  LRF_Momentum pLRF_mod;                      // modified LRF momentum
+  LRF_Momentum pLRF;                          // local rest frame momentum
+  LRF_Momentum pLRF_mod;                      // modified local rest frame momentum
 
   bool rejected = true;
 
   if(mass / T_mod < 1.008)
   {
-    double w_mod_max = 1.0; // default value if don't need to rescale w_mod = exp(p'/T') / (exp(E'/T') - 1)
+    double w_mod_max = 1.0; // default value if don't rescale w_mod = exp(p'/T') / (exp(E'/T') - 1)
 
     // modified temperature increases, so it's possible pions are too light w/o rescaling w_mod
     if(mass / T_mod <= 0.8554 && sign == -1.0) w_mod_max = pion_thermal_weight_max(mass, T_mod, chem_mod);
@@ -652,7 +665,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       double costheta_mod = (l1 - l2) / (l1 + l2);
 
       double E_mod = sqrt(p_mod * p_mod  +  mass_squared);            // modified energy
-      double sintheta_mod = sqrt(1.0 - costheta_mod * costheta_mod);
+      double sintheta_mod = sqrt(1.0 - costheta_mod * costheta_mod);  // sin(theta)
 
       // modified pLRF components
       pLRF_mod.E = E_mod;
@@ -661,7 +674,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       pLRF_mod.pz = p_mod * costheta_mod;
 
       // local momentum transformation
-      pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
+      pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
 
       double pdsigma_Theta_pdsigma = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
 
@@ -671,6 +684,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
 
       double weight_light = w_mod * w_flux;
 
+      // check if 0 <= weight <= 1
       if(fabs(weight_light - 0.5) > 0.5) printf("Error: weight = %f out of bounds\n", weight_light);
 
       // check pLRF acceptance
@@ -701,7 +715,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
 
       heavy_distribution sampled_distribution = K_mod_distribution(generator);
 
-      // select distribution to sample from based on integrated weights
+      // sample one of the 3 distributions based on integrated weights
       if(sampled_distribution == heavy)
       {
         // draw k_mod from exp(-k_mod/T_mod).dk_mod by sampling r1
@@ -746,7 +760,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       } // distribution 3 (light)
       else
       {
-        printf("Error: did not sample any K distribution\n");
+        printf("Error: did not sample any K_mod distribution\n");
         exit(-1);
       }
 
@@ -761,7 +775,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       pLRF_mod.pz = p_mod * costheta_mod;
 
       // local momentum transformation
-      pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_coeff, bulk_coeff, diff_coeff, baryon_enthalpy_ratio);
+      pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
 
       double pdsigma_Theta_pdsigma = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
 
@@ -771,6 +785,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
 
       double weight_heavy = w_mod * w_flux;
 
+      // check if 0 <= weight <= 1
       if(fabs(weight_heavy - 0.5) > 0.5) printf("Error: weight = %f out of bounds\n", weight_heavy);
 
       // check pLRF acceptance
@@ -787,8 +802,11 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
 }
 
 
-double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double * Equilibrium_Density, double * Bulk_Density, double * Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients * df, Plasma * QGP, Gauss_Laguerre * gla, Gauss_Legendre * legendre)
+double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double * Equilibrium_Density, double * Bulk_Density, double * Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients * df, Plasma * QGP, Gauss_Laguerre * laguerre, Gauss_Legendre * legendre)
   {
+    // calculate the total particle yield from the freezeout surface
+    // to determine the number of events you want to sample
+
     printf("Total particle yield = ");
 
     int npart = number_of_chosen_particles;
@@ -797,15 +815,15 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
 
     int eta_pts = 1;
     if(DIMENSION == 2) eta_pts = eta_tab_length;
-    double etaIntegrationWeights[eta_pts];
-    etaIntegrationWeights[0] = 1.0;  // default for 3+1d
+    double etaWeights[eta_pts];
+    etaWeights[0] = 1.0;  // default for 3+1d
 
     if(DIMENSION == 2)
     {
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
-        etaIntegrationWeights[ieta] = eta_tab->get(2, ieta + 1);
-        //cout << ieta << "\t" << etaIntegrationWeights[ieta] << endl;
+        etaWeights[ieta] = eta_tab->get(2, ieta + 1);
+        //cout << ieta << "\t" << etaWeights[ieta] << endl;
       }
     }
 
@@ -992,20 +1010,20 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       // add mean number of hadrons in FO cell to total yield
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
-        Ntot += dn_tot * etaIntegrationWeights[ieta];
+        Ntot += dn_tot * etaWeights[ieta];
       }
 
     } // freezeout cells (icell)
 
     mean_yield = Ntot;
-    printf("%lf\n", Ntot/14.0);
+    printf("%lf\n", Ntot/14.0); // dN/deta
 
     return Ntot;
 
   }
 
 
-void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients *df, Plasma * QGP, Gauss_Laguerre * gla, Gauss_Legendre * legendre)
+void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients *df, Plasma * QGP, Gauss_Laguerre * laguerre, Gauss_Legendre * legendre)
   {
     int npart = number_of_chosen_particles;
 
@@ -1031,29 +1049,29 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     int eta_pts = 1;
     if(DIMENSION == 2) eta_pts = eta_tab_length;
     double etaValues[eta_pts];
-    double etaIntegrationWeights[eta_pts];
+    double etaWeights[eta_pts];
 
-    etaIntegrationWeights[0] = 1.0;
+    etaWeights[0] = 1.0;
 
     if(DIMENSION == 2)
     {
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
         etaValues[ieta] = eta_tab->get(1, ieta + 1);
-        etaIntegrationWeights[ieta] = eta_tab->get(2, ieta + 1);
-        //cout << ieta << "\t" << etaValues[ieta] << "\t" << etaIntegrationWeights[ieta] << endl;
+        etaWeights[ieta] = eta_tab->get(2, ieta + 1);
+        //cout << ieta << "\t" << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
       }
     }
 
 
     // gauss laguerre roots and weights
-    const int pbar_pts = gla->points;
+    const int pbar_pts = laguerre->points;
 
-    double * pbar_root1 = gla->root[1];
-    double * pbar_root2 = gla->root[2];
+    double * pbar_root1 = laguerre->root[1];
+    double * pbar_root2 = laguerre->root[2];
 
-    double * pbar_weight1 = gla->weight[1];
-    double * pbar_weight2 = gla->weight[2];
+    double * pbar_weight1 = laguerre->weight[1];
+    double * pbar_weight2 = laguerre->weight[2];
 
 
     // averaged thermodynamic quantities
@@ -1100,11 +1118,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     long acceptances = 0;
     long samples = 0;
 
-    //loop over all freezeout cells
+    // loop over all freezeout cells
     //#pragma omp parallel for
     for(long icell = 0; icell < FO_length; icell++)
     {
-      double tau = tau_fo[icell];         // FO cell coordinates
+      double tau = tau_fo[icell];         // freezeout cell coordinates
       double tau2 = tau * tau;
       double x = x_fo[icell];
       double y = y_fo[icell];
@@ -1254,6 +1272,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       }
 
 
+
+
+
+
       // discrete probability distribution for particle types (weight[ipart] ~ dn_list[ipart] / dn_tot)
       std::discrete_distribution<int> particle_type(dn_list.begin(), dn_list.end());
 
@@ -1265,8 +1287,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         double sinheta = sinh(eta);
         double cosheta = sqrt(1.0  +  sinheta * sinheta);
 
-        double delta_eta_weight = etaIntegrationWeights[ieta];
-        double dN_tot = delta_eta_weight * dn_tot;              // total mean number of hadrons in FO cell
+        double dN_tot = dn_tot * etaWeights[ieta];              // total mean number of hadrons in FO cell
 
         if(dN_tot <= 0.0) continue;                             // error: poisson mean value out of bounds
 
@@ -1292,7 +1313,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
             LRF_Momentum pLRF;
 
-            // sample local rest frame momentum
+            // sample the local rest frame momentum
             switch(DF_MODE)
             {
               case 1: // 14 moment
@@ -1308,11 +1329,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 if(feqmod_breaks_down) goto chapman_enskog;
 
                 // feqmod coefficients
-                double shear_mod_coeff = 0.5 / betapi;
-                double bulk_mod_coeff = bulkPi / (3.0 * betabulk);
-                double diff_mod_coeff = T / betaV;
+                double shear_mod = 0.5 / betapi;
+                double bulk_mod = bulkPi / (3.0 * betabulk);
+                double diff_mod = T / betaV;
 
-                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_mod_coeff, bulk_mod_coeff, diff_mod_coeff, baryon_enthalpy_ratio);
+                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
 
                 break;
               }
@@ -1322,11 +1343,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 // what would I go to?
                 double lambda = 0.0;  // need to replace with the interpolated value
 
-                double shear_mod_coeff = 0.5 / betapi;
-                double bulk_mod_coeff = lambda;
+                double shear_mod = 0.5 / betapi;
+                double bulk_mod = lambda;
 
                 // reusing function should be okay
-                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, 0.0, T, 0.0, dsigma, pimunu, Vmu, shear_mod_coeff, bulk_mod_coeff, 0.0, 0.0);
+                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, 0.0, T, 0.0, dsigma, pimunu, Vmu, shear_mod_, bulk_mod_, 0.0, 0.0);
 
                 break;
               }
