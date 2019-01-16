@@ -392,7 +392,7 @@ double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, do
 }
 
 
-LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, deltaf_coefficients * df, double baryon_enthalpy_ratio, int df_mode)
+LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, deltaf_coefficients * df, double baryon_enthalpy_ratio, int df_mode, int dynamical)
 {
   // samples the local rest frame momentum from a
   // distribution with linear viscous corrections
@@ -454,11 +454,22 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       pLRF.py = p * sintheta * sin(phi);
       pLRF.pz = p * costheta;
 
-      double pdsigma_Theta_pdsigma = max(0.0, E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
+      double pdsigma = E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
+
+      double pdsigma_term;
+
+      if(dynamical) // trying this...
+      {
+        pdsigma_term = fabs(pdsigma);
+      }
+      else // pdsigma * Theta(pdsigma)
+      {
+        pdsigma_term = max(0.0, pdsigma);
+      }
 
       // compute the weights
       double w_eq = exp(p/T) / (exp(E/T) + sign) / weq_max;
-      double w_flux = pdsigma_Theta_pdsigma / (E * ds_magnitude);
+      double w_flux = pdsigma_term / (E * ds_magnitude);
       double w_visc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, df_mode);
 
       double weight_light = w_eq * w_flux * w_visc;
@@ -553,11 +564,23 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       pLRF.py = p * sintheta * sin(phi);
       pLRF.pz = p * costheta;
 
-      double pdsigma_Theta_pdsigma = max(0.0, E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
+      double pdsigma = E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
+
+      double pdsigma_term;
+
+      if(dynamical) // trying this...
+      {
+        pdsigma_term = fabs(pdsigma);
+      }
+      else // pdsigma * Theta(pdsigma)
+      {
+        pdsigma_term = max(0.0, pdsigma);
+      }
+
 
       // compute the weight
       double w_eq = p/E * exp(E/T - chem) / (exp(E/T - chem) + sign);
-      double w_flux = pdsigma_Theta_pdsigma / (E * ds_magnitude);
+      double w_flux = pdsigma_term / (E * ds_magnitude);
       double w_visc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, df_mode);
 
       double weight_heavy = w_eq * w_flux * w_visc;
@@ -613,7 +636,7 @@ LRF_Momentum rescale_momentum(LRF_Momentum pLRF_mod, double mass_squared, double
 }
 
 
-LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T_mod, double alphaB_mod, Surface_Element_Vector dsigma, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_mod, double bulk_mod, double diff_mod, double baryon_enthalpy_ratio)
+LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T_mod, double alphaB_mod, Surface_Element_Vector dsigma, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_mod, double bulk_mod, double diff_mod, double baryon_enthalpy_ratio, int dynamical)
 {
   // samples the local rest frame momentum
   // from a modified equilibrium distribution
@@ -676,11 +699,22 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       // local momentum transformation
       pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
 
-      double pdsigma_Theta_pdsigma = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
+      double pdsigma = pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
+
+      double pdsigma_term;
+
+      if(dynamical) // trying this...
+      {
+        pdsigma_term = fabs(pdsigma);
+      }
+      else // pdsigma * Theta(pdsigma)
+      {
+        pdsigma_term = max(0.0, pdsigma);
+      }
 
       // compute the weight
       double w_mod = exp(p_mod/T_mod - chem_mod) / (exp(E_mod/T_mod - chem_mod) + sign) / w_mod_max;
-      double w_flux = pdsigma_Theta_pdsigma / (pLRF.E * ds_magnitude);
+      double w_flux = pdsigma_term / (pLRF.E * ds_magnitude);
 
       double weight_light = w_mod * w_flux;
 
@@ -777,11 +811,22 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       // local momentum transformation
       pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
 
-      double pdsigma_Theta_pdsigma = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
+      double pdsigma = pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
+
+      double pdsigma_term;
+
+      if(dynamical) // trying this...
+      {
+        pdsigma_term = fabs(pdsigma);
+      }
+      else // pdsigma * Theta(pdsigma)
+      {
+        pdsigma_term = max(0.0, pdsigma);
+      }
 
       // compute the weight
       double w_mod = (p_mod/E_mod) * exp(E_mod/T_mod - chem_mod) / (exp(E_mod/T_mod - chem_mod) + sign);
-      double w_flux = pdsigma_Theta_pdsigma / (pLRF.E * ds_magnitude);
+      double w_flux = pdsigma_term / (pLRF.E * ds_magnitude);
 
       double weight_heavy = w_mod * w_flux;
 
@@ -1321,7 +1366,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               {
                 chapman_enskog:
 
-                pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, DF_MODE);
+                pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, DF_MODE, DYNAMICAL);
                 break;
               }
               case 3: // Modified (Mike)
@@ -1333,7 +1378,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 double bulk_mod = bulkPi / (3.0 * betabulk);
                 double diff_mod = T / betaV;
 
-                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
+                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio, DYNAMICAL);
 
                 break;
               }
@@ -1347,7 +1392,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 double bulk_mod = lambda;
 
                 // reusing function should be okay
-                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, 0.0, T, 0.0, dsigma, pimunu, Vmu, shear_mod, bulk_mod, 0.0, 0.0);
+                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, 0.0, T, 0.0, dsigma, pimunu, Vmu, shear_mod, bulk_mod, 0.0, 0.0, DYNAMICAL);
 
                 break;
               }
@@ -1362,7 +1407,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             Lab_Momentum pLab(pLRF);
             pLab.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
 
-            // add sampled particle to particle_event_list
+            // new sampled particle info
             Sampled_Particle new_particle;
 
             new_particle.mcID = mcid;
@@ -1385,11 +1430,34 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             //try enforcing mass shell condition on E
             new_particle.E = sqrt(mass * mass  +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
 
-            //add to particle_event_list
-            //CAREFUL push_back is not a thread-safe operation
-            //how should we modify for GPU version?
-            #pragma omp critical
-            particle_event_list[ievent].push_back(new_particle);
+
+            // is this right? I forgot lol...
+            double pdsigma = pLab.ptau * dat  + pLab.px * dax  + pLab.py * day  +  pLab.pn * dan;
+
+            if(DYNAMICAL)
+            {
+              // dynamical parameter: goal is to reproduce original Cooper Frye
+              //  - produce extra particles (Delta-N) with theta function
+              //  - sample momentum with |p.dsigma| (allowing for p.dsigma < 0 particles)
+              //  - only keep particles with p.dsigma >= 0
+              //  - throw away p.dsigma < 0 particles (absorbed into fireball as dynamical source term)
+              if(pdsigma >= 0.0)
+              {
+                #pragma omp critical
+                particle_event_list[ievent].push_back(new_particle);
+              }
+            }
+            else
+            {
+              // all particles have p.dsigma >= 0 in this setup
+              // - enforce theta function in mean number and momentum distribution
+
+              // add sampled particle to particle_event_list
+              //CAREFUL push_back is not a thread-safe operation
+              //how should we modify for GPU version?
+              #pragma omp critical
+              particle_event_list[ievent].push_back(new_particle);
+            }
 
           } // sampled hadrons (n)
 

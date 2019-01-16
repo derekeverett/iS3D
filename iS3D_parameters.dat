@@ -46,3 +46,5 @@ oversample		    = 1      #run sampler iteratively until total number of hadrons 
 min_num_hadrons		    = 1.4e+7  #across all samples >= min_num_hadrons
 
 sampler_seed		    = 1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
+
+dynamical			= 1			 # sample particles that are reabsorbed into fireball dynamically

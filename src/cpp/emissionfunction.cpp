@@ -162,6 +162,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
     SAMPLER_SEED = paraRdr->getVal("sampler_seed");
     if (OPERATION == 2) printf("Sampler seed set to %d \n", SAMPLER_SEED);
+    DYNAMICAL = paraRdr->getVal("dynamical");
 
     Nevents = 1;    // default value for number of sampled events
 
@@ -1040,7 +1041,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         piyy[icell] = surf->piyy;
         piyn[icell] = surf->piyn;
       }
-      
+
       if(INCLUDE_BULK_DELTAF)
       {
         bulkPi[icell] = surf->bulkPi;
