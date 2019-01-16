@@ -31,7 +31,7 @@ using namespace std;
 
 
 double canonical(default_random_engine & generator)
-{ 
+{
   // random number between [0,1)
   return generate_canonical<double, numeric_limits<double>::digits>(generator);
 }
@@ -73,7 +73,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
   // the feqmod formula is an approximation due to the complexity of the integral
 
 
-  // gauss legendre 
+  // gauss legendre
   const int gauss_pts = legendre->points;
 
   double * legendre_root = legendre->root;
@@ -296,7 +296,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
       }
       default:
       {
-        printf("\nParticle density outflow error: please set df_mode = (1,2,3)\n"); 
+        printf("\nParticle density outflow error: please set df_mode = (1,2,3)\n");
         exit(-1);
       }
     } // df_mode
@@ -318,15 +318,15 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, double baryon, double T, double alphaB, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, deltaf_coefficients * df, double baryon_enthalpy_ratio, int df_mode)
 {
   // pLRF components
-  double E = pLRF.E;    
-  double px = pLRF.px;  
+  double E = pLRF.E;
+  double px = pLRF.px;
   double py = pLRF.py;
   double pz = pLRF.pz;
 
   // pimunu LRF components
-  double pixx = pimunu.pixx_LRF;  
-  double pixy = pimunu.pixy_LRF;  
-  double pixz = pimunu.pixz_LRF;  
+  double pixx = pimunu.pixx_LRF;
+  double pixy = pimunu.pixy_LRF;
+  double pixz = pimunu.pixz_LRF;
   double piyy = pimunu.piyy_LRF;
   double piyz = pimunu.piyz_LRF;
   double pizz = pimunu.pizz_LRF;
@@ -460,7 +460,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       double w_eq = exp(p/T) / (exp(E/T) + sign) / weq_max;
       double w_flux = pdsigma_Theta_pdsigma / (E * ds_magnitude);
       double w_visc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, df_mode);
-     
+
       double weight_light = w_eq * w_flux * w_visc;
 
       // check if 0 <= weight <= 1
@@ -579,17 +579,17 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 }
 
 
-LRF_Momentum rescale_momentum(LRF_Momentum pLRF_mod, double mass_squared, double baryon, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_mod, double diff_mod, double baryon_enthalpy_ratio)
+LRF_Momentum rescale_momentum(LRF_Momentum pLRF_mod, double mass_squared, double baryon, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_mod, double bulk_mod, double diff_mod, double baryon_enthalpy_ratio)
 {
-    double E_mod = pLRF_mod.E;    
-    double px_mod = pLRF_mod.px;  
+    double E_mod = pLRF_mod.E;
+    double px_mod = pLRF_mod.px;
     double py_mod = pLRF_mod.py;
     double pz_mod = pLRF_mod.pz;
 
     // LRF shear stress components
-    double pixx = pimunu.pixx_LRF;  
-    double pixy = pimunu.pixy_LRF;  
-    double pixz = pimunu.pixz_LRF; 
+    double pixx = pimunu.pixx_LRF;
+    double pixy = pimunu.pixy_LRF;
+    double pixz = pimunu.pixz_LRF;
     double piyy = pimunu.piyy_LRF;
     double piyz = pimunu.piyz_LRF;
     double pizz = pimunu.pizz_LRF;
@@ -780,7 +780,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       double pdsigma_Theta_pdsigma = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
 
       // compute the weight
-      double w_mod = (p_mod/E_mod) * exp(E_mod/T_mod - chem_mod) / (exp(E_mod/T_mod - chem_mod) + sign);      
+      double w_mod = (p_mod/E_mod) * exp(E_mod/T_mod - chem_mod) / (exp(E_mod/T_mod - chem_mod) + sign);
       double w_flux = pdsigma_Theta_pdsigma / (pLRF.E * ds_magnitude);
 
       double weight_heavy = w_mod * w_flux;
@@ -828,13 +828,13 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
     }
 
     // gauss laguerre roots and weights
-    const int pbar_pts = gla->points;
+    const int pbar_pts = laguerre->points;
 
-    double * pbar_root1 = gla->root[1];
-    double * pbar_root2 = gla->root[2];
+    double * pbar_root1 = laguerre->root[1];
+    double * pbar_root2 = laguerre->root[2];
 
-    double * pbar_weight1 = gla->weight[1];
-    double * pbar_weight2 = gla->weight[2];
+    double * pbar_weight1 = laguerre->weight[1];
+    double * pbar_weight2 = laguerre->weight[2];
 
 
     // averaged thermodynamic quantities
@@ -1347,7 +1347,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 double bulk_mod = lambda;
 
                 // reusing function should be okay
-                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, 0.0, T, 0.0, dsigma, pimunu, Vmu, shear_mod_, bulk_mod_, 0.0, 0.0);
+                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, 0.0, T, 0.0, dsigma, pimunu, Vmu, shear_mod, bulk_mod, 0.0, 0.0);
 
                 break;
               }

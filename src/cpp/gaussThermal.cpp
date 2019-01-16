@@ -6,9 +6,12 @@
 // gauss integration routine
 double GaussThermal(double thermal_integrand(double pbar, double mbar, double alphaB, double baryon, double sign), double * pbar_root, double * pbar_weight, int pbar_pts, double mbar, double alphaB, double baryon, double sign)
 {
-	double sum = 0.0;
-	for(int k = 0; k < pbar_pts; k++) sum += pbar_weight[k] * thermal_integrand(pbar_root[k], mbar, alphaB, baryon, sign);
-	return sum;
+	double integral = 0.0;
+	for(int k = 0; k < pbar_pts; k++)
+	{
+		integral += pbar_weight[k] * thermal_integrand(pbar_root[k], mbar, alphaB, baryon, sign);
+	}
+	return integral;
 }
 
 

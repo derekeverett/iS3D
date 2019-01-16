@@ -31,6 +31,7 @@ void Gauss_Laguerre::load_roots_and_weights(string file_name)
 
   if(gauss_file == NULL) printf("Error: couldn't open gauss laguerre file\n");
 
+  // get the powers and number of gauss points
   fscanf(gauss_file, "%d\t%d", &alpha, &points);
 
   // allocate memory for the roots and weights

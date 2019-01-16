@@ -13,6 +13,7 @@
 
 using namespace std;
 
+// local rest frame momentum
 typedef struct
 {
   double E;    // u.p
@@ -21,6 +22,7 @@ typedef struct
   double pz;   // -Z.p
 } LRF_Momentum;
 
+// lab frame momentum
 class Lab_Momentum
 {
   private:          // LRF momentum components
@@ -29,7 +31,7 @@ class Lab_Momentum
     double py_LRF;
     double pz_LRF;
 
-  public:           // contravariant lab frame momentum p^mu (milne)
+  public:           // contravariant lab frame momentum p^mu (milne components)
     double ptau;    // p^tau
     double px;      // p^x
     double py;      // p^y
@@ -39,6 +41,7 @@ class Lab_Momentum
     void boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut, double ux, double uy, double un);
 };
 
+// three distributions to sample heavy hadrons
 typedef enum {heavy, moderate, light} heavy_distribution;
 
 typedef struct
@@ -51,10 +54,9 @@ typedef struct
 } MT_fit_parameters;
 
 
-//double pion_thermal_weight_max(double mass, double T, double chem);
 
 // thermal particle density (just for crosschecking)
-double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
+//double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
 
 double compute_detA(Shear_Stress pimunu, double bulkPi, double betapi, double betabulk);
 
@@ -74,7 +76,9 @@ private:
   int MODE; //vh or vah , ...
   int DF_MODE;  // delta-f type
   int DIMENSION; // hydro d+1 dimensions (2+1 or 3+1)
-  int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
+  int INCLUDE_BULK_DELTAF;
+  int INCLUDE_SHEAR_DELTAF;
+  int INCLUDE_BARYONDIFF_DELTAF;
 
   int REGULATE_DELTAF;
   int OUTFLOW;
@@ -107,8 +111,6 @@ private:
   std::vector<Sampled_Particle> particle_list;                        // to hold sampled particle list (inactive)
   std::vector< std::vector<Sampled_Particle> > particle_event_list;   // holds sampled particle list of all events
   std::vector<int> particle_yield_list;                               // particle yield for all events (includes p.dsigma particles)
-
-  //vector<int> chosen_pion0;             // stores chosen particle index of pion0 (for tracking feqmod breakdown)
 
   int *chosen_particles_01_table;       // has length Nparticle, 0 means miss, 1 means include
   int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table
@@ -152,14 +154,14 @@ public:
   // sampling spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
-  // calculate total particle yield from freezeout surface -> number of events to sample
+  // calculate average total particle yield from freezeout surface to determine number of events to sample
   double calculate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double * Equilibrium_Density, double * Bulk_Density, double * Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients * df, Plasma * QGP, Gauss_Laguerre * laguerre, Gauss_Legendre * legendre);
 
- 
+
   // sample particles with feq + df or feqmod
   void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients * df, Plasma * QGP, Gauss_Laguerre * laguerre, Gauss_Legendre * legendre);
 
- 
+
 
   void sample_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
   double *, double *, double *, double *, double *,

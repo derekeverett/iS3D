@@ -40,7 +40,7 @@ class Plasma
 {
   private:
     // I just wanted a cool name
-  public:                               // averages over the freezeout surface
+  public:                               // average thermo quantities over freezeout surface
     double temperature;                 // GeV
     double energy_density;              // GeV / fm^3
     double pressure;                    // GeV / fm^3
