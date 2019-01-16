@@ -102,19 +102,15 @@ bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pio
   double nlinear_pion0 = neq_pion0 + dn_pion0;
 
   if(nlinear_pion0 < 0.0) return true;
-  
+
   return false;
 }
 
 bool does_feqmod_breakdown(double detA, double detA_min, bool pion_density_negative)
 {
   if(detA <= detA_min || pion_density_negative) return true;
-  
   return false;
 }
-
-
-
 
 
 // Class EmissionFunctionArray ------------------------------------------
@@ -342,6 +338,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       int mcid = MCID[ipart];
       sprintf(filename, "results/dN_pTdpTdphidy_%d.dat", mcid);
       ofstream spectraFile(filename, ios_base::app);
+      //write the header
+      spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_pTdpTdphidy" << "\n";
       for (int iy = 0; iy < y_pts; iy++)
       {
         double y;
@@ -1377,9 +1375,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     if (OPERATION == 1)
     {
       write_dN_pTdpTdphidy_toFile(MCID);
-      //write_dN_dpTdphidy_toFile(MCID);
+      write_dN_dpTdphidy_toFile(MCID);
 
-      //write_dN_dphidy_toFile(MCID);
+      write_dN_dphidy_toFile(MCID);
       write_dN_dy_toFile(MCID);
       //write_dN_twopipTdpTdy_toFile(MCID);
 

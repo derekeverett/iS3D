@@ -16,8 +16,6 @@
 #include "ParameterReader.h"
 #include "deltafReader.h"
 
-//using namespace std;
-
 IS3D::IS3D()
 {
 }
@@ -25,13 +23,6 @@ IS3D::IS3D()
 IS3D::~IS3D()
 {
 }
-
-/*
-void IS3D::set_particle_list(std::vector< std::vector<Sampled_Particle> > list_in)
-{
-  IS3D::final_particles_ = list_in;
-}
-*/
 
 void IS3D::read_fo_surf_from_memory(
                               std::vector<double> tau_in,
@@ -168,9 +159,12 @@ void IS3D::run_particlization(int fo_from_file)
   printline();
 
   Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
-  Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
-  Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
-  Table eta_tab("tables/eta_trapezoid_table_21pt.dat"); //eta values and weights, hardcoded assuming trapezoid rule
+  //Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
+  //TEMPORARY
+  Table phi_tab("tables/phi_0_table.dat"); // phi value and weight table
+  //TEMPORARY
+  Table y_tab("tables/y_trapezoid_table_21pt.dat"); //y values and weights
+  Table eta_tab("tables/eta_gauss_table.dat"); //eta_s values and weights
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
 
   std::vector<Sampled_Particle> particle_event_list_in;

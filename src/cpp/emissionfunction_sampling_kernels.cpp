@@ -29,7 +29,6 @@
 
 using namespace std;
 
-
 double EmissionFunctionArray::particle_number_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, double * df_coeff, double shear14_coeff, double equilibrium_density, double bulk_density, double T_mod, double alphaB_mod, double detA, double modified_density, bool feqmod_breaks_down)
 {
   // computes the particle density from the CFF with Theta(p.dsigma) (outflow) and feq + df_regulated (or feqmod)
@@ -66,10 +65,10 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
   double chem = baryon * alphaB;
 
   // pimunu LRF components
-  double pixx_LRF = pimunu.pixx_LRF;  
+  double pixx_LRF = pimunu.pixx_LRF;
   double piyy_LRF = pimunu.piyy_LRF;
   double pizz_LRF = pimunu.pizz_LRF;
-  double pixz_LRF = pimunu.pixz_LRF;  
+  double pixz_LRF = pimunu.pixz_LRF;
 
   // df_coeff is one of them
   double c0 = df_coeff[0];    double F = df_coeff[0];
@@ -164,7 +163,7 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
 
 
           double f_time = feq_time + df_shear_time + df_bulk_time;
-          double f_space = feq_space + df_shear_space + df_bulk_space; 
+          double f_space = feq_space + df_shear_space + df_bulk_space;
 
           double integrand = ds_time_over_ds_space * f_time  -  pbar / Ebar * f_space;
           double integrand_upper_bound = 2.0 * (ds_time_over_ds_space * feq_time  -  pbar / Ebar * feq_space);
@@ -210,7 +209,7 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
           double feq_time = feq * (1.0 + costheta_star);
           double feq_space = 0.5 * feq * (costheta_star2 - 1.0);
 
-          
+
           double df_bulk = feq * feqbar * (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
           double df_bulk_time = df_bulk * (1.0 + costheta_star);
           double df_bulk_space = 0.5 * df_bulk * (costheta_star2 - 1.0);
@@ -222,7 +221,7 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
 
 
           double f_time = feq_time + df_shear_time + df_bulk_time;
-          double f_space = feq_space + df_shear_space + df_bulk_space; 
+          double f_space = feq_space + df_shear_space + df_bulk_space;
 
           double integrand = ds_time_over_ds_space * f_time  -  pbar / Ebar * f_space;
           double integrand_upper_bound = 2.0 * (ds_time_over_ds_space * feq_time  -  pbar / Ebar * feq_space);
@@ -754,20 +753,19 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
 
     int eta_pts = 1;
     if(DIMENSION == 2) eta_pts = eta_tab_length;
-    double etaTrapezoidWeights[eta_pts];                                  // eta_weight * delta_eta
-    double delta_eta = fabs((eta_tab->get(1,2)) - (eta_tab->get(1,1)));   // assume uniform grid
+    double etaWeights[eta_pts];                                  // eta_weight
 
     if(DIMENSION == 2)
     {
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
         double eta_weight = eta_tab->get(2, ieta + 1);
-        etaTrapezoidWeights[ieta] = eta_weight * delta_eta;
+        etaWeights[ieta] = eta_weight;
       }
     }
     else if(DIMENSION == 3)
     {
-      etaTrapezoidWeights[0] = 1.0; // 1.0 for 3+1d
+      etaWeights[0] = 1.0; // 1.0 for 3+1d
     }
 
     double Tavg = thermodynamic_average[0];
@@ -857,7 +855,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       double uy2 = uy * uy;
       double ut2 = ut * ut;
 
-      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan; // udotdsigma / delta_eta_weight
+      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan; // udotdsigma / eta_weight
 
       if(udsigma <= 0.0) continue;        // skip over cells with u.dsigma < 0
 
@@ -907,7 +905,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
         Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
       }
 
-      // Vdotdsigma / delta_eta_weight
+      // Vdotdsigma / eta_weight
       double Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
 
       // milne basis class
@@ -945,7 +943,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       dsigma.compute_dsigma_lrf_polar_angle();
 
 
-      // total number of hadrons / delta_eta_weight in FO_cell
+      // total number of hadrons / eta_weight in FO_cell
       double dn_tot = 0.0;
 
       // sum over hadrons
@@ -974,7 +972,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       // add mean number of hadrons in FO cell to total yield
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
-        Ntot += dn_tot * etaTrapezoidWeights[ieta];
+        Ntot += dn_tot * etaWeights[ieta];
       }
 
     } // freezeout cells (icell)
@@ -1009,21 +1007,20 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     int eta_pts = 1;
     if(DIMENSION == 2) eta_pts = eta_tab_length;                   // extension in eta
     double etaValues[eta_pts];
-    double etaTrapezoidWeights[eta_pts];                           // eta_weight * delta_eta
-    double delta_eta = (eta_tab->get(1,2)) - (eta_tab->get(1,1));  // assume uniform eta grid
+    double etaWeights[eta_pts];                           // eta_weight
 
     if(DIMENSION == 2)
     {
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
         etaValues[ieta] = eta_tab->get(1, ieta + 1);
-        etaTrapezoidWeights[ieta] = (eta_tab->get(2, ieta + 1)) * fabs(delta_eta);
+        etaWeights[ieta] = eta_tab->get(2, ieta + 1);
       }
     }
     else if(DIMENSION == 3)
     {
       etaValues[0] = 0.0;           // below, will load eta_fo
-      etaTrapezoidWeights[0] = 1.0; // 1.0 for 3+1d
+      etaWeights[0] = 1.0; // 1.0 for 3+1d
     }
 
     // average thermodynamic quantities
@@ -1120,7 +1117,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double un = un_fo[icell];           // u^eta (fm^-1)
       double ut = sqrt(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un); // u^tau
 
-      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan; // udotdsigma / delta_eta_weight
+      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan; // udotdsigma / eta_weight
 
       if(udsigma <= 0.0) continue;        // skip over cells with u.dsigma < 0
 
@@ -1171,7 +1168,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double Vx = 0.0;                    // enforce orthogonality V.u = 0
       double Vy = 0.0;
       double Vn = 0.0;
-      double Vdsigma = 0.0;               // Vdotdsigma / delta_eta_weight
+      double Vdsigma = 0.0;               // Vdotdsigma / eta_weight
 
       if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
       {
@@ -1186,7 +1183,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
       basis_vectors.test_orthonormality(tau2);
 
-      // dsigma / delta_eta_weight class
+      // dsigma / eta_weight class
       Surface_Element_Vector dsigma(dat, dax, day, dan);
       dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
       dsigma.compute_dsigma_magnitude();
@@ -1226,11 +1223,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
 
 
-      // holds mean particle number / delta_eta_weight of all species
+      // holds mean particle number / eta_weight of all species
       std::vector<double> dn_list;
       dn_list.resize(npart);
 
-      // total mean number  / delta_eta_weight of hadrons in FO cell
+      // total mean number  / eta_weight of hadrons in FO cell
       double dn_tot = 0.0;
 
       for(int ipart = 0; ipart < npart; ipart++)
@@ -1298,8 +1295,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         double sinheta = sinh(eta);
         double cosheta = sqrt(1.0  +  sinheta * sinheta);
 
-        double delta_eta_weight = etaTrapezoidWeights[ieta];
-        double dN_tot = delta_eta_weight * dn_tot;              // total mean number of hadrons in FO cell
+        double eta_weight = etaWeights[ieta];
+        double dN_tot = eta_weight * dn_tot;              // total mean number of hadrons in FO cell
 
         // poisson mean value out of bounds
         if(dN_tot <= 0.0)
