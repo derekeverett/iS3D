@@ -162,6 +162,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
     SAMPLER_SEED = paraRdr->getVal("sampler_seed");
     if (OPERATION == 2) printf("Sampler seed set to %d \n", SAMPLER_SEED);
+
+    // for binning the sampled particles (for sampler tests)
+    PT_LOWER_CUT = paraRdr->getVal("pT_lower_cut");
+    PT_UPPER_CUT = paraRdr->getVal("pT_upper_cut");
+    PT_BINS = paraRdr->getVal("pT_bins");
+    Y_CUT = paraRdr->getVal("y_cut");
+
+
     DYNAMICAL = paraRdr->getVal("dynamical");
 
     Nevents = 1;    // default value for number of sampled events
@@ -807,6 +815,115 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     spectraFile.close();
   }
 
+  void EmissionFunctionArray::write_sampled_pT_pdf_toFile(int * MCID)
+  {
+    printf("Writing event-averaged pT probability density (pdfs) of each species to file...\n");
+
+    //ofstream spectraFile("results/momentum_list.dat", ios_base::out);
+    int npart = number_of_chosen_particles;
+    //write the header
+    //spectraFile << "y" << "\t" << "phi_over_pi" << "\t" << "pT" << "\n";
+
+    // first set up the pT bins
+    double pT_lower_cut = PT_LOWER_CUT;       // transverse momentum cuts
+    double pT_upper_cut = PT_UPPER_CUT;
+    double y_cut = Y_CUT;                     // rapidity cut
+
+    int pTbins = PT_BINS;
+
+    double pTbinwidth = (pT_upper_cut - pT_lower_cut) / (double)pTbins;
+
+    double pT_pdf[npart][pTbins];             // event averaged pT probability distribution of the particles
+
+    long number_of_sampled_particles[npart];  // number of particles of each species sampled from all events
+
+    for(int ipart = 0; ipart < npart; ipart++)
+    {
+      // initialize to zero
+      number_of_sampled_particles[ipart] = 0; 
+    }
+
+    double pT_midpoint[pTbins];   // pT grid (the bin midpoints)
+
+    // set the pT grid
+    for(int ipT = 0; ipT < pTbins; ipT++)
+    {
+      pT_midpoint[ipT] = pT_lower_cut + pTbinwidth * ((double)ipT + 0.5); 
+
+      // initialize pdfs to zero
+      for(int ipart = 0; ipart < npart; ipart++) 
+      {
+        pT_pdf[ipart][ipT] = 0.0;
+      }
+    }
+    
+
+    // now go through all the events
+    for(int ievent = 0; ievent < Nevents; ievent++)
+    {
+      int N = particle_event_list[ievent].size();
+
+      // number of particles of a given event
+      for(int n = 0; n < N; n++)  
+      {
+        int ipart = particle_event_list[ievent][n].chosen_index; // particle index of chosen particle file 
+        //int mcID = particle_event_list[ievent][n].mcID;
+        double E = particle_event_list[ievent][n].E;
+        double px = particle_event_list[ievent][n].px;
+        double py = particle_event_list[ievent][n].py;
+        double pz = particle_event_list[ievent][n].pz;
+
+        double y = 0.5 * log((E + pz) / (E - pz));
+        double phi_over_pi = atan2(py, px) / M_PI;
+        if(phi_over_pi < 0.0) phi_over_pi += 2.0;
+        double pT = sqrt(px * px + py * py);
+
+        // pT bin index
+        int ipT = (int)floor(pT / pTbinwidth);
+
+        if(fabs(y) <= y_cut)
+        {
+          if(ipT < pTbins)
+          {
+            pT_pdf[ipart][ipT] += 1.0;                // add counts to each bin
+            number_of_sampled_particles[ipart] += 1;  // count number
+
+          } // pT cut   
+
+        } // rapidity cut
+
+      }// n
+
+    } // ievent
+
+    // now normalize the pdfs to unity and write them to file
+    for(int ipart = 0; ipart < npart; ipart++) 
+    {
+      char filename[255] = "";
+
+      int mcid = MCID[ipart]; // we can just use this in place 
+
+      sprintf(filename, "results/pT_pdf_%d.dat", mcid);
+
+      ofstream spectra(filename, ios_base::out);
+
+      // total number of particles of species ipart at top of file 
+      spectra << number_of_sampled_particles[ipart] << "\n";
+      
+      for(int ipT = 0; ipT < pTbins; ipT++)
+      {
+        // normalization factor 
+        pT_pdf[ipart][ipT] /= (pTbinwidth * (double)number_of_sampled_particles[ipart]);
+
+        spectra << setprecision(6) << scientific << pT_midpoint[ipT] << "\t" << pT_pdf[ipart][ipT] << "\n";
+
+      } // ipT
+
+      spectra.close();
+
+    } // ipart    
+  }
+
   void EmissionFunctionArray::write_yield_list_toFile()
   {
     printf("Writing mean yield and sampled yield list to file...\n");
@@ -1122,9 +1239,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df, QGP, gla, legendre);
 
-              write_particle_list_toFile();
-              write_particle_list_OSC();
-              write_momentum_list_toFile();
+              //write_particle_list_toFile();
+              //write_particle_list_OSC();
+              //write_momentum_list_toFile();
+              write_sampled_pT_pdf_toFile(MCID);
               write_yield_list_toFile();
 
               particle_event_list_in = particle_event_list[0];

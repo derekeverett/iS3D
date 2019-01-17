@@ -33,7 +33,8 @@ public:
 class Sampled_Particle
 {
 public:
-
+  // chosen particle index
+  int chosen_index = 0;
   //PDG ID number
   int mcID = 0;
   //mass

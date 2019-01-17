@@ -25,7 +25,7 @@
 #include "particle.h"
 #include "viscous_correction.h"
 
-#define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
+//#define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
 
 using namespace std;
 
@@ -460,7 +460,16 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
       if(dynamical) // trying this...
       {
-        pdsigma_term = fabs(pdsigma);
+        if(pdsigma < 0.0)
+        {
+          pdsigma_term = fabs(pdsigma);
+          // I think i got lucky because there's no viscous correction
+          // but in general i would have to put in a constant factor of 1/2 in the w_flux term
+        }
+        else
+        {
+          pdsigma_term = 2.0 * pdsigma;
+        }
       }
       else // pdsigma * Theta(pdsigma)
       {
@@ -570,7 +579,15 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
       if(dynamical) // trying this...
       {
-        pdsigma_term = fabs(pdsigma);
+        if(pdsigma < 0.0)
+        {
+          pdsigma_term = 2.0 * fabs(pdsigma);
+        }
+        else
+        {
+          pdsigma_term = pdsigma; 
+        }
+        
       }
       else // pdsigma * Theta(pdsigma)
       {
@@ -1410,6 +1427,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             // new sampled particle info
             Sampled_Particle new_particle;
 
+            new_particle.chosen_index = chosen_index;
             new_particle.mcID = mcid;
             new_particle.tau = tau;
             new_particle.x = x;
@@ -1465,9 +1483,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       } // eta points (ieta)
 
+      cout << "\r" << "Finished " << icell + 1 << " / " << FO_length << " freezeout cells" << flush;
+
     } // freezeout cells (icell)
 
-    printf("Momentum sampling efficiency = %lf\n", (double)acceptances / (double)samples);
+    printf("\nMomentum sampling efficiency = %lf %%\n", 100.0 * (double)acceptances / (double)samples);
 
 }
 

@@ -96,6 +96,14 @@ private:
   int OVERSAMPLE; // whether or not to iteratively oversample surface
   long int MIN_NUM_HADRONS; //min number of particles summed over all samples
   long int SAMPLER_SEED; //the seed for the particle sampler. If chosen < 0, seed set with clocktime
+
+  // for binning sampled particles (for sampler tests)
+  double PT_LOWER_CUT;
+  double PT_UPPER_CUT;
+  int PT_BINS;
+  double Y_CUT;
+
+
   int DYNAMICAL;
 
   int Nevents;              // number of sampled events
@@ -197,6 +205,7 @@ public:
   void write_particle_list_OSC(); //write sampled particle list in OSCAR format for UrQMD/SMASH
   void write_momentum_list_toFile();  // write sampled momentum list
   void write_yield_list_toFile();     // write mean yield and sampled yield list to files
+  void write_sampled_pT_pdf_toFile(int * MCID);
 
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
