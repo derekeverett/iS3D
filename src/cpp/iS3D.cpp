@@ -76,14 +76,12 @@ void IS3D::run_particlization(int fo_from_file)
   cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
   cout << "Mike McNelis, Derek Everett, Sameed Pervaiz and Lipei Du (2018)" << endl;
   cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu" << endl;
-  printline();
+
   // Read-in parameters
   cout << "Reading in parameters:\n" << endl;
   ParameterReader *paraRdr = new ParameterReader;
   paraRdr->readFromFile("iS3D_parameters.dat");
-  //paraRdr->readFromArguments(argc, argv);
   paraRdr->echo();
-  printline();
 
   string pathToInput = "input";
 
@@ -145,9 +143,6 @@ void IS3D::run_particlization(int fo_from_file)
   particle_info *particle_data = new particle_info [Maxparticle];
   int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr, df); //number of resonances in pdg file
 
-  cout << "Finished reading files" << endl;
-  printline();
-
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
   //switch to different method of reading chosen_particles.dat file that doesn't
   //have this undesirable feature
@@ -156,28 +151,29 @@ void IS3D::run_particlization(int fo_from_file)
   cout << "Total number of freezeout cells: " <<  FO_length << endl;
   cout << "Number of chosen particles: " << chosen_particles.getNumberOfRows() << endl;
 
-  printline();
-
   Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
-  //Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
-  //TEMPORARY
-  Table phi_tab("tables/phi_0_table.dat"); // phi value and weight table
-  //TEMPORARY
+  Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_trapezoid_table_21pt.dat"); //y values and weights
-  Table eta_tab("tables/eta_gauss_table.dat"); //eta_s values and weights
+  string etaTableFile = "tables/eta_gauss_table.dat"; //for smooth C.F.
+  int operation = paraRdr->getVal("operation");
+  if (operation == 2) etaTableFile = "tables/eta_sampling_gauss_table.dat";
+  Table eta_tab(etaTableFile); //eta_s values and weights
+
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
 
   std::vector<Sampled_Particle> particle_event_list_in;
   efa.calculate_spectra(particle_event_list_in);
 
   //copy final particle list to memory to pass to JETSCAPE module
-  cout << "Copying final particle list to memory" << endl;
-  cout << "Particle list contains " << particle_event_list_in.size() << " particles" << endl;
-  final_particles_ = particle_event_list_in;
-
+  if (operation == 2)
+  {
+    cout << "Copying final particle list to memory" << endl;
+    cout << "Particle list contains " << particle_event_list_in.size() << " particles" << endl;
+    final_particles_ = particle_event_list_in;
+  }
+  
   delete [] surf_ptr;
   delete paraRdr;
 
-  printline();
   cout << "Done calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
 }
