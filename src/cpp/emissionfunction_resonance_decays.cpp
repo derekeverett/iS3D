@@ -30,9 +30,7 @@
 #include "Stopwatch.h"
 #include "arsenal.h"
 #include "ParameterReader.h"
-//#ifdef _OPENACC
-//#include <accelmath.h>
-//#endif
+
 using namespace std;
 
 // grouping:

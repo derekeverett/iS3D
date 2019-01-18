@@ -1,4 +1,4 @@
-// Ver. 1.3.1
+
 // The Table data file is a n-column double data file (see loadTableFromFile).
 // Note the (column,row) convention used in this class.
 // Note that all indices start with 1.
@@ -13,9 +13,6 @@
 #include <cmath>
 #include "arsenal.h"
 #include "Table.h"
-
-#define INIT_GUESS 1
-#define ACCURACY 1e-4
 
 // Used to invert the table
 Table *zq_global_table;
@@ -34,9 +31,9 @@ Table::Table() { data = NULL; numberOfCols = 0; numberOfRows = 0; };
 //----------------------------------------------------------------------
 Table::Table(string filename)
 // This version load table from file.
-{ 
+{
   data = NULL;
-  loadTableFromFile(filename); 
+  loadTableFromFile(filename);
 }
 
 //----------------------------------------------------------------------
@@ -56,15 +53,15 @@ Table::Table(Table& tab_in)
 }
 
 //----------------------------------------------------------------------
-Table::Table(long i, long j, double defaultValue) 
+Table::Table(long i, long j, double defaultValue)
 // This version allocates a table of i-col and j-rows.
-{ 
+{
   data = NULL; numberOfCols = 0; numberOfRows = 0;
   extendTable(i, j, defaultValue);
 }
 
 //----------------------------------------------------------------------
-Table::Table(double** data_in, long size1, long size2) 
+Table::Table(double** data_in, long size1, long size2)
 // This version COPY content from data_in to the internal table.
 // The 1st index of the data_in should go from 0 to size1 and the
 // 2nd index of data_in should go from 0 to size2.
@@ -274,5 +271,5 @@ double Table::invert(long colX, long colY, double yy, int mode)
   zq_global_colX = colX;
   zq_global_colY = colY;
   zq_global_mode = mode;
-  return invertFunc(&zq_global_invert_hook, yy, (*(*data)[colX-1])[0], (*(*data)[colX-1])[numberOfRows-1], (*(*data)[colX-1])[1]-(*(*data)[colX-1])[0], (*(*data)[colX-1])[INIT_GUESS], ACCURACY);
+  return invertFunc(&zq_global_invert_hook, yy, (*(*data)[colX-1])[0], (*(*data)[colX-1])[numberOfRows-1], (*(*data)[colX-1])[1]-(*(*data)[colX-1])[0], (*(*data)[colX-1])[1], 1e-4);
 }

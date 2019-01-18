@@ -22,8 +22,6 @@
 #include "gaussThermal.h"
 #include "particle.h"
 
-#define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
-
 using namespace std;
 
 void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, double *Degeneracy,

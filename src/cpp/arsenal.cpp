@@ -1,9 +1,3 @@
-// Ver 1.6.2
-// Zhi Qiu
-/*==========================================================================================
-Change logs: see arsenal.h
-==========================================================================================*/
-
 #include <vector>
 #include <iostream>
 #include <string>
@@ -14,8 +8,6 @@ Change logs: see arsenal.h
 #include <cstdarg>
 #include <stdio.h> //for printf
 #include "arsenal.h"
-
-#define OUTPUT_PRECISION 10
 
 using namespace std;
 
@@ -760,7 +752,7 @@ void formatedPrint(ostream& os, int count, ...)
   va_list ap;
   va_start(ap, count); //Requires the last fixed parameter (to get the address)
   for(int j=0; j<count; j++)
-      os << scientific << setprecision(OUTPUT_PRECISION) << "  " << va_arg(ap, double); //Requires the type to cast to. Increments ap to the next argument.
+      os << scientific << setprecision(10) << "  " << va_arg(ap, double); //Requires the type to cast to. Increments ap to the next argument.
   va_end(ap);
   os << endl;
 }
@@ -1011,7 +1003,7 @@ void get_bin_average_and_count(istream& is, ostream& os, vector<double>* bins, l
   {
     for (long j=0; j<number_of_cols+2; j++)
     {
-      os << scientific << scientific << setprecision(OUTPUT_PRECISION) << bin_total_and_count[i][j] << "  ";
+      os << scientific << scientific << setprecision(10) << bin_total_and_count[i][j] << "  ";
     }
     os << endl;
   }
@@ -1237,6 +1229,3 @@ void free_2D(double ** M, int n)
   for(int i = 0; i < n; i++) free(M[i]);
   free(M);
 }
-
-
-

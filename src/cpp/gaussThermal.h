@@ -2,7 +2,6 @@
 #ifndef GAUSSTHERMAL_H
 #define GAUSSTHERMAL_H
 
-
 double GaussThermal(double thermal_integrand(double pbar, double mbar, double alphaB, double baryon, double sign), double * pbar_root, double * pbar_weight, int pbar_pts, double mbar, double alphaB, double baryon, double sign);
 
 // equilibrium particle density

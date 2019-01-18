@@ -41,33 +41,3 @@ class Table
 };
 
 #endif
-
-/*-----------------------------------------------------------------------
- Change logs:
-
- 02-03-2012:
- -- First version. Note that the macro INIT_GUESS needs to be customized
-    for different tables for efficiency.
- 02-04-2012:
- -- The line "zq_global_table = this;" is moved to Table::invertMono
-    to support multi-instances of the Table class.
- 02-06-2012:
- Ver 1.1:
- -- Several functions added: set, get, extendTable, getNumberOfXXXs, printTable.
-    Note that the "set" function will extend the table if necessary.
- -- Several interpolation functions have been combined into one "interp"
-    function, which accepts a mode parameter to determine the actual
-    method for performing interpolation. So is the "invert" function.
-03-14-2012:
- Ver 1.1.1:
- -- Functions getSizeDim1/2, printTable(ostream), Table(long,long), setAll
-    added for convenience.
-    Declarations using char* are replaced by string.
- Ver 1.3:
-    Self copy "Table(Table &)" enabled.
-    Added a check for indices in "set" function for efficiency.
- 03-21-2012:
- Ver 1.3.1:
-    The extendTable function now calls resize() function from vector
-    class for efficiency.
------------------------------------------------------------------------*/

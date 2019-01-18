@@ -4,8 +4,6 @@
 #include <stdlib.h>
 using namespace std;
 
-
-
 Milne_Basis::Milne_Basis(double ut, double ux, double uy, double un, double uperp, double utperp, double tau)
 {
     Ut = ut;    Uy = uy;
@@ -85,8 +83,8 @@ void Surface_Element_Vector::compute_dsigma_magnitude()
 }
 
 void Surface_Element_Vector::compute_dsigma_lrf_polar_angle()
-{  
-    costheta_LRF = dsigmaz_LRF / dsigma_space; 
+{
+    costheta_LRF = dsigmaz_LRF / dsigma_space;
 }
 
 

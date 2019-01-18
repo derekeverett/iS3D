@@ -21,10 +21,6 @@
 #include <gsl/gsl_sf_bessel.h> //for modified bessel functions
 #include "gaussThermal.h"
 #include "particle.h"
-//#ifdef _OPENACC
-//#include <accelmath.h>
-//#endif
-#define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
 
 using namespace std;
 

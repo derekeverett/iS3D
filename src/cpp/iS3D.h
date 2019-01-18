@@ -11,7 +11,6 @@ const int Maxparticle = 400; //size of array for storage of the particles
 const int Maxdecaychannel = 17;
 const int Maxdecaypart = 5;
 
-
 class IS3D {
 private:
 
@@ -57,8 +56,7 @@ public:
 
   //this calls the particlization routine
   //depending on parameters, will either do smooth cooper
-  //frye integral (w or w/o res decays)
-  // or sampler
+  //frye integral (w or w/o res decays) or sampler
   void run_particlization(int fo_from_file);
 
   //read the freezeout surface from disk 'input/surface.dat'

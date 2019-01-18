@@ -25,8 +25,6 @@
 #include "particle.h"
 #include "viscous_correction.h"
 
-#define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
-
 using namespace std;
 
 double EmissionFunctionArray::particle_number_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, double * df_coeff, double shear14_coeff, double equilibrium_density, double bulk_density, double T_mod, double alphaB_mod, double detA, double modified_density, bool feqmod_breaks_down)
@@ -94,17 +92,6 @@ double EmissionFunctionArray::particle_number_outflow(double mass, double degene
   double costheta_ds2 = costheta_ds * costheta_ds;
   double sintheta_ds = sqrt(fabs(1.0 - costheta_ds2));
 
-  // temporary test
-  // pizz_LRF = -0.008934/0.014314/sqrt(1.5)*shear14_coeff;
-  // pixx_LRF = - 0.5 * pizz_LRF;
-  // piyy_LRF = pixx_LRF;
-  // pixz_LRF = 0.0;
-
-  // ds_time_over_ds_space = 1.0/1.4;
-  // ds_space = 1.4;
-  // costheta_ds = 1.0;
-  // costheta_ds2 = 1.0;
-  // sintheta_ds = 0.0;
 
   // particle density with outflow and corrections
   double n_outflow = 0.0;
@@ -394,15 +381,6 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       double E = sqrt(p * p  +  mass_squared);
       double sintheta = sqrt(1.0  -  costheta * costheta);
 
-      // if(std::isnan(p)) printf("Error: p is nan\n");
-      // if(std::isnan(phi)) printf("Error: phi is nan\n");
-      // if(std::isnan(costheta)) printf("Error: costheta is nan\n");
-      // if(std::isnan(E)) printf("Error: E is nan\n");
-      // if(std::isnan(sintheta)) printf("Error: sintheta is nan\n");
-      // if(p < 0.0) printf("Error: p = %lf is out of bounds\n", p);
-      // if(!(phi >= 0.0 && phi < two_pi)) printf("Error: phi = %lf is out of bounds\n", phi);
-      // if(fabs(costheta) > 1.0) printf("Error: costheta = %lf is out of bounds\n", costheta);
-
       pLRF.E = E;
       pLRF.px = p * sintheta * cos(phi);
       pLRF.py = p * sintheta * sin(phi);
@@ -498,16 +476,6 @@ LRF_Momentum EmissionFunctionArray::sample_momentum(default_random_engine& gener
       double E = k + mass;
       double p = sqrt(E * E  -  mass_squared);
       double sintheta = sqrt(1.0  -  costheta * costheta);
-
-      // if(std::isnan(k)) printf("Error: k is nan\n");
-      // if(std::isnan(phi)) printf("Error: phi is nan\n");
-      // if(std::isnan(costheta)) printf("Error: costheta is nan\n");
-      // if(std::isnan(E)) printf("Error: E is nan\n");
-      // if(std::isnan(p)) printf("Error: p is nan\n");
-      // if(std::isnan(sintheta)) printf("Error: sintheta is nan\n");
-      // if(k < 0.0) printf("Error: k = %lf is out of bounds\n", k);
-      // if(!(phi >= 0.0 && phi < two_pi)) printf("Error: phi = %lf is out of bounds\n", phi);
-      // if(fabs(costheta) > 1.0) printf("Error: costheta = %lf is out of bounds\n", costheta);
 
       pLRF.E = E;
       pLRF.px = p * sintheta * cos(phi);
@@ -1373,14 +1341,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
             double pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
             new_particle.pz = pz;
-            //new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
-            //is it possible for this to be too small or negative?
-            //try enforcing mass shell condition on E
+
             new_particle.E = sqrt(mass * mass  +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
 
-            //add to particle_event_list
-            //CAREFUL push_back is not a thread-safe operation
-            //how should we modify for GPU version?
+            //add to particle_event_list CAREFUL push_back is not a thread-safe operation
             #pragma omp critical
             particle_event_list[ievent].push_back(new_particle);
 
@@ -1393,9 +1357,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     } // freezeout cells (icell)
 
     printf("Momentum sampling efficiency = %lf\n", (double)acceptances / (double)samples);
-
 }
-
 
 
 void EmissionFunctionArray::sample_dN_pTdpTdphidy_VAH_PL(double *Mass, double *Sign, double *Degeneracy,
