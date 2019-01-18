@@ -74,6 +74,17 @@ double equilibrium_particle_density(double mass, double degeneracy, double sign,
   return neq;
 }
 
+double cubic_spline(double x, double xi, double yi, double a, double b, double c)
+{
+  // evaluate C_i(x) = y_i + a*(x-x_i) + b*(x-x_i)^2 + c*(x-x_i)^3
+  // for x_i <= x < x_i+1
+  double dx = x - xi;
+  double dx2 = dx * dx;
+  double dx3 = dx2 * dx;
+
+  return yi + a*dx + b*dx2 + c*dx3;
+}
+
 double compute_detA(Shear_Stress pimunu, double bulkPi, double betapi, double betabulk)
 {
   double pixx_LRF = pimunu.pixx_LRF;  double piyy_LRF = pimunu.piyy_LRF;

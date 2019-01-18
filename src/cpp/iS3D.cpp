@@ -174,6 +174,7 @@ void IS3D::run_particlization(int fo_from_file)
 
   cout << "Total number of freezeout cells: " <<  FO_length << endl;
   cout << "Number of chosen particles: " << chosen_particles.getNumberOfRows() << endl;
+  cout << "Number of particles in pdg.dat: " << Nparticle << endl;
 
   printline();
 

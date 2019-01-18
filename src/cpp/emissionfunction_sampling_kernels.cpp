@@ -63,7 +63,7 @@ double pion_thermal_weight_max(double mass, double T, double chem)
 }
 
 
-double particle_number_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, deltaf_coefficients * df, double equilibrium_density, double bulk_density, double T_mod, double alphaB_mod, double detA, double modified_density, bool feqmod_breaks_down, Gauss_Legendre * legendre, int df_mode, int outflow)
+double particle_number_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, deltaf_coefficients * df, double equilibrium_density, double bulk_density, double T_mod, double alphaB_mod, double detA, double modified_density, bool feqmod_breaks_down, const int legendre_pts, double * pbar_root, double * pbar_weight, int df_mode, int outflow)
 {
   // computes the particle density from the CFF with Theta(p.dsigma) (outflow) and feq + df_regulated (or feqmod)
   // for spacelike cells: (neq + dn_regulated)_outflow > neq + dn_regulated
@@ -74,10 +74,9 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
 
   // gauss legendre
-  const int gauss_pts = legendre->points;
-
-  double * legendre_root = legendre->root;
-  double * legendre_weight = legendre->weight;
+  //const int legendre_pts = legendre->points;
+  //double * legendre_root = legendre->root;
+  //double * legendre_weight = legendre->weight;
 
 
   double mass_squared = mass * mass;
@@ -135,21 +134,23 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
   // costheta_ds2 = 1.0;
   // sintheta_ds = 0.0;
 
-  // particle density with outflow and corrections
+  // particle density with outflow and df corrections
   double n_outflow = 0.0;
 
   // radial momentum integration routine
-  for(int i = 0; i < gauss_pts; i++)
+  for(int i = 0; i < legendre_pts; i++)
   {
-    double x = legendre_root[i];  // x should never be 1.0 (or else pbar = inf)
-    double s = (1.0 - x) / 2.0;   // variable transformations
-    double pbar = (1.0 - s) / s;
+    // double x = legendre_root[i];  // x should never be 1.0 (or else pbar = inf)
+    // double s = (1.0 - x) / 2.0;   // variable transformations
+    // double pbar = (1.0 - s) / s;
 
-    if(isinf(pbar))
-    {
-      printf("Integral error: momentum point is infinity. None of the legendre roots should be -1\n");
-      exit(-1);
-    }
+    // if(isinf(pbar))
+    // {
+    //   printf("Integral error: momentum point is infinity. None of the legendre roots should be -1\n");
+    //   exit(-1);
+    // }
+    double pbar = pbar_root[i];
+    double weight = pbar_weight[i];
 
     switch(df_mode)
     {
@@ -172,7 +173,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
           df = max(-1.0, min(df, 1.0)); // regulate df
 
-          n_outflow += legendre_weight[i] * ds_time_over_ds_space * pbar * pbar * feq * (1.0 + df) / (s * s);
+          n_outflow += 2.0 * weight * ds_time_over_ds_space * feq * (1.0 + df);
         }
         // spacelike cells
         else
@@ -205,7 +206,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
           integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
 
-          n_outflow += 0.5 * legendre_weight[i] * pbar * pbar * integrand / (s * s);
+          n_outflow += weight * integrand;
         }
 
         break;
@@ -230,7 +231,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
           df = max(-1.0, min(df, 1.0));
 
-          n_outflow += legendre_weight[i] * ds_time_over_ds_space * pbar * pbar * feq * (1.0 + df) / (s * s);
+          n_outflow += 2.0 * weight * ds_time_over_ds_space * feq * (1.0 + df);
         }
         // spacelike cells
         else
@@ -263,7 +264,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
           integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
 
-          n_outflow += 0.5 * legendre_weight[i] * pbar * pbar * integrand / (s * s);
+          n_outflow += weight * integrand;
         }
 
         break;
@@ -281,7 +282,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
         if(!outflow || ds_time_over_ds_space >= 1.0)
         {
-          n_outflow += legendre_weight[i] * ds_time_over_ds_space * pbar_mod * pbar_mod * feqmod / (s * s);
+          n_outflow += 2.0 * weight * ds_time_over_ds_space * feqmod;
         }
         else
         {
@@ -289,7 +290,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
           double mbar_bulk = mbar_mod / (1.0 + bulk_coeff);
           double Ebar_bulk = sqrt(pbar_mod * pbar_mod  +  mbar_bulk * mbar_bulk);
 
-          n_outflow += 0.5 * legendre_weight[i] * (ds_time_over_ds_space * pbar_mod * pbar_mod * (1.0  +  costheta_star_mod) - 0.5 * pbar_mod * pbar_mod * pbar_mod / Ebar_bulk * (costheta_star_mod * costheta_star_mod  -  1.0)) * feqmod / (s * s);
+          n_outflow += weight * (ds_time_over_ds_space * (1.0  +  costheta_star_mod) - 0.5 * pbar_mod / Ebar_bulk * (costheta_star_mod * costheta_star_mod  -  1.0)) * feqmod;
         }
 
         break;
@@ -889,8 +890,30 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       }
     }
 
-    // gauss laguerre roots and weights
-    const int pbar_pts = laguerre->points;
+
+    // set up root and weight arrays for pbar integrals in particle_number_outflow()
+    const int legendre_pts = legendre->points;
+    double * legendre_root = legendre->root;
+    double * legendre_weight = legendre->weight;
+
+    double pbar_root_outflow[legendre_pts];
+    double pbar_weight_outflow[legendre_pts];
+
+    for(int i = 0; i < legendre_pts; i++)
+    {
+      double x = legendre_root[i];  // x should never be 1.0 (or else pbar = inf)
+      double s = (1.0 - x) / 2.0;   // variable transformations
+      double pbar = (1.0 - s) / s;
+
+      if(isinf(pbar)) {printf("Error: none of legendre roots should be -1\n"); exit(-1);}
+
+      pbar_root_outflow[i] = pbar;
+      pbar_weight_outflow[i] = 0.5 * pbar * pbar * legendre_weight[i] / (s * s); 
+    }
+
+
+    // gauss laguerre roots and weights for negative pion density calculation
+    const int laguerre_pts = laguerre->points;
 
     double * pbar_root1 = laguerre->root[1];
     double * pbar_root2 = laguerre->root[2];
@@ -918,8 +941,8 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
     // for feqmod breakdown
     double mbar_pion0 = MASS_PION0 / T;
 
-    double neq_pion0 = pow(T,3) / two_pi2_hbarC3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0., 0., -1.);
-    double J20_pion0 = pow(T,4) / two_pi2_hbarC3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0., 0., -1.);
+    double neq_pion0 = pow(T,3) / two_pi2_hbarC3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_pion0, 0., 0., -1.);
+    double J20_pion0 = pow(T,4) / two_pi2_hbarC3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, laguerre_pts, mbar_pion0, 0., 0., -1.);
 
     //double neq_tot = 0.0;                 // total equilibrium number / udsigma
     //double dn_bulk_tot = 0.0;             // bulk correction / udsigma / bulkPi
@@ -1062,10 +1085,10 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
         {
           double mbar_mod = mass / T_mod;
 
-          modified_density = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
+          modified_density = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_mod, alphaB_mod, baryon, sign);
         }
 
-        dn_tot += particle_number_outflow(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, equilibrium_density, bulk_density, T_mod, alphaB_mod, detA, modified_density, feqmod_breaks_down, legendre, DF_MODE, OUTFLOW);
+        dn_tot += particle_number_outflow(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, equilibrium_density, bulk_density, T_mod, alphaB_mod, detA, modified_density, feqmod_breaks_down, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW);
       }
 
 
@@ -1126,8 +1149,30 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     }
 
 
+    // set up root and weight arrays for pbar integrals in particle_number_outflow()
+    const int legendre_pts = legendre->points;
+    double * legendre_root = legendre->root;
+    double * legendre_weight = legendre->weight;
+
+    double pbar_root_outflow[legendre_pts];
+    double pbar_weight_outflow[legendre_pts];
+
+    for(int i = 0; i < legendre_pts; i++)
+    {
+      double x = legendre_root[i];  // x should never be 1.0 (or else pbar = inf)
+      double s = (1.0 - x) / 2.0;   // variable transformations
+      double pbar = (1.0 - s) / s;
+
+      if(isinf(pbar)){printf("Error: none of legendre roots should be -1\n"); exit(-1);}
+
+      pbar_root_outflow[i] = pbar;
+      pbar_weight_outflow[i] = 0.5 * pbar * pbar * legendre_weight[i] / (s * s); 
+    }
+
+
+
     // gauss laguerre roots and weights
-    const int pbar_pts = laguerre->points;
+    const int laguerre_pts = laguerre->points;
 
     double * pbar_root1 = laguerre->root[1];
     double * pbar_root2 = laguerre->root[2];
@@ -1158,8 +1203,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     // calculate linear pion0 density terms (neq_pion0, J20_pion0)
     // for is_linear_pion0_density_negative()
     double mbar_pion0 = MASS_PION0 / T;
-    double neq_pion0 = pow(T,3) / two_pi2_hbarC3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0., 0., -1.);
-    double J20_pion0 = pow(T,4) / two_pi2_hbarC3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0., 0., -1.);
+    double neq_pion0 = pow(T,3) / two_pi2_hbarC3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_pion0, 0., 0., -1.);
+    double J20_pion0 = pow(T,4) / two_pi2_hbarC3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, laguerre_pts, mbar_pion0, 0., 0., -1.);
 
 
     // compute contributions to total mean hadron number / cell volume
@@ -1324,10 +1369,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         {
           double mbar_mod = mass / T_mod;
 
-          modified_density = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
+          modified_density = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_mod, alphaB_mod, baryon, sign);
         }
 
-        dn_list[ipart] = particle_number_outflow(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, equilibrium_density, bulk_density, T_mod, alphaB_mod, detA, modified_density, feqmod_breaks_down, legendre, DF_MODE, OUTFLOW);
+        dn_list[ipart] = particle_number_outflow(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, equilibrium_density, bulk_density, T_mod, alphaB_mod, detA, modified_density, feqmod_breaks_down, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW);
 
         dn_tot += dn_list[ipart];
 

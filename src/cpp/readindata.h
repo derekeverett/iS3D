@@ -133,10 +133,13 @@ typedef struct
 //::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 typedef struct
 {
-  // cubic spline interpolation coefficients (I think there are 3?)
-  double c0;
-  double c1;
-  double c2;
+  // cubic spline interpolation coefficients 
+  // cubic spline formula
+  // C(x) = a + b*x + c*x^2 + d*x^3
+  double a;
+  double b;
+  double c;
+  double d;
 
 } cubic_spline_coefficients;
 
@@ -153,7 +156,7 @@ typedef struct
 
   double bulkPi_over_Peq_max;               // the maximum bulk pressure in the array
 
-  cubic_spline_coefficients cubic_spline[jonah_points];
+  cubic_spline_coefficients cubic_spline[jonah_points-1];
 
 } jonah_coefficients;
 
