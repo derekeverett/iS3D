@@ -29,10 +29,10 @@
 using namespace std;
 
 void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
-  double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
+  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
   double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
-  double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients * df, Plasma * QGP)
+  double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Deltaf_Data *df_data)
   {
     printf("computing thermal spectra from vhydro with df...\n\n");
 
@@ -92,30 +92,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       }
     }
 
-
-    // averaged thermodynamic quantities
-    double T = QGP->temperature;
-    double E = QGP->energy_density;
-    double P = QGP->pressure;
-    double muB = QGP->baryon_chemical_potential;
-    double nB = QGP->net_baryon_density;
-
-    double alphaB = muB / T;
-
-    // set df coefficients
-    double c0 = df->c0;        // 14 moment coefficients
-    double c1 = df->c1;
-    double c2 = df->c2;
-    double c3 = df->c3;
-    double c4 = df->c4;
-
-    double F = df->F;          // Chapman Enskog
-    double G = df->G;
-    double betabulk = df->betabulk;
-    double betaV = df->betaV;
-    double betapi = df->betapi;
-
-
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spectra for each surface cell in a chunk, for all particle species
     int npart = number_of_chosen_particles;
@@ -166,6 +142,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double ut2 = ut * ut;
         double utperp = sqrt(1.0  +  ux * ux  +  uy * uy);
 
+        double T = T_fo[icell_glb];             // temperature (GeV)
+        double P = P_fo[icell_glb];             // equilibrium pressure (GeV/fm^3)
+        double E = E_fo[icell_glb];             // energy density (GeV/fm^3)
+
         double pitt = 0.0;                      // contravariant shear stress tensor pi^munu (GeV/fm^3)
         double pitx = 0.0;                      // enforce orthogonality pi.u = 0
         double pity = 0.0;                      // and tracelessness Tr(pi) = 0
@@ -195,19 +175,42 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         if(INCLUDE_BULK_DELTAF) bulkPi = bulkPi_fo[icell_glb];
 
-        double Vt = 0.0;                        // baryon diffusion
-        double Vx = 0.0;                        // enforce orthogonality
+        double muB = 0.0;                       // baryon chemical potential (GeV)
+        double alphaB = 0.0;                    // muB / T
+        double nB = 0.0;                        // net baryon density (fm^-3)
+        double Vt = 0.0;                        // contravariant net baryon diffusion V^mu (fm^-3)
+        double Vx = 0.0;                        // enforce orthogonality V.u = 0
         double Vy = 0.0;
         double Vn = 0.0;
-        double baryon_enthalpy_ratio = nB / (E + P);
+        double baryon_enthalpy_ratio = 0.0;     // nB / (E + P)
 
         if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
         {
+          muB = muB_fo[icell_glb];
+          nB = nB_fo[icell_glb];
           Vx = Vx_fo[icell_glb];
           Vy = Vy_fo[icell_glb];
           Vn = Vn_fo[icell_glb];
           Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
+
+          alphaB = muB / T;
+          baryon_enthalpy_ratio = nB / (E + P);
         }
+
+        // set df coefficients
+        deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P);
+
+        double c0 = df.c0;             // 14 moment coefficients
+        double c1 = df.c1;
+        double c2 = df.c2;
+        double c3 = df.c3;
+        double c4 = df.c4;
+
+        double F = df.F;              // Chapman Enskog
+        double G = df.G;
+        double betabulk = df.betabulk;
+        double betaV = df.betaV;
+        double betapi = df.betapi;
 
         // evaluate shear and bulk coefficients
         double shear_coeff = 0.0;
@@ -395,7 +398,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
     double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
     double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
-    double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients *df, Plasma * QGP, Gauss_Laguerre * gla)
+    double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients *df, Plasma * QGP, Gauss_Laguerre * gla, Deltaf_Data * df_data)
   {
     printf("computing thermal spectra from vhydro with feqmod...\n\n");
 

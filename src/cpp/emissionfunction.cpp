@@ -74,16 +74,6 @@ double equilibrium_particle_density(double mass, double degeneracy, double sign,
   return neq;
 }
 
-double cubic_spline(double x, double xi, double yi, double a, double b, double c)
-{
-  // evaluate C_i(x) = y_i + a*(x-x_i) + b*(x-x_i)^2 + c*(x-x_i)^3
-  // for x_i <= x < x_i+1
-  double dx = x - xi;
-  double dx2 = dx * dx;
-  double dx3 = dx2 * dx;
-
-  return yi + a*dx + b*dx2 + c*dx3;
-}
 
 double compute_detA(Shear_Stress pimunu, double bulkPi, double betapi, double betabulk)
 {
@@ -135,7 +125,7 @@ bool does_feqmod_breakdown(double detA, double detA_min, bool pion_density_negat
 // Class EmissionFunctionArray ------------------------------------------
 EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in,
   Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in,
-  int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in,  deltaf_coefficients * df_in)
+  int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in,  deltaf_coefficients * df_in, Deltaf_Data * df_data_in)
   {
     paraRdr = paraRdr_in;
     pT_tab = pT_tab_in;
@@ -190,6 +180,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     surf_ptr = surf_ptr_in;
     FO_length = FO_length_in;
     df = df_in;
+    df_data = df_data_in;
     number_of_chosen_particles = chosen_particles_in->getNumberOfRows();
 
     chosen_particles_01_table = new int[Nparticles];
@@ -851,7 +842,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ipart = 0; ipart < npart; ipart++)
     {
       // initialize to zero
-      number_of_sampled_particles[ipart] = 0; 
+      number_of_sampled_particles[ipart] = 0;
     }
 
     double pT_midpoint[pTbins];   // pT grid (the bin midpoints)
@@ -859,15 +850,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     // set the pT grid
     for(int ipT = 0; ipT < pTbins; ipT++)
     {
-      pT_midpoint[ipT] = pT_lower_cut + pTbinwidth * ((double)ipT + 0.5); 
+      pT_midpoint[ipT] = pT_lower_cut + pTbinwidth * ((double)ipT + 0.5);
 
       // initialize pdfs to zero
-      for(int ipart = 0; ipart < npart; ipart++) 
+      for(int ipart = 0; ipart < npart; ipart++)
       {
         pT_pdf[ipart][ipT] = 0.0;
       }
     }
-    
+
 
     // now go through all the events
     for(int ievent = 0; ievent < Nevents; ievent++)
@@ -875,9 +866,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       int N = particle_event_list[ievent].size();
 
       // number of particles of a given event
-      for(int n = 0; n < N; n++)  
+      for(int n = 0; n < N; n++)
       {
-        int ipart = particle_event_list[ievent][n].chosen_index; // particle index of chosen particle file 
+        int ipart = particle_event_list[ievent][n].chosen_index; // particle index of chosen particle file
         //int mcID = particle_event_list[ievent][n].mcID;
         double E = particle_event_list[ievent][n].E;
         double px = particle_event_list[ievent][n].px;
@@ -899,7 +890,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             pT_pdf[ipart][ipT] += 1.0;                // add counts to each bin
             number_of_sampled_particles[ipart] += 1;  // count number
 
-          } // pT cut   
+          } // pT cut
 
         } // rapidity cut
 
@@ -908,22 +899,22 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     } // ievent
 
     // now normalize the pdfs to unity and write them to file
-    for(int ipart = 0; ipart < npart; ipart++) 
+    for(int ipart = 0; ipart < npart; ipart++)
     {
       char filename[255] = "";
 
-      int mcid = MCID[ipart]; // we can just use this in place 
+      int mcid = MCID[ipart]; // we can just use this in place
 
       sprintf(filename, "results/pT_pdf_%d.dat", mcid);
 
       ofstream spectra(filename, ios_base::out);
 
-      // total number of particles of species ipart at top of file 
+      // total number of particles of species ipart at top of file
       spectra << number_of_sampled_particles[ipart] << "\n";
-      
+
       for(int ipT = 0; ipT < pTbins; ipT++)
       {
-        // normalization factor 
+        // normalization factor
         pT_pdf[ipart][ipT] /= (pTbinwidth * (double)number_of_sampled_particles[ipart]);
 
         spectra << setprecision(6) << scientific << pT_midpoint[ipT] << "\t" << pT_pdf[ipart][ipT] << "\n";
@@ -932,7 +923,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
       spectra.close();
 
-    } // ipart    
+    } // ipart
   }
 
   void EmissionFunctionArray::write_yield_list_toFile()
@@ -1060,12 +1051,23 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     // freezeout info
     FO_surf *surf = &surf_ptr[0];
 
+    // freezeout surface info exclusive for VH
+    double *E, *T, *P;
+    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
+    {
+      E = (double*)calloc(FO_length, sizeof(double));
+      P = (double*)calloc(FO_length, sizeof(double));
+    }
+
+    T = (double*)calloc(FO_length, sizeof(double));
+
+
     // freezeout surface info common for VH / VAH
     double *tau, *x, *y, *eta;
     double *ux, *uy, *un;
     double *dat, *dax, *day, *dan;
     double *pixx, *pixy, *pixn, *piyy, *piyn, *bulkPi;
-    double *Vx, *Vy, *Vn;
+    double *muB, *nB, *Vx, *Vy, *Vn;
 
     tau = (double*)calloc(FO_length, sizeof(double));
     x = (double*)calloc(FO_length, sizeof(double));
@@ -1097,6 +1099,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
     {
+      muB = (double*)calloc(FO_length, sizeof(double));
+      nB = (double*)calloc(FO_length, sizeof(double));
       Vx = (double*)calloc(FO_length, sizeof(double));
       Vy = (double*)calloc(FO_length, sizeof(double));
       Vn = (double*)calloc(FO_length, sizeof(double));
@@ -1147,6 +1151,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       //reading info from surface
       surf = &surf_ptr[icell];
 
+      if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
+      {
+        E[icell] = surf->E;
+        P[icell] = surf->P;
+      }
+
+      T[icell] = surf->T;
+
       tau[icell] = surf->tau;
       x[icell] = surf->x;
       y[icell] = surf->y;
@@ -1177,6 +1189,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
       if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
       {
+        muB[icell] = surf->muB;
+        nB[icell] = surf->nB;
         Vx[icell] = surf->Vx;
         Vy[icell] = surf->Vy;
         Vn[icell] = surf->Vn;
@@ -1228,7 +1242,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           {
             case 1: // smooth CFF
             {
-              calculate_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, tau, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df, QGP);
+              calculate_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, T, P, E, tau, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data);
               break;
             }
             case 2: // sample CFF
@@ -1273,7 +1287,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           {
             case 1: // smooth CF
             {
-              calculate_dN_ptdptdphidy_feqmod(Mass, Sign, Degeneracy, Baryon, tau, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df, QGP, gla);
+              calculate_dN_ptdptdphidy_feqmod(Mass, Sign, Degeneracy, Baryon, tau, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df, QGP, gla, df_data);
               break;
             }
             case 2: // sampler
@@ -1381,6 +1395,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     free(Sign);
     free(Baryon);
 
+    if(MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
+    {
+      free(E);
+      free(P);
+    }
+
+    free(T);
+
     free(tau);
     free(eta);
 
@@ -1416,6 +1438,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
     {
+      free(muB);
+      free(nB);
       free(Vx);
       free(Vy);
       free(Vn);

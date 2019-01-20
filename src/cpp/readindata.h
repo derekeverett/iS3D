@@ -133,7 +133,7 @@ typedef struct
 //::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 typedef struct
 {
-  // cubic spline interpolation coefficients 
+  // cubic spline interpolation coefficients
   // cubic spline formula
   // C(x) = a + b*x + c*x^2 + d*x^3
   double a;
