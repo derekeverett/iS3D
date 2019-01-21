@@ -1250,7 +1250,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               if(OVERSAMPLE)
               {
                 // average particle yield
-                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density,Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df, QGP, gla, legendre);
+                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density,Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
                 // number of events to sample
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
@@ -1262,7 +1262,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               if(DF_MODE == 1) printf("Sampling particles with df 14 moment...\n");
               if(DF_MODE == 2) printf("Sampling particles with df Chapman Enskog...\n");
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df, QGP, gla, legendre);
+              sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
               //write_particle_list_toFile();
               //write_particle_list_OSC();
@@ -1287,14 +1287,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           {
             case 1: // smooth CF
             {
-              calculate_dN_ptdptdphidy_feqmod(Mass, Sign, Degeneracy, Baryon, tau, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df, QGP, gla, df_data);
+              calculate_dN_ptdptdphidy_feqmod(Mass, Sign, Degeneracy, Baryon, T, P, E, tau, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, gla, df_data);
               break;
             }
             case 2: // sampler
             {
               if(OVERSAMPLE)
               {
-                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df, QGP, gla, legendre);
+                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
@@ -1304,7 +1304,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               printf("Sampling particles with feqmod...\n");
 
-              sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, Vx, Vy, Vn, df, QGP, gla, legendre);
+              sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
               write_particle_list_toFile();
               write_particle_list_OSC();

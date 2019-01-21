@@ -394,11 +394,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
   }
 
 
-  void EmissionFunctionArray::calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
-    double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
-    double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
-    double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
-    double *Vx_fo, double *Vy_fo, double *Vn_fo, deltaf_coefficients *df, Plasma * QGP, Gauss_Laguerre * gla, Deltaf_Data * df_data)
+  void EmissionFunctionArray::calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Gauss_Laguerre * gla, Deltaf_Data * df_data)
   {
     printf("computing thermal spectra from vhydro with feqmod...\n\n");
 
@@ -472,35 +468,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     double * pbar_weight1 = gla->weight[1];
     double * pbar_weight2 = gla->weight[2];
 
-
-    // averaged thermodynamic quantities
-    double T = QGP->temperature;
-    double E = QGP->energy_density;
-    double P = QGP->pressure;
-    double muB = QGP->baryon_chemical_potential;
-    double nB = QGP->net_baryon_density;
-
-    double alphaB = muB / T;
-
-
-    // feqmod coefficients
-    double F = df->F;               // bulk coefficients
-    double G = df->G;
-    double betabulk = df->betabulk;
-    double betaV = df->betaV;       // diffusion coefficient
-    double betapi = df->betapi;     // shear coefficient
-
-
-    // calculate linear pion0 density terms (neq_pion0, J20_pion0)
-    // this is for the function is_linear_pion0_density_negative()
-    double mbar_pion0 = MASS_PION0 / T;
-    double T3_over_two_pi2_hbar3 = pow(T, 3) / two_pi2_hbarC3;
-    double T4_over_two_pi2_hbar3 = pow(T, 4) / two_pi2_hbarC3;
-
-    double neq_pion0 = T3_over_two_pi2_hbar3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
-    double J20_pion0 = T4_over_two_pi2_hbar3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
-
-
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spectra for each surface cell in a chunk, for all particle species
     //in this way, we are limited to small values of FO_chunk, because our array holds values for all species...
@@ -555,6 +522,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double uperp = sqrt(ux * ux  +  uy * uy);
         double utperp = sqrt(1.0  +   ux * ux  +  uy * uy);
 
+        double T = T_fo[icell_glb];             // temperature (GeV)
+        double P = P_fo[icell_glb];             // equilibrium pressure (GeV/fm^3)
+        double E = E_fo[icell_glb];             // energy density (GeV/fm^3)
+
         double pitt = 0.0;                  // contravariant shear stress tensor pi^munu
         double pitx = 0.0;                  // enforce orthogonality pi.u = 0
         double pity = 0.0;                  // and tracelessness Tr(pi) = 0
@@ -584,19 +555,36 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         if(INCLUDE_BULK_DELTAF) bulkPi = bulkPi_fo[icell_glb];
 
-        double Vt = 0.0;                    // net baryon diffusion
-        double Vx = 0.0;
+        double muB = 0.0;                       // baryon chemical potential (GeV)
+        double alphaB = 0.0;                    // muB / T
+        double nB = 0.0;                        // net baryon density (fm^-3)
+        double Vt = 0.0;                        // contravariant net baryon diffusion V^mu (fm^-3)
+        double Vx = 0.0;                        // enforce orthogonality V.u = 0
         double Vy = 0.0;
         double Vn = 0.0;
-        double baryon_enthalpy_ratio = nB / (E + P);
+        double baryon_enthalpy_ratio = 0.0;     // nB / (E + P)
 
         if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
         {
+          muB = muB_fo[icell_glb];
+          nB = nB_fo[icell_glb];
           Vx = Vx_fo[icell_glb];
           Vy = Vy_fo[icell_glb];
           Vn = Vn_fo[icell_glb];
           Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
+
+          alphaB = muB / T;
+          baryon_enthalpy_ratio = nB / (E + P);
         }
+
+        // set df coefficients
+        deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P);
+
+        double F = df.F;
+        double G = df.G;
+        double betabulk = df.betabulk;
+        double betaV = df.betaV;
+        double betapi = df.betapi;
 
         // milne basis class
         Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
@@ -627,9 +615,12 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double bulk2_coeff = 1.0 / (3.0 * T * betabulk);
 
         // pimunu and Vmu LRF components
-        double pixx_LRF = pimunu.pixx_LRF;  double piyy_LRF = pimunu.piyy_LRF;
-        double pixy_LRF = pimunu.pixy_LRF;  double piyz_LRF = pimunu.piyz_LRF;
-        double pixz_LRF = pimunu.pixz_LRF;  double pizz_LRF = pimunu.pizz_LRF;
+        double pixx_LRF = pimunu.pixx_LRF;
+        double pixy_LRF = pimunu.pixy_LRF;
+        double pixz_LRF = pimunu.pixz_LRF;
+        double piyy_LRF = pimunu.piyy_LRF;
+        double piyz_LRF = pimunu.piyz_LRF;
+        double pizz_LRF = pimunu.pizz_LRF;
 
         double Vx_LRF = Vmu.Vx_LRF;
         double Vy_LRF = Vmu.Vy_LRF;
@@ -675,6 +666,12 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double N10_fact = neq_fact;
         double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
 
+        // calculate linear pion0 density terms (neq_pion0, J20_pion0)
+        // this is for the function is_linear_pion0_density_negative()
+        double mbar_pion0 = MASS_PION0 / T;
+        double neq_pion0 = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
+        double J20_pion0 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
+
         bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
 
         if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
@@ -685,7 +682,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         if(feqmod_breaks_down)
         {
-
           breakdown++;
           cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\t detA_min = " << detA_min << endl;
 
