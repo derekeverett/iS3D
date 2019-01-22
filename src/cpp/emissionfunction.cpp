@@ -21,11 +21,8 @@
 #include <gsl/gsl_sf_bessel.h> //for modified bessel functions
 #include "gaussThermal.h"
 #include "particle.h"
-#define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
 
 using namespace std;
-
-
 
 // Class Lab_Momentum
 //------------------------------------------
@@ -51,8 +48,6 @@ void Lab_Momentum::boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut,
 }
 //------------------------------------------
 
-
-
 double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem)
 {
   // may want to use a direct gauss quadrature instead
@@ -73,7 +68,6 @@ double equilibrium_particle_density(double mass, double degeneracy, double sign,
 
   return neq;
 }
-
 
 double compute_detA(Shear_Stress pimunu, double bulkPi, double betapi, double betabulk)
 {
@@ -117,7 +111,6 @@ bool does_feqmod_breakdown(double detA, double detA_min, bool pion_density_negat
 
   return false;
 }
-
 
 // Class EmissionFunctionArray ------------------------------------------
 EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in,
@@ -196,26 +189,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     {
       logdN_PTdPTdPhidY[iS_parent] = 0.0; // is it harmful to have a y_tab_length =/= 1 if DIMENSION = 2 (waste of memory?)
     }
-
-    if (MODE == 5)
-    {
-      //class member to hold polarization vector of chosen particles
-      St = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
-      Sx = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
-      Sy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
-      Sn = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
-      //holds the normalization of the polarization vector of chosen particles
-      Snorm = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
-
-      for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
-      {
-        St[iSpectra] = 0.0;
-        Sx[iSpectra] = 0.0;
-        Sy[iSpectra] = 0.0;
-        Sn[iSpectra] = 0.0;
-        Snorm[iSpectra] = 0.0;
-      }
-    } // if (MODE == 5)
 
     if (MODE == 5)
     {
@@ -1065,7 +1038,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     T = (double*)calloc(FO_length, sizeof(double));
 
-
     // freezeout surface info common for VH / VAH
     double *tau, *x, *y, *eta;
     double *ux, *uy, *un;
@@ -1232,7 +1204,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     }
 
 
-
     // compute the particle spectra
 
     if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6) // viscous hydro
@@ -1268,8 +1239,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
-              //write_particle_list_toFile();
-              //write_particle_list_OSC();
+              write_particle_list_toFile();
+              write_particle_list_OSC();
               //write_momentum_list_toFile();
               write_sampled_pT_pdf_toFile(MCID);
               write_yield_list_toFile();
@@ -1366,7 +1337,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     } //else if(MODE == 2)
 
     else if (MODE == 5) calculate_spin_polzn(Mass, Sign, Degeneracy, tau, eta, ux, uy, un, dat, dax, day, dan, wtx, wty, wtn, wxy, wxn, wyn, QGP);
-
 
     //write the results to file
     if (OPERATION == 1)
@@ -1466,9 +1436,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         free(c4);
       }
     }
-    #ifdef _OPENMP
-    //sec = omp_get_wtime() - sec;
-    #endif
     sw.toc();
     cout << "\ncalculate_spectra() took " << sw.takeTime() << " seconds." << endl;
   }

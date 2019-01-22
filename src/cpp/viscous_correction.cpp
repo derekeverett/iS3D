@@ -4,8 +4,6 @@
 #include <stdlib.h>
 using namespace std;
 
-
-
 Milne_Basis::Milne_Basis(double ut, double ux, double uy, double un, double uperp, double utperp, double tau)
 {
     Ut = ut;    Uy = uy;

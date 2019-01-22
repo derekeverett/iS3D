@@ -16,7 +16,6 @@
 
 using namespace std;
 
-
 Gauss_Laguerre::Gauss_Laguerre()
 {
   /////////////////////////
@@ -187,12 +186,7 @@ jonah_coefficients compute_jonah_bulk_coefficients(particle_info * particle_data
 
   jonah.bulkPi_over_Peq_max = bulkPi_over_Peq_max;
 
-
   // now get the cubic spline interpolation coefficients (does it require even spacing?...)
-  // I've done cubic spline before but it was over a year ago
-  // let's test this much for now...
-
-
   return jonah;
 
 }

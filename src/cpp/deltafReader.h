@@ -74,8 +74,8 @@ class Deltaf_Data
         gsl_spline * betabulk_spline;
         gsl_spline * betapi_spline;
 
-    //gsl_spline_free(y_spline);
-    //gsl_interp_accel_free(acc);
+        //gsl_spline_free(y_spline);
+        //gsl_interp_accel_free(acc);
 
 
         Deltaf_Data(ParameterReader * paraRdr_in);

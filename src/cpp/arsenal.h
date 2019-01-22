@@ -1,5 +1,3 @@
-// Version 1.6.2
-// Zhi Qiu
 
 #ifndef arsenal_h
 #define arsenal_h
@@ -10,7 +8,7 @@
 
 using namespace std;
 
-void printline(); 
+void printline();
 double sixPoint2dInterp(double x, double y,
     double v00, double v01, double v02, double v10, double v11, double v20);
 
@@ -54,7 +52,6 @@ inline long irand(long LB, long RB)
   return LB + (long)((RB-LB+1)*(drand48()-1e-25));
 }
 
-
 //**********************************************************************
 inline double drand(double LB, double RB)
 // Get random number with uniform distribution between LB and RB with
@@ -69,12 +66,9 @@ void GaussLegendre_getWeight(int npts,double* x,double* w, double A, double B, i
 
 void get_bin_average_and_count(istream& is, ostream& os, vector<double>* bins, long col_to_bin=0, void (*func)(vector<double>*)=NULL, long wanted_data_columns=-1, bool silence=false); // Note that col_to_bin starts with 1, and bins is assumed to be monotonically increasing
 
-
-
 // anisotropic functions for vah_pl_matching surface reader
 double aL_fit(double pl_peq_ratio);
 double R200(double aL);
-
 
 // for momentum rescaling matrix
 void LUP_decomposition(double ** A, int n, int * pvector);
@@ -82,8 +76,3 @@ void LUP_solve(double ** PA, int n, int pvector[], double b[]);
 void free_2D(double ** M, int n);
 
 #endif
-
-
-
-
-

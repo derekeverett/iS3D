@@ -25,10 +25,7 @@
 #include "particle.h"
 #include "viscous_correction.h"
 
-//#define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
-
 using namespace std;
-
 
 double canonical(default_random_engine & generator)
 {
@@ -1103,7 +1100,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       etaWeights[0] = 1.0; // 1.0 for 3+1d
     }
 
-
     // set up root and weight arrays for pbar integrals in particle_number_outflow()
     const int legendre_pts = legendre->points;
     double * legendre_root = legendre->root;
@@ -1124,8 +1120,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       pbar_weight_outflow[i] = 0.5 * pbar * pbar * legendre_weight[i] / (s * s);
     }
 
-
-
     // gauss laguerre roots and weights
     const int laguerre_pts = laguerre->points;
 
@@ -1134,10 +1128,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
     double * pbar_weight1 = laguerre->weight[1];
     double * pbar_weight2 = laguerre->weight[2];
-
-
-
-
 
     // calculate linear pion0 density terms (neq_pion0, J20_pion0)
     // for is_linear_pion0_density_negative()
@@ -1170,12 +1160,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double y = y_fo[icell];
       if(DIMENSION == 3) etaValues[0] = eta_fo[icell];
 
-
       double dat = dat_fo[icell];         // covariant normal surface vector dsigma_mu
       double dax = dax_fo[icell];
       double day = day_fo[icell];
       double dan = dan_fo[icell];         // dan should be 0 in 2+1d case
-
 
       double ux = ux_fo[icell];           // contravariant fluid velocity u^mu
       double uy = uy_fo[icell];           // enforce normalization u.u = 1
@@ -1259,7 +1247,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double betaV = df.betaV;
       double betapi = df.betapi;
 
-
       // milne basis class
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
       basis_vectors.test_orthonormality(tau2);
@@ -1270,23 +1257,19 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       dsigma.compute_dsigma_magnitude();
       dsigma.compute_dsigma_lrf_polar_angle();
 
-
       // shear stress class
       Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
       pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
       pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
-
 
       // baryon diffusion class
       Baryon_Diffusion Vmu(Vt, Vx, Vy, Vn);
       Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
       Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
 
-
       // modified temperature, chemical potential
       double T_mod = T  +  bulkPi * F / betabulk;
       double alphaB_mod = alphaB  +  bulkPi * G / betabulk;
-
 
       // feqmod breakdown switching criteria
       // is there a better way to condense this?
@@ -1300,7 +1283,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       if(pion_density_negative) detA_min = max(detA_min, detA_bulk);
       bool feqmod_breaks_down = does_feqmod_breakdown(detA, detA_min, pion_density_negative);
       double nmod_fact = detA * pow(T_mod, 3) / two_pi2_hbarC3;
-
 
       // holds mean particle number / eta_weight of all species
       std::vector<double> dn_list;
@@ -1335,13 +1317,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       }
 
 
-
-
-
-
       // discrete probability distribution for particle types (weight[ipart] ~ dn_list[ipart] / dn_tot)
       std::discrete_distribution<int> particle_type(dn_list.begin(), dn_list.end());
-
 
       // loop over eta points
       for(int ieta = 0; ieta < eta_pts; ieta++)
@@ -1408,7 +1385,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 // check what jonah does when this happens (maybe he does nothing)
                 //
 
-
                 double lambda = 0.0;  // need to replace with the interpolated value
 
                 double shear_mod = 0.5 / betapi;
@@ -1449,11 +1425,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
             double pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
             new_particle.pz = pz;
-            //new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
-            //is it possible for this to be too small or negative?
-            //try enforcing mass shell condition on E
             new_particle.E = sqrt(mass * mass  +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
-
 
             // is this right? I forgot lol...
             double pdsigma = pLab.ptau * dat  + pLab.px * dax  + pLab.py * day  +  pLab.pn * dan;
@@ -1482,21 +1454,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               #pragma omp critical
               particle_event_list[ievent].push_back(new_particle);
             }
-
           } // sampled hadrons (n)
-
         } // sampled events (ievent)
-
       } // eta points (ieta)
-
-      cout << "\r" << "Finished " << icell + 1 << " / " << FO_length << " freezeout cells" << flush;
-
+      //cout << "\r" << "Finished " << icell + 1 << " / " << FO_length << " freezeout cells" << flush;
     } // freezeout cells (icell)
-
     printf("\nMomentum sampling efficiency = %lf %%\n", 100.0 * (double)acceptances / (double)samples);
-
 }
-
 
 
 void EmissionFunctionArray::sample_dN_pTdpTdphidy_VAH_PL(double *Mass, double *Sign, double *Degeneracy,
