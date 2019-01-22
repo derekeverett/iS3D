@@ -8,6 +8,48 @@
 
 using namespace std;
 
+class Gauss_Laguerre
+{
+  private:
+    int alpha;   // # generalized powers (0 : alpha - 1)
+
+  public:
+    int points;  // # quadrature points
+    double ** root;
+    double ** weight;
+
+    Gauss_Laguerre();
+    void load_roots_and_weights(string file_name);
+};
+
+class Gauss_Legendre
+{
+  private:
+
+  public:
+    int points;  // # quadrature points
+    double * root;
+    double * weight;
+
+    Gauss_Legendre();
+    void load_roots_and_weights(string file_name);
+};
+
+class Plasma
+{
+  private:
+    // I just wanted a cool name
+  public:                               // average thermo quantities over freezeout surface
+    double temperature;                 // GeV
+    double energy_density;              // GeV / fm^3
+    double pressure;                    // GeV / fm^3
+    double baryon_chemical_potential;   // GeV
+    double net_baryon_density;          // fm^-3
+
+    Plasma();
+    void load_thermodynamic_averages();
+};
+
 typedef struct
 {
   int mc_id; // Monte Carlo number according PDG
@@ -70,6 +112,7 @@ typedef struct
   double c2;
   double c3;
   double c4;
+  double shear14_coeff;
 
   //  Coefficients of Chapman Enskog expansion (vhydro)
   // df ~ ((c0-c2)m^2 + b.c1(u.p) + (4c2-c0)(u.p)^2).Pi + (b.c3 + c4(u.p))p_u.V^u + c5.p_u.p_v.pi^uv
@@ -79,8 +122,33 @@ typedef struct
   double betaV;
   double betapi;
 
-
 } deltaf_coefficients;
+
+
+
+// JONAH'S MODIFIED BULK COEFFICIENT METHOD
+//::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+const int jonah_points = 301;               // # interpolation points
+
+typedef struct
+{
+  const int points = jonah_points;
+
+  double lambda[jonah_points];              // isotropic momentum scale
+  double z[jonah_points];                   // renormalization factor (apart from detLambda)
+  double bulkPi_over_Peq[jonah_points];     // bulk pressure output
+
+  double bulkPi_over_Peq_max;               // the maximum bulk pressure in the array
+
+  cubic_spline_coefficients cubic_spline[jonah_points-1];
+
+} jonah_coefficients;
+
+
+jonah_coefficients compute_jonah_bulk_coefficients(particle_info * particle_data, int Nparticle);
+//::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+
 
 class FO_data_reader
 {
@@ -96,17 +164,18 @@ class FO_data_reader
         int include_baryondiff_deltaf; //switch to turn on/off (\delta)f correction from baryon diffusion
 
     public:
-        FO_data_reader(ParameterReader* paraRdr_in, string pathToInput);
+        FO_data_reader(ParameterReader * paraRdr_in, string pathToInput);
         ~FO_data_reader();
 
         int get_number_cells();
-        void read_surf_switch(long length, FO_surf* surf_ptr);
-        void read_surf_VH(long length, FO_surf* surf_ptr);
-        void read_surf_VH_Vorticity(long length, FO_surf* surf_ptr);
-        void read_surf_VAH_PLMatch(long length, FO_surf* surf_ptr);
-        void read_surf_VAH_PLPTMatch(long length, FO_surf* surf_ptr);
-        void read_surf_VH_MUSIC(long length, FO_surf* surf_ptr);
-        int read_resonances_list(particle_info* particle, FO_surf* surf_ptr, deltaf_coefficients df);
+        void read_surf_switch(long length, FO_surf * surf_ptr);
+        void read_surf_VH(long length, FO_surf * surf_ptr);
+        void read_surf_VH_Vorticity(long length, FO_surf * surf_ptr);
+        void read_surf_VAH_PLMatch(long length, FO_surf * surf_ptr);
+        void read_surf_VAH_PLPTMatch(long length, FO_surf * surf_ptr);
+        void read_surf_VH_MUSIC(long length, FO_surf * surf_ptr);
+        void read_surf_VH_MUSIC_New(long length, FO_surf* surf_ptr);
+        int read_resonances_list(particle_info * particle, FO_surf * surf_ptr, deltaf_coefficients * df);
 };
 
 #endif
