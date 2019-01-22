@@ -512,7 +512,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;   // udotdsigma / eta_weight
 
-        //if(udsigma <= 0.0) continue;        // skip cells with u.dsigma < 0
+        if(udsigma <= 0.0) continue;        // skip cells with u.dsigma < 0
 
         double ut2 = ut * ut;               // useful expressions
         double ux2 = ux * ux;
@@ -578,11 +578,16 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         // set df coefficients
         deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
-        double F = df.F;
-        double G = df.G;
-        double betabulk = df.betabulk;
-        double betaV = df.betaV;
-        double betapi = df.betapi;
+        // Modified (Mike)
+        double F = df.F;                  // F = 0 (Jonah)
+        double G = df.G;                  // G = 0 (Jonah)
+        double betabulk = df.betabulk;    // betabulk = 1 (Jonah) 
+        double betaV = df.betaV;          
+        double betapi = df.betapi;        // Mike and Jonah share this
+
+        // Modified (Jonah)
+        double lambda = df.lambda;
+        double z = df.z;
 
         // milne basis class
         Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
@@ -603,14 +608,26 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
         Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
 
-        double T_mod = T  +  F * bulkPi / betabulk;                 // modified temperature
+      
+        double T_mod = T  +  F * bulkPi / betabulk;                 // modified temperature 
         double alphaB_mod = alphaB  +  G * bulkPi / betabulk;       // modified muB/T
 
-        // linearized df coefficients
-        double shear_coeff = 0.5 / (betapi * T);
+        //cout << T << "\t" << T_mod << endl;
+        //cout << alphaB << "\t" << alphaB_mod << endl;
+        //exit(-1);
+
+        cout << lambda << "\t" << z << endl;
+        
+
+
+        // linearized Chapman Enskog df coefficients (for Mike)
+        double shear_coeff = 0.5 / (betapi * T);                    // Mike and Jonah share this
         double bulk0_coeff = F / (T * T * betabulk);
         double bulk1_coeff = G / betabulk;
         double bulk2_coeff = 1.0 / (3.0 * T * betabulk);
+
+        // linearized Jonah df coefficients (for Jonah)
+        // FILL IN LATER
 
         // pimunu and Vmu LRF components
         double pixx_LRF = pimunu.pixx_LRF;
@@ -628,18 +645,27 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         // Aij = ideal + shear + bulk is symmetric
         // Mij is not symmetric if include baryon diffusion (leave for future work)
 
-        double shear_fact = 0.5 / betapi;                           // coefficients in Aij
-        double bulk_term = bulkPi / (3.0 * betabulk);
+        double shear_term = 0.5 / betapi;                           // coefficients in Aij
+        double bulk_term;
 
-        double Axx = 1.0  +  pixx_LRF * shear_fact  +  bulk_term;
-        double Axy = pixy_LRF * shear_fact;
-        double Axz = pixz_LRF * shear_fact;
+        if(DF_MODE == 3)
+        {
+          bulk_term = bulkPi / (3.0 * betabulk);
+        }
+        else if(DF_MODE == 4)
+        {
+          bulk_term = lambda; 
+        }
+
+        double Axx = 1.0  +  pixx_LRF * shear_term  +  bulk_term;
+        double Axy = pixy_LRF * shear_term;
+        double Axz = pixz_LRF * shear_term;
         double Ayx = Axy;
-        double Ayy = 1.0  +  piyy_LRF * shear_fact  +  bulk_term;
-        double Ayz = piyz_LRF * shear_fact;
+        double Ayy = 1.0  +  piyy_LRF * shear_term  +  bulk_term;
+        double Ayz = piyz_LRF * shear_term;
         double Azx = Axz;
         double Azy = Ayz;
-        double Azz = 1.0  +  pizz_LRF * shear_fact  +  bulk_term;
+        double Azz = 1.0  +  pizz_LRF * shear_term  +  bulk_term;
 
         double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
 
@@ -657,39 +683,47 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         int permutation[3];                   // permutation vector for LUP decomposition
         LUP_decomposition(M, 3, permutation); // LUP decompose M once
 
-         // prefactors for equilibrium, linear bulk correction and modified densities
+         // prefactors for equilibrium, linear bulk correction and modified densities (Mike's feqmod)
         double neq_fact = T * T * T / two_pi2_hbarC3;
         double dn_fact = bulkPi / betabulk;
         double J20_fact = T * neq_fact;
         double N10_fact = neq_fact;
         double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
 
-        // calculate linear pion0 density terms (neq_pion0, J20_pion0)
-        // this is for the function is_linear_pion0_density_negative()
-        double mbar_pion0 = MASS_PION0 / T;
-        double neq_pion0 = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
-        double J20_pion0 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
-
-        bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
-
-        if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
-
+        
         bool feqmod_breaks_down = false;
 
-        if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
+        if(DF_MODE == 3)
+        {
+          bool pion_density_negative = false;
+
+          // calculate linearized pion0 density
+          double mbar_pion0 = MASS_PION0 / T;
+          double neq_pion0 = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
+          double J20_pion0 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
+
+          is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+
+          if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
+
+          if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
+        }
+        else if(DF_MODE == 4)
+        {
+          if(z < 0.0)
+          {
+            printf("Error: z should be positive");
+            detA_min = max(detA_min, detA_bulk);  
+          }
+
+          if(detA <= detA_min) feqmod_breaks_down = true;
+        }
 
         if(feqmod_breaks_down)
         {
           breakdown++;
           cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\t detA_min = " << detA_min << endl;
-
-          // if((INCLUDE_SHEAR_DELTAF && INCLUDE_BULK_DELTAF) && !pion_density_negative)
-          // {
-          //   printf("Error: shear + bulk feqmod has positive pions\n");
-          //   exit(-1);
-          // }
         }
-
 
         // loop over hadrons
         for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
@@ -707,7 +741,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           // modified renormalization factor
           double renorm = 1.0 / detA;             // default (shear only)
 
-          if(INCLUDE_BULK_DELTAF)
+          if(DF_MODE == 3 && INCLUDE_BULK_DELTAF)
           {
             double mbar = mass / T;
             double mbar_mod = mass / T_mod;
@@ -723,6 +757,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
 
             renorm = n_linear / n_mod;
+          }
+          else if(DF_MODE == 4 && INCLUDE_BULK_DELTAF)
+          {
+            renorm = z / detA;
           }
 
           for(int ipT = 0; ipT < pT_tab_length; ipT++)

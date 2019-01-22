@@ -148,7 +148,7 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
     fclose(c4_file);
 
   }
-  else if(df_mode == 2 || df_mode == 3)
+  else if(df_mode == 2 || df_mode == 3 || df_mode == 4)
   {
     printf("Chapman-Enskog coefficients vhydro...\n");
 
@@ -243,7 +243,7 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
     fclose(betapi_file);
 
   }
-  else if(df_mode == 4)
+  else if(df_mode == 5)
   {
     printf("14-moment coefficients vahydro PL...\n");
 
@@ -553,12 +553,8 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
   QGP.load_thermodynamic_averages();
 
   const double T = QGP.temperature;    // GeV
-  const double E = QGP.energy_density; // GeV / fm^3
-  const double P = QGP.pressure;       // GeV / fm^3
-
-  //cout << T << endl;
-  //cout << E << endl;
-  //cout << P << endl;
+  //const double E = QGP.energy_density; // GeV / fm^3
+  //const double P = QGP.pressure;       // GeV / fm^3
 
   const double T3 = pow(T,3);
   const double T4 = pow(T,4);
@@ -585,11 +581,13 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
   {
     double lambda = lambda_min + (double)i * delta_lambda;
 
+    double E = 0.0;                       // energy density (computed with kinetic theory)
+    double P = 0.0;                       // pressure
     double E_mod = 0.0;                   // modified energy density
     double P_mod = 0.0;                   // modified pressure
 
     // calculate modified energy density (sum over hadron resonance contributions)
-    //for(int n = 0; i < Nparticle; i++)  // n = 0 is Gamma
+    //for(int n = 0; i < Nparticle; i++)  // n = 0 is Gamma and end up with nans
     for(int n = 1; n < Nparticle; n++)    // should I skip the photon (Gamma)?
     {
       double degeneracy = (double)particle_data[n].gspin;     // I need to check this at some point
@@ -597,6 +595,9 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
       double sign = (double)particle_data[n].sign;
 
       double mbar = mass / T;
+
+      E += prefactor * degeneracy * Gauss1D_mod(E_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, 0.0, sign);
+      P += (prefactor / 3.0) * degeneracy * Gauss1D_mod(P_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, 0.0, sign);
 
       E_mod += prefactor * degeneracy * Gauss1D_mod(E_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, lambda, sign);
       P_mod += (prefactor / 3.0) * degeneracy * Gauss1D_mod(P_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, lambda, sign);
@@ -612,7 +613,7 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
     bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
 
-    //cout << lambda_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
+    cout << lambda_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
   }
 
   // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)  
@@ -662,6 +663,7 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
       df.c3 = 0.0;
       df.c4 = 0.0;
       df.shear14_coeff = 2.0 * T * T * (E + P);
+
       break;
     }
     case 2: // Chapman Enskog
@@ -677,12 +679,15 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
     }
     case 4: // Modified (Jonah)
     {
-      df.F = 0.0;
+      df.F = 0.0; // no modified temperature or chemical potential 
       df.G = 0.0;
+      df.betabulk = 1.0;
       df.lambda = gsl_spline_eval(lambda_spline, (bulkPi / P), accelerate);
       df.z = gsl_spline_eval(z_spline, (bulkPi / P), accelerate);
       df.betaV = 1.0;
       df.betapi = gsl_spline_eval(betapi_spline, T, accelerate);
+
+      break;
     }
     default:
     {

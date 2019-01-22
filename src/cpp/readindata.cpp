@@ -1149,7 +1149,8 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
         break;
       }
       case 2: // Chapman-Enskog
-      case 3: // Modified
+      case 3: // Modified (Mike)
+      case 4: // Modified (Jonah)
       {
         double F = df->F;
         double G = df->G;
@@ -1171,7 +1172,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
       }
       default:
       {
-        cout << "Please choose df_mode = 1,2,3 in parameters.dat" << endl;
+        cout << "Please choose df_mode = (1,2,3,4) in parameters.dat" << endl;
         exit(-1);
       }
     } // df_mode

@@ -1256,7 +1256,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           }
           break;
         }
-        case 3: // modified
+        case 3: // modified (Mike)
+        case 4: // modified (Jonah)
         {
           switch(OPERATION)
           {
@@ -1300,7 +1301,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         } //case 3
         default:
         {
-          cout << "Please specify df_mode = (1,2,3) in parameters.dat..." << endl;
+          cout << "Please specify df_mode = (1,2,3,4) in parameters.dat..." << endl;
           exit(-1);
         }
       } //switch(DF_MODE)
