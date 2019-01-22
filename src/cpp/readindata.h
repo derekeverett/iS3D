@@ -8,7 +8,6 @@
 
 using namespace std;
 
-
 class Gauss_Laguerre
 {
   private:
@@ -50,8 +49,6 @@ class Plasma
     Plasma();
     void load_thermodynamic_averages();
 };
-
-
 
 typedef struct
 {
@@ -115,8 +112,7 @@ typedef struct
   double c2;
   double c3;
   double c4;
-  double shear14_coeff;
-
+  
   //  Coefficients of Chapman Enskog expansion (vhydro)
   // df ~ ((c0-c2)m^2 + b.c1(u.p) + (4c2-c0)(u.p)^2).Pi + (b.c3 + c4(u.p))p_u.V^u + c5.p_u.p_v.pi^uv
   double F;
@@ -131,19 +127,6 @@ typedef struct
 
 // JONAH'S MODIFIED BULK COEFFICIENT METHOD
 //::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-typedef struct
-{
-  // cubic spline interpolation coefficients
-  // cubic spline formula
-  // C(x) = a + b*x + c*x^2 + d*x^3
-  double a;
-  double b;
-  double c;
-  double d;
-
-} cubic_spline_coefficients;
-
-
 const int jonah_points = 301;               // # interpolation points
 
 typedef struct
