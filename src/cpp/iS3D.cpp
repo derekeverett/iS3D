@@ -138,6 +138,11 @@ void IS3D::run_particlization(int fo_from_file)
   df_data->load_df_coefficient_data();
   df_data->construct_cubic_splines();
 
+  // load delta-f coefficients
+  deltaf_coefficients * df = new deltaf_coefficients;
+  Deltaf_Reader deltaf(paraRdr);
+  *df = deltaf.load_coefficients(surf_ptr, FO_length);
+  
   // load particle info
   particle_info *particle_data = new particle_info [Maxparticle];
   int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr, df); //number of resonances in pdg file
