@@ -587,7 +587,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       ofstream spectraFile(filename, ios_base::app);
       for (int iy = 0; iy < y_pts; iy++)
       {
-        double y = y_tab->get(1, iy + 1);;
+        double y = y_tab->get(1, iy + 1);
         if(DIMENSION == 2) y = 0.0;
 
         for(int ipT = 0; ipT < pT_tab_length; ipT++)
@@ -647,7 +647,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
 
-            dN_dy += phip_gauss_weight * pT_gauss_weight * dN_pTdpTdphidy[iS3D];
+            dN_dy += pT * phip_gauss_weight * pT_gauss_weight * dN_pTdpTdphidy[iS3D];
           } //ipT
 
         } //iphip
@@ -1231,7 +1231,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // compute the particle spectra
 
-    if((MODE == 1) || (MODE == 4)) // viscous hydro
+    if((MODE == 1) || (MODE == 4) || (MODE == 6)) // viscous hydro
     {
       switch(DF_MODE)
       {
@@ -1372,7 +1372,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
       //write_dN_dphidy_toFile(MCID);
       write_dN_dy_toFile(MCID);
-      //write_dN_twopipTdpTdy_toFile(MCID);
+      write_dN_twopipTdpTdy_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)

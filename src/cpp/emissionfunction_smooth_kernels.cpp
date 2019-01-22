@@ -135,7 +135,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;  // u.dsigma / delta_eta_weight
 
-        if(udsigma <= 0.0) continue;             // skip cells with u.dsigma < 0
+        if(udsigma <= 0.0) continue;            // skip cells with u.dsigma < 0
 
         double ux2 = ux * ux;                   // useful expressions
         double uy2 = uy * uy;

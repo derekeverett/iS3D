@@ -574,7 +574,6 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P)
       df.c3 = 0.0;
       df.c4 = 0.0;
       df.shear14_coeff = 2.0 * T * T * (E + P);
-
       break;
     }
     case 2: // Chapman Enskog

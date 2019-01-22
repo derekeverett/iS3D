@@ -150,13 +150,16 @@ void IS3D::run_particlization(int fo_from_file)
   // }
   // exit(-1);
 
-  // so this is meant to replace Deltaf_Reader
+  // this will replace Deltaf_Reader
   Deltaf_Data * df_data = new Deltaf_Data(paraRdr);
   df_data->load_df_coefficient_data();
   df_data->construct_cubic_splines();
 
+
+
   //deltaf_coefficients *df_test = new deltaf_coefficients;
-  //*df_test = df_data->evaluate_df_coefficients(T_test, muB_test, E_test, P_test);
+  //*df_test = df_data->evaluate_df_coefficients(0.11444, 0, 0, 0);
+  //cout << df_test->c0 << endl;
 
 
   // load delta-f coefficients
@@ -187,7 +190,7 @@ void IS3D::run_particlization(int fo_from_file)
   printline();
 
   Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
-  Table phi_tab("tables/phi_0_table.dat"); // phi value and weight table
+  Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
   Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
   Table eta_tab("tables/eta_trapezoid_table_57pt.dat"); // eta values and integration weights
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df, df_data);
