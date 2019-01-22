@@ -394,6 +394,9 @@ Deltaf_Data::~Deltaf_Data()
   gsl_spline_free(F_spline);
   gsl_spline_free(betabulk_spline);
   gsl_spline_free(betapi_spline);
+
+  gsl_spline_free(lambda_spline);
+  gsl_spline_free(z_spline);
 }
 
 void Deltaf_Data::load_df_coefficient_data()
@@ -536,6 +539,91 @@ void Deltaf_Data::load_df_coefficient_data()
 }
 
 
+void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int Nparticle)
+{
+  // allocate memory for the arrays
+  lambda_array = (double *)calloc(jonah_points, sizeof(double));
+  z_array = (double *)calloc(jonah_points, sizeof(double));
+  bulkPi_over_Peq_array = (double *)calloc(jonah_points, sizeof(double));
+
+  bulkPi_over_Peq_max = -1.0;      // default value
+
+  // get the average temperature, energy density, pressure
+  Plasma QGP;
+  QGP.load_thermodynamic_averages();
+
+  const double T = QGP.temperature;    // GeV
+  const double E = QGP.energy_density; // GeV / fm^3
+  const double P = QGP.pressure;       // GeV / fm^3
+
+  //cout << T << endl;
+  //cout << E << endl;
+  //cout << P << endl;
+
+  const double T3 = pow(T,3);
+  const double T4 = pow(T,4);
+
+  // gauss laguerre roots and weights
+  Gauss_Laguerre gla;
+  gla.load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
+
+  const int pbar_pts = gla.points;
+
+  double * pbar_root1 = gla.root[1];
+  double * pbar_root2 = gla.root[2];
+
+  double * pbar_weight1 = gla.weight[1];
+  double * pbar_weight2 = gla.weight[2];
+
+  // compute the coefficients
+  const double delta_lambda = (lambda_max - lambda_min) / ((double)jonah_points - 1.0);
+
+  const double prefactor = T4 / two_pi2_hbarC3;
+
+  // calculate the interpolation points of z(bulkPi/P), lambda(bulkPi/P)
+  for(int i = 0; i < jonah_points; i++)
+  {
+    double lambda = lambda_min + (double)i * delta_lambda;
+
+    double E_mod = 0.0;                   // modified energy density
+    double P_mod = 0.0;                   // modified pressure
+
+    // calculate modified energy density (sum over hadron resonance contributions)
+    //for(int n = 0; i < Nparticle; i++)  // n = 0 is Gamma
+    for(int n = 1; n < Nparticle; n++)    // should I skip the photon (Gamma)?
+    {
+      double degeneracy = (double)particle_data[n].gspin;     // I need to check this at some point
+      double mass = particle_data[n].mass;
+      double sign = (double)particle_data[n].sign;
+
+      double mbar = mass / T;
+
+      E_mod += prefactor * degeneracy * Gauss1D_mod(E_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, lambda, sign);
+      P_mod += (prefactor / 3.0) * degeneracy * Gauss1D_mod(P_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, lambda, sign);
+    }
+
+    // jonah's formula (ignoring detLambda factor i.e. n_mod / n -> 1)
+    double z = E / E_mod;
+    double bulkPi_over_Peq = (P_mod / P) * z  -  1.0;
+
+    // set the arrays and update the max bulk pressure
+    lambda_array[i] = lambda;
+    z_array[i] = z;
+    bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
+    bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
+
+    //cout << lambda_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
+  }
+
+  // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)  
+  lambda_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
+  z_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
+
+  gsl_spline_init(lambda_spline, bulkPi_over_Peq_array, lambda_array, jonah_points);
+  gsl_spline_init(z_spline, bulkPi_over_Peq_array, z_array, jonah_points);
+}
+
+
 void Deltaf_Data::construct_cubic_splines()
 {
   // Allocate memory for cubic splines
@@ -560,7 +648,7 @@ void Deltaf_Data::construct_cubic_splines()
 }
 
 
-deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P)
+deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, double bulkPi)
 {
   deltaf_coefficients df;
 
@@ -587,9 +675,18 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P)
 
       break;
     }
+    case 4: // Modified (Jonah)
+    {
+      df.F = 0.0;
+      df.G = 0.0;
+      df.lambda = gsl_spline_eval(lambda_spline, (bulkPi / P), accelerate);
+      df.z = gsl_spline_eval(z_spline, (bulkPi / P), accelerate);
+      df.betaV = 1.0;
+      df.betapi = gsl_spline_eval(betapi_spline, T, accelerate);
+    }
     default:
     {
-      printf("Error in cubic_spline(): please set df_mode = (1,2,3)\n");
+      printf("Error in cubic_spline(): please set df_mode = (1,2,3,4)\n");
       exit(-1);
     }
   }
@@ -597,7 +694,7 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P)
   return df;
 }
 
-deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, double E, double P)
+deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, double E, double P, double bulkPi)
 {
   // probably easier to bilinear interpolation the coefficients at once
   // since the data use the same grid
@@ -610,7 +707,7 @@ deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, do
   return df;
 }
 
-deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, double E, double P)
+deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, double E, double P, double bulkPi)
 {
   // evaluate the df coefficients by interpolating the data
 
@@ -618,11 +715,11 @@ deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, 
 
   if(!include_baryon)
   {
-    df = cubic_spline(T, E, P);   // cubic spline interpolation wrt T
+    df = cubic_spline(T, E, P, bulkPi);   // cubic spline interpolation wrt T
   }
   else
   {
-    df = bilinear_interpolation(T, muB, E, P);  // bilinear wrt (T, muB)
+    df = bilinear_interpolation(T, muB, E, P, bulkPi);  // bilinear wrt (T, muB)
   }
 
   return df;

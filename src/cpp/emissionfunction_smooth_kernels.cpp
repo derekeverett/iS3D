@@ -196,7 +196,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         }
 
         // set df coefficients
-        deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P);
+        deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
         double c0 = df.c0;             // 14 moment coefficients
         double c1 = df.c1;
@@ -576,7 +576,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         }
 
         // set df coefficients
-        deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P);
+        deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
         double F = df.F;
         double G = df.G;

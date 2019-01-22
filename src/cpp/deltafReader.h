@@ -4,6 +4,7 @@
 
 #include "ParameterReader.h"
 #include "readindata.h"
+#include "gaussThermal.h"
 #include <fstream>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_spline.h>
@@ -74,8 +75,20 @@ class Deltaf_Data
         gsl_spline * betabulk_spline;
         gsl_spline * betapi_spline;
 
-        //gsl_spline_free(y_spline);
-        //gsl_interp_accel_free(acc);
+
+        // Jonah's coefficients
+        const int jonah_points = 31;        // # interpolation points in lambda
+
+        const double lambda_min = -1.0;     // min and max values of lambda
+        const double lambda_max = 2.0;
+
+        double * lambda_array;              // isotropic momentum scale
+        double * z_array;                   // renormalization factor (apart from detLambda)
+        double * bulkPi_over_Peq_array;     // bulk pressure output
+        double bulkPi_over_Peq_max;         // the maximum bulk pressure in the array
+
+        gsl_spline * lambda_spline;         // cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
+        gsl_spline * z_spline;
 
 
         Deltaf_Data(ParameterReader * paraRdr_in);
@@ -85,13 +98,13 @@ class Deltaf_Data
 
         void construct_cubic_splines();
 
-        deltaf_coefficients evaluate_df_coefficients(double T, double muB, double E, double P);
+        void compute_jonah_coefficients(particle_info * particle_data, int Nparticle);
 
-        deltaf_coefficients cubic_spline(double T, double E, double P);
+        deltaf_coefficients evaluate_df_coefficients(double T, double muB, double E, double P, double bulkPi);
 
-        deltaf_coefficients bilinear_interpolation(double T, double muB, double E, double P);
+        deltaf_coefficients cubic_spline(double T, double E, double P, double bulkPi);
 
-        //deltaf_coefficients
+        deltaf_coefficients bilinear_interpolation(double T, double muB, double E, double P, double bulkPi);
 
 };
 
