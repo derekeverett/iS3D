@@ -1,7 +1,6 @@
 results
 input
 oversampling
-iS3D_parameters.dat
 *.sublime-project
 *.o
 *.out

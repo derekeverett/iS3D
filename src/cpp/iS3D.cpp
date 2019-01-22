@@ -76,7 +76,7 @@ void IS3D::run_particlization(int fo_from_file)
   cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
   cout << "Derek Everett, Mike McNelis, Sameed Pervaiz and Lipei Du (2018)" << endl;
   cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu" << endl;
-  printline();
+
   // Read-in parameters
   cout << "Reading in parameters:\n" << endl;
   ParameterReader *paraRdr = new ParameterReader;
@@ -175,11 +175,11 @@ void IS3D::run_particlization(int fo_from_file)
     cout << "Particle list contains " << particle_event_list_in.size() << " particles" << endl;
     final_particles_ = particle_event_list_in;
   }
-
+  
   delete [] surf_ptr;
   delete paraRdr;
+  delete df_data;
 
-  printline();
   cout << "Done calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
 
 }

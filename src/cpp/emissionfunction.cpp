@@ -119,9 +119,6 @@ bool does_feqmod_breakdown(double detA, double detA_min, bool pion_density_negat
 }
 
 
-
-
-
 // Class EmissionFunctionArray ------------------------------------------
 EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in,
   Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in,
@@ -357,6 +354,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       int mcid = MCID[ipart];
       sprintf(filename, "results/dN_pTdpTdphidy_%d.dat", mcid);
       ofstream spectraFile(filename, ios_base::app);
+      //write the header
+      spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_pTdpTdphidy" << "\n";
       for (int iy = 0; iy < y_pts; iy++)
       {
         double y;
@@ -605,6 +604,51 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             dN_twopipTdpTdy += phip_gauss_weight * dN_pTdpTdphidy[iS3D] / (2.0 * M_PI);
           } //iphip
           spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << pT << "\t" << dN_twopipTdpTdy << "\n";
+        } //ipT
+        spectraFile << "\n";
+      } //iy
+      spectraFile.close();
+    }
+  }
+
+  void EmissionFunctionArray::write_dN_twopidpTdy_toFile(int *MCID)
+  {
+    printf("Writing thermal dN_twopidpTdy to file...\n");
+    //write 3D spectra in block format, different blocks for different species,
+    //different sublocks for different values of rapidity
+    //rows corespond to phip and columns correspond to pT
+    int npart = number_of_chosen_particles;
+    char filename[255] = "";
+
+    int y_pts = y_tab_length;     // default 3+1d pts
+    if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
+
+    // write a separate file for each species
+    for(int ipart  = 0; ipart < npart; ipart++)
+    {
+      int mcid = MCID[ipart];
+      sprintf(filename, "results/dN_twopidpTdy_%d.dat", mcid);
+      ofstream spectraFile(filename, ios_base::app);
+      for (int iy = 0; iy < y_pts; iy++)
+      {
+        double y = y_tab->get(1, iy + 1);;
+        if(DIMENSION == 2) y = 0.0;
+
+        for(int ipT = 0; ipT < pT_tab_length; ipT++)
+        {
+          double pT = pT_tab->get(1, ipT + 1);
+          double dN_twopipTdpTdy = 0.0;
+
+          for (int iphip = 0; iphip < phi_tab_length; iphip++)
+          {
+            double phip = phi_tab->get(1, iphip + 1);
+            double phip_gauss_weight = phi_tab->get(2, iphip + 1);
+
+            long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
+
+            dN_twopipTdpTdy += phip_gauss_weight * dN_pTdpTdphidy[iS3D] / (2.0 * M_PI);
+          } //iphip
+          spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << pT << "\t" << dN_twopipTdpTdy * pT << "\n";
         } //ipT
         spectraFile << "\n";
       } //iy
@@ -945,46 +989,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     yield_list.close();
   }
 
-/*
-  void EmissionFunctionArray::synchronize_particle_list_and_write()
-  {
-    printf("Synchronizing sampled particles for afterburner and writing to file...\n");
-    char filename[255] = "";
-    sprintf(filename, "results/synchronized_particle_list.dat");
-    ofstream spectraFile(filename, ios_base::app);
-    int num_particles = particle_list.size();
-    //write the header
-    //spectraFile << "OSC1997A" << "\n";
-    //spectraFile << "final_id_p_x" << "\n";
-    //not sure the purpose of this part of header, it is filled with dummy info
-    //spectraFile << "iS3D v1.0 (208,82)+(208,82) CM, 2.760, 1" << "\n";
-    //event header
-    //spectraFile << "1" << " " << num_particles << " " << 0.0 << " " << 0.0 << "\n";
-    for (int ipart = 0; ipart < num_particles; ipart++)
-    {
-      int mcid = particle_list[ipart].mcID;
-      double x = particle_list[ipart].x;
-      double y = particle_list[ipart].y;
-      double t = particle_list[ipart].t;
-      double z = particle_list[ipart].z;
-
-      double mass = particle_list[ipart].mass;
-      double E = particle_list[ipart].E;
-      double px = particle_list[ipart].px;
-      double py = particle_list[ipart].py;
-      double pz = particle_list[ipart].pz;
-
-      //propagate particles back to starting time and assign formation time = production time
-      double x_old = x - (px / E) * t;
-      double y_old = y - (py / E) * t;
-      double z_old = z - (pz / E) * t;
-
-      spectraFile << ipart << "," << mcid << "," << px << "," << py << "," << pz << "," << E << "," << mass << "," << x << "," << y << "," << z << "," << t << "\n";
-    }//ipart
-    spectraFile.close();
-  }
-*/
-
   //*********************************************************************************************
   void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
@@ -1231,7 +1235,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // compute the particle spectra
 
-    if((MODE == 1) || (MODE == 4) || (MODE == 6)) // viscous hydro
+    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6) // viscous hydro
     {
       switch(DF_MODE)
       {
@@ -1329,8 +1333,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           exit(-1);
         }
       } //switch(DF_MODE)
-    } //if (MODE == 1)
-    else if(MODE == 2)
+    } // if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
+    else if (MODE == 2)
     {
       switch(OPERATION)
       {
@@ -1368,11 +1372,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     if (OPERATION == 1)
     {
       write_dN_pTdpTdphidy_toFile(MCID);
-      //write_dN_dpTdphidy_toFile(MCID);
+      write_dN_dpTdphidy_toFile(MCID);
 
-      //write_dN_dphidy_toFile(MCID);
+      write_dN_dphidy_toFile(MCID);
       write_dN_dy_toFile(MCID);
       write_dN_twopipTdpTdy_toFile(MCID);
+      write_dN_twopidpTdy_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)
@@ -1395,7 +1400,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     free(Sign);
     free(Baryon);
 
-    if(MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
+    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
     {
       free(E);
       free(P);

@@ -70,15 +70,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     double yValues[y_pts];
     double etaValues[eta_pts];
-    double etaWeights[eta_pts];    // eta_weight * delta_eta
+    double etaWeights[eta_pts];
 
-    etaValues[0] = 0.0;           // below, will load eta_fo
-    etaWeights[0] = 1.0; // 1.0 for 3+1d
-
-    for(int iy = 0; iy < y_pts; iy++)
-    {
-      yValues[iy] = y_tab->get(1, iy + 1);  // default
-    }
 
     if(DIMENSION == 2)
     {
@@ -88,7 +81,16 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       {
         etaValues[ieta] = eta_tab->get(1, ieta + 1);
         etaWeights[ieta] = eta_tab->get(2, ieta + 1);
-        //cout << ieta << "\t" << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
+        //cout << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
+      }
+    }
+    else if(DIMENSION == 3)
+    {
+      etaValues[0] = 0.0;       // below, will load eta_fo
+      etaWeights[0] = 1.0; // 1.0 for 3+1d
+      for(int iy = 0; iy < y_pts; iy++)
+      {
+        yValues[iy] = y_tab->get(1, iy + 1);
       }
     }
 
@@ -133,7 +135,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double un = un_fo[icell_glb];
         double ut = sqrt(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un);
 
-        double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;  // u.dsigma / delta_eta_weight
+        double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;  // u.dsigma / eta_weight
 
         if(udsigma <= 0.0) continue;            // skip cells with u.dsigma < 0
 
@@ -275,13 +277,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                 for(int ieta = 0; ieta < eta_pts; ieta++)
                 {
                   double eta = etaValues[ieta];
-                  double delta_eta_weight = etaWeights[ieta];
+                  double eta_weight = etaWeights[ieta];
 
                   double pt = mT * cosh(y - eta);           // p^\tau (GeV)
                   double pn = mT_over_tau * sinh(y - eta);  // p^\eta (GeV^2)
                   double tau2_pn = tau2 * pn;
 
-                  double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
+                  double pdotdsigma = eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
 
                   if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
 
@@ -436,7 +438,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     double yValues[y_pts];
     double etaValues[eta_pts];
-    double etaWeights[eta_pts];    // eta_weight * delta_eta
+    double etaWeights[eta_pts];
 
     if(DIMENSION == 2)
     {
@@ -446,7 +448,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       {
         etaValues[ieta] = eta_tab -> get(1, ieta + 1);
         etaWeights[ieta] = eta_tab -> get(2, ieta + 1);
-        //cout << ieta << "\t" << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
+        //cout << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
       }
     }
     else if(DIMENSION == 3)
@@ -512,9 +514,9 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double un = un_fo[icell_glb];
         double ut = sqrt(1.0 +  ux * ux  +  uy * uy  +  tau2 * un * un);
 
-        double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;   // udotdsigma / delta_eta_weight
+        double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;   // udotdsigma / eta_weight
 
-        if(udsigma <= 0.0) continue;        // skip cells with u.dsigma < 0
+        //if(udsigma <= 0.0) continue;        // skip cells with u.dsigma < 0
 
         double ut2 = ut * ut;               // useful expressions
         double ux2 = ux * ux;
@@ -748,13 +750,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                 for(int ieta = 0; ieta < eta_pts; ieta++)
                 {
                   double eta = etaValues[ieta];
-                  double delta_eta_weight = etaWeights[ieta];  // trapezoid rule
+                  double eta_weight = etaWeights[ieta];  // trapezoid rule
 
                   double pt = mT * cosh(y - eta);          // p^\tau (GeV)
                   double pn = mT_over_tau * sinh(y - eta); // p^\eta (GeV^2)
                   double tau2_pn = tau2 * pn;
 
-                  double pdotdsigma = delta_eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan);
+                  double pdotdsigma = eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan);
 
                   if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
 
@@ -928,7 +930,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         double yValues[y_pts];
         double etaValues[eta_pts];
-        double etaWeights[eta_pts];    // eta_weight * delta_eta
+        double etaWeights[eta_pts];
 
         double delta_eta = (eta_tab->get(1,2)) - (eta_tab->get(1,1));  // assume uniform grid
 
@@ -1050,7 +1052,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     for (int ieta = 0; ieta < eta_pts; ieta++)
                     {
                       double eta = etaValues[ieta];
-                      double delta_eta_weight = etaWeights[ieta];
+                      double eta_weight = etaWeights[ieta];
 
                       double pt = mT * cosh(y - eta);
                       double pn = mT_over_tau * sinh(y - eta);
@@ -1102,9 +1104,9 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       if (REGULATE_DELTAF)
                       {
                         double reg_df = max( -1.0, min( fabar * df, 1.0 ) );
-                        pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * fa * (1.0 + reg_df));
+                        pdotdsigma_f_eta_sum += (eta_weight * pdotdsigma * fa * (1.0 + reg_df));
                       }
-                      else pdotdsigma_f_eta_sum += (delta_eta_weight * pdotdsigma * fa * (1.0 + fabar * df));
+                      else pdotdsigma_f_eta_sum += (eta_weight * pdotdsigma * fa * (1.0 + fabar * df));
 
                     } // ieta
 

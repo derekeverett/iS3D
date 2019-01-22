@@ -905,7 +905,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       double uy2 = uy * uy;
       double ut2 = ut * ut;
 
-      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan; // udotdsigma / delta_eta_weight
+      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan; // udotdsigma / eta_weight
 
       if(udsigma <= 0.0) continue;        // skip over cells with u.dsigma < 0
 
@@ -1012,7 +1012,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       dsigma.compute_dsigma_lrf_polar_angle();
 
 
-      // total number of hadrons / delta_eta_weight in FO_cell
+      // total number of hadrons / eta_weight in FO_cell
       double dn_tot = 0.0;
 
       // sum over hadrons
@@ -1080,9 +1080,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     int eta_pts = 1;
     if(DIMENSION == 2) eta_pts = eta_tab_length;
     double etaValues[eta_pts];
-    double etaWeights[eta_pts];
-
-    etaWeights[0] = 1.0;
+    double etaWeights[eta_pts];                           // eta_weight
 
     if(DIMENSION == 2)
     {
@@ -1090,8 +1088,12 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       {
         etaValues[ieta] = eta_tab->get(1, ieta + 1);
         etaWeights[ieta] = eta_tab->get(2, ieta + 1);
-        //cout << ieta << "\t" << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
       }
+    }
+    else if(DIMENSION == 3)
+    {
+      etaValues[0] = 0.0;           // below, will load eta_fo
+      etaWeights[0] = 1.0; // 1.0 for 3+1d
     }
 
 
@@ -1173,7 +1175,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double un = un_fo[icell];           // u^eta (fm^-1)
       double ut = sqrt(1.0  +  ux * ux  +  uy * uy  +  tau2 * un * un); // u^tau
 
-      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan; // udotdsigma / delta_eta_weight
+      double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan; // udotdsigma / eta_weight
 
       if(udsigma <= 0.0) continue;        // skip over cells with u.dsigma < 0
 
@@ -1255,8 +1257,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
       basis_vectors.test_orthonormality(tau2);
 
-
-      // dsigma / delta_eta_weight class
+      // dsigma / eta_weight class
       Surface_Element_Vector dsigma(dat, dax, day, dan);
       dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
       dsigma.compute_dsigma_magnitude();
@@ -1294,12 +1295,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double nmod_fact = detA * pow(T_mod, 3) / two_pi2_hbarC3;
 
 
-      // holds mean particle number / delta_eta_weight of all species
+      // holds mean particle number / eta_weight of all species
       std::vector<double> dn_list;
       dn_list.resize(npart);
 
-
-      // total mean number  / delta_eta_weight of hadrons in FO cell
+      // total mean number  / eta_weight of hadrons in FO cell
       double dn_tot = 0.0;
 
       for(int ipart = 0; ipart < npart; ipart++)
