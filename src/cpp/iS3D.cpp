@@ -163,7 +163,7 @@ void IS3D::run_particlization(int fo_from_file)
   if (operation == 2) etaTableFile = "tables/eta_sampling_gauss_table.dat";
   Table eta_tab(etaTableFile); //eta_s values and weights
 
-  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df_data);
+  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df, df_data);
 
   std::vector<Sampled_Particle> particle_event_list_in;
   efa.calculate_spectra(particle_event_list_in);
