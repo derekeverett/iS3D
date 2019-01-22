@@ -165,7 +165,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
 
         // timelike cells
-        if(!outflow || ds_time_over_ds_space >= 1.0)
+        if(!outflow || ds_time >= ds_space)
         {
           double df_bulk = ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
 
@@ -173,12 +173,13 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
           df = max(-1.0, min(df, 1.0)); // regulate df
 
-          n_outflow += 2.0 * weight * ds_time_over_ds_space * feq * (1.0 + df);
+          n_outflow += 2.0 * weight * ds_time * feq * (1.0 + df);
         }
         // spacelike cells
         else
         {
           double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
+        
           double costheta_star2 = costheta_star * costheta_star;
           double costheta_star3 = costheta_star2 * costheta_star;
           double costheta_star4 = costheta_star3 * costheta_star;
@@ -201,8 +202,8 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
           double f_time = feq_time + df_shear_time + df_bulk_time;
           double f_space = feq_space + df_shear_space + df_bulk_space;
 
-          double integrand = ds_time_over_ds_space * f_time  -  pbar / Ebar * f_space;
-          double integrand_upper_bound = 2.0 * (ds_time_over_ds_space * feq_time  -  pbar / Ebar * feq_space);
+          double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
+          double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
 
           integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
 
@@ -223,7 +224,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
         double feqbar = 1.0 - sign * feq;
 
         // timelike cells
-        if(!outflow || ds_time_over_ds_space >= 1.0)
+        if(!outflow || ds_time >= ds_space)
         {
           double df_bulk = (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
 
@@ -231,7 +232,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
           df = max(-1.0, min(df, 1.0));
 
-          n_outflow += 2.0 * weight * ds_time_over_ds_space * feq * (1.0 + df);
+          n_outflow += 2.0 * weight * ds_time * feq * (1.0 + df);
         }
         // spacelike cells
         else
@@ -259,8 +260,8 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
           double f_time = feq_time + df_shear_time + df_bulk_time;
           double f_space = feq_space + df_shear_space + df_bulk_space;
 
-          double integrand = ds_time_over_ds_space * f_time  -  pbar / Ebar * f_space;
-          double integrand_upper_bound = 2.0 * (ds_time_over_ds_space * feq_time  -  pbar / Ebar * feq_space);
+          double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
+          double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
 
           integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
 
@@ -280,9 +281,9 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
         double Ebar = sqrt(pbar * pbar +  mbar_squared);
 
-        if(!outflow || ds_time_over_ds_space >= 1.0)
+        if(!outflow || ds_time >= ds_space)
         {
-          n_outflow += 2.0 * weight * ds_time_over_ds_space * feqmod;
+          n_outflow += 2.0 * weight * ds_time * feqmod;
         }
         else
         {
@@ -290,7 +291,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
           double mbar_bulk = mbar_mod / (1.0 + bulk_coeff);
           double Ebar_bulk = sqrt(pbar_mod * pbar_mod  +  mbar_bulk * mbar_bulk);
 
-          n_outflow += weight * (ds_time_over_ds_space * (1.0  +  costheta_star_mod) - 0.5 * pbar_mod / Ebar_bulk * (costheta_star_mod * costheta_star_mod  -  1.0)) * feqmod;
+          n_outflow += weight * (ds_time * (1.0  +  costheta_star_mod) - 0.5 * ds_space * pbar_mod / Ebar_bulk * (costheta_star_mod * costheta_star_mod  -  1.0)) * feqmod;
         }
 
         break;
@@ -306,11 +307,11 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
   // prefactor
   if(df_mode == 3 && !feqmod_breaks_down)
   {
-    return n_outflow * degeneracy * ds_space * detA * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
+    return n_outflow * degeneracy * detA * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
   }
   else
   {
-    return n_outflow * degeneracy * ds_space * T * T * T / four_pi2_hbarC3;
+    return n_outflow * degeneracy * T * T * T / four_pi2_hbarC3;
   }
 
 }
@@ -1097,6 +1098,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     }
 
 
+
     // set up root and weight arrays for pbar integrals in particle_number_outflow()
     const int legendre_pts = legendre->points;
     double * legendre_root = legendre->root;
@@ -1129,7 +1131,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     double * pbar_weight2 = laguerre->weight[2];
 
 
-
+    
 
 
     // calculate linear pion0 density terms (neq_pion0, J20_pion0)
@@ -1242,8 +1244,12 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         baryon_enthalpy_ratio = nB / (E + P);
       }
 
+     
+
       // evaluate df coefficients
       deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
+
+
 
       // coefficients for modified
       double F = df.F;
@@ -1251,6 +1257,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double betabulk = df.betabulk;
       double betaV = df.betaV;
       double betapi = df.betapi;
+
+
 
 
       // milne basis class
@@ -1346,7 +1354,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         double dN_tot = dn_tot * etaWeights[ieta];              // total mean number of hadrons in FO cell
 
         if(dN_tot <= 0.0) continue;                             // error: poisson mean value out of bounds
-
 
         // poisson probability distribution for number of hadrons
         std::poisson_distribution<int> poisson_hadrons(dN_tot);

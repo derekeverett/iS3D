@@ -556,6 +556,10 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
   const double E = QGP.energy_density; // GeV / fm^3
   const double P = QGP.pressure;       // GeV / fm^3
 
+  //cout << T << endl;
+  //cout << E << endl;
+  //cout << P << endl;
+
   const double T3 = pow(T,3);
   const double T4 = pow(T,4);
 
@@ -607,6 +611,8 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     z_array[i] = z;
     bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
     bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
+
+    //cout << lambda_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
   }
 
   // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)  
