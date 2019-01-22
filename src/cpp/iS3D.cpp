@@ -16,8 +16,6 @@
 #include "ParameterReader.h"
 #include "deltafReader.h"
 
-//using namespace std;
-
 IS3D::IS3D()
 {
 }
@@ -25,13 +23,6 @@ IS3D::IS3D()
 IS3D::~IS3D()
 {
 }
-
-/*
-void IS3D::set_particle_list(std::vector< std::vector<Sampled_Particle> > list_in)
-{
-  IS3D::final_particles_ = list_in;
-}
-*/
 
 void IS3D::read_fo_surf_from_memory(
                               std::vector<double> tau_in,
@@ -156,11 +147,6 @@ void IS3D::run_particlization(int fo_from_file)
   particle_info *particle_data = new particle_info [Maxparticle];
   int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr, df); //number of resonances in pdg file
 
-  jonah_coefficients jonah = compute_jonah_bulk_coefficients(particle_data, Nparticle); // I could move this elsewhere
-
-  cout << "Finished reading files" << endl;
-  printline();
-
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
   //switch to different method of reading chosen_particles.dat file that doesn't
   //have this undesirable feature
@@ -168,7 +154,6 @@ void IS3D::run_particlization(int fo_from_file)
 
   cout << "Total number of freezeout cells: " <<  FO_length << endl;
   cout << "Number of chosen particles: " << chosen_particles.getNumberOfRows() << endl;
-  cout << "Number of particles in pdg.dat: " << Nparticle << endl;
 
   Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
@@ -193,7 +178,6 @@ void IS3D::run_particlization(int fo_from_file)
 
   delete [] surf_ptr;
   delete paraRdr;
-  delete df_data;
 
   printline();
   cout << "Done calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
