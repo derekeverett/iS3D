@@ -138,11 +138,6 @@ void IS3D::run_particlization(int fo_from_file)
   df_data->load_df_coefficient_data();
   df_data->construct_cubic_splines();
 
-  // load delta-f coefficients
-  deltaf_coefficients * df = new deltaf_coefficients;
-  Deltaf_Reader deltaf(paraRdr);
-  *df = deltaf.load_coefficients(surf_ptr, FO_length);
-
   // load particle info
   particle_info *particle_data = new particle_info [Maxparticle];
   int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr, df); //number of resonances in pdg file
@@ -163,7 +158,7 @@ void IS3D::run_particlization(int fo_from_file)
   if (operation == 2) etaTableFile = "tables/eta_sampling_gauss_table.dat";
   Table eta_tab(etaTableFile); //eta_s values and weights
 
-  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df, df_data);
+  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df_data);
 
   std::vector<Sampled_Particle> particle_event_list_in;
   efa.calculate_spectra(particle_event_list_in);
