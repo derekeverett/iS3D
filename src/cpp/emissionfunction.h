@@ -13,6 +13,7 @@
 
 using namespace std;
 
+// local rest frame momentum
 typedef struct
 {
   double E;    // u.p
@@ -21,6 +22,7 @@ typedef struct
   double pz;   // -Z.p
 } LRF_Momentum;
 
+// lab frame momentum
 class Lab_Momentum
 {
   private:          // LRF momentum components
@@ -29,7 +31,7 @@ class Lab_Momentum
     double py_LRF;
     double pz_LRF;
 
-  public:           // contravariant lab frame momentum p^mu (milne)
+  public:           // contravariant lab frame momentum p^mu (milne components)
     double ptau;    // p^tau
     double px;      // p^x
     double py;      // p^y
@@ -38,6 +40,9 @@ class Lab_Momentum
     Lab_Momentum(LRF_Momentum pLRF_in);
     void boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut, double ux, double uy, double un);
 };
+
+// three distributions to sample heavy hadrons
+typedef enum {heavy, moderate, light} heavy_distribution;
 
 typedef struct
 {
@@ -48,8 +53,10 @@ typedef struct
   double slope;
 } MT_fit_parameters;
 
+
+
 // thermal particle density (just for crosschecking)
-double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
+//double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
 
 double compute_detA(Shear_Stress pimunu, double bulkPi, double betapi, double betabulk);
 
@@ -69,7 +76,9 @@ private:
   int MODE; //vh or vah , ...
   int DF_MODE;  // delta-f type
   int DIMENSION; // hydro d+1 dimensions (2+1 or 3+1)
-  int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
+  int INCLUDE_BULK_DELTAF;
+  int INCLUDE_SHEAR_DELTAF;
+  int INCLUDE_BARYONDIFF_DELTAF;
 
   int REGULATE_DELTAF;
   int OUTFLOW;
@@ -87,6 +96,16 @@ private:
   int OVERSAMPLE; // whether or not to iteratively oversample surface
   long int MIN_NUM_HADRONS; //min number of particles summed over all samples
   long int SAMPLER_SEED; //the seed for the particle sampler. If chosen < 0, seed set with clocktime
+
+  // for binning sampled particles (for sampler tests)
+  double PT_LOWER_CUT;
+  double PT_UPPER_CUT;
+  int PT_BINS;
+  double Y_CUT;
+
+
+  int DYNAMICAL;
+
   int Nevents;              // number of sampled events
   double mean_yield;        // mean number of particles emitted from freezeout surface (includes backflow)
 
@@ -103,42 +122,34 @@ private:
   std::vector< std::vector<Sampled_Particle> > particle_event_list;   // holds sampled particle list of all events
   std::vector<int> particle_yield_list;                               // particle yield for all events (includes p.dsigma particles)
 
-  //vector<int> chosen_pion0;             // stores chosen particle index of pion0 (for tracking feqmod breakdown)
-
   int *chosen_particles_01_table;       // has length Nparticle, 0 means miss, 1 means include
   int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table
   int Nparticles;
   int number_of_chosen_particles;
   particle_info* particles;       // contains all the particle info from pdg.dat
   FO_surf* surf_ptr;
-  deltaf_coefficients df;
+  deltaf_coefficients * df;
+  Deltaf_Data * df_data;
   bool particles_are_the_same(int, int);
 
 public:
 
   // constructor / destructor
-  EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients df_in);
+  EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients * df_in, Deltaf_Data * df_data_in);
   ~EmissionFunctionArray();
 
   // main function
   void calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in);
 
+
   // continuous spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
   // continuous spectra with feq + df
-  void calculate_dN_pTdpTdphidy(double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *, double *, double *, double *,
-    double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double*, double*, double *);
+  void calculate_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Deltaf_Data *df_data);
 
   // continuous spectra with feqmod
-  void calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon,
-    double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
-    double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
-    double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
-    double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_root2, double * pbar_weight1, double * pbar_weight2, double *thermodynamic_average);
+  void calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Gauss_Laguerre * gla, Deltaf_Data * df_data);
 
   // continuous spectra with fa + dft
   void calculate_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
@@ -150,41 +161,18 @@ public:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
 
+
   // sampling spectra routines:
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
-  // particle number in freezeout cell with regulated df and outflow corrections (p.dsigma > 0)
-  double particle_number_outflow(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, double * df_coeff, double shear14_coeff, double equilibrium_density, double bulk_density, double T_mod, double alphaB_mod, double detA, double modified_density, bool feqmod_breaks_down);
-
-
-
-  // calculate total particle yield from freezeout surface -> number of events to sample
-  double calculate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *thermodynamic_average, double * df_coeff, const int pbar_pts, double * pbar_root1, double * pbar_weight1, double * pbar_root2, double * pbar_weight2);
-
-  // sample momentum with feq + df
-  LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double * df_coeff, double shear14_coeff, double baryon_enthalpy_ratio);
-
-  // sample momentum with feqmod
-  LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T_mod, double alphaB_mod, Surface_Element_Vector dsigma, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
-
-  // computes rvisc weight df correction
-  double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, double baryon, double T, double alphaB, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, double * df_coeff, double shear_coeff, double baryon_enthalpy_ratio);
-
-  // momentum rescaling (used by feqmod momentum sampler)
-  LRF_Momentum rescale_momentum(LRF_Momentum pmod, double mass_squared, double baryon, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_coeff, double bulk_coeff, double diff_coeff, double baryon_enthalpy_ratio);
+  // calculate average total particle yield from freezeout surface to determine number of events to sample
+  double calculate_total_yield(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double * Equilibrium_Density, double * Bulk_Density, double * Diffusion_Density, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB, double *nB, double *Vx_fo, double *Vy_fo, double *Vn_fo, Deltaf_Data * df_data, Gauss_Laguerre * laguerre, Gauss_Legendre * legendre);
 
 
   // sample particles with feq + df or feqmod
-  void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff, double *thermodynamic_average, const int pbar_pts, double * pbar_root1, double * pbar_weight1, double * pbar_root2, double * pbar_weight2);
-  // sample particles with feqmod
-  /*
-  void sample_dN_pTdpTdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID,
-  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
-  double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
-  double *pitt_fo, double *pitx_fo, double *pity_fo, double *pitn_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *pinn_fo, double *bulkPi_fo,
-  double *muB_fo, double *nB_fo, double *Vt_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, double *df_coeff,
-  int pbar_pts, double *pbar_root1, double *pbar_weight1, double *pbar_root2, double *pbar_weight2);
-  */
+  void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB, double *nB, double *Vx_fo, double *Vy_fo, double *Vn_fo, Deltaf_Data * df_data, Gauss_Laguerre * laguerre, Gauss_Legendre * legendre);
+
+
 
   void sample_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
   double *, double *, double *, double *, double *,
@@ -197,9 +185,9 @@ public:
 
   // spin polarization:
   void calculate_spin_polzn(double *Mass, double *Sign, double *Degeneracy,
-  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ut_fo, double *ux_fo, double *uy_fo, double *un_fo,
+  double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
-  double *wtx_fo, double *wty_fo, double *wtn_fo, double *wxy_fo, double *wxn_fo, double *wyn_fo);
+  double *wtx_fo, double *wty_fo, double *wtn_fo, double *wxy_fo, double *wxn_fo, double *wyn_fo, Plasma * QGP);
 
 
   // write to file functions:
@@ -219,6 +207,7 @@ public:
   void write_particle_list_OSC(); //write sampled particle list in OSCAR format for UrQMD/SMASH
   void write_momentum_list_toFile();  // write sampled momentum list
   void write_yield_list_toFile();     // write mean yield and sampled yield list to files
+  void write_sampled_pT_pdf_toFile(int * MCID);
 
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 

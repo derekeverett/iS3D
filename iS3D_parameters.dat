@@ -46,3 +46,12 @@ oversample		        = 0      #run sampler iteratively until total number of hadr
 min_num_hadrons		        = 1.e+6 #across all samples >= min_num_hadrons
 
 sampler_seed		        = 1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
+
+pT_lower_cut		= 0.0		 # pT lower cut in GeV (for sampler tests) 
+pT_upper_cut		= 3.0		 # pT upper cut in GeV (for sampler tests)
+pT_bins				= 100		 # number of pT bins (for sampler tests)
+y_cut				= 5.0		 # |y| <= y_cut rapidity cut (for sampler tests)
+
+sampler_seed		    = 1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
+
+dynamical			= 0			 # sample particles that are reabsorbed into fireball dynamically

@@ -4,8 +4,12 @@
 #include <string>
 #include <vector>
 #include "particle.h"
+#include <cmath>
 
 const double hbarC = 0.197327053;  //GeV*fm
+const double two_pi = 2.0 * M_PI;
+const double two_pi2_hbarC3 = 2.0 * pow(M_PI, 2) * pow(hbarC, 3);
+const double four_pi2_hbarC3 = 4.0 * pow(M_PI, 2) * pow(hbarC, 3);
 
 const int Maxparticle = 400; //size of array for storage of the particles
 const int Maxdecaychannel = 17;

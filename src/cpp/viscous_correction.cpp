@@ -85,8 +85,8 @@ void Surface_Element_Vector::compute_dsigma_magnitude()
 }
 
 void Surface_Element_Vector::compute_dsigma_lrf_polar_angle()
-{  
-    costheta_LRF = dsigmaz_LRF / dsigma_space; 
+{
+    costheta_LRF = dsigmaz_LRF / dsigma_space;
 }
 
 

@@ -6,6 +6,9 @@
 #include<cmath>
 #include<iomanip>
 #include<stdlib.h>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_spline.h>
+#include <gsl/gsl_interp.h>
 
 #include "iS3D.h"
 #include "deltafReader.h"
@@ -14,10 +17,9 @@
 
 using namespace std;
 
-DeltafReader::DeltafReader(ParameterReader * paraRdr_in, string path_in)
+Deltaf_Reader::Deltaf_Reader(ParameterReader * paraRdr_in)
 {
   paraRdr = paraRdr_in;
-  pathTodeltaf = path_in;
 
   mode = paraRdr->getVal("mode");
   df_mode = paraRdr->getVal("df_mode");
@@ -25,68 +27,47 @@ DeltafReader::DeltafReader(ParameterReader * paraRdr_in, string path_in)
 
 }
 
-DeltafReader::~DeltafReader()
+Deltaf_Reader::~Deltaf_Reader()
 {
 
 }
 
-deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_length)
+
+deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_length)
 {
   deltaf_coefficients df_data;
 
-  // average T and muB (fm^-1) (assumed to be ~ same for all cells)
-  double Tavg, Eavg, Pavg, muBavg, nBavg;
-  FILE * avg_thermo_file;
-  avg_thermo_file = fopen("average_thermodynamic_quantities.dat", "r");
-  if(avg_thermo_file == NULL) printf("Couldn't open average thermodynamic file\n");
-  fscanf(avg_thermo_file, "%lf\n%lf\n%lf\n%lf\n%lf", &Tavg, &Eavg, &Pavg, &muBavg, &nBavg);
-  fclose(avg_thermo_file);
+  Plasma QGP;
+  QGP.load_thermodynamic_averages();
 
-  double T_FO = Tavg / hbarC;
-  double muB_FO = muBavg / hbarC;
+  double T = QGP.temperature;
+  double E = QGP.energy_density;
+  double P = QGP.pressure;
+  double muB = QGP.baryon_chemical_potential;
+
+  df_data.shear14_coeff = 2.0 * T * T * (E + P);
+
+  double T_FO = T / hbarC;
+  double muB_FO = muB / hbarC;    // the file units are in fm
 
 
-  printf("Reading in ");
+  printf("Reading in ");  // or I could compute these guys directly
 
   if(df_mode == 1)
   {
     printf("14-moment coefficients vhydro...\n");
     // coefficient files and names
-    FILE * c0_file;
-    FILE * c1_file;
-    FILE * c2_file;
-    FILE * c3_file;
-    FILE * c4_file;
-
-    char c0_name[255];
-    char c1_name[255];
-    char c2_name[255];
-    char c3_name[255];
-    char c4_name[255];
-
-    // for skipping header
-    char header[300];
-
-    // how to put pathTodeltaf in here
-
-    sprintf(c0_name, "%s", "deltaf_coefficients/vh/c0_df14_vh.dat");
-    sprintf(c1_name, "%s", "deltaf_coefficients/vh/c1_df14_vh.dat");
-    sprintf(c2_name, "%s", "deltaf_coefficients/vh/c2_df14_vh.dat");
-    sprintf(c3_name, "%s", "deltaf_coefficients/vh/c3_df14_vh.dat");
-    sprintf(c4_name, "%s", "deltaf_coefficients/vh/c4_df14_vh.dat");
-
-    c0_file = fopen(c0_name, "r");
-    c1_file = fopen(c1_name, "r");
-    c2_file = fopen(c2_name, "r");
-    c3_file = fopen(c3_name, "r");
-    c4_file = fopen(c4_name, "r");
+    FILE * c0_file = fopen("deltaf_coefficients/vh/c0_df14_vh.dat", "r");
+    FILE * c1_file = fopen("deltaf_coefficients/vh/c1_df14_vh.dat", "r");
+    FILE * c2_file = fopen("deltaf_coefficients/vh/c2_df14_vh.dat", "r");
+    FILE * c3_file = fopen("deltaf_coefficients/vh/c3_df14_vh.dat", "r");
+    FILE * c4_file = fopen("deltaf_coefficients/vh/c4_df14_vh.dat", "r");
 
     if(c0_file == NULL) printf("Couldn't open c0 coefficient file!\n");
     if(c1_file == NULL) printf("Couldn't open c1 coefficient file!\n");
     if(c2_file == NULL) printf("Couldn't open c2 coefficient file!\n");
     if(c3_file == NULL) printf("Couldn't open c3 coefficient file!\n");
     if(c4_file == NULL) printf("Couldn't open c4 coefficient file!\n");
-
 
     int nT = 0;
     int nB = 0;
@@ -100,15 +81,13 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
 
     if(!include_baryon) nB = 1;
 
-    //cout << nT << "\t" << nB << endl;
-
-    // skip the headers
+    // skip the header
+    char header[300];
     fgets(header, 100, c0_file);
     fgets(header, 100, c1_file);
     fgets(header, 100, c2_file);
     fgets(header, 100, c3_file);
     fgets(header, 100, c4_file);
-
 
     // T and muB arrays
     double T_array[nT];
@@ -162,7 +141,6 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
       if(found) break;
     } // iB
 
-    // close files
     fclose(c0_file);
     fclose(c1_file);
     fclose(c2_file);
@@ -175,41 +153,17 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
     printf("Chapman-Enskog coefficients vhydro...\n");
 
     // coefficient files and names
-    FILE * F_file;
-    FILE * G_file;
-    FILE * betabulk_file;
-    FILE * betaV_file;
-    FILE * betapi_file;
-
-    char F_name[255];
-    char G_name[255];
-    char betabulk_name[255];
-    char betaV_name[255];
-    char betapi_name[255];
-
-    // for skipping header
-    char header[300];
-
-    // how to take put pathTodeltaf in here?
-
-    sprintf(F_name, "%s", "deltaf_coefficients/vh/F_dfce_vh.dat");
-    sprintf(G_name, "%s", "deltaf_coefficients/vh/G_dfce_vh.dat");
-    sprintf(betabulk_name, "%s", "deltaf_coefficients/vh/betabulk_dfce_vh.dat");
-    sprintf(betaV_name, "%s", "deltaf_coefficients/vh/betaV_dfce_vh.dat");
-    sprintf(betapi_name, "%s", "deltaf_coefficients/vh/betapi_dfce_vh.dat");
-
-    F_file = fopen(F_name, "r");
-    G_file = fopen(G_name, "r");
-    betabulk_file = fopen(betabulk_name, "r");
-    betaV_file = fopen(betaV_name, "r");
-    betapi_file = fopen(betapi_name, "r");
+    FILE * F_file = fopen("deltaf_coefficients/vh/F_dfce_vh.dat", "r");
+    FILE * G_file = fopen("deltaf_coefficients/vh/G_dfce_vh.dat", "r");
+    FILE * betabulk_file = fopen("deltaf_coefficients/vh/betabulk_dfce_vh.dat", "r");
+    FILE * betaV_file = fopen("deltaf_coefficients/vh/betaV_dfce_vh.dat", "r");
+    FILE * betapi_file = fopen("deltaf_coefficients/vh/betapi_dfce_vh.dat", "r");
 
     if(F_file == NULL) printf("Couldn't open F coefficient file!\n");
     if(G_file == NULL) printf("Couldn't open G coefficient file!\n");
     if(betabulk_file == NULL) printf("Couldn't open betabulk coefficient file!\n");
     if(betaV_file == NULL) printf("Couldn't open betaV coefficient file!\n");
     if(betapi_file == NULL) printf("Couldn't open betapi coefficient file!\n");
-
 
     int nT = 0;
     int nB = 0;
@@ -223,15 +177,14 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
 
     if(!include_baryon) nB = 1;
 
-    //cout << nT << "\t" << nB << endl;
-
     // skip the headers
+    char header[300];
+
     fgets(header, 100, F_file);
     fgets(header, 100, G_file);
     fgets(header, 100, betabulk_file);
     fgets(header, 100, betaV_file);
     fgets(header, 100, betapi_file);
-
 
     // T and muB arrays
     double T_array[nT];
@@ -283,7 +236,6 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
       if(found) break;
     } //iB
 
-    // close files
     fclose(F_file);
     fclose(G_file);
     fclose(betabulk_file);
@@ -296,32 +248,11 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
     printf("14-moment coefficients vahydro PL...\n");
 
     // coefficient files and names
-    FILE * c0_file;
-    FILE * c1_file;
-    FILE * c2_file;
-    FILE * c3_file;
-    FILE * c4_file;
-
-    char c0_name[255];
-    char c1_name[255];
-    char c2_name[255];
-    char c3_name[255];
-    char c4_name[255];
-
-    // for skipping header
-    char header[300];
-
-    sprintf(c0_name, "%s", "deltaf_coefficients/vah/c0_vah1.dat");
-    sprintf(c1_name, "%s", "deltaf_coefficients/vah/c1_vah1.dat");
-    sprintf(c2_name, "%s", "deltaf_coefficients/vah/c2_vah1.dat");
-    sprintf(c3_name, "%s", "deltaf_coefficients/vah/c3_vah1.dat");
-    sprintf(c4_name, "%s", "deltaf_coefficients/vah/c4_vah1.dat");
-
-    c0_file = fopen(c0_name, "r");
-    c1_file = fopen(c1_name, "r");
-    c2_file = fopen(c2_name, "r");
-    c3_file = fopen(c3_name, "r");
-    c4_file = fopen(c4_name, "r");
+    FILE * c0_file = fopen("deltaf_coefficients/vah/c0_vah1.dat", "r");
+    FILE * c1_file = fopen("deltaf_coefficients/vah/c1_vah1.dat", "r");
+    FILE * c2_file = fopen("deltaf_coefficients/vah/c2_vah1.dat", "r");
+    FILE * c3_file = fopen("deltaf_coefficients/vah/c3_vah1.dat", "r");
+    FILE * c4_file = fopen("deltaf_coefficients/vah/c4_vah1.dat", "r");
 
     if(c0_file == NULL) printf("Couldn't open c0 coefficient file!\n");
     if(c1_file == NULL) printf("Couldn't open c1 coefficient file!\n");
@@ -342,6 +273,7 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
     //cout << nL << "\t" << naL << endl;
 
     //skip the header with labels and units
+    char header[300];
     fgets(header, 100, c0_file);
     fgets(header, 100, c1_file);
     fgets(header, 100, c2_file);
@@ -437,3 +369,272 @@ deltaf_coefficients DeltafReader::load_coefficients(FO_surf *surface, long FO_le
 
   return df_data;
 }
+
+
+Deltaf_Data::Deltaf_Data(ParameterReader * paraRdr_in)
+{
+  paraRdr = paraRdr_in;
+
+  mode = paraRdr->getVal("mode");
+  df_mode = paraRdr->getVal("df_mode");
+  include_baryon = paraRdr->getVal("include_baryon");
+
+  accelerate = gsl_interp_accel_alloc();
+}
+
+Deltaf_Data::~Deltaf_Data()
+{
+  // is there any harm in deallocating memory, while it's being used?
+  gsl_interp_accel_free(accelerate);
+
+  gsl_spline_free(c0_spline);
+  gsl_spline_free(c1_spline);
+  gsl_spline_free(c2_spline);
+
+  gsl_spline_free(F_spline);
+  gsl_spline_free(betabulk_spline);
+  gsl_spline_free(betapi_spline);
+}
+
+void Deltaf_Data::load_df_coefficient_data()
+{
+  printf("Reading in 14 moment and Chapman-Enskog coefficient tables...");
+
+  // coefficient files and names
+  FILE * c0_file = fopen("deltaf_coefficients/vh/c0_df14_vh.dat", "r");
+  FILE * c1_file = fopen("deltaf_coefficients/vh/c1_df14_vh.dat", "r");
+  FILE * c2_file = fopen("deltaf_coefficients/vh/c2_df14_vh.dat", "r");
+  FILE * c3_file = fopen("deltaf_coefficients/vh/c3_df14_vh.dat", "r");
+  FILE * c4_file = fopen("deltaf_coefficients/vh/c4_df14_vh.dat", "r");
+
+  FILE * F_file = fopen("deltaf_coefficients/vh/F_dfce_vh.dat", "r");
+  FILE * G_file = fopen("deltaf_coefficients/vh/G_dfce_vh.dat", "r");
+  FILE * betabulk_file = fopen("deltaf_coefficients/vh/betabulk_dfce_vh.dat", "r");
+  FILE * betaV_file = fopen("deltaf_coefficients/vh/betaV_dfce_vh.dat", "r");
+  FILE * betapi_file = fopen("deltaf_coefficients/vh/betapi_dfce_vh.dat", "r");
+
+  if(c0_file == NULL) printf("Couldn't open c0 coefficient file!\n");
+  if(c1_file == NULL) printf("Couldn't open c1 coefficient file!\n");
+  if(c2_file == NULL) printf("Couldn't open c2 coefficient file!\n");
+  if(c3_file == NULL) printf("Couldn't open c3 coefficient file!\n");
+  if(c4_file == NULL) printf("Couldn't open c4 coefficient file!\n");
+
+  if(F_file == NULL) printf("Couldn't open F coefficient file!\n");
+  if(G_file == NULL) printf("Couldn't open G coefficient file!\n");
+  if(betabulk_file == NULL) printf("Couldn't open betabulk coefficient file!\n");
+  if(betaV_file == NULL) printf("Couldn't open betaV coefficient file!\n");
+  if(betapi_file == NULL) printf("Couldn't open betapi coefficient file!\n");
+
+  // read 1st line (T dimension) and 2nd line (muB dimension)
+  // (c0, ..., c4) should have same (T,muB) dimensions
+  fscanf(c0_file, "%d\n%d\n", &points_T, &points_muB);
+  fscanf(c1_file, "%d\n%d\n", &points_T, &points_muB);
+  fscanf(c2_file, "%d\n%d\n", &points_T, &points_muB);
+  fscanf(c3_file, "%d\n%d\n", &points_T, &points_muB);
+  fscanf(c4_file, "%d\n%d\n", &points_T, &points_muB);
+
+  fscanf(F_file, "%d\n%d\n", &points_T, &points_muB);
+  fscanf(G_file, "%d\n%d\n", &points_T, &points_muB);
+  fscanf(betabulk_file, "%d\n%d\n", &points_T, &points_muB);
+  fscanf(betaV_file, "%d\n%d\n", &points_T, &points_muB);
+  fscanf(betapi_file, "%d\n%d\n", &points_T, &points_muB);
+
+  if(!include_baryon) points_muB = 1;
+
+  // skip the header
+  char header[300];
+  fgets(header, 100, c0_file);
+  fgets(header, 100, c1_file);
+  fgets(header, 100, c2_file);
+  fgets(header, 100, c3_file);
+  fgets(header, 100, c4_file);
+
+  fgets(header, 100, F_file);
+  fgets(header, 100, G_file);
+  fgets(header, 100, betabulk_file);
+  fgets(header, 100, betaV_file);
+  fgets(header, 100, betapi_file);
+
+  // T and muB arrays
+  T_array = (double *)calloc(points_T, sizeof(double));
+  muB_array = (double *)calloc(points_muB, sizeof(double));
+
+  // coefficient data
+  c0_data = (double **)calloc(points_muB, sizeof(double));
+  c1_data = (double **)calloc(points_muB, sizeof(double));
+  c2_data = (double **)calloc(points_muB, sizeof(double));
+  c3_data = (double **)calloc(points_muB, sizeof(double));
+  c4_data = (double **)calloc(points_muB, sizeof(double));
+
+  F_data = (double **)calloc(points_muB, sizeof(double));
+  G_data = (double **)calloc(points_muB, sizeof(double));
+  betabulk_data = (double **)calloc(points_muB, sizeof(double));
+  betaV_data = (double **)calloc(points_muB, sizeof(double));
+  betapi_data = (double **)calloc(points_muB, sizeof(double));
+
+  // scan coefficient files
+  for(int iB = 0; iB < points_muB; iB++)  // muB
+  {
+    c0_data[iB] = (double *)calloc(points_T, sizeof(double));
+    c1_data[iB] = (double *)calloc(points_T, sizeof(double));
+    c2_data[iB] = (double *)calloc(points_T, sizeof(double));
+    c3_data[iB] = (double *)calloc(points_T, sizeof(double));
+    c4_data[iB] = (double *)calloc(points_T, sizeof(double));
+
+    F_data[iB] = (double *)calloc(points_T, sizeof(double));
+    G_data[iB] = (double *)calloc(points_T, sizeof(double));
+    betabulk_data[iB] = (double *)calloc(points_T, sizeof(double));
+    betaV_data[iB] = (double *)calloc(points_T, sizeof(double));
+    betapi_data[iB] = (double *)calloc(points_T, sizeof(double));
+
+    for(int iT = 0; iT < points_T; iT++)  // T
+    {
+      // set T and muB (fm^-1) arrays from file
+      fscanf(c0_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &c0_data[iB][iT]);
+      fscanf(c1_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &c1_data[iB][iT]);
+      fscanf(c2_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &c2_data[iB][iT]);
+      fscanf(c3_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &c3_data[iB][iT]);
+      fscanf(c4_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &c4_data[iB][iT]);
+
+      fscanf(F_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &F_data[iB][iT]);
+      fscanf(G_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &G_data[iB][iT]);
+      fscanf(betabulk_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &betabulk_data[iB][iT]);
+      fscanf(betaV_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &betaV_data[iB][iT]);
+      fscanf(betapi_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &betapi_data[iB][iT]);
+
+      // convert to the real-life units (the file units were in hbar*c = 1 or fm only)
+      T_array[iT] *= hbarC;
+      muB_array[iB] *= hbarC;
+
+      c0_data[iB][iT] /= (hbarC * hbarC * hbarC);
+      c1_data[iB][iT] /= (hbarC * hbarC);
+      c2_data[iB][iT] /= (hbarC * hbarC * hbarC);
+      c3_data[iB][iT] /= hbarC;
+      c4_data[iB][iT] /= (hbarC * hbarC); // I don't remember if I fixed c3, c4 units?...
+
+      F_data[iB][iT] *= hbarC;
+      betabulk_data[iB][iT] *= hbarC;
+      betapi_data[iB][iT] *= hbarC;
+
+    } // iT
+
+  } // iB
+
+  fclose(c0_file);
+  fclose(c1_file);
+  fclose(c2_file);
+  fclose(c3_file);
+  fclose(c4_file);
+
+  fclose(F_file);
+  fclose(G_file);
+  fclose(betabulk_file);
+  fclose(betaV_file);
+  fclose(betapi_file);
+
+  printf("done\n");
+}
+
+
+void Deltaf_Data::construct_cubic_splines()
+{
+  // Allocate memory for cubic splines
+  c0_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
+  c1_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
+  c2_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
+
+  F_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
+  betabulk_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
+  betapi_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
+
+  // Initialize the cubic splines
+  gsl_spline_init(c0_spline, T_array, c0_data[0], points_T);
+  gsl_spline_init(c1_spline, T_array, c1_data[0], points_T);
+  gsl_spline_init(c2_spline, T_array, c2_data[0], points_T);
+
+  gsl_spline_init(F_spline, T_array, F_data[0], points_T);
+  gsl_spline_init(betabulk_spline, T_array, betabulk_data[0], points_T);
+  gsl_spline_init(betapi_spline, T_array, betapi_data[0], points_T);
+
+  // I'm not sure what to do with jonah's coefficients though...(maybe it makes sense to do linear interpolation?)
+}
+
+
+deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P)
+{
+  deltaf_coefficients df;
+
+  switch(df_mode)
+  {
+    case 1: // 14 moment
+    {
+      df.c0 = gsl_spline_eval(c0_spline, T, accelerate);
+      df.c1 = gsl_spline_eval(c1_spline, T, accelerate);
+      df.c2 = gsl_spline_eval(c2_spline, T, accelerate);
+      df.c3 = 0.0;
+      df.c4 = 0.0;
+      df.shear14_coeff = 2.0 * T * T * (E + P);
+      break;
+    }
+    case 2: // Chapman Enskog
+    case 3: // Modified (Mike)
+    {
+      df.F = gsl_spline_eval(F_spline, T, accelerate);
+      df.G = 0.0;
+      df.betabulk = gsl_spline_eval(betabulk_spline, T, accelerate);
+      df.betaV = 1.0;
+      df.betapi = gsl_spline_eval(betapi_spline, T, accelerate);
+
+      break;
+    }
+    default:
+    {
+      printf("Error in cubic_spline(): please set df_mode = (1,2,3)\n");
+      exit(-1);
+    }
+  }
+
+  return df;
+}
+
+deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, double E, double P)
+{
+  // probably easier to bilinear interpolation the coefficients at once
+  // since the data use the same grid
+  deltaf_coefficients df;
+
+
+  // FILL THIS IN LATER
+
+
+  return df;
+}
+
+deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, double E, double P)
+{
+  // evaluate the df coefficients by interpolating the data
+
+  deltaf_coefficients df;
+
+  if(!include_baryon)
+  {
+    df = cubic_spline(T, E, P);   // cubic spline interpolation wrt T
+  }
+  else
+  {
+    df = bilinear_interpolation(T, muB, E, P);  // bilinear wrt (T, muB)
+  }
+
+  return df;
+}
+
+
+
+
+
+
+
+
+
+
+

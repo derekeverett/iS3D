@@ -74,7 +74,7 @@ void IS3D::read_fo_surf_from_memory(
 void IS3D::run_particlization(int fo_from_file)
 {
   cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
-  cout << "Mike McNelis, Derek Everett, Sameed Pervaiz and Lipei Du (2018)" << endl;
+  cout << "Derek Everett, Mike McNelis, Sameed Pervaiz and Lipei Du (2018)" << endl;
   cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu" << endl;
 
   // Read-in parameters
@@ -133,12 +133,16 @@ void IS3D::run_particlization(int fo_from_file)
     }
   }
 
-  // load delta-f coefficients
-  deltaf_coefficients df;
-  string pathTodeltaf = "deltaf_coefficients";
-  DeltafReader deltaf(paraRdr, pathTodeltaf);
-  df = deltaf.load_coefficients(surf_ptr, FO_length);
+  // this will replace Deltaf_Reader
+  Deltaf_Data * df_data = new Deltaf_Data(paraRdr);
+  df_data->load_df_coefficient_data();
+  df_data->construct_cubic_splines();
 
+  // load delta-f coefficients
+  deltaf_coefficients * df = new deltaf_coefficients;
+  Deltaf_Reader deltaf(paraRdr);
+  *df = deltaf.load_coefficients(surf_ptr, FO_length);
+  
   // load particle info
   particle_info *particle_data = new particle_info [Maxparticle];
   int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr, df); //number of resonances in pdg file
@@ -159,7 +163,7 @@ void IS3D::run_particlization(int fo_from_file)
   if (operation == 2) etaTableFile = "tables/eta_sampling_gauss_table.dat";
   Table eta_tab(etaTableFile); //eta_s values and weights
 
-  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
+  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df, df_data);
 
   std::vector<Sampled_Particle> particle_event_list_in;
   efa.calculate_spectra(particle_event_list_in);
@@ -174,6 +178,8 @@ void IS3D::run_particlization(int fo_from_file)
   
   delete [] surf_ptr;
   delete paraRdr;
+  delete df_data;
 
   cout << "Done calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
+
 }

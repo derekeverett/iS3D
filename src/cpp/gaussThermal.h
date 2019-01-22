@@ -7,8 +7,6 @@ double GaussThermal(double thermal_integrand(double pbar, double mbar, double al
 
 // equilibrium particle density
 double neq_int(double pbar, double mbar, double alphaB, double baryon, double sign);
-//double Eeq_int(double pbar, double mbar, double alphaB, double baryon, double sign);
-//double Peq_int(double pbar, double mbar, double alphaB, double baryon, double sign);
 
 // for linearized particle density
 double J10_int(double pbar, double mbar, double alphaB, double baryon, double sign);
@@ -17,7 +15,12 @@ double J20_int(double pbar, double mbar, double alphaB, double baryon, double si
 double J30_int(double pbar, double mbar, double alphaB, double baryon, double sign);
 double J31_int(double pbar, double mbar, double alphaB, double baryon, double sign);
 
-// the modified particle density could be done differently?
+
+// for jonah coefficient calculation
+double Gauss1D_mod(double modified_1D_integrand(double pbar, double mbar, double lambda, double sign), double * pbar_root, double * pbar_weight, int pbar_pts, double mbar, double lambda, double sign);
+
+double E_mod_int(double pbar, double mbar, double lambda, double sign);
+double P_mod_int(double pbar, double mbar, double lambda, double sign);
 
 
 #endif
