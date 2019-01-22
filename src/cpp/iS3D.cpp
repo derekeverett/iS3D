@@ -133,11 +133,6 @@ void IS3D::run_particlization(int fo_from_file)
     }
   }
 
-  // this will replace Deltaf_Reader
-  Deltaf_Data * df_data = new Deltaf_Data(paraRdr);
-  df_data->load_df_coefficient_data();
-  df_data->construct_cubic_splines();
-
   // load delta-f coefficients
   deltaf_coefficients * df = new deltaf_coefficients;
   Deltaf_Reader deltaf(paraRdr);
@@ -146,6 +141,12 @@ void IS3D::run_particlization(int fo_from_file)
   // load particle info
   particle_info *particle_data = new particle_info [Maxparticle];
   int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr, df); //number of resonances in pdg file
+
+  // this will replace Deltaf_Reader
+  Deltaf_Data * df_data = new Deltaf_Data(paraRdr);
+  df_data->load_df_coefficient_data();
+  df_data->construct_cubic_splines();
+  df_data->compute_jonah_coefficients(particle_data, Nparticle);
 
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
   //switch to different method of reading chosen_particles.dat file that doesn't

@@ -967,7 +967,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       }
 
       // evaluate df coefficients
-      deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P);
+      deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
       // coefficients for modified
       double F = df.F;
@@ -1243,7 +1243,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       }
 
       // evaluate df coefficients
-      deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P);
+      deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
       // coefficients for modified
       double F = df.F;

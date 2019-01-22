@@ -122,6 +122,10 @@ typedef struct
   double betaV;
   double betapi;
 
+  // Jonah coefficients
+  double lambda;
+  double z;
+
 } deltaf_coefficients;
 
 
