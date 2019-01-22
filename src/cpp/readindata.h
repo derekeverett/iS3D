@@ -140,7 +140,7 @@ typedef struct
 
   double bulkPi_over_Peq_max;               // the maximum bulk pressure in the array
 
-  cubic_spline_coefficients cubic_spline[jonah_points-1];
+  //cubic_spline_coefficients cubic_spline[jonah_points-1];
 
 } jonah_coefficients;
 
