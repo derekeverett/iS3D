@@ -206,7 +206,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double c3 = df.c3;
         double c4 = df.c4;
 
-        double F = df.F;              // Chapman Enskog
+        double F = df.F;               // Chapman Enskog
         double G = df.G;
         double betabulk = df.betabulk;
         double betaV = df.betaV;

@@ -455,31 +455,11 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       pLRF.py = p * sintheta * sin(phi);
       pLRF.pz = p * costheta;
 
-      double pdsigma = E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
-
-      double pdsigma_term;
-
-      if(dynamical) // trying this...
-      {
-        if(pdsigma < 0.0)
-        {
-          pdsigma_term = fabs(pdsigma);
-          // I think i got lucky because there's no viscous correction
-          // but in general i would have to put in a constant factor of 1/2 in the w_flux term
-        }
-        else
-        {
-          pdsigma_term = 2.0 * pdsigma;
-        }
-      }
-      else // pdsigma * Theta(pdsigma)
-      {
-        pdsigma_term = max(0.0, pdsigma);
-      }
+      double pdsigma_Theta = max(0.0, E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
 
       // compute the weights
       double w_eq = exp(p/T) / (exp(E/T) + sign) / weq_max;
-      double w_flux = pdsigma_term / (E * ds_magnitude);
+      double w_flux = pdsigma_Theta / (E * ds_magnitude);
       double w_visc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, df_mode);
 
       double weight_light = w_eq * w_flux * w_visc;
@@ -574,31 +554,11 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       pLRF.py = p * sintheta * sin(phi);
       pLRF.pz = p * costheta;
 
-      double pdsigma = E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
-
-      double pdsigma_term;
-
-      if(dynamical) // trying this...
-      {
-        if(pdsigma < 0.0)
-        {
-          pdsigma_term = 2.0 * fabs(pdsigma);
-        }
-        else
-        {
-          pdsigma_term = pdsigma;
-        }
-
-      }
-      else // pdsigma * Theta(pdsigma)
-      {
-        pdsigma_term = max(0.0, pdsigma);
-      }
-
+      double pdsigma_Theta = max(0.0, E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
 
       // compute the weight
       double w_eq = p/E * exp(E/T - chem) / (exp(E/T - chem) + sign);
-      double w_flux = pdsigma_term / (E * ds_magnitude);
+      double w_flux = pdsigma_Theta / (E * ds_magnitude);
       double w_visc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, df_mode);
 
       double weight_heavy = w_eq * w_flux * w_visc;
@@ -717,22 +677,11 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       // local momentum transformation
       pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
 
-      double pdsigma = pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
-
-      double pdsigma_term;
-
-      if(dynamical) // trying this...
-      {
-        pdsigma_term = fabs(pdsigma);
-      }
-      else // pdsigma * Theta(pdsigma)
-      {
-        pdsigma_term = max(0.0, pdsigma);
-      }
+      double pdsigma_Theta = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
 
       // compute the weight
       double w_mod = exp(p_mod/T_mod - chem_mod) / (exp(E_mod/T_mod - chem_mod) + sign) / w_mod_max;
-      double w_flux = pdsigma_term / (pLRF.E * ds_magnitude);
+      double w_flux = pdsigma_Theta / (pLRF.E * ds_magnitude);
 
       double weight_light = w_mod * w_flux;
 
@@ -829,22 +778,11 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       // local momentum transformation
       pLRF = rescale_momentum(pLRF_mod, mass_squared, baryon, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
 
-      double pdsigma = pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz;
-
-      double pdsigma_term;
-
-      if(dynamical) // trying this...
-      {
-        pdsigma_term = fabs(pdsigma);
-      }
-      else // pdsigma * Theta(pdsigma)
-      {
-        pdsigma_term = max(0.0, pdsigma);
-      }
+      double pdsigma_Theta = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz);
 
       // compute the weight
       double w_mod = (p_mod/E_mod) * exp(E_mod/T_mod - chem_mod) / (exp(E_mod/T_mod - chem_mod) + sign);
-      double w_flux = pdsigma_term / (pLRF.E * ds_magnitude);
+      double w_flux = pdsigma_Theta / (pLRF.E * ds_magnitude);
 
       double weight_heavy = w_mod * w_flux;
 
@@ -1459,6 +1397,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               {
                 // I'm not sure how to track breakdown
                 // what would I go to?
+
+                // check what jonah does when this happens (maybe he does nothing)
+                // 
+
+
                 double lambda = 0.0;  // need to replace with the interpolated value
 
                 double shear_mod = 0.5 / betapi;
