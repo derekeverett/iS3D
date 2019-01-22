@@ -485,7 +485,8 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
     K_weight[1] = 2.0 * mass * T;  // moderate
     K_weight[2] = 2.0 * T * T;     // light
 
-    discrete_distribution<heavy_distribution> K_distribution(K_weight.begin(), K_weight.end());
+    //discrete_distribution<heavy_distribution> K_distribution(K_weight.begin(), K_weight.end());
+    discrete_distribution<int> K_distribution(K_weight.begin(), K_weight.end());
 
     double k, phi, costheta;       // kinetic energy, angles
 
@@ -493,10 +494,12 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
     {
       *samples = (*samples) + 1;
 
-      heavy_distribution sampled_distribution = K_distribution(generator);
+      //heavy_distribution sampled_distribution = K_distribution(generator);
+      int sampled_distribution = K_distribution(generator);
 
       // select distribution to sample from based on integrated weights
-      if(sampled_distribution == heavy)
+      //if(sampled_distribution == heavy)
+      if(sampled_distribution == 0)
       {
         // draw k from exp(-k/T).dk by sampling r1
         // sample direction uniformly
@@ -507,7 +510,8 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
         costheta = costheta_distribution(generator);
 
       } // distribution 1 (very heavy)
-      else if(sampled_distribution == moderate)
+      //else if(sampled_distribution == moderate)
+      else if(sampled_distribution == 1)
       {
         // draw (k,phi) from k.exp(-k/T).dk.dphi by sampling (r1,r2)
         // sample costheta uniformly
@@ -522,7 +526,8 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
         costheta = costheta_distribution(generator);
 
       } // distribution 2 (moderately heavy)
-      else if(sampled_distribution == light)
+      //else if(sampled_distribution == light)
+      else if(sampled_distribution == 2)
       {
         // draw (k,phi,costheta) from k^2.exp(-k/T).dk.dphi.dcostheta by sampling (r1,r2,r3)
         double r1 = 1.0 - canonical(generator);
@@ -706,7 +711,8 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
     K_mod_weight[1] = 2.0 * mass * T_mod;   // moderate
     K_mod_weight[2] = 2.0 * T_mod * T_mod;  // light
 
-    discrete_distribution<heavy_distribution> K_mod_distribution(K_mod_weight.begin(), K_mod_weight.end());
+    //discrete_distribution<heavy_distribution> K_mod_distribution(K_mod_weight.begin(), K_mod_weight.end());
+    discrete_distribution<int> K_mod_distribution(K_mod_weight.begin(), K_mod_weight.end());
 
     double k_mod, phi_mod, costheta_mod;    // modified kinetic energy and angles
 
@@ -714,10 +720,11 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
     {
       *samples = (*samples) + 1;
 
-      heavy_distribution sampled_distribution = K_mod_distribution(generator);
+      //heavy_distribution sampled_distribution = K_mod_distribution(generator);
+      int sampled_distribution = K_mod_distribution(generator);
 
       // sample one of the 3 distributions based on integrated weights
-      if(sampled_distribution == heavy)
+      if(sampled_distribution == 0)
       {
         // draw k_mod from exp(-k_mod/T_mod).dk_mod by sampling r1
         // sample modified direction uniformly
@@ -728,7 +735,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
         costheta_mod = costheta_distribution(generator);
 
       } // distribution 1 (very heavy)
-      else if(sampled_distribution == moderate)
+      else if(sampled_distribution == 1)
       {
         // draw (k_mod, phi_mod) from k_mod.exp(-k_mod/T_mod).dk_mod.dphi_mod by sampling (r1,r2)
         // sample costheta_mod uniformly
@@ -743,7 +750,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
         costheta_mod = costheta_distribution(generator);
 
       } // distribution 2 (moderately heavy)
-      else if(sampled_distribution == light)
+      else if(sampled_distribution == 2)
       {
         // draw (k_mod,phi_mod,costheta_mod) from k_mod^2.exp(-k_mod/T_mod).dk_mod.dphi_mod.dcostheta_mod by sampling (r1,r2,r3)
         double r1 = 1.0 - canonical(generator);
@@ -843,7 +850,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       double s = (1.0 - x) / 2.0;   // variable transformations
       double pbar = (1.0 - s) / s;
 
-      if(isinf(pbar)) {printf("Error: none of legendre roots should be -1\n"); exit(-1);}
+      if(std::isinf(pbar)) {printf("Error: none of legendre roots should be -1\n"); exit(-1);}
 
       pbar_root_outflow[i] = pbar;
       pbar_weight_outflow[i] = 0.5 * pbar * pbar * legendre_weight[i] / (s * s);
@@ -1111,7 +1118,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double s = (1.0 - x) / 2.0;   // variable transformations
       double pbar = (1.0 - s) / s;
 
-      if(isinf(pbar)){printf("Error: none of legendre roots should be -1\n"); exit(-1);}
+      if(std::isinf(pbar)){printf("Error: none of legendre roots should be -1\n"); exit(-1);}
 
       pbar_root_outflow[i] = pbar;
       pbar_weight_outflow[i] = 0.5 * pbar * pbar * legendre_weight[i] / (s * s);
@@ -1399,7 +1406,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 // what would I go to?
 
                 // check what jonah does when this happens (maybe he does nothing)
-                // 
+                //
 
 
                 double lambda = 0.0;  // need to replace with the interpolated value

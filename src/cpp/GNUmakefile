@@ -19,8 +19,6 @@ CC = g++
 #CFLAGS= -std=c++11 -O3 -fopenmp -lgsl -lgslcblas -lm # for g++
 CFLAGS= -std=c++11 -O3 -lgsl -lgslcblas -lm # for g++
 #CFLAGS= -std=c++11 -qopenmp -O3 -lgsl -lgslcblas # for icpc
-#CFLAGS= -acc -fast -Minfo -ta=nvidia,time # for pgi
-#CFLAGS= -acc -fast -ta=tesla:managed # for pgi, also uses unified memory
 
 RM		=	rm -f
 O               =       .o
