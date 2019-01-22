@@ -1,8 +1,3 @@
-// Ver 1.6.2
-// Zhi Qiu
-/*==========================================================================================
-Change logs: see arsenal.h
-==========================================================================================*/
 
 #include <vector>
 #include <iostream>
@@ -14,8 +9,6 @@ Change logs: see arsenal.h
 #include <cstdarg>
 #include <stdio.h> //for printf
 #include "arsenal.h"
-
-#define OUTPUT_PRECISION 10
 
 using namespace std;
 
@@ -130,8 +123,6 @@ double interpLinearDirect(vector<double>* x, vector<double>* y, double x0)
 }
 
 
-
-
 //**********************************************************************
 double interpNearestDirect(vector<double>* x, vector<double>* y, double x0)
 // Returns the interpreted value of y=y(x) at x=x0 using nearest interpolation method.
@@ -159,8 +150,6 @@ double interpNearestDirect(vector<double>* x, vector<double>* y, double x0)
   return x0-(*x)[idx]>dx/2 ? (*y)[idx+1] : (*y)[idx];
 
 }
-
-
 
 
 //**********************************************************************
@@ -244,9 +233,6 @@ double interpCubicMono(vector<double>* x, vector<double>* y, double xx)
 
 }
 
-
-
-
 //**********************************************************************
 double interpLinearMono(vector<double>* x, vector<double>* y, double xx)
 // Returns the interpreted value of y=y(x) at x=x0 using linear interpolation method.
@@ -274,9 +260,6 @@ double interpLinearMono(vector<double>* x, vector<double>* y, double xx)
 
 }
 
-
-
-
 //**********************************************************************
 double interpNearestMono(vector<double>* x, vector<double>* y, double xx)
 // Returns the interpreted value of y=y(x) at x=x0 using nearest interpolation method.
@@ -303,9 +286,6 @@ double interpNearestMono(vector<double>* x, vector<double>* y, double xx)
   return xx-(*x)[idx] > (*x)[idx+1]-xx ? (*y)[idx+1] : (*y)[idx];
 
 }
-
-
-
 
 //**********************************************************************
 double invertFunc(double (*func)(double), double y, double xL, double xR, double dx, double x0, double relative_accuracy)
@@ -394,8 +374,6 @@ double invertTableDirect(vector<double>* x, vector<double>* y, double y0, double
 }
 
 
-
-
 //**********************************************************************
 vector<double> stringToDoubles(string str)
 // Return a vector of doubles from the string "str". "str" should
@@ -413,7 +391,6 @@ vector<double> stringToDoubles(string str)
   return valueList;
 }
 
-
 //**********************************************************************
 double stringToDouble(string str)
 // Return the 1st doubles number read from the string "str". "str" should be a string containing a line of data.
@@ -423,7 +400,6 @@ double stringToDouble(string str)
   sst >> val;
   return val;
 }
-
 
 
 //**********************************************************************
@@ -760,7 +736,7 @@ void formatedPrint(ostream& os, int count, ...)
   va_list ap;
   va_start(ap, count); //Requires the last fixed parameter (to get the address)
   for(int j=0; j<count; j++)
-      os << scientific << setprecision(OUTPUT_PRECISION) << "  " << va_arg(ap, double); //Requires the type to cast to. Increments ap to the next argument.
+      os << scientific << setprecision(10) << "  " << va_arg(ap, double); //Requires the type to cast to. Increments ap to the next argument.
   va_end(ap);
   os << endl;
 }
@@ -1011,7 +987,7 @@ void get_bin_average_and_count(istream& is, ostream& os, vector<double>* bins, l
   {
     for (long j=0; j<number_of_cols+2; j++)
     {
-      os << scientific << scientific << setprecision(OUTPUT_PRECISION) << bin_total_and_count[i][j] << "  ";
+      os << scientific << scientific << setprecision(10) << bin_total_and_count[i][j] << "  ";
     }
     os << endl;
   }
@@ -1237,6 +1213,3 @@ void free_2D(double ** M, int n)
   for(int i = 0; i < n; i++) free(M[i]);
   free(M);
 }
-
-
-

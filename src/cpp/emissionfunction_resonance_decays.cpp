@@ -1,13 +1,11 @@
 // Author: Mike McNelis
 // Date: 8/11/18
 
-
 // Differences from the old resonance decay code (so far):
 // 1) top down approach: loop over parents instead of daughters
 // 2) decay grouping: group decay products by type (~10% speedup)
 // 3) mT extrapolation instead of high mT cutoff (for modified)
 // 4) linear interpolation of log(dN_pTdpTdphidy) instead of dN_pTdpTdphidy
-
 
 #include <iostream>
 #include <sstream>
@@ -30,9 +28,7 @@
 #include "Stopwatch.h"
 #include "arsenal.h"
 #include "ParameterReader.h"
-//#ifdef _OPENACC
-//#include <accelmath.h>
-//#endif
+
 using namespace std;
 
 // grouping:
@@ -43,12 +39,10 @@ using namespace std;
 //  - 2-body decays take 63.78s (almost no difference)
 //  - 3-body decays take 141.4s (main benefit)
 
-
 // the script is laid out now but needs more testing
 // - reproduce the plots in the old paper based
 // - there's an analytical
 // - Chun's discussion didn't really have anything helpful to add to understanding the old code
-
 
 
 // with grouping it took 185s for the boost invariant calculation
@@ -295,7 +289,6 @@ void EmissionFunctionArray::resonance_decay_channel(particle_info * particle_dat
           exit(-1);
         }
     }
-    //printf("\n");
 }
 
 

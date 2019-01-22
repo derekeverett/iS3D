@@ -42,7 +42,7 @@ class Lab_Momentum
 };
 
 // three distributions to sample heavy hadrons
-typedef enum {heavy, moderate, light} heavy_distribution;
+//typedef enum {heavy, moderate, light} heavy_distribution;
 
 typedef struct
 {

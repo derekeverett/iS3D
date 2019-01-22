@@ -22,8 +22,6 @@
 #include "gaussThermal.h"
 #include "particle.h"
 
-#define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
-
 using namespace std;
 
 void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, double *Degeneracy,
@@ -80,13 +78,9 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
       for (int iy = 0; iy < y_pts; iy++) yValues[iy] = y_tab->get(1, iy + 1);
     }
 
-
     double T = QGP->temperature;
     double E = QGP->energy_density;
     double P = QGP->pressure;
-
-
-
 
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spin polarization vector for each surface cell in a chunk, for all particle species

@@ -25,10 +25,7 @@
 #include "particle.h"
 #include "viscous_correction.h"
 
-//#define AMOUNT_OF_OUTPUT 0 // smaller value means less outputs
-
 using namespace std;
-
 
 double canonical(default_random_engine & generator)
 {
@@ -486,7 +483,8 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
     K_weight[1] = 2.0 * mass * T;  // moderate
     K_weight[2] = 2.0 * T * T;     // light
 
-    discrete_distribution<heavy_distribution> K_distribution(K_weight.begin(), K_weight.end());
+    //discrete_distribution<heavy_distribution> K_distribution(K_weight.begin(), K_weight.end());
+    discrete_distribution<int> K_distribution(K_weight.begin(), K_weight.end());
 
     double k, phi, costheta;       // kinetic energy, angles
 
@@ -494,10 +492,12 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
     {
       *samples = (*samples) + 1;
 
-      heavy_distribution sampled_distribution = K_distribution(generator);
+      //heavy_distribution sampled_distribution = K_distribution(generator);
+      int sampled_distribution = K_distribution(generator);
 
       // select distribution to sample from based on integrated weights
-      if(sampled_distribution == heavy)
+      //if(sampled_distribution == heavy)
+      if(sampled_distribution == 0)
       {
         // draw k from exp(-k/T).dk by sampling r1
         // sample direction uniformly
@@ -508,7 +508,8 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
         costheta = costheta_distribution(generator);
 
       } // distribution 1 (very heavy)
-      else if(sampled_distribution == moderate)
+      //else if(sampled_distribution == moderate)
+      else if(sampled_distribution == 1)
       {
         // draw (k,phi) from k.exp(-k/T).dk.dphi by sampling (r1,r2)
         // sample costheta uniformly
@@ -523,7 +524,8 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
         costheta = costheta_distribution(generator);
 
       } // distribution 2 (moderately heavy)
-      else if(sampled_distribution == light)
+      //else if(sampled_distribution == light)
+      else if(sampled_distribution == 2)
       {
         // draw (k,phi,costheta) from k^2.exp(-k/T).dk.dphi.dcostheta by sampling (r1,r2,r3)
         double r1 = 1.0 - canonical(generator);
@@ -707,7 +709,8 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
     K_mod_weight[1] = 2.0 * mass * T_mod;   // moderate
     K_mod_weight[2] = 2.0 * T_mod * T_mod;  // light
 
-    discrete_distribution<heavy_distribution> K_mod_distribution(K_mod_weight.begin(), K_mod_weight.end());
+    //discrete_distribution<heavy_distribution> K_mod_distribution(K_mod_weight.begin(), K_mod_weight.end());
+    discrete_distribution<int> K_mod_distribution(K_mod_weight.begin(), K_mod_weight.end());
 
     double k_mod, phi_mod, costheta_mod;    // modified kinetic energy and angles
 
@@ -715,10 +718,11 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
     {
       *samples = (*samples) + 1;
 
-      heavy_distribution sampled_distribution = K_mod_distribution(generator);
+      //heavy_distribution sampled_distribution = K_mod_distribution(generator);
+      int sampled_distribution = K_mod_distribution(generator);
 
       // sample one of the 3 distributions based on integrated weights
-      if(sampled_distribution == heavy)
+      if(sampled_distribution == 0)
       {
         // draw k_mod from exp(-k_mod/T_mod).dk_mod by sampling r1
         // sample modified direction uniformly
@@ -729,7 +733,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
         costheta_mod = costheta_distribution(generator);
 
       } // distribution 1 (very heavy)
-      else if(sampled_distribution == moderate)
+      else if(sampled_distribution == 1)
       {
         // draw (k_mod, phi_mod) from k_mod.exp(-k_mod/T_mod).dk_mod.dphi_mod by sampling (r1,r2)
         // sample costheta_mod uniformly
@@ -744,7 +748,7 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
         costheta_mod = costheta_distribution(generator);
 
       } // distribution 2 (moderately heavy)
-      else if(sampled_distribution == light)
+      else if(sampled_distribution == 2)
       {
         // draw (k_mod,phi_mod,costheta_mod) from k_mod^2.exp(-k_mod/T_mod).dk_mod.dphi_mod.dcostheta_mod by sampling (r1,r2,r3)
         double r1 = 1.0 - canonical(generator);
@@ -844,7 +848,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       double s = (1.0 - x) / 2.0;   // variable transformations
       double pbar = (1.0 - s) / s;
 
-      if(isinf(pbar)) {printf("Error: none of legendre roots should be -1\n"); exit(-1);}
+      if(std::isinf(pbar)) {printf("Error: none of legendre roots should be -1\n"); exit(-1);}
 
       pbar_root_outflow[i] = pbar;
       pbar_weight_outflow[i] = 0.5 * pbar * pbar * legendre_weight[i] / (s * s);
@@ -1097,8 +1101,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       etaWeights[0] = 1.0; // 1.0 for 3+1d
     }
 
-
-
     // set up root and weight arrays for pbar integrals in particle_number_outflow()
     const int legendre_pts = legendre->points;
     double * legendre_root = legendre->root;
@@ -1113,13 +1115,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double s = (1.0 - x) / 2.0;   // variable transformations
       double pbar = (1.0 - s) / s;
 
-      if(isinf(pbar)){printf("Error: none of legendre roots should be -1\n"); exit(-1);}
+      if(std::isinf(pbar)){printf("Error: none of legendre roots should be -1\n"); exit(-1);}
 
       pbar_root_outflow[i] = pbar;
       pbar_weight_outflow[i] = 0.5 * pbar * pbar * legendre_weight[i] / (s * s);
     }
-
-
 
     // gauss laguerre roots and weights
     const int laguerre_pts = laguerre->points;
@@ -1129,10 +1129,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
     double * pbar_weight1 = laguerre->weight[1];
     double * pbar_weight2 = laguerre->weight[2];
-
-
-    
-
 
     // calculate linear pion0 density terms (neq_pion0, J20_pion0)
     // for is_linear_pion0_density_negative()
@@ -1165,12 +1161,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double y = y_fo[icell];
       if(DIMENSION == 3) etaValues[0] = eta_fo[icell];
 
-
       double dat = dat_fo[icell];         // covariant normal surface vector dsigma_mu
       double dax = dax_fo[icell];
       double day = day_fo[icell];
       double dan = dan_fo[icell];         // dan should be 0 in 2+1d case
-
 
       double ux = ux_fo[icell];           // contravariant fluid velocity u^mu
       double uy = uy_fo[icell];           // enforce normalization u.u = 1
@@ -1258,9 +1252,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double betaV = df.betaV;
       double betapi = df.betapi;
 
-
-
-
       // milne basis class
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
       basis_vectors.test_orthonormality(tau2);
@@ -1271,23 +1262,19 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       dsigma.compute_dsigma_magnitude();
       dsigma.compute_dsigma_lrf_polar_angle();
 
-
       // shear stress class
       Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
       pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
       pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
-
 
       // baryon diffusion class
       Baryon_Diffusion Vmu(Vt, Vx, Vy, Vn);
       Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
       Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
 
-
       // modified temperature, chemical potential
       double T_mod = T  +  bulkPi * F / betabulk;
       double alphaB_mod = alphaB  +  bulkPi * G / betabulk;
-
 
       // feqmod breakdown switching criteria
       // is there a better way to condense this?
@@ -1301,7 +1288,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       if(pion_density_negative) detA_min = max(detA_min, detA_bulk);
       bool feqmod_breaks_down = does_feqmod_breakdown(detA, detA_min, pion_density_negative);
       double nmod_fact = detA * pow(T_mod, 3) / two_pi2_hbarC3;
-
 
       // holds mean particle number / eta_weight of all species
       std::vector<double> dn_list;
@@ -1336,13 +1322,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       }
 
 
-
-
-
-
       // discrete probability distribution for particle types (weight[ipart] ~ dn_list[ipart] / dn_tot)
       std::discrete_distribution<int> particle_type(dn_list.begin(), dn_list.end());
-
 
       // loop over eta points
       for(int ieta = 0; ieta < eta_pts; ieta++)
@@ -1406,8 +1387,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 // what would I go to?
 
                 // check what jonah does when this happens (maybe he does nothing)
-                // 
-
+                //
 
                 double lambda = 0.0;  // need to replace with the interpolated value
 
@@ -1449,11 +1429,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
             double pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
             new_particle.pz = pz;
-            //new_particle.E = pmu.ptau * cosheta  +  tau * pmu.pn * sinheta;
-            //is it possible for this to be too small or negative?
-            //try enforcing mass shell condition on E
             new_particle.E = sqrt(mass * mass  +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
-
 
             // is this right? I forgot lol...
             double pdsigma = pLab.ptau * dat  + pLab.px * dax  + pLab.py * day  +  pLab.pn * dan;
@@ -1482,21 +1458,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               #pragma omp critical
               particle_event_list[ievent].push_back(new_particle);
             }
-
           } // sampled hadrons (n)
-
         } // sampled events (ievent)
-
       } // eta points (ieta)
-
-      cout << "\r" << "Finished " << icell + 1 << " / " << FO_length << " freezeout cells" << flush;
-
+      //cout << "\r" << "Finished " << icell + 1 << " / " << FO_length << " freezeout cells" << flush;
     } // freezeout cells (icell)
-
     printf("\nMomentum sampling efficiency = %lf %%\n", 100.0 * (double)acceptances / (double)samples);
-
 }
-
 
 
 void EmissionFunctionArray::sample_dN_pTdpTdphidy_VAH_PL(double *Mass, double *Sign, double *Degeneracy,

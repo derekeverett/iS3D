@@ -129,7 +129,6 @@ typedef struct
 } deltaf_coefficients;
 
 
-
 // JONAH'S MODIFIED BULK COEFFICIENT METHOD
 //::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 const int jonah_points = 301;               // # interpolation points
@@ -151,7 +150,6 @@ typedef struct
 
 jonah_coefficients compute_jonah_bulk_coefficients(particle_info * particle_data, int Nparticle);
 //::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
 
 
 class FO_data_reader
