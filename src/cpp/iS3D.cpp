@@ -90,9 +90,7 @@ void IS3D::run_particlization(int fo_from_file)
   cout << "Reading in parameters:\n" << endl;
   ParameterReader *paraRdr = new ParameterReader;
   paraRdr->readFromFile("iS3D_parameters.dat");
-  //paraRdr->readFromArguments(argc, argv);
   paraRdr->echo();
-  printline();
 
   string pathToInput = "input";
 
@@ -144,30 +142,15 @@ void IS3D::run_particlization(int fo_from_file)
     }
   }
 
-  // for(int i = 0; i < 301; i++)
-  // {
-  //   cout << (double)i * 0.02 << endl;
-  // }
-  // exit(-1);
-
   // this will replace Deltaf_Reader
   Deltaf_Data * df_data = new Deltaf_Data(paraRdr);
   df_data->load_df_coefficient_data();
   df_data->construct_cubic_splines();
 
-
-
-  //deltaf_coefficients *df_test = new deltaf_coefficients;
-  //*df_test = df_data->evaluate_df_coefficients(0.11444, 0, 0, 0);
-  //cout << df_test->c0 << endl;
-
-
   // load delta-f coefficients
   deltaf_coefficients * df = new deltaf_coefficients;
   Deltaf_Reader deltaf(paraRdr);
   *df = deltaf.load_coefficients(surf_ptr, FO_length);
-
-
 
   // load particle info
   particle_info *particle_data = new particle_info [Maxparticle];
@@ -187,22 +170,26 @@ void IS3D::run_particlization(int fo_from_file)
   cout << "Number of chosen particles: " << chosen_particles.getNumberOfRows() << endl;
   cout << "Number of particles in pdg.dat: " << Nparticle << endl;
 
-  printline();
-
   Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
-  Table y_tab("tables/y_riemann_table_11pt.dat"); //y values and weights, here just a riemann sum!
-  Table eta_tab("tables/eta_trapezoid_table_57pt.dat"); // eta values and integration weights
+  Table y_tab("tables/y_trapezoid_table_21pt.dat"); //y values and weights
+  string etaTableFile = "tables/eta_gauss_table.dat"; //for smooth C.F.
+  int operation = paraRdr->getVal("operation");
+  if (operation == 2) etaTableFile = "tables/eta_sampling_gauss_table.dat";
+  Table eta_tab(etaTableFile); //eta_s values and weights
+
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df, df_data);
 
   std::vector<Sampled_Particle> particle_event_list_in;
-  //particle_event_list_in.resize(0);
   efa.calculate_spectra(particle_event_list_in);
 
   //copy final particle list to memory to pass to JETSCAPE module
-  cout << "Copying final particle list to memory" << endl;
-  cout << "Particle list contains " << particle_event_list_in.size() << " particles" << endl;
-  final_particles_ = particle_event_list_in;
+  if (operation == 2)
+  {
+    cout << "Copying final particle list to memory" << endl;
+    cout << "Particle list contains " << particle_event_list_in.size() << " particles" << endl;
+    final_particles_ = particle_event_list_in;
+  }
 
   delete [] surf_ptr;
   delete paraRdr;
