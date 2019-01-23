@@ -176,7 +176,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
         else
         {
           double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
-        
+
           double costheta_star2 = costheta_star * costheta_star;
           double costheta_star3 = costheta_star2 * costheta_star;
           double costheta_star4 = costheta_star3 * costheta_star;
@@ -1238,7 +1238,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         baryon_enthalpy_ratio = nB / (E + P);
       }
 
-     
+
 
       // evaluate df coefficients
       deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
