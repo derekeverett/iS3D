@@ -964,7 +964,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
-
+    #ifdef _OPENMP
+    //double sec = omp_get_wtime();
+    #endif
     Stopwatch sw;
     sw.tic();
 
@@ -1026,7 +1028,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // freezeout surface info exclusive for VH
     double *E, *T, *P;
-    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
+    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
     {
       E = (double*)calloc(FO_length, sizeof(double));
       P = (double*)calloc(FO_length, sizeof(double));
@@ -1123,7 +1125,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       //reading info from surface
       surf = &surf_ptr[icell];
 
-      if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
+      if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
       {
         E[icell] = surf->E;
         P[icell] = surf->P;
@@ -1202,7 +1204,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // compute the particle spectra
 
-    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7) // viscous hydro
+    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6) // viscous hydro
     {
       switch(DF_MODE)
       {
@@ -1280,7 +1282,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               write_particle_list_toFile();
               write_particle_list_OSC();
-              write_momentum_list_toFile();
+              //write_momentum_list_toFile();
+              write_sampled_pT_pdf_toFile(MCID);
               write_yield_list_toFile();
 
               particle_event_list_in = particle_event_list[0];
@@ -1367,7 +1370,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     free(Sign);
     free(Baryon);
 
-    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
+    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
     {
       free(E);
       free(P);

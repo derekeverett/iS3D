@@ -63,12 +63,10 @@ class Deltaf_Data
 
 
         // cubic splines of the coefficients as function of temperature only (neglect muB, nB, Vmu)
-        // G = 0 for muB = 0 and (c3, c4, betaV) aren't needed since they couple to baryon diffusion
-        // so in the cubic spline evaluation: just set (G, c3, c4) = 0 and betaV = 1 (betaV is in denominator)
-        gsl_interp_accel * accelerate;
+        // (c1, G = 0) for muB = 0 and (c3, c4, betaV) aren't needed since they couple to baryon diffusion
+        // so in the cubic spline evaluation: just set (G, c1, c3, c4) = 0 and betaV = 1 (betaV is in denominator)
 
         gsl_spline * c0_spline;
-        gsl_spline * c1_spline;
         gsl_spline * c2_spline;
 
         gsl_spline * F_spline;

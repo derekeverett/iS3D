@@ -378,17 +378,12 @@ Deltaf_Data::Deltaf_Data(ParameterReader * paraRdr_in)
   mode = paraRdr->getVal("mode");
   df_mode = paraRdr->getVal("df_mode");
   include_baryon = paraRdr->getVal("include_baryon");
-
-  accelerate = gsl_interp_accel_alloc();
 }
 
 Deltaf_Data::~Deltaf_Data()
 {
   // is there any harm in deallocating memory, while it's being used?
-  gsl_interp_accel_free(accelerate);
-
   gsl_spline_free(c0_spline);
-  gsl_spline_free(c1_spline);
   gsl_spline_free(c2_spline);
 
   gsl_spline_free(F_spline);
@@ -621,7 +616,6 @@ void Deltaf_Data::construct_cubic_splines()
 {
   // Allocate memory for cubic splines
   c0_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
-  c1_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
   c2_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
 
   F_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
@@ -630,7 +624,6 @@ void Deltaf_Data::construct_cubic_splines()
 
   // Initialize the cubic splines
   gsl_spline_init(c0_spline, T_array, c0_data[0], points_T);
-  gsl_spline_init(c1_spline, T_array, c1_data[0], points_T);
   gsl_spline_init(c2_spline, T_array, c2_data[0], points_T);
 
   gsl_spline_init(F_spline, T_array, F_data[0], points_T);
@@ -645,21 +638,25 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
 {
   deltaf_coefficients df;
 
-  df.c0 = gsl_spline_eval(c0_spline, T, accelerate);
-  df.c1 = gsl_spline_eval(c1_spline, T, accelerate);
-  df.c2 = gsl_spline_eval(c2_spline, T, accelerate);
+  gsl_interp_accel * accel = gsl_interp_accel_alloc();  
+
+  df.c0 = gsl_spline_eval(c0_spline, T, accel);
+  df.c1 = 0.0;
+  df.c2 = gsl_spline_eval(c2_spline, T, accel);
   df.c3 = 0.0;
   df.c4 = 0.0;
   df.shear14_coeff = 2.0 * T * T * (E + P);
 
-  df.F = gsl_spline_eval(F_spline, T, accelerate);
+  df.F = gsl_spline_eval(F_spline, T, accel);
   df.G = 0.0;
-  df.betabulk = gsl_spline_eval(betabulk_spline, T, accelerate);
+  df.betabulk = gsl_spline_eval(betabulk_spline, T, accel);
   df.betaV = 1.0;
-  df.betapi = gsl_spline_eval(betapi_spline, T, accelerate);
-  
-  df.lambda = gsl_spline_eval(lambda_spline, (bulkPi / P), accelerate);
-  df.z = gsl_spline_eval(z_spline, (bulkPi / P), accelerate);
+  df.betapi = gsl_spline_eval(betapi_spline, T, accel);
+
+  df.lambda = gsl_spline_eval(lambda_spline, (bulkPi / P), accel);
+  df.z = gsl_spline_eval(z_spline, (bulkPi / P), accel);
+
+  gsl_interp_accel_free(accel);
 
   return df;
 }
@@ -685,7 +682,7 @@ deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, 
 
   if(!include_baryon)
   {
-    df = cubic_spline(T, E, P, bulkPi);   // cubic spline interpolation wrt T
+    df = cubic_spline(T, E, P, bulkPi);   // cubic spline interpolation wrt T (assume muB = 0)
   }
   else
   {
