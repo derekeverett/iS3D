@@ -74,13 +74,12 @@ class Deltaf_Data
         gsl_spline * F_spline;
         gsl_spline * betabulk_spline;
         gsl_spline * betapi_spline;
-
-
-        // Jonah's coefficients
-        const int jonah_points = 31;        // # interpolation points in lambda
-
-        const double lambda_min = -1.0;     // min and max values of lambda
+        
+        // Jonah coefficients
+        const int jonah_points = 301;       // # lambda interpolation points
+        const double lambda_min = -1.0;     // lambda min / max values
         const double lambda_max = 2.0;
+        const double delta_lambda = (lambda_max - lambda_min) / ((double)jonah_points - 1.0);
 
         double * lambda_array;              // isotropic momentum scale
         double * z_array;                   // renormalization factor (apart from detLambda)
@@ -98,6 +97,7 @@ class Deltaf_Data
 
         void construct_cubic_splines();
 
+        // I skip the photon because I think it breaks down for lambda = -1
         void compute_jonah_coefficients(particle_info * particle_data, int Nparticle);
 
         deltaf_coefficients evaluate_df_coefficients(double T, double muB, double E, double P, double bulkPi);

@@ -148,6 +148,16 @@ void IS3D::run_particlization(int fo_from_file)
   df_data->construct_cubic_splines();
   df_data->compute_jonah_coefficients(particle_data, Nparticle);
 
+  // Plasma QGP;
+  // QGP.load_thermodynamic_averages();
+  // double T_test = QGP.temperature;
+  // double P_test = QGP.pressure;
+
+  // deltaf_coefficients df_test = df_data->evaluate_df_coefficients(T_test, 0.0, 0.0, P_test, -0.7 * P_test);
+
+  // cout << df_test.lambda << "\t" << df_test.z << endl;
+ 
+
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
   //switch to different method of reading chosen_particles.dat file that doesn't
   //have this undesirable feature

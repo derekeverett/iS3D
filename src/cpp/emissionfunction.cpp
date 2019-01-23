@@ -69,22 +69,20 @@ double equilibrium_particle_density(double mass, double degeneracy, double sign,
   return neq;
 }
 
-double compute_detA(Shear_Stress pimunu, double bulkPi, double betapi, double betabulk)
+double compute_detA(Shear_Stress pimunu, double shear_mod, double bulk_mod)
 {
   double pixx_LRF = pimunu.pixx_LRF;  double piyy_LRF = pimunu.piyy_LRF;
   double pixy_LRF = pimunu.pixy_LRF;  double piyz_LRF = pimunu.piyz_LRF;
   double pixz_LRF = pimunu.pixz_LRF;  double pizz_LRF = pimunu.pizz_LRF;
 
-  double shear_mod_coeff = 0.5 / betapi;
-  double bulk_mod_coeff = bulkPi / (3.0 * betabulk);
+  double Axx = 1.0  +  pixx_LRF * shear_mod  +  bulk_mod;
+  double Axy = pixy_LRF * shear_mod;
+  double Axz = pixz_LRF * shear_mod;
+  double Ayy = 1.0  +  piyy_LRF * shear_mod  +  bulk_mod;
+  double Ayz = piyz_LRF * shear_mod;
+  double Azz = 1.0  +  pizz_LRF * shear_mod  +  bulk_mod;
 
-  double Axx = 1.0  +  pixx_LRF * shear_mod_coeff  +  bulk_mod_coeff;
-  double Axy = pixy_LRF * shear_mod_coeff;
-  double Axz = pixz_LRF * shear_mod_coeff;
-  double Ayy = 1.0  +  piyy_LRF * shear_mod_coeff  +  bulk_mod_coeff;
-  double Ayz = piyz_LRF * shear_mod_coeff;
-  double Azz = 1.0  +  pizz_LRF * shear_mod_coeff  +  bulk_mod_coeff;
-
+  // Aij is symmetric
   double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
 
   return detA;
