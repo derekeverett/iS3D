@@ -69,13 +69,6 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
   // the feqmod formula is an approximation due to the complexity of the integral
 
-
-  // gauss legendre
-  //const int legendre_pts = legendre->points;
-  //double * legendre_root = legendre->root;
-  //double * legendre_weight = legendre->weight;
-
-
   double mass_squared = mass * mass;
 
   double mbar = mass / T;
@@ -100,14 +93,24 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
   double betabulk = df.betabulk;
   double betapi = df.betapi;
 
+  double lambda = df.lambda;
+  double z = df.z;
 
   // feqmod terms
-  double bulk_coeff = bulkPi / (3.0 * betabulk);
   double mbar_mod = mass / T_mod;
   double chem_mod = baryon * alphaB_mod;
 
+  double bulk_mod = bulkPi / (3.0 * betabulk);
+
   double n_linear = equilibrium_density  +  bulkPi * bulk_density;
   double renorm = n_linear / modified_density;
+
+  if(df_mode == 4)
+  {
+    bulk_mod = lambda;
+    renorm = z;
+  }
+
 
   // dsigma terms
   double ds_time = dsigma.dsigmat_LRF;
@@ -132,49 +135,54 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
   // sintheta_ds = 0.0;
 
   // particle density with outflow and df corrections
-  double n_outflow = 0.0;
+  double particle_number = 0.0;
 
-  // radial momentum integration routine
-  for(int i = 0; i < legendre_pts; i++)
+  switch(df_mode)
   {
-    // double x = legendre_root[i];  // x should never be 1.0 (or else pbar = inf)
-    // double s = (1.0 - x) / 2.0;   // variable transformations
-    // double pbar = (1.0 - s) / s;
-
-    // if(isinf(pbar))
-    // {
-    //   printf("Integral error: momentum point is infinity. None of the legendre roots should be -1\n");
-    //   exit(-1);
-    // }
-    double pbar = pbar_root[i];
-    double weight = pbar_weight[i];
-
-    switch(df_mode)
+    case 1: // 14 moment
     {
-      case 1: // 14 moment
+      if(!outflow || ds_time >= ds_space)
       {
-        double Ebar = sqrt(pbar * pbar +  mbar_squared);
-        double E = Ebar * T;
-        double p = pbar * T;
-
-        double feq = 1.0 / (exp(Ebar - chem) + sign);
-        double feqbar = 1.0 - sign * feq;
-
-
-        // timelike cells
-        if(!outflow || ds_time >= ds_space)
+        // radial momentum pbar integral (pbar = p / T)
+        for(int i = 0; i < legendre_pts; i++)
         {
+          double pbar = pbar_root[i];
+          double weight = pbar_weight[i];
+
+          double Ebar = sqrt(pbar * pbar +  mbar_squared);
+          double E = Ebar * T;
+
+          double feq = 1.0 / (exp(Ebar - chem) + sign);
+          double feqbar = 1.0 - sign * feq;
+
           double df_bulk = ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
 
-          double df = feqbar * df_bulk;
+          double df = max(-1.0, min(feqbar * df_bulk, 1.0)); // regulate df
 
-          df = max(-1.0, min(df, 1.0)); // regulate df
+          particle_number += weight * feq * (1.0 + df);
 
-          n_outflow += 2.0 * weight * ds_time * feq * (1.0 + df);
-        }
-        // spacelike cells
-        else
+        } // i
+
+        particle_number *= 2.0 * ds_time * degeneracy * T * T * T / four_pi2_hbarC3;
+
+        return particle_number;
+
+      } // timelike cell
+      else
+      {
+        // radial momentum pbar integral (pbar = p / T)
+        for(int i = 0; i < legendre_pts; i++)
         {
+          double pbar = pbar_root[i];
+          double weight = pbar_weight[i];
+
+          double Ebar = sqrt(pbar * pbar +  mbar_squared);
+          double E = Ebar * T;
+          double p = pbar * T;
+
+          double feq = 1.0 / (exp(Ebar - chem) + sign);
+          double feqbar = 1.0 - sign * feq;
+
           double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
 
           double costheta_star2 = costheta_star * costheta_star;
@@ -204,36 +212,64 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
           integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
 
-          n_outflow += weight * integrand;
-        }
+          particle_number += weight * integrand;
 
-        break;
-      }
-      case 2: // Chapman Enskog
+        } // i
+
+        particle_number *= degeneracy * T * T * T / four_pi2_hbarC3;
+
+        return particle_number;
+
+      } // spacelike cell
+
+      break;
+    }
+    case 2: // Chapman Enskog
+    {
+      chapman_enskog:
+
+      if(!outflow || ds_time >= ds_space)
       {
-        chapman_enskog:
-
-        double Ebar = sqrt(pbar * pbar +  mbar_squared);
-        double E = Ebar * T;
-        double p = pbar * T;
-
-        double feq = 1.0 / (exp(Ebar - chem) + sign);
-        double feqbar = 1.0 - sign * feq;
-
-        // timelike cells
-        if(!outflow || ds_time >= ds_space)
+        // radial momentum pbar integral (pbar = p / T)
+        for(int i = 0; i < legendre_pts; i++)
         {
+          double pbar = pbar_root[i];
+          double weight = pbar_weight[i];
+
+          double Ebar = sqrt(pbar * pbar +  mbar_squared);
+          double E = Ebar * T;
+
+          double feq = 1.0 / (exp(Ebar - chem) + sign);
+          double feqbar = 1.0 - sign * feq;
+
           double df_bulk = (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
 
-          double df = feqbar * df_bulk;
+          double df = max(-1.0, min(feqbar * df_bulk, 1.0));
 
-          df = max(-1.0, min(df, 1.0));
+          particle_number += weight * feq * (1.0 + df);
 
-          n_outflow += 2.0 * weight * ds_time * feq * (1.0 + df);
-        }
-        // spacelike cells
-        else
+        } // i
+
+        particle_number *= 2.0 * ds_time * degeneracy * T * T * T / four_pi2_hbarC3;
+
+        return particle_number;
+
+      } // timelike cell
+      else
+      {
+        // radial momentum pbar integral (pbar = p / T)
+        for(int i = 0; i < legendre_pts; i++)
         {
+          double pbar = pbar_root[i];
+          double weight = pbar_weight[i];
+
+          double Ebar = sqrt(pbar * pbar +  mbar_squared);
+          double E = Ebar * T;
+          double p = pbar * T;
+
+          double feq = 1.0 / (exp(Ebar - chem) + sign);
+          double feqbar = 1.0 - sign * feq;
+
           double costheta_star = min(1.0, Ebar * ds_time_over_ds_space / pbar);
           double costheta_star2 = costheta_star * costheta_star;
           double costheta_star3 = costheta_star2 * costheta_star;
@@ -260,56 +296,83 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
           double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
           double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
 
-          integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
+          integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df?)
 
-          n_outflow += weight * integrand;
-        }
+          particle_number += weight * integrand;
 
-        break;
-      }
-      case 3: // modified (not yet complete)
+        } // i
+
+        particle_number *= degeneracy * T * T * T / four_pi2_hbarC3;
+
+        return particle_number;
+
+      } // spacelike cell
+
+      break;
+    }
+    case 3: // modified (Mike)
+    case 4: // modified (Jonah)
+    {
+      if(df_mode == 3 && feqmod_breaks_down) goto chapman_enskog;
+      //if(df_mode == 4 && feqmod_breaks_down) goto linear_jonah; // not worked out yet
+
+      if(!outflow || ds_time >= ds_space)
       {
-        if(feqmod_breaks_down) goto chapman_enskog;
-
-        double pbar_mod = pbar; // use the root
-        double Ebar_mod = sqrt(pbar_mod * pbar_mod  +  mbar_mod * mbar_mod);
-
-        double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);  // effectively..
-
-        double Ebar = sqrt(pbar * pbar +  mbar_squared);
-
-        if(!outflow || ds_time >= ds_space)
+        // radial momentum pbar integral (pbar = p / T)
+        for(int i = 0; i < legendre_pts; i++)
         {
-          n_outflow += 2.0 * weight * ds_time * feqmod;
-        }
-        else
+          double pbar_mod = pbar_root[i];
+          double weight = pbar_weight[i];
+
+          double Ebar_mod = sqrt(pbar_mod * pbar_mod  +  mbar_mod * mbar_mod);
+
+          double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
+
+          particle_number += weight * feqmod;
+
+        } // i
+
+        particle_number *= 2.0 * ds_time * degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
+
+        return particle_number;
+
+      } // timelike cell
+      else
+      {
+        // radial momentum pbar integral (pbar = p / T)
+        for(int i = 0; i < legendre_pts; i++)
         {
-          double costheta_star_mod = min(1.0, Ebar_mod * ds_time_over_ds_space / pbar);
-          double mbar_bulk = mbar_mod / (1.0 + bulk_coeff);
+          double pbar_mod = pbar_root[i];
+          double weight = pbar_weight[i];
+
+          double Ebar_mod = sqrt(pbar_mod * pbar_mod  +  mbar_mod * mbar_mod);
+
+          double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
+
+          double costheta_star_mod = min(1.0, Ebar_mod * ds_time_over_ds_space / pbar_mod);
+          double mbar_bulk = mbar_mod / (1.0 + bulk_mod);
           double Ebar_bulk = sqrt(pbar_mod * pbar_mod  +  mbar_bulk * mbar_bulk);
 
-          n_outflow += weight * (ds_time * (1.0  +  costheta_star_mod) - 0.5 * ds_space * pbar_mod / Ebar_bulk * (costheta_star_mod * costheta_star_mod  -  1.0)) * feqmod;
-        }
+          particle_number += weight * (ds_time * (1.0 + costheta_star_mod)  -  0.5 * ds_space * pbar_mod / Ebar_bulk * (costheta_star_mod * costheta_star_mod - 1.0)) * feqmod;
 
-        break;
-      }
-      default:
-      {
-        printf("\nParticle density outflow error: please set df_mode = (1,2,3)\n");
-        exit(-1);
-      }
-    } // df_mode
+        } // i
 
-  }
-  // prefactor
-  if(df_mode == 3 && !feqmod_breaks_down)
-  {
-    return n_outflow * degeneracy * detA * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
-  }
-  else
-  {
-    return n_outflow * degeneracy * T * T * T / four_pi2_hbarC3;
-  }
+        particle_number *= degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
+
+        return particle_number;
+
+      } // spacelike cell
+
+      break;
+    }
+    default:
+    {
+      printf("\nParticle density outflow error: please set df_mode = (1,2,3,4)\n");
+      exit(-1);
+    }
+  } // df_mode
+
+  return particle_number;
 
 }
 
@@ -391,10 +454,10 @@ double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, do
 }
 
 
-LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, deltaf_coefficients df, double baryon_enthalpy_ratio, int df_mode, int dynamical)
+LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, deltaf_coefficients df, double baryon_enthalpy_ratio, int df_mode)
 {
   // samples the local rest frame momentum from a
-  // distribution with linear viscous corrections
+  // distribution with linear viscous corrections (either 14 moment or Chapman Enskog)
 
   double mass_squared = mass * mass;
   double chem = baryon * alphaB;
@@ -617,10 +680,10 @@ LRF_Momentum rescale_momentum(LRF_Momentum pLRF_mod, double mass_squared, double
 }
 
 
-LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T_mod, double alphaB_mod, Surface_Element_Vector dsigma, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_mod, double bulk_mod, double diff_mod, double baryon_enthalpy_ratio, int dynamical)
+LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T_mod, double alphaB_mod, Surface_Element_Vector dsigma, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_mod, double bulk_mod, double diff_mod, double baryon_enthalpy_ratio)
 {
   // samples the local rest frame momentum
-  // from a modified equilibrium distribution
+  // from a modified equilibrium distribution (either Mike or Jonah)
 
   double mass_squared = mass * mass;
   double chem_mod = baryon * alphaB_mod;
@@ -848,7 +911,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       double s = (1.0 - x) / 2.0;   // variable transformations
       double pbar = (1.0 - s) / s;
 
-      if(std::isinf(pbar)) {printf("Error: none of legendre roots should be -1\n"); exit(-1);}
+      if(std::isinf(pbar)) {printf("Error: none of legendre roots should be 1.0\n"); exit(-1);}
 
       pbar_root_outflow[i] = pbar;
       pbar_weight_outflow[i] = 0.5 * pbar * pbar * legendre_weight[i] / (s * s);
@@ -865,21 +928,15 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
     double * pbar_weight2 = laguerre->weight[2];
 
 
-
-    // modified bulk coefficients (for modified quantities)
-
-
-    // for feqmod breakdown
-
-
+    /*
+    // these are default densities if no outflow or regulated dfcorrection
     //double neq_tot = 0.0;                 // total equilibrium number / udsigma
     //double dn_bulk_tot = 0.0;             // bulk correction / udsigma / bulkPi
     //double dn_diff_tot = 0.0;             // diffusion correction / Vdsigma
 
-    /*
     for(int ipart = 0; ipart < npart; ipart++)
     {
-      neq_tot += Equilibrium_Density[ipart];    // these are default densities if no outflow correction
+      neq_tot += Equilibrium_Density[ipart];
       dn_bulk_tot += Bulk_Density[ipart];
       dn_diff_tot += Diffusion_Density[ipart];
 
@@ -974,11 +1031,13 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       // evaluate df coefficients
       deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
-      // coefficients for modified
+      // modified coefficients (Mike / Jonah)
       double F = df.F;
       double G = df.G;
       double betabulk = df.betabulk;
       double betapi = df.betapi;
+      double lambda = df.lambda;
+      double z = df.z;
 
       // milne basis vectors
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
@@ -990,24 +1049,53 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
 
 
-      // feqmod modified temperature / chemical potential
-      double T_mod = T  +  bulkPi * F / betabulk;
-      double alphaB_mod = alphaB  +  bulkPi * G / betabulk;
+      // modified temperature / chemical potential
+      double T_mod = T;
+      double alphaB_mod = alphaB;
 
-      // feqmod breakdown switching criteria
-      double mbar_pion0 = MASS_PION0 / T;
-      double neq_pion0 = pow(T,3) / two_pi2_hbarC3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_pion0, 0., 0., -1.);
-      double J20_pion0 = pow(T,4) / two_pi2_hbarC3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, laguerre_pts, mbar_pion0, 0., 0., -1.);
-      bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+      if(DF_MODE == 3)
+      {
+        T_mod = T  +  bulkPi * F / betabulk;
+        alphaB_mod = alphaB  +  bulkPi * G / betabulk;
+      }
 
-      double detA = compute_detA(pimunu, bulkPi, betapi, betabulk);
-      double detA_bulk = pow(1.0 + bulkPi / (3.0 * betabulk), 3);
+      double shear_mod = 0.5 / betapi;
+      double bulk_mod = bulkPi / (3.0 * betabulk);
 
-      if(pion_density_negative) detA_min = max(detA_min, detA_bulk);
+      if(DF_MODE == 4) bulk_mod = lambda;
 
-      bool feqmod_breaks_down = does_feqmod_breakdown(detA, detA_min, pion_density_negative);
 
-      double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
+      double detA = compute_detA(pimunu, shear_mod, bulk_mod);
+      double detA_bulk = pow(1.0 + bulk_mod, 3);
+      double nmod_fact = T_mod * T_mod * T_mod / two_pi2_hbarC3;   // omit detA factor
+
+
+      // determine if feqmod breaks down
+      bool feqmod_breaks_down = false;
+
+      if(DF_MODE == 3)
+      {
+        // calculate linearized pion density
+        double mbar_pion0 = MASS_PION0 / T;
+        double neq_pion0 = pow(T,3) / two_pi2_hbarC3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_pion0, 0., 0., -1.);
+        double J20_pion0 = pow(T,4) / two_pi2_hbarC3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, laguerre_pts, mbar_pion0, 0., 0., -1.);
+
+        bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+
+        if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
+
+        if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
+      }
+      else if(DF_MODE == 4)
+      {
+        if(z < 0.0)
+        {
+          printf("Error: z should be positive");
+          detA_min = max(detA_min, detA_bulk);
+        }
+
+        if(detA <= detA_min) feqmod_breaks_down = true;
+      }
 
 
       // surface element class
@@ -1028,7 +1116,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
         double sign = Sign[ipart];
         double baryon = Baryon[ipart];
 
-        double equilibrium_density = Equilibrium_Density[ipart];
+        double equilibrium_density = Equilibrium_Density[ipart];  // what should I do about this? in general this needs to change
         double bulk_density = Bulk_Density[ipart];
 
         double modified_density = equilibrium_density;
@@ -1085,7 +1173,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     int eta_pts = 1;
     if(DIMENSION == 2) eta_pts = eta_tab_length;
     double etaValues[eta_pts];
-    double etaWeights[eta_pts];                           // eta_weight
+    double etaWeights[eta_pts];
 
     if(DIMENSION == 2)
     {
@@ -1097,7 +1185,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     }
     else if(DIMENSION == 3)
     {
-      etaValues[0] = 0.0;           // below, will load eta_fo
+      etaValues[0] = 0.0; // below, will load eta_fo
       etaWeights[0] = 1.0; // 1.0 for 3+1d
     }
 
@@ -1130,8 +1218,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     double * pbar_weight1 = laguerre->weight[1];
     double * pbar_weight2 = laguerre->weight[2];
 
-    // calculate linear pion0 density terms (neq_pion0, J20_pion0)
-    // for is_linear_pion0_density_negative()
 
     // compute contributions to total mean hadron number / cell volume
     /*
@@ -1181,9 +1267,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double uperp =  sqrt(ux * ux  +  uy * uy);
       double utperp = sqrt(1.0  +  ux * ux  +  uy * uy);
 
-      double T = T_fo[icell];
-      double P = P_fo[icell];
-      double E = E_fo[icell];
+      double T = T_fo[icell];             // temperature (GeV)
+      double P = P_fo[icell];             // pressure (GeV/fm^3)
+      double E = E_fo[icell];             // energy density (GeV/fm^3)
 
       double pitt = 0.0;                  // contravariant shear stress tensor pi^munu (GeV/fm^3)
       double pitx = 0.0;                  // enforce orthogonality pi.u = 0
@@ -1239,18 +1325,17 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       }
 
 
-
       // evaluate df coefficients
       deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
-
-
-      // coefficients for modified
+      // modified coefficients (Mike / Jonah)
       double F = df.F;
       double G = df.G;
       double betabulk = df.betabulk;
       double betaV = df.betaV;
       double betapi = df.betapi;
+      double lambda = df.lambda;
+      double z = df.z;
 
       // milne basis class
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
@@ -1272,22 +1357,58 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
       Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
 
-      // modified temperature, chemical potential
-      double T_mod = T  +  bulkPi * F / betabulk;
-      double alphaB_mod = alphaB  +  bulkPi * G / betabulk;
+      // modified temperature / chemical potential
+      double T_mod = T;
+      double alphaB_mod = alphaB;
 
-      // feqmod breakdown switching criteria
-      // is there a better way to condense this?
-      // I need to update the value of detA_min (I can just pass the address, should be okay)
-      double mbar_pion0 = MASS_PION0 / T;
-      double neq_pion0 = pow(T,3) / two_pi2_hbarC3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_pion0, 0., 0., -1.);
-      double J20_pion0 = pow(T,4) / two_pi2_hbarC3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, laguerre_pts, mbar_pion0, 0., 0., -1.);
-      bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
-      double detA = compute_detA(pimunu, bulkPi, betapi, betabulk);
-      double detA_bulk = pow(1.0 + bulkPi / (3.0 * betabulk), 3);
-      if(pion_density_negative) detA_min = max(detA_min, detA_bulk);
-      bool feqmod_breaks_down = does_feqmod_breakdown(detA, detA_min, pion_density_negative);
-      double nmod_fact = detA * pow(T_mod, 3) / two_pi2_hbarC3;
+      if(DF_MODE == 3)
+      {
+        T_mod = T  +  bulkPi * F / betabulk;
+        alphaB_mod = alphaB  +  bulkPi * G / betabulk;
+      }
+
+      double shear_mod = 0.5 / betapi;
+      double bulk_mod = bulkPi / (3.0 * betabulk);
+      double diff_mod = T / betaV;
+
+      if(DF_MODE == 4)
+      {
+        bulk_mod = lambda;
+        diff_mod = 0.0;
+      }
+
+
+      double detA = compute_detA(pimunu, shear_mod, bulk_mod);
+      double detA_bulk = pow(1.0 + bulk_mod, 3);
+      double nmod_fact = T_mod * T_mod * T_mod / two_pi2_hbarC3;   // omit detA factor
+
+      // determine if feqmod breaks down
+      bool feqmod_breaks_down = false;
+
+      if(DF_MODE == 3)
+      {
+        // calculate linearized pion density
+        double mbar_pion0 = MASS_PION0 / T;
+        double neq_pion0 = pow(T,3) / two_pi2_hbarC3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_pion0, 0., 0., -1.);
+        double J20_pion0 = pow(T,4) / two_pi2_hbarC3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, laguerre_pts, mbar_pion0, 0., 0., -1.);
+
+        bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+
+        if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
+
+        if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
+      }
+      else if(DF_MODE == 4)
+      {
+        if(z < 0.0)
+        {
+          printf("Error: z should be positive");
+          detA_min = max(detA_min, detA_bulk);
+        }
+
+        if(detA <= detA_min) feqmod_breaks_down = true;
+      }
+
 
       // holds mean particle number / eta_weight of all species
       std::vector<double> dn_list;
@@ -1365,37 +1486,22 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               {
                 chapman_enskog:
 
-                pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, DF_MODE, DYNAMICAL);
+                pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, DF_MODE);
                 break;
               }
               case 3: // Modified (Mike)
               {
                 if(feqmod_breaks_down) goto chapman_enskog;
 
-                // feqmod coefficients
-                double shear_mod = 0.5 / betapi;
-                double bulk_mod = bulkPi / (3.0 * betabulk);
-                double diff_mod = T / betaV;
-
-                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio, DYNAMICAL);
+                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, baryon, T_mod, alphaB_mod, dsigma, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
 
                 break;
               }
               case 4: // Modified (Jonah)
               {
-                // I'm not sure how to track breakdown
-                // what would I go to?
+                // THERE'S NO SWITCHING LINEARIZED OPTION YET
 
-                // check what jonah does when this happens (maybe he does nothing)
-                //
-
-                double lambda = 0.0;  // need to replace with the interpolated value
-
-                double shear_mod = 0.5 / betapi;
-                double bulk_mod = lambda;
-
-                // reusing function should be okay
-                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, 0.0, T, 0.0, dsigma, pimunu, Vmu, shear_mod, bulk_mod, 0.0, 0.0, DYNAMICAL);
+                pLRF = sample_momentum_feqmod(generator_momentum, &acceptances, &samples, mass, sign, 0.0, T, 0.0, dsigma, pimunu, Vmu, shear_mod, bulk_mod, 0.0, 0.0);
 
                 break;
               }

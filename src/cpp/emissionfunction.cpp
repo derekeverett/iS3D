@@ -69,22 +69,20 @@ double equilibrium_particle_density(double mass, double degeneracy, double sign,
   return neq;
 }
 
-double compute_detA(Shear_Stress pimunu, double bulkPi, double betapi, double betabulk)
+double compute_detA(Shear_Stress pimunu, double shear_mod, double bulk_mod)
 {
   double pixx_LRF = pimunu.pixx_LRF;  double piyy_LRF = pimunu.piyy_LRF;
   double pixy_LRF = pimunu.pixy_LRF;  double piyz_LRF = pimunu.piyz_LRF;
   double pixz_LRF = pimunu.pixz_LRF;  double pizz_LRF = pimunu.pizz_LRF;
 
-  double shear_mod_coeff = 0.5 / betapi;
-  double bulk_mod_coeff = bulkPi / (3.0 * betabulk);
+  double Axx = 1.0  +  pixx_LRF * shear_mod  +  bulk_mod;
+  double Axy = pixy_LRF * shear_mod;
+  double Axz = pixz_LRF * shear_mod;
+  double Ayy = 1.0  +  piyy_LRF * shear_mod  +  bulk_mod;
+  double Ayz = piyz_LRF * shear_mod;
+  double Azz = 1.0  +  pizz_LRF * shear_mod  +  bulk_mod;
 
-  double Axx = 1.0  +  pixx_LRF * shear_mod_coeff  +  bulk_mod_coeff;
-  double Axy = pixy_LRF * shear_mod_coeff;
-  double Axz = pixz_LRF * shear_mod_coeff;
-  double Ayy = 1.0  +  piyy_LRF * shear_mod_coeff  +  bulk_mod_coeff;
-  double Ayz = piyz_LRF * shear_mod_coeff;
-  double Azz = 1.0  +  pizz_LRF * shear_mod_coeff  +  bulk_mod_coeff;
-
+  // Aij is symmetric
   double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
 
   return detA;
@@ -966,7 +964,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
-
+    #ifdef _OPENMP
+    //double sec = omp_get_wtime();
+    #endif
     Stopwatch sw;
     sw.tic();
 
@@ -1028,7 +1028,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // freezeout surface info exclusive for VH
     double *E, *T, *P;
-    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
+    if (MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
     {
       E = (double*)calloc(FO_length, sizeof(double));
       P = (double*)calloc(FO_length, sizeof(double));
@@ -1125,7 +1125,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       //reading info from surface
       surf = &surf_ptr[icell];
 
-      if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
+      if (MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
       {
         E[icell] = surf->E;
         P[icell] = surf->P;
@@ -1204,7 +1204,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // compute the particle spectra
 
-    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7) // viscous hydro
+    if (MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7) // viscous hydro
     {
       switch(DF_MODE)
       {
@@ -1254,7 +1254,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           }
           break;
         }
-        case 3: // modified
+        case 3: // modified (Mike)
+        case 4: // modified (Jonah)
         {
           switch(OPERATION)
           {
@@ -1281,7 +1282,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               write_particle_list_toFile();
               write_particle_list_OSC();
-              write_momentum_list_toFile();
+              //write_momentum_list_toFile();
+              write_sampled_pT_pdf_toFile(MCID);
               write_yield_list_toFile();
 
               particle_event_list_in = particle_event_list[0];
@@ -1298,7 +1300,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         } //case 3
         default:
         {
-          cout << "Please specify df_mode = (1,2,3) in parameters.dat..." << endl;
+          cout << "Please specify df_mode = (1,2,3,4) in parameters.dat..." << endl;
           exit(-1);
         }
       } //switch(DF_MODE)
@@ -1368,7 +1370,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     free(Sign);
     free(Baryon);
 
-    if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
+    if (MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
     {
       free(E);
       free(P);

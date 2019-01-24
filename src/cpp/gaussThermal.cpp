@@ -24,8 +24,8 @@ double neq_int(double pbar, double mbar, double alphaB, double baryon, double si
 	return pbar * exp(pbar) / (exp(Ebar - baryon*alphaB) + sign);
 }
 
-// equilibrium energy density
-// double Eeq_int(double pbar, double mbar, double alphaB, double baryon, double sign)
+// // equilibrium energy density
+// double E_int(double pbar, double mbar, double alphaB, double baryon, double sign)
 // {
 // 	double Ebar = sqrt(pbar * pbar + mbar * mbar);
 // 	// gauss laguerre (a = 2)
@@ -33,7 +33,7 @@ double neq_int(double pbar, double mbar, double alphaB, double baryon, double si
 // }
 
 // // equilibrium pressure
-// double Peq_int(double pbar, double mbar, double alphaB, double baryon, double sign)
+// double P_int(double pbar, double mbar, double alphaB, double baryon, double sign)
 // {
 // 	double Ebar = sqrt(pbar * pbar + mbar * mbar);
 // 	// gauss laguerre (a = 2)

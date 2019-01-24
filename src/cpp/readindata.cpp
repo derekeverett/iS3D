@@ -110,88 +110,6 @@ void Plasma::load_thermodynamic_averages()
 }
 
 
-jonah_coefficients compute_jonah_bulk_coefficients(particle_info * particle_data, int Nparticle)
-{
-  // computes the z and Lambda coefficients as a function of bulk pressure (assumes muB = 0)
-  jonah_coefficients jonah;
-
-  // get the average temperature, energy density, pressure
-  Plasma QGP;
-  QGP.load_thermodynamic_averages();
-
-  const double T = QGP.temperature;    // GeV
-  const double E = QGP.energy_density; // GeV / fm^3
-  const double P = QGP.pressure;       // GeV / fm^3
-
-  const double T3 = pow(T,3);
-  const double T4 = pow(T,4);
-
-
-  // gauss laguerre roots and weights
-  Gauss_Laguerre gla;
-  gla.load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
-
-  const int pbar_pts = gla.points;
-
-  double * pbar_root1 = gla.root[1];
-  double * pbar_root2 = gla.root[2];
-
-  double * pbar_weight1 = gla.weight[1];
-  double * pbar_weight2 = gla.weight[2];
-
-
-  // compute the coefficients
-  const double lambda_min = -1.0;
-  const double lambda_max = 2.0;
-  const double delta_lambda = (lambda_max - lambda_min) / ((double)jonah.points - 1.0);
-
-  const double prefactor = T4 / two_pi2_hbarC3;
-
-  double bulkPi_over_Peq_max = -1.0;      // default value
-
-  // calculate the interpolation points of z(bulkPi/P), lambda(bulkPi/P)
-  for(int i = 0; i < jonah.points; i++)
-  {
-    double lambda = lambda_min + (double)i * delta_lambda;
-
-    double E_mod = 0.0;                   // modified energy density
-    double P_mod = 0.0;                   // modified pressure
-
-    // calculate modified energy density (sum over hadron resonance contributions)
-    //for(int n = 0; i < Nparticle; i++)  // n = 0 is Gamma
-    for(int n = 1; n < Nparticle; n++)    // should I skip the photon (Gamma)?
-    {
-      double degeneracy = (double)particle_data[n].gspin;     // I need to check this at some point
-      double mass = particle_data[n].mass;
-      double sign = (double)particle_data[n].sign;
-
-      double mbar = mass / T;
-
-      E_mod += prefactor * degeneracy * Gauss1D_mod(E_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, lambda, sign);
-      P_mod += (prefactor / 3.0) * degeneracy * Gauss1D_mod(P_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, lambda, sign);
-    }
-
-    // jonah's formula (ignoring detLambda factor i.e. n_mod / n => 1)
-    double z = E / E_mod;
-    double bulkPi_over_Peq = (P_mod / P) * z  -  1.0;
-
-    // update the max bulk pressure
-    bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
-
-    // load the arrays
-    jonah.lambda[i] = lambda;
-    jonah.z[i] = z;
-    jonah.bulkPi_over_Peq[i] = bulkPi_over_Peq;
-  }
-
-  jonah.bulkPi_over_Peq_max = bulkPi_over_Peq_max;
-
-  // now get the cubic spline interpolation coefficients (does it require even spacing?...)
-  return jonah;
-
-}
-
-
 FO_data_reader::FO_data_reader(ParameterReader* paraRdr_in, string path_in)
 {
   paraRdr = paraRdr_in;
@@ -225,7 +143,8 @@ int FO_data_reader::get_number_cells()
 
 void FO_data_reader::read_surf_switch(long length, FO_surf* surf_ptr)
 {
-  if (mode == 1)      read_surf_VH(length, surf_ptr); //surface file containing viscous hydro dissipative currents
+  if (mode == 0)      read_surf_VH_old(length, surf_ptr); //old surface file containing viscous hydro dissipative currents
+  else if (mode == 1) read_surf_VH(length, surf_ptr); //surface file containing viscous hydro dissipative currents
   else if (mode == 2) read_surf_VAH_PLMatch(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents for use with CPU-VAH
   else if (mode == 3) read_surf_VAH_PLPTMatch(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents for use with Mike's Hydro
   else if (mode == 4) read_surf_VH_MUSIC(length, surf_ptr); //boost invariant surface from old (private) version of MUSIC
@@ -234,6 +153,183 @@ void FO_data_reader::read_surf_switch(long length, FO_surf* surf_ptr)
   else if (mode == 7) read_surf_VH_hiceventgen(length, surf_ptr); //boost invariant surface produced by the hydro module in https://github.com/Duke-QCD/hic-eventgen
   return;
 }
+
+
+//THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! baryon number, baryon chemical potential at the end...
+// THIS IS THE OLD FORMAT
+void FO_data_reader::read_surf_VH_old(long length, FO_surf* surf_ptr)
+{
+  cout << "Reading in freezeout surface in old CPU-VH format" << endl;
+  ostringstream surfdat_stream;
+  double dummy;
+  surfdat_stream << pathToInput << "/surface.dat";
+  ifstream surfdat(surfdat_stream.str().c_str());
+
+  // average thermodynamic quantities on surface
+  double Tavg = 0.0;
+  double Eavg = 0.0;
+  double Pavg = 0.0;
+  double muBavg = 0.0;
+  double nBavg = 0.0;
+  double total_surface_volume = 0.0;
+
+  // average viscous quantities
+  double bulkPiavg = 0.0;
+  double pimunuavg = 0.0;
+
+  for (long i = 0; i < length; i++)
+  {
+    // contravariant spacetime position
+    surfdat >> surf_ptr[i].tau;
+    surfdat >> surf_ptr[i].x;
+    surfdat >> surf_ptr[i].y;
+    surfdat >> surf_ptr[i].eta;
+
+    // COVARIANT surface normal vector
+    //note cornelius writes covariant normal vector (used in cpu-ch, gpu-vh,...)
+    surfdat >> surf_ptr[i].dat;
+    surfdat >> surf_ptr[i].dax;
+    surfdat >> surf_ptr[i].day;
+    surfdat >> surf_ptr[i].dan;
+    // added safeguard for boost invariant read-ins on 7/16
+    if(dimension == 2 && surf_ptr[i].dan != 0)
+    {
+      cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
+      //exit(-1);
+    }
+
+    // contravariant flow velocity
+
+    surfdat >> surf_ptr[i].ut;
+    surfdat >> surf_ptr[i].ux;
+    surfdat >> surf_ptr[i].uy;
+    surfdat >> surf_ptr[i].un;
+
+    // thermodynamic quantities at freeze out
+    surfdat >> dummy;
+    double E = dummy * hbarC; //energy density
+    surf_ptr[i].E = E;
+
+    surfdat >> dummy;
+    double T = dummy * hbarC; //temperature
+    surf_ptr[i].T = T;
+
+    surfdat >> dummy;
+    double P = dummy * hbarC; //pressure
+    surf_ptr[i].P = P;
+
+    surfdat >> dummy;
+    double pitt = dummy * hbarC;
+    surf_ptr[i].pitt = pitt;
+
+    surfdat >> dummy;
+    double pitx = dummy * hbarC;
+    surf_ptr[i].pitx = pitx;
+
+    surfdat >> dummy;
+    double pity = dummy * hbarC;
+    surf_ptr[i].pity = pity;
+
+    surfdat >> dummy;
+    double pitn = dummy * hbarC;
+    surf_ptr[i].pitn = pitn;
+
+    surfdat >> dummy;
+    double pixx = dummy * hbarC;
+    surf_ptr[i].pixx = pixx;
+
+    surfdat >> dummy;
+    double pixy = dummy * hbarC;
+    surf_ptr[i].pixy = pixy;
+
+    surfdat >> dummy;
+    double pixn = dummy * hbarC;
+    surf_ptr[i].pixn = pixn;
+
+    surfdat >> dummy;
+    double piyy = dummy * hbarC;
+    surf_ptr[i].piyy = piyy;
+
+    surfdat >> dummy;
+    double piyn = dummy * hbarC;
+    surf_ptr[i].piyn = piyn;
+
+    surfdat >> dummy;
+    double pinn = dummy * hbarC;
+    surf_ptr[i].pinn = pinn;
+
+    surfdat >> dummy;
+    double bulkPi = dummy * hbarC;
+    surf_ptr[i].bulkPi = bulkPi; // bulk pressure
+
+    double muB = 0.0; // nonzero if include_baryon
+    double nB = 0.0;  // effectively defaulted to zero if no diffusion correction needed  (even if include_baryon)
+
+    if (include_baryon)
+    {
+      surfdat >> dummy;
+      muB = dummy * hbarC;              // baryon chemical potential
+      surf_ptr[i].muB = muB;
+    }
+    if (include_baryondiff_deltaf)
+    {
+      surfdat >> nB;                    // baryon density
+      surf_ptr[i].nB = nB;
+      surfdat >> surf_ptr[i].Vt;        // four contravariant components of baryon diffusion vector
+      surfdat >> surf_ptr[i].Vx;
+      surfdat >> surf_ptr[i].Vy;
+      surfdat >> surf_ptr[i].Vn;        // fixed units on 10/8 (overlooked)
+    }
+
+    // getting average thermodynamic quantities
+    double tau = surf_ptr[i].tau;
+    double tau2 = tau * tau;
+    double ux = surf_ptr[i].ux;
+    double uy = surf_ptr[i].uy;
+    double un = surf_ptr[i].un;
+    double ut = sqrt(1.0  +  ux * ux  +  uy * uy  +  tau * tau * un * un);  // enforce normalization
+    double dat = surf_ptr[i].dat;
+    double dax = surf_ptr[i].dax;
+    double day = surf_ptr[i].day;
+    double dan = surf_ptr[i].dan;
+
+    double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;
+    double dsigma_dsigma = dat * dat  -  dax * dax  -  day * day  -  dan * dan / (tau * tau);
+
+    // maybe this isn't the right formula
+    double dsigma_magnitude = fabs(udsigma) + sqrt(fabs(udsigma * udsigma  -  dsigma_dsigma));
+
+    total_surface_volume += dsigma_magnitude;
+
+    Eavg += (E * dsigma_magnitude);
+    Tavg += (T * dsigma_magnitude);
+    Pavg += (P * dsigma_magnitude);
+    muBavg += (muB * dsigma_magnitude);
+    nBavg += (nB * dsigma_magnitude);
+
+    pimunuavg += (sqrt(fabs(pitt*pitt - 2.0*pitx*pitx - 2.0*pity*pity - 2.0*tau2*pitn*pitn + pixx*pixx + 2.0*pixy*pixy + 2.0*tau2*pixn*pixn + piyy*piyy + 2.0*tau2*piyn*piyn + tau2*tau2*pinn*pinn)) * dsigma_magnitude);
+    bulkPiavg += (bulkPi * dsigma_magnitude);
+
+  }
+  surfdat.close();
+
+  Tavg /= total_surface_volume;
+  Eavg /= total_surface_volume;
+  Pavg /= total_surface_volume;
+  muBavg /= total_surface_volume;
+  nBavg /= total_surface_volume;
+
+  pimunuavg /= total_surface_volume;
+  bulkPiavg /= total_surface_volume;
+
+  // write averaged thermodynamic quantities to file
+  ofstream thermal_average("average_thermodynamic_quantities.dat", ios_base::out);
+  thermal_average << setprecision(15) << Tavg << "\n" << Eavg << "\n" << Pavg << "\n" << muBavg << "\n" << nBavg;
+  thermal_average.close();
+  return;
+}
+
+
 
 //THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! baryon number, baryon chemical potential at the end...
 void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
@@ -1283,7 +1379,8 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
         break;
       }
       case 2: // Chapman-Enskog
-      case 3: // Modified
+      case 3: // Modified (Mike)
+      case 4: // Modified (Jonah)
       {
         double F = df->F;
         double G = df->G;
@@ -1305,7 +1402,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
       }
       default:
       {
-        cout << "Please choose df_mode = 1,2,3 in parameters.dat" << endl;
+        cout << "Please choose df_mode = (1,2,3,4) in parameters.dat" << endl;
         exit(-1);
       }
     } // df_mode

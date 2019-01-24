@@ -129,29 +129,6 @@ typedef struct
 } deltaf_coefficients;
 
 
-// JONAH'S MODIFIED BULK COEFFICIENT METHOD
-//::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-const int jonah_points = 301;               // # interpolation points
-
-typedef struct
-{
-  const int points = jonah_points;
-
-  double lambda[jonah_points];              // isotropic momentum scale
-  double z[jonah_points];                   // renormalization factor (apart from detLambda)
-  double bulkPi_over_Peq[jonah_points];     // bulk pressure output
-
-  double bulkPi_over_Peq_max;               // the maximum bulk pressure in the array
-
-  //cubic_spline_coefficients cubic_spline[jonah_points-1];
-
-} jonah_coefficients;
-
-
-jonah_coefficients compute_jonah_bulk_coefficients(particle_info * particle_data, int Nparticle);
-//::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-
 class FO_data_reader
 {
     private:
@@ -171,6 +148,7 @@ class FO_data_reader
 
         int get_number_cells();
         void read_surf_switch(long length, FO_surf * surf_ptr);
+        void read_surf_VH_old(long length, FO_surf * surf_ptr);
         void read_surf_VH(long length, FO_surf * surf_ptr);
         void read_surf_VH_Vorticity(long length, FO_surf * surf_ptr);
         void read_surf_VAH_PLMatch(long length, FO_surf * surf_ptr);

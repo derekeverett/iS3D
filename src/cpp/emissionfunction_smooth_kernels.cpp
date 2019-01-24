@@ -473,6 +473,9 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     double *dN_pTdpTdphidy_all;
     dN_pTdpTdphidy_all = (double*)calloc((long long int)npart * (long long int)FO_chunk * (long long int)pT_tab_length * (long long int)phi_tab_length * (long long int)y_tab_length, sizeof(double));
 
+    // momentum rescaling matrix (so far, w/ shear and bulk corrections only)
+    double ** M = (double**)calloc(3, sizeof(double*));
+    for(int i = 0; i < 3; i++) M[i] = (double*)calloc(3, sizeof(double));
 
     //loop over bite size chunks of FO surface
     for (int n = 0; n < (FO_length / FO_chunk) + 1; n++)
@@ -512,7 +515,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         double udsigma = ut * dat  +  ux * dax  +  uy * day  +  un * dan;   // udotdsigma / eta_weight
 
-        //if(udsigma <= 0.0) continue;        // skip cells with u.dsigma < 0
+        if(udsigma <= 0.0) continue;        // skip cells with u.dsigma < 0
 
         double ut2 = ut * ut;               // useful expressions
         double ux2 = ux * ux;
@@ -578,11 +581,24 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         // set df coefficients
         deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
-        double F = df.F;
-        double G = df.G;
-        double betabulk = df.betabulk;
-        double betaV = df.betaV;
-        double betapi = df.betapi;
+        // modified coefficients (Mike / Jonah)
+        double F = df.F;               
+        double G = df.G;                
+        double betabulk = df.betabulk;    
+        double betaV = df.betaV;          
+        double betapi = df.betapi;       
+        double lambda = df.lambda;
+        double z = df.z;
+
+        double bulkPi_over_Peq_max = df_data->bulkPi_over_Peq_max;
+        double bulkPi_over_Peq = bulkPi / P;
+
+        // this can potentially happen... 
+        if(bulkPi_over_Peq > bulkPi_over_Peq_max || bulkPi_over_Peq < -1.0)
+        {
+          printf("Error: bulk pressure is out of bounds given by Jonah's feqmod\n");
+          exit(-1);
+        }
 
         // milne basis class
         Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
@@ -603,14 +619,25 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
         Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
 
-        double T_mod = T  +  F * bulkPi / betabulk;                 // modified temperature
-        double alphaB_mod = alphaB  +  G * bulkPi / betabulk;       // modified muB/T
+      
+        // modified temperature / chemical potential
+        double T_mod = T;
+        double alphaB_mod = alphaB;
 
-        // linearized df coefficients
-        double shear_coeff = 0.5 / (betapi * T);
+        if(DF_MODE == 3)
+        {
+          T_mod = T  +  bulkPi * F / betabulk;
+          alphaB_mod = alphaB  +  bulkPi * G / betabulk;
+        }
+
+        // linearized Chapman Enskog df coefficients (for Mike)
+        double shear_coeff = 0.5 / (betapi * T);                    // Mike and Jonah share shear_coeff
         double bulk0_coeff = F / (T * T * betabulk);
         double bulk1_coeff = G / betabulk;
         double bulk2_coeff = 1.0 / (3.0 * T * betabulk);
+
+        // linearized Jonah df coefficients (for Jonah)
+        // FILL IN LATER
 
         // pimunu and Vmu LRF components
         double pixx_LRF = pimunu.pixx_LRF;
@@ -628,26 +655,26 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         // Aij = ideal + shear + bulk is symmetric
         // Mij is not symmetric if include baryon diffusion (leave for future work)
 
-        double shear_fact = 0.5 / betapi;                           // coefficients in Aij
-        double bulk_term = bulkPi / (3.0 * betabulk);
+        // coefficients in Aij
+        double shear_mod = 0.5 / betapi;                           
+        double bulk_mod = bulkPi / (3.0 * betabulk);
 
-        double Axx = 1.0  +  pixx_LRF * shear_fact  +  bulk_term;
-        double Axy = pixy_LRF * shear_fact;
-        double Axz = pixz_LRF * shear_fact;
+        if(DF_MODE == 4) bulk_mod = lambda; 
+        
+        double Axx = 1.0  +  pixx_LRF * shear_mod  +  bulk_mod;
+        double Axy = pixy_LRF * shear_mod;
+        double Axz = pixz_LRF * shear_mod;
         double Ayx = Axy;
-        double Ayy = 1.0  +  piyy_LRF * shear_fact  +  bulk_term;
-        double Ayz = piyz_LRF * shear_fact;
+        double Ayy = 1.0  +  piyy_LRF * shear_mod  +  bulk_mod;
+        double Ayz = piyz_LRF * shear_mod;
         double Azx = Axz;
         double Azy = Ayz;
-        double Azz = 1.0  +  pizz_LRF * shear_fact  +  bulk_term;
+        double Azz = 1.0  +  pizz_LRF * shear_mod  +  bulk_mod;
 
         double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
 
-        double detA_bulk = (1.0 + bulk_term) * (1.0 + bulk_term) * (1.0 + bulk_term);
-
-        // momentum rescaling matrix (so far, w/ shear and bulk corrections only)
-        double ** M = (double**)calloc(3, sizeof(double*));
-        for(int i = 0; i < 3; i++) M[i] = (double*)calloc(3, sizeof(double));
+        // I'm considering axing this
+        double detA_bulk = pow(1.0 + bulk_mod, 3);
 
         // set Mij matrix
         M[0][0] = Axx;  M[0][1] = Axy;  M[0][2] = Axz;
@@ -657,39 +684,44 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         int permutation[3];                   // permutation vector for LUP decomposition
         LUP_decomposition(M, 3, permutation); // LUP decompose M once
 
-         // prefactors for equilibrium, linear bulk correction and modified densities
+         // prefactors for equilibrium, linear bulk correction and modified densities (Mike's feqmod)
         double neq_fact = T * T * T / two_pi2_hbarC3;
         double dn_fact = bulkPi / betabulk;
         double J20_fact = T * neq_fact;
         double N10_fact = neq_fact;
         double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
 
-        // calculate linear pion0 density terms (neq_pion0, J20_pion0)
-        // this is for the function is_linear_pion0_density_negative()
-        double mbar_pion0 = MASS_PION0 / T;
-        double neq_pion0 = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
-        double J20_pion0 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
-
-        bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
-
-        if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
-
         bool feqmod_breaks_down = false;
 
-        if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
+        if(DF_MODE == 3)
+        {
+          // calculate linearized pion0 density
+          double mbar_pion0 = MASS_PION0 / T;
+          double neq_pion0 = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
+          double J20_pion0 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
+
+          bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+
+          if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
+
+          if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
+        }
+        else if(DF_MODE == 4)
+        {
+          if(z < 0.0)
+          {
+            printf("Error: z should be positive");
+            detA_min = max(detA_min, detA_bulk);  
+          }
+
+          if(detA <= detA_min) feqmod_breaks_down = true;
+        }
 
         if(feqmod_breaks_down)
         {
           breakdown++;
           cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\t detA_min = " << detA_min << endl;
-
-          // if((INCLUDE_SHEAR_DELTAF && INCLUDE_BULK_DELTAF) && !pion_density_negative)
-          // {
-          //   printf("Error: shear + bulk feqmod has positive pions\n");
-          //   exit(-1);
-          // }
         }
-
 
         // loop over hadrons
         for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
@@ -709,22 +741,30 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
           if(INCLUDE_BULK_DELTAF)
           {
-            double mbar = mass / T;
-            double mbar_mod = mass / T_mod;
+            if(DF_MODE == 3)
+            {
+              double mbar = mass / T;
+              double mbar_mod = mass / T_mod;
 
-            double neq = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+              double neq = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
 
-            double N10 = baryon * N10_fact * degeneracy * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+              double N10 = baryon * N10_fact * degeneracy * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
 
-            double J20 = J20_fact * degeneracy * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+              double J20 = J20_fact * degeneracy * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
 
-            double n_linear = neq  +  dn_fact * (neq  +  N10 * G  +  J20 * F / T / T);
+              double n_linear = neq  +  dn_fact * (neq  +  N10 * G  +  J20 * F / T / T);
 
-            double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
+              double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
 
-            renorm = n_linear / n_mod;
+              renorm = n_linear / n_mod;
+            }
+            else if(DF_MODE == 4)
+            {
+              renorm = z / detA;
+            }
+            
           }
-
+      
           for(int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pTValues[ipT];              // p_T (GeV)
@@ -746,7 +786,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                 for(int ieta = 0; ieta < eta_pts; ieta++)
                 {
                   double eta = etaValues[ieta];
-                  double eta_weight = etaWeights[ieta];  // trapezoid rule
+                  double eta_weight = etaWeights[ieta];  
 
                   double pt = mT * cosh(y - eta);          // p^\tau (GeV)
                   double pn = mT_over_tau * sinh(y - eta); // p^\eta (GeV^2)
@@ -796,7 +836,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     if(dp / p > 1.e-10)
                     {
                       cout << "Error: dp / p = " << setprecision(16) << dp / p << " not accurate enough at tau = " << tau << " fm/c:"<< endl;
-                      //exit(-1);
                     }
 
                   }
@@ -815,9 +854,21 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     double Vmu_pmu = Vt * pt  -  Vx * px  -  Vy * py  -  Vn * tau2_pn;
 
                     double df_shear = shear_coeff * pimunu_pmu_pnu / pdotu;
-                    double df_bulk = (bulk0_coeff * pdotu  +  bulk1_coeff * baryon +  bulk2_coeff * (pdotu  -  mass2 / pdotu)) * bulkPi;
-                    double df_diff = (baryon_enthalpy_ratio  -  baryon / pdotu) * Vmu_pmu / betaV;
 
+                    double df_bulk = 0.0;
+                    double df_diff = 0.0;
+
+                    if(DF_MODE == 3)
+                    {
+                      df_bulk = (bulk0_coeff * pdotu  +  bulk1_coeff * baryon +  bulk2_coeff * (pdotu  -  mass2 / pdotu)) * bulkPi;
+                      df_diff = (baryon_enthalpy_ratio  -  baryon / pdotu) * Vmu_pmu / betaV;
+                    }
+                    else if(DF_MODE == 4)
+                    {
+                      df_bulk = 0.0;  // fill bulk correction later
+                      df_diff = 0.0;
+                    }
+                    
                     double df = feqbar * (df_shear + df_bulk + df_diff);
 
                     if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
@@ -842,15 +893,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         } // particle species (ipart)
 
-        free_2D(M,3);
-
       } // freezeout cells in the chunk (icell)
 
       if(endFO != 0)
       {
         // now perform the reduction over cells
         #pragma omp parallel for collapse(3)
-      //#pragma acc kernels
+        //#pragma acc kernels
         for(int ipart = 0; ipart < npart; ipart++)
         {
           for(int ipT = 0; ipT < pT_tab_length; ipT++)
@@ -886,6 +935,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       printf("Progress: finished chunk %d of %ld \n", n, FO_length / FO_chunk);
 
     } // FO surface chunks (n)
+
+    free_2D(M,3);
 
     cout << setw(5) << setprecision(4) << "\nfeqmod breaks down for " << breakdown << " cells\n" << endl;
 

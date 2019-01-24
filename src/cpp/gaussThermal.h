@@ -7,6 +7,7 @@ double GaussThermal(double thermal_integrand(double pbar, double mbar, double al
 // equilibrium particle density
 double neq_int(double pbar, double mbar, double alphaB, double baryon, double sign);
 
+
 // for linearized particle density
 double J10_int(double pbar, double mbar, double alphaB, double baryon, double sign);
 double J11_int(double pbar, double mbar, double alphaB, double baryon, double sign);
