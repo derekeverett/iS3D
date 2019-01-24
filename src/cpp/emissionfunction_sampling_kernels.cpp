@@ -424,6 +424,7 @@ double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, do
       break;
     }
     case 2: // Chapman Enskog
+    case 3: // Modified (Mike) (switch to linearized df)
     {
       double F = df.F;
       double G = df.G;
@@ -438,7 +439,7 @@ double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, do
     }
     default:
     {
-      printf("Error: use df_mode = (1,2)\n");
+      printf("Error: use df_mode = (1,2,3,4)\n");
       exit(-1);
     }
   } // df_mode
@@ -971,9 +972,9 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
 
       if(udsigma <= 0.0) continue;        // skip over cells with u.dsigma < 0
 
-      double T = T_fo[icell];
-      double P = P_fo[icell];
-      double E = E_fo[icell];
+      double T = T_fo[icell];             // temperature (GeV)
+      double P = P_fo[icell];             // equilibrium pressure (GeV/fm^3)
+      double E = E_fo[icell];             // energy density (GeV/fm^3)
 
       double pitt = 0.0;                  // contravariant shear stress tensor pi^munu (GeV/fm^3)
       double pitx = 0.0;                  // enforce orthogonality pi.u = 0
