@@ -2,7 +2,8 @@ operation	                = 1	 # operation
 			                 # 1 : performs smooth cooper frye resulting in dN/pTdpTdphidy
 			                 # 2 : performs sampling of particle distribution resulting in particle list
 
-mode       		      	= 1 	 # mode for reading in freeze out information
+mode       		      	= 0 	 # mode for reading in freeze out information
+					 # 0: reads freezeout file from 3+1D viscous hydro (old gpu-vh format)
 				   	 # 1: reads freezeout file from 3+1D viscous hydro (gpu-vh format)
 					 # 2: reads freezeout file from 3+1D viscous anisotropic hydro (PL matching)
 					 # 3: reads freezeout file from 3+1D viscous anisotropic hydro (PL,PT matching)
@@ -31,8 +32,8 @@ include_baryondiff_deltaf 	= 0      # switch to include baryon diffusion df corr
 regulate_deltaf           	= 0      # if on, force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
 outflow 			= 1	 # switch to enforce p.dsigma > 0 in the smooth cooper frye formula
 
-deta_min 			= 1.e-3  # minimum value of detA (feqmod break down)
-detc_min 			= 1.e-3  # minimum value of detC (famod break down)
+deta_min 			= 1.e-2  # minimum value of detA (feqmod break down)
+detc_min 			= 1.e-2  # minimum value of detC (famod break down)
 
 group_particles                 = 0	 # group particles with the similar mass and to speed up calculations
 particle_diff_tolerance         = 0.01   # grouping particle mass tolerance
@@ -53,4 +54,4 @@ pT_upper_cut		= 3.0		 # pT upper cut in GeV (for sampler tests)
 pT_bins				= 100		 # number of pT bins (for sampler tests)
 y_cut				= 5.0		 # |y| <= y_cut rapidity cut (for sampler tests)
 
-dynamical			= 0			 # sample particles that are reabsorbed into fireball dynamically
+dynamical			= 0			 # sample particles that are reabsorbed into fireball dynamically (doesn't work right now)

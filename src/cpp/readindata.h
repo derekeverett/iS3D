@@ -148,12 +148,14 @@ class FO_data_reader
 
         int get_number_cells();
         void read_surf_switch(long length, FO_surf * surf_ptr);
+        void read_surf_VH_old(long length, FO_surf * surf_ptr);
         void read_surf_VH(long length, FO_surf * surf_ptr);
         void read_surf_VH_Vorticity(long length, FO_surf * surf_ptr);
         void read_surf_VAH_PLMatch(long length, FO_surf * surf_ptr);
         void read_surf_VAH_PLPTMatch(long length, FO_surf * surf_ptr);
         void read_surf_VH_MUSIC(long length, FO_surf * surf_ptr);
         void read_surf_VH_MUSIC_New(long length, FO_surf* surf_ptr);
+        void read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr);
         int read_resonances_list(particle_info * particle, FO_surf * surf_ptr, deltaf_coefficients * df);
 };
 

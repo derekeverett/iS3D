@@ -349,7 +349,7 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
           double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
 
-          double costheta_star_mod = min(1.0, Ebar_mod * ds_time_over_ds_space / pbar);
+          double costheta_star_mod = min(1.0, Ebar_mod * ds_time_over_ds_space / pbar_mod);
           double mbar_bulk = mbar_mod / (1.0 + bulk_mod);
           double Ebar_bulk = sqrt(pbar_mod * pbar_mod  +  mbar_bulk * mbar_bulk);
 
