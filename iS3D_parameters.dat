@@ -48,7 +48,7 @@ lightest_particle 	        = 211    #PDG MC ID of lightest particle for resonanc
 oversample		        = 0      #run sampler iteratively until total number of hadrons across
 min_num_hadrons		        = 1.e+6 #across all samples >= min_num_hadrons
 
-sampler_seed		        = 1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
+sampler_seed		        = -1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
 
 pT_lower_cut			= 0.0    # pT lower cut in GeV (for sampler tests) 
 pT_upper_cut			= 3.0	 # pT upper cut in GeV (for sampler tests)

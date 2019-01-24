@@ -1,7 +1,5 @@
 #include "iS3D.h"
 
-//using namespace std;
-
 int main(int argc, char *argv[])
 {
   //create an instance of IS3D class

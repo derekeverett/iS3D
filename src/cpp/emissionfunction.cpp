@@ -231,7 +231,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           break;
         }
       }
-    }
+    } // for (int m = 0; m < number_of_chosen_particles; m++)
 
     // next, for sampling processes
     chosen_particles_sampling_table = new int[number_of_chosen_particles];
@@ -249,7 +249,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           break;
         }
       }
-    }
+    } //for (int m = 0; m < number_of_chosen_particles; m++)
 
     // next re-order them so that particles with similar mass are adjacent
     if (GROUP_PARTICLES == 1) // sort particles according to their mass; bubble-sorting
@@ -265,10 +265,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             chosen_particles_sampling_table[n + 1] = chosen_particles_sampling_table[n];
             chosen_particles_sampling_table[n] = particle_idx;
           }
-        }
-      }
-    }
-  }
+        } // for (int n = 0; n < number_of_chosen_particles - m - 1; n++)
+      } // for (int m = 0; m < number_of_chosen_particles; m++)
+    } // if (GROUP_PARTICLES == 1)
+  } // EmissionFunctionArray::EmissionFunctionArray
 
   EmissionFunctionArray::~EmissionFunctionArray()
   {
@@ -799,7 +799,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::write_momentum_list_toFile()
   {
     printf("Writing sampled momentum list to file...\n");
-
     ofstream spectraFile("results/momentum_list.dat", ios_base::out);
 
     //write the header
@@ -847,11 +846,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     double y_cut = Y_CUT;                     // rapidity cut
 
     int pTbins = PT_BINS;
-
     double pTbinwidth = (pT_upper_cut - pT_lower_cut) / (double)pTbins;
-
     double pT_pdf[npart][pTbins];             // event averaged pT probability distribution of the particles
-
     long number_of_sampled_particles[npart];  // number of particles of each species sampled from all events
 
     for(int ipart = 0; ipart < npart; ipart++)
@@ -906,22 +902,16 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             number_of_sampled_particles[ipart] += 1;  // count number
 
           } // pT cut
-
         } // rapidity cut
-
       }// n
-
     } // ievent
 
     // now normalize the pdfs to unity and write them to file
     for(int ipart = 0; ipart < npart; ipart++)
     {
       char filename[255] = "";
-
       int mcid = MCID[ipart]; // we can just use this in place
-
       sprintf(filename, "results/pT_pdf_%d.dat", mcid);
-
       ofstream spectra(filename, ios_base::out);
 
       // total number of particles of species ipart at top of file
@@ -931,13 +921,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       {
         // normalization factor
         pT_pdf[ipart][ipT] /= (pTbinwidth * (double)number_of_sampled_particles[ipart]);
-
         spectra << setprecision(6) << scientific << pT_midpoint[ipT] << "\t" << pT_pdf[ipart][ipT] << "\n";
-
       } // ipT
-
       spectra.close();
-
     } // ipart
   }
 
@@ -1007,21 +993,17 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       Diffusion_Density[ipart] = particle->diff_density;
     }
 
-
     // gauss laguerre roots and weights
     Gauss_Laguerre * gla = new Gauss_Laguerre;
     gla->load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
-
 
     // gauss legendre roots and weights
     Gauss_Legendre * legendre = new Gauss_Legendre;
     legendre->load_roots_and_weights("tables/gauss_legendre_24pts.dat");
 
-
     // averaged thermodynamic quantities
     Plasma * QGP = new Plasma;
     QGP->load_thermodynamic_averages();
-
 
     // freezeout info
     FO_surf *surf = &surf_ptr[0];
@@ -1200,7 +1182,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         }
       }
     }
-
 
     // compute the particle spectra
 
