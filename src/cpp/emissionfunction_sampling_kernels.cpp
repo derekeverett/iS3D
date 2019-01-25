@@ -1310,6 +1310,23 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       }
 
       // evaluate df coefficients
+      double bulkPi_over_Peq_max = df_data->bulkPi_over_Peq_max;
+      double bulkPi_over_Peq = bulkPi / P;
+      // this can potentially happen...
+      if (bulkPi_over_Peq > bulkPi_over_Peq_max)
+      {
+        printf("bulkPi_over_Peq_max = %f , bulkPi_over_Peq = %f \n", bulkPi_over_Peq_max, bulkPi_over_Peq);
+        //printf("bulk pressure > bulkPi_over_Peq_max (out of bounds given by Jonah’s feqmod) \n");
+        printf("Regulating Pi -> bulkPi_over_Peq_max * P in this cell \n");
+        bulkPi = bulkPi_over_Peq_max * P;
+      }
+      if (bulkPi_over_Peq < -1.0)
+      {
+        printf("bulk pressure / P_eq < -1.0 (out of bounds given by Jonah’s feqmod) \n");
+        printf("Regulating Pi -> -P in this cell \n");
+        bulkPi = -P;
+      }
+
       deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
       // modified coefficients (Mike / Jonah)

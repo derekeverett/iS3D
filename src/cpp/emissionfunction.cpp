@@ -770,13 +770,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       char filename[255] = "";
       sprintf(filename, "results/particle_list_osc_%d.dat", ievent + 1);
 
-      //ofstream spectraFile(filename, ios_base::app);
       ofstream spectraFile(filename, ios_base::out);
 
       int num_particles = particle_event_list[ievent].size();
 
       //write the header
-      spectraFile << "#" << " " << num_particles << "\n";
+      //spectraFile << "#" << " " << num_particles << "\n";
+      spectraFile << "n pid px py pz E m x y z t" << "\n";
       for (int ipart = 0; ipart < num_particles; ipart++)
       {
         int mcid = particle_event_list[ievent][ipart].mcID;
@@ -785,12 +785,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         double t = particle_event_list[ievent][ipart].t;
         double z = particle_event_list[ievent][ipart].z;
 
-        //double mass = particle_list[ipart].mass;
-        double E = particle_event_list[ievent][ipart].E;
+        double m  = particle_event_list[ievent][ipart].mass;
+        double E  = particle_event_list[ievent][ipart].E;
         double px = particle_event_list[ievent][ipart].px;
         double py = particle_event_list[ievent][ipart].py;
         double pz = particle_event_list[ievent][ipart].pz;
-        spectraFile << mcid << "," << scientific <<  setw(5) << setprecision(16) << t << "," << x << "," << y << "," << z << "," << E << "," << px << "," << py << "," << pz << "\n";
+        spectraFile << ipart << " " << mcid << " " << scientific <<  setw(5) << setprecision(16) << px << " " << py << " " << pz << " " << E << " " << m << " " << x << " " << y << " " << z << " " << t << "\n";
       }//ipart
       spectraFile.close();
     } // ievent

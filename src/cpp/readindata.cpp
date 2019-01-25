@@ -1092,7 +1092,7 @@ void FO_data_reader::read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr)
     surfdat >> dummy; //dan
     surf_ptr[i].dan = 0.0;
 
-    // contravariant flow velocity
+    // covariant flow velocity
     double vx, vy, vn;
     double ut, ux, uy, un;
     double tau = surf_ptr[i].tau;
@@ -1101,34 +1101,36 @@ void FO_data_reader::read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr)
     surfdat >> vy;
     surfdat >> vn;
 
-    double denom =  1.0 - vx*vx - vy*vy - tau*tau*vn*vn;
-    if (denom < 0.0) cout << "1.0 - vx*vx - vy*vy - tau*tau*vn*vn < 0 !" << endl;
+    double denom =  1.0 - (vx * vx) - (vy * vy) - (vn * vn / tau / tau);
+    if (denom < 0.0) cout << "1.0 - vx*vx - vy*vy - vn*vn/tau/tau < 0 !" << endl;
 
     ut = sqrt( 1.0 / denom );
-    surf_ptr[i].ux = ut * vx;
-    surf_ptr[i].uy = ut * vy;
-    surf_ptr[i].un = ut * vn;
+    //vx is covariant , ux is contravariant, need metric factors
+    surf_ptr[i].ux = ut * vx * (-1.0);
+    surf_ptr[i].uy = ut * vy * (-1.0);
+    surf_ptr[i].un = ut * vn * (-1.0 / tau / tau);
 
     // ten contravariant components of shear stress tensor
-    surfdat >> dummy;
+    //units are GeV/fm^3
+    surfdat >> dummy; // pi^tt
     //surf_ptr[i].pitt = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^tx
     //surf_ptr[i].pitx = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^ty
     //surf_ptr[i].pity = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^tz
     //surf_ptr[i].pitn = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^xx
     surf_ptr[i].pixx = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^xy
     surf_ptr[i].pixy = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^xz
     surf_ptr[i].pixn = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^yy
     surf_ptr[i].piyy = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^yz
     surf_ptr[i].piyn = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^zz
     //surf_ptr[i].pinn = dummy;
 
     //bulk pressure
@@ -1136,21 +1138,21 @@ void FO_data_reader::read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr)
     surf_ptr[i].bulkPi = dummy;
 
     // thermodynamic quantities at freeze out
-    surfdat >> dummy;
+    surfdat >> dummy;   // temperature [GeV]
     double T = dummy;
-    surf_ptr[i].T = T;                         // temperature
+    surf_ptr[i].T = T;
 
-    surfdat >> dummy;
+    surfdat >> dummy;   // energy density [GeV/fm^3]
     double E = dummy;
-    surf_ptr[i].E = E;                         // energy density
+    surf_ptr[i].E = E;
 
-    surfdat >> dummy;                          // pressure
+    surfdat >> dummy;   // pressure [GeV/fm^3]
     double P = dummy;
     surf_ptr[i].P = P;
 
-    surfdat >> dummy;
+    surfdat >> dummy;    // baryon chemical potential [GeV/fm^33]
     double muB = dummy;
-    surf_ptr[i].muB = muB;                       // baryon chemical potential
+    surf_ptr[i].muB = muB;
 
     double nB = 0.0;
 
