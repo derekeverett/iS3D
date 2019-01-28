@@ -578,6 +578,16 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           baryon_enthalpy_ratio = nB / (E + P);
         }
 
+        // regulate bulk pressure if goes out of bounds given 
+        // by Jonah's feqmod to avoid gsl interpolation errors
+        if(DF_MODE == 4)
+        {
+          double bulkPi_over_Peq_max = df_data->bulkPi_over_Peq_max;
+
+          if(bulkPi < - P) bulkPi = - P;
+          else if(bulkPi / P > bulkPi_over_Peq_max) bulkPi = P * bulkPi_over_Peq_max;
+        }
+
         // set df coefficients
         deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
@@ -589,16 +599,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double betapi = df.betapi;       
         double lambda = df.lambda;
         double z = df.z;
-
-        double bulkPi_over_Peq_max = df_data->bulkPi_over_Peq_max;
-        double bulkPi_over_Peq = bulkPi / P;
-
-        // this can potentially happen... 
-        if(bulkPi_over_Peq > bulkPi_over_Peq_max || bulkPi_over_Peq < -1.0)
-        {
-          printf("Error: bulk pressure is out of bounds given by Jonah's feqmod\n");
-          exit(-1);
-        }
 
         // milne basis class
         Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
@@ -630,14 +630,11 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           alphaB_mod = alphaB  +  bulkPi * G / betabulk;
         }
 
-        // linearized Chapman Enskog df coefficients (for Mike)
-        double shear_coeff = 0.5 / (betapi * T);                    // Mike and Jonah share shear_coeff
+        // linearized Chapman Enskog df coefficients (for Mike only)
+        double shear_coeff = 0.5 / (betapi * T);                 
         double bulk0_coeff = F / (T * T * betabulk);
         double bulk1_coeff = G / betabulk;
         double bulk2_coeff = 1.0 / (3.0 * T * betabulk);
-
-        // linearized Jonah df coefficients (for Jonah)
-        // FILL IN LATER
 
         // pimunu and Vmu LRF components
         double pixx_LRF = pimunu.pixx_LRF;
@@ -659,8 +656,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double shear_mod = 0.5 / betapi;                           
         double bulk_mod = bulkPi / (3.0 * betabulk);
 
-        if(DF_MODE == 4) bulk_mod = lambda; 
-        
+        if(DF_MODE == 4) bulk_mod = lambda;
+    
         double Axx = 1.0  +  pixx_LRF * shear_mod  +  bulk_mod;
         double Axy = pixy_LRF * shear_mod;
         double Axz = pixz_LRF * shear_mod;
@@ -674,7 +671,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
 
         // I'm considering axing this
-        double detA_bulk = pow(1.0 + bulk_mod, 3);
+        //double detA_bulk = pow(1.0 + bulk_mod, 3);
 
         // set Mij matrix
         M[0][0] = Axx;  M[0][1] = Axy;  M[0][2] = Axz;
@@ -701,20 +698,17 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           double J20_pion0 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
 
           bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+          // for future reference if one includes muB, then the heaviest antibaryon density (e.g. anti-omega2550) should be computed too
 
-          if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
+          //if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative 
 
           if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
         }
         else if(DF_MODE == 4)
         {
-          if(z < 0.0)
-          {
-            printf("Error: z should be positive");
-            detA_min = max(detA_min, detA_bulk);  
-          }
+          if(z < 0.0) printf("Error: z should be positive");       
 
-          if(detA <= detA_min) feqmod_breaks_down = true;
+          if(detA <= detA_min || z < 0.0) feqmod_breaks_down = true;
         }
 
         if(feqmod_breaks_down)
@@ -764,7 +758,14 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             }
             
           }
-      
+
+          if((std::isnan(renorm) || std::isinf(renorm)))
+          {
+            // skip freezeout cell since jonah feqmod doesn't have a switching linearized df option
+            cout << "Error: renormalization factor is " << renorm << endl;
+            continue;  
+          }
+
           for(int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pTValues[ipT];              // p_T (GeV)
@@ -799,9 +800,30 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double f;                                   // feqmod (if breakdown do feq(1+df))
 
                   // calculate feqmod
-                  if(!feqmod_breaks_down)
-                  //if(detA > 0.001 && !pion_density_negative)
-                  //if(detA >= DETA_MIND && !negative_pions)
+                  if(feqmod_breaks_down && DF_MODE == 3)
+                  {
+                    double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
+                    double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
+                    double feqbar = 1.0  -  sign * feq;
+
+                     // pi^munu.p_mu.p_nu
+                    double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
+                     + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
+
+                    // V^mu.p_mu
+                    double Vmu_pmu = Vt * pt  -  Vx * px  -  Vy * py  -  Vn * tau2_pn;
+
+                    double df_shear = shear_coeff * pimunu_pmu_pnu / pdotu;
+                    double df_bulk = df_bulk = (bulk0_coeff * pdotu  +  bulk1_coeff * baryon +  bulk2_coeff * (pdotu  -  mass2 / pdotu)) * bulkPi;
+                    double df_diff = (baryon_enthalpy_ratio  -  baryon / pdotu) * Vmu_pmu / betaV;
+                  
+                    double df = feqbar * (df_shear + df_bulk + df_diff);
+
+                    if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
+
+                    f = feq * (1.0 + df);
+                  }
+                  else
                   {
                     // LRF momentum components pi_LRF = - Xi.p
                     double px_LRF = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;
@@ -818,63 +840,31 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                     double E_mod = sqrt(mass2 + px_LRF_mod2 + py_LRF_mod2 + pz_LRF_mod2);
 
-                    f = renorm / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
+                    // if mike's feqmod didn't break down, then renorm should be positive
+                    // in jonah's sampler, the absolute value of renorm is used
 
-                    // test accuracy of the matrix solver (it works pretty well)
-                    double px_LRF_test = Axx * pLRF_mod[0]  +  Axy * pLRF_mod[1]  +  Axz * pLRF_mod[2];
-                    double py_LRF_test = Ayx * pLRF_mod[0]  +  Ayy * pLRF_mod[1]  +  Ayz * pLRF_mod[2];
-                    double pz_LRF_test = Azx * pLRF_mod[0]  +  Azy * pLRF_mod[1]  +  Azz * pLRF_mod[2];
+                    f = fabs(renorm) / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
 
-                    double dpX = px_LRF - px_LRF_test;
-                    double dpY = py_LRF - py_LRF_test;
-                    double dpZ = pz_LRF - pz_LRF_test;
+                    // test accuracy of the matrix solver 
+                    // double px_LRF_test = Axx * pLRF_mod[0]  +  Axy * pLRF_mod[1]  +  Axz * pLRF_mod[2];
+                    // double py_LRF_test = Ayx * pLRF_mod[0]  +  Ayy * pLRF_mod[1]  +  Ayz * pLRF_mod[2];
+                    // double pz_LRF_test = Azx * pLRF_mod[0]  +  Azy * pLRF_mod[1]  +  Azz * pLRF_mod[2];
 
-                    double dp = sqrt(dpX * dpX  +  dpY * dpY  +  dpZ * dpZ);
-                    double p = sqrt(px_LRF * px_LRF  +  py_LRF * py_LRF  +  pz_LRF * pz_LRF);
+                    // double dpX = px_LRF - px_LRF_test;
+                    // double dpY = py_LRF - py_LRF_test;
+                    // double dpZ = pz_LRF - pz_LRF_test;
+
+                    // double dp = sqrt(dpX * dpX  +  dpY * dpY  +  dpZ * dpZ);
+                    // double p = sqrt(px_LRF * px_LRF  +  py_LRF * py_LRF  +  pz_LRF * pz_LRF);
 
                     // is it not accurate enough?...
-                    if(dp / p > 1.e-10)
-                    {
-                      cout << "Error: dp / p = " << setprecision(16) << dp / p << " not accurate enough at tau = " << tau << " fm/c:"<< endl;
-                    }
+                    // if(dp / p > 1.e-10)
+                    // {
+                    //   cout << "Error: dp / p = " << setprecision(16) << dp / p << " not accurate enough at tau = " << tau << " fm/c:"<< endl;
+                    // }
 
                   }
-                  // if feqmod breaks down switch to chapman enskog instead
-                  else
-                  {
-                    double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
-                    double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
-                    double feqbar = 1.0  -  sign * feq;
-
-                     // pi^munu.p_mu.p_nu
-                    double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
-                     + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
-
-                    // V^mu.p_mu
-                    double Vmu_pmu = Vt * pt  -  Vx * px  -  Vy * py  -  Vn * tau2_pn;
-
-                    double df_shear = shear_coeff * pimunu_pmu_pnu / pdotu;
-
-                    double df_bulk = 0.0;
-                    double df_diff = 0.0;
-
-                    if(DF_MODE == 3)
-                    {
-                      df_bulk = (bulk0_coeff * pdotu  +  bulk1_coeff * baryon +  bulk2_coeff * (pdotu  -  mass2 / pdotu)) * bulkPi;
-                      df_diff = (baryon_enthalpy_ratio  -  baryon / pdotu) * Vmu_pmu / betaV;
-                    }
-                    else if(DF_MODE == 4)
-                    {
-                      df_bulk = 0.0;  // fill bulk correction later
-                      df_diff = 0.0;
-                    }
-                    
-                    double df = feqbar * (df_shear + df_bulk + df_diff);
-
-                    if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
-
-                    f = feq * (1.0 + df);
-                  }
+                  
 
                   pdotdsigma_f_eta_sum += (pdotdsigma * f); // add contribution to integral
 

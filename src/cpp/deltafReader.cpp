@@ -626,25 +626,50 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
 {
   deltaf_coefficients df;
 
-  gsl_interp_accel * accel = gsl_interp_accel_alloc();
+  gsl_interp_accel * accel_T = gsl_interp_accel_alloc();    // for temperature dependent functions
+  gsl_interp_accel * accel_bulk = gsl_interp_accel_alloc(); // for bulkPi/Peq dependent functions
 
-  df.c0 = gsl_spline_eval(c0_spline, T, accel);
-  df.c1 = 0.0;
-  df.c2 = gsl_spline_eval(c2_spline, T, accel);
-  df.c3 = 0.0;
-  df.c4 = 0.0;
-  df.shear14_coeff = 2.0 * T * T * (E + P);
+  switch(df_mode)
+  {
+    case 1: // 14 moment
+    {
+      df.c0 = gsl_spline_eval(c0_spline, T, accel_T);
+      df.c1 = 0.0;
+      df.c2 = gsl_spline_eval(c2_spline, T, accel_T);
+      df.c3 = 0.0;
+      df.c4 = 0.0;
+      df.shear14_coeff = 2.0 * T * T * (E + P);
 
-  df.F = gsl_spline_eval(F_spline, T, accel);
-  df.G = 0.0;
-  df.betabulk = gsl_spline_eval(betabulk_spline, T, accel);
-  df.betaV = 1.0;
-  df.betapi = gsl_spline_eval(betapi_spline, T, accel);
+      break;
+    }
+    case 2: // Chapman Enskog
+    case 3: // Modified (Mike)
+    {
+      df.F = gsl_spline_eval(F_spline, T, accel_T);
+      df.G = 0.0;
+      df.betabulk = gsl_spline_eval(betabulk_spline, T, accel_T);
+      df.betaV = 1.0;
+      df.betapi = gsl_spline_eval(betapi_spline, T, accel_T);
 
-  df.lambda = gsl_spline_eval(lambda_spline, (bulkPi / P), accel);
-  df.z = gsl_spline_eval(z_spline, (bulkPi / P), accel);
+      break;
+    }
+    case 4: // Modified (Jonah)
+    {
+      df.lambda = gsl_spline_eval(lambda_spline, (bulkPi / P), accel_bulk);
+      df.z = gsl_spline_eval(z_spline, (bulkPi / P), accel_bulk);
+      df.betapi = gsl_spline_eval(betapi_spline, T, accel_T);
 
-  gsl_interp_accel_free(accel);
+      break;
+    }
+    default:
+    {
+      printf("Error: choose df_mode = (1,2,3,4)\n");
+      exit(-1);
+    }
+  }
+  
+  gsl_interp_accel_free(accel_T);
+  gsl_interp_accel_free(accel_bulk);
 
   return df;
 }
@@ -657,6 +682,8 @@ deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, do
 
 
   // FILL THIS IN LATER
+  printf("Error: bilinear interpolation routine is empty a.t.m.\n");
+  exit(-1);
 
 
   return df;
@@ -670,7 +697,7 @@ deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, 
 
   if(!include_baryon)
   {
-    df = cubic_spline(T, E, P, bulkPi);   // cubic spline interpolation wrt T (assume muB = 0)
+    df = cubic_spline(T, E, P, bulkPi);   // cubic spline interpolation wrt T (at muB = 0)
   }
   else
   {

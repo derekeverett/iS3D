@@ -24,7 +24,7 @@
 
 using namespace std;
 
-// Class Lab_Momentum
+// Class Lab_Momentum (can I move this to sampling kernel?)
 //------------------------------------------
 Lab_Momentum::Lab_Momentum(LRF_Momentum pLRF_in)
 {
@@ -48,9 +48,10 @@ void Lab_Momentum::boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut,
 }
 //------------------------------------------
 
+/*
 double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem)
 {
-  // may want to use a direct gauss quadrature instead
+  // for cross-checking particle density calculation
 
   double neq = 0.0;
   double sign_factor = -sign;
@@ -68,6 +69,7 @@ double equilibrium_particle_density(double mass, double degeneracy, double sign,
 
   return neq;
 }
+*/
 
 double compute_detA(Shear_Stress pimunu, double shear_mod, double bulk_mod)
 {
@@ -103,12 +105,6 @@ bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pio
   return false;
 }
 
-bool does_feqmod_breakdown(double detA, double detA_min, bool pion_density_negative)
-{
-  if(detA <= detA_min || pion_density_negative) return true;
-
-  return false;
-}
 
 // Class EmissionFunctionArray ------------------------------------------
 EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in,
@@ -833,12 +829,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
   void EmissionFunctionArray::write_sampled_pT_pdf_toFile(int * MCID)
   {
-    printf("Writing event-averaged pT probability density (pdfs) of each species to file...\n");
+    printf("Writing event-averaged pT probability density function ~ dNdpT(pT) of each species to file...\n");
 
-    //ofstream spectraFile("results/momentum_list.dat", ios_base::out);
     int npart = number_of_chosen_particles;
-    //write the header
-    //spectraFile << "y" << "\t" << "phi_over_pi" << "\t" << "pT" << "\n";
 
     // first set up the pT bins
     double pT_lower_cut = PT_LOWER_CUT;       // transverse momentum cuts
@@ -879,8 +872,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       // number of particles of a given event
       for(int n = 0; n < N; n++)
       {
-        int ipart = particle_event_list[ievent][n].chosen_index; // particle index of chosen particle file
-        //int mcID = particle_event_list[ievent][n].mcID;
+        int ipart = particle_event_list[ievent][n].chosen_index; // particle index of chosen particle file (oh yeah forgot to tell Derek)
         double E = particle_event_list[ievent][n].E;
         double px = particle_event_list[ievent][n].px;
         double py = particle_event_list[ievent][n].py;
@@ -896,17 +888,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
         if(fabs(y) <= y_cut)
         {
-          if(ipT < pTbins)
-          {
-            pT_pdf[ipart][ipT] += 1.0;                // add counts to each bin
-            number_of_sampled_particles[ipart] += 1;  // count number
-
-          } // pT cut
+          if(ipT < pTbins) pT_pdf[ipart][ipT] += 1.0;   // add counts to each bin
+    
+          number_of_sampled_particles[ipart] += 1;      // count number for all pT
         } // rapidity cut
       }// n
     } // ievent
 
-    // now normalize the pdfs to unity and write them to file
+    // now normalize dNdpT to unity and write them to file
     for(int ipart = 0; ipart < npart; ipart++)
     {
       char filename[255] = "";
@@ -914,7 +903,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       sprintf(filename, "results/pT_pdf_%d.dat", mcid);
       ofstream spectra(filename, ios_base::out);
 
-      // total number of particles of species ipart at top of file
+      // total number of particles of species ipart at top of file (header)
       spectra << number_of_sampled_particles[ipart] << "\n";
 
       for(int ipT = 0; ipT < pTbins; ipT++)
@@ -925,6 +914,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       } // ipT
       spectra.close();
     } // ipart
+  }
+
+  void EmissionFunctionArray::write_sampled_vn_toFile(int * MCID)
+  {
+
   }
 
   void EmissionFunctionArray::write_yield_list_toFile()
@@ -1220,7 +1214,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               //write_particle_list_toFile();
               write_particle_list_OSC();
-              //write_momentum_list_toFile();
               //write_sampled_pT_pdf_toFile(MCID);
               write_yield_list_toFile();
 
@@ -1263,7 +1256,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               //write_particle_list_toFile();
               write_particle_list_OSC();
-              //write_momentum_list_toFile();
               //write_sampled_pT_pdf_toFile(MCID);
               write_yield_list_toFile();
 
@@ -1323,12 +1315,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     if (OPERATION == 1)
     {
       write_dN_pTdpTdphidy_toFile(MCID);
-      write_dN_dpTdphidy_toFile(MCID);
+      //write_dN_dpTdphidy_toFile(MCID);
 
-      write_dN_dphidy_toFile(MCID);
-      write_dN_dy_toFile(MCID);
-      write_dN_twopipTdpTdy_toFile(MCID);
-      write_dN_twopidpTdy_toFile(MCID);
+      //write_dN_dphidy_toFile(MCID);
+      //write_dN_dy_toFile(MCID);
+      //write_dN_twopipTdpTdy_toFile(MCID);
+      //write_dN_twopidpTdy_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)
