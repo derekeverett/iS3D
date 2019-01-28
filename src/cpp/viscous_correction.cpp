@@ -4,6 +4,8 @@
 #include <stdlib.h>
 using namespace std;
 
+// should rename file local_rest_frame.cpp
+
 Milne_Basis::Milne_Basis(double ut, double ux, double uy, double un, double uperp, double utperp, double tau)
 {
     Ut = ut;    Uy = uy;
@@ -18,7 +20,7 @@ Milne_Basis::Milne_Basis(double ut, double ux, double uy, double un, double uper
     Xx = 1.0;   Yx = 0.0;
     Xy = 0.0;   Yy = 1.0;
 
-    if(uperp > 1.e-5) // stops (ux=0)/(uperp=0) nans for first FO cells with no initial transverse flow
+    if(uperp > 1.e-5) // stops (ux=0)/(uperp=0) nans for freezeout cells with no transverse flow
     {
         Xx = utperp * ux / uperp;   Yx = - uy / uperp;
         Xy = utperp * uy / uperp;   Yy = ux / uperp;
@@ -45,7 +47,7 @@ void Milne_Basis::test_orthonormality(double tau2)
     double U_orthogonal = max(U_dot_X, max(U_dot_Y, U_dot_Z));
     double X_orthogonal = max(X_dot_Y, X_dot_Z);
 
-    double epsilon = 1.e-14;    // best order of magnitude I could get why?...
+    double epsilon = 1.e-14;    // best order of magnitude I could get, why?...
 
     if(U_normal > epsilon) printf("U is not normalized to 1 (%.6g)\n", U_normal);
     if(X_normal > epsilon) printf("X is not normalized to -1 (%.6g)\n", X_normal);
@@ -70,8 +72,8 @@ void Surface_Element_Vector::boost_dsigma_to_lrf(Milne_Basis basis_vectors, doub
     double Xy = basis_vectors.Xy;   double Zt = basis_vectors.Zt;
     double Xn = basis_vectors.Xn;   double Zn = basis_vectors.Zn;
 
-    dsigmat_LRF = dsigmat * ut  +  dsigmax * ux  +  dsigmay * uy  +  dsigman * un;
-    dsigmax_LRF = - (dsigmat * Xt  +  dsigmax * Xx  +  dsigmay * Xy  +  dsigman * Xn);
+    dsigmat_LRF = dsigmat * ut  +  dsigmax * ux  +  dsigmay * uy  +  dsigman * un;      // u.dsigma
+    dsigmax_LRF = - (dsigmat * Xt  +  dsigmax * Xx  +  dsigmay * Xy  +  dsigman * Xn);  // -Xi.dsigma
     dsigmay_LRF = - (dsigmax * Yx  +  dsigmay * Yy);
     dsigmaz_LRF = - (dsigmat * Zt  +  dsigman * Zn);
 }
@@ -127,15 +129,14 @@ void Shear_Stress::boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2)
     double Xy = basis_vectors.Xy;   double Zt = basis_vectors.Zt;
     double Xn = basis_vectors.Xn;   double Zn = basis_vectors.Zn;
 
+    // piij_LRF = Xi.pi.Xj
+
     pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
             + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
 
-    //pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xy + pixy*Xx + piyy*Xy + tau2*piyn*Xn); // wrong formula
-    //pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xn - piyn*Xy - tau2*pinn*Xn);  // wrong formula
+    pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xt + pixy*Xx + piyy*Xy + tau2*piyn*Xn); 
 
-    pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xt + pixy*Xx + piyy*Xy + tau2*piyn*Xn); // fixed on 10/16
-
-    pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xx - piyn*Xy - tau2*pinn*Xn);  // fixed on 10/16
+    pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xx - piyn*Xy - tau2*pinn*Xn);  
 
     piyy_LRF = pixx*Yx*Yx + 2.0*pixy*Yx*Yy + piyy*Yy*Yy;
 
@@ -167,6 +168,8 @@ void Baryon_Diffusion::boost_Vmu_to_lrf(Milne_Basis basis_vectors, double tau2)
     double Xx = basis_vectors.Xx;   double Yy = basis_vectors.Yy;
     double Xy = basis_vectors.Xy;   double Zt = basis_vectors.Zt;
     double Xn = basis_vectors.Xn;   double Zn = basis_vectors.Zn;
+
+    // Vi_LRF = -Xi.V
 
     Vx_LRF = - Vt * Xt  +  Vx * Xx  +  Vy * Xy  +  tau2 * Vn * Xn;
     Vy_LRF = Vx * Yx  +  Vy * Yy;

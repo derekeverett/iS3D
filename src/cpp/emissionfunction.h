@@ -54,15 +54,12 @@ typedef struct
 } MT_fit_parameters;
 
 
-
 // thermal particle density (just for crosschecking)
 //double equilibrium_particle_density(double mass, double degeneracy, double sign, double T, double chem);
 
 double compute_detA(Shear_Stress pimunu, double betapi, double bulk_mod);
 
 bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pion0, double bulkPi, double F, double betabulk);
-
-bool does_feqmod_breakdown(double detA, double detA_min, bool pion_density_negative);
 
 // thermal particle density with outflow only (needed if enforce p.dsigma > 0)
 //double equilibrium_density_outflow(double mbar_squared, double sign, double chem, double dsigmaTime_over_dsigmaSpace, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
@@ -208,6 +205,8 @@ public:
   void write_momentum_list_toFile();  // write sampled momentum list
   void write_yield_list_toFile();     // write mean yield and sampled yield list to files
   void write_sampled_pT_pdf_toFile(int * MCID);
+  void write_sampled_vn_toFile(int * MCID);
+
 
   //:::::::::::::::::::::::::::::::::::::::::::::::::
 
