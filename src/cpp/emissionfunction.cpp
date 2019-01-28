@@ -227,7 +227,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           break;
         }
       }
-    }
+    } // for (int m = 0; m < number_of_chosen_particles; m++)
 
     // next, for sampling processes
     chosen_particles_sampling_table = new int[number_of_chosen_particles];
@@ -245,7 +245,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           break;
         }
       }
-    }
+    } //for (int m = 0; m < number_of_chosen_particles; m++)
 
     // next re-order them so that particles with similar mass are adjacent
     if (GROUP_PARTICLES == 1) // sort particles according to their mass; bubble-sorting
@@ -261,10 +261,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             chosen_particles_sampling_table[n + 1] = chosen_particles_sampling_table[n];
             chosen_particles_sampling_table[n] = particle_idx;
           }
-        }
-      }
-    }
-  }
+        } // for (int n = 0; n < number_of_chosen_particles - m - 1; n++)
+      } // for (int m = 0; m < number_of_chosen_particles; m++)
+    } // if (GROUP_PARTICLES == 1)
+  } // EmissionFunctionArray::EmissionFunctionArray
 
   EmissionFunctionArray::~EmissionFunctionArray()
   {
@@ -766,13 +766,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       char filename[255] = "";
       sprintf(filename, "results/particle_list_osc_%d.dat", ievent + 1);
 
-      //ofstream spectraFile(filename, ios_base::app);
       ofstream spectraFile(filename, ios_base::out);
 
       int num_particles = particle_event_list[ievent].size();
 
       //write the header
-      spectraFile << "#" << " " << num_particles << "\n";
+      //spectraFile << "#" << " " << num_particles << "\n";
+      spectraFile << "n pid px py pz E m x y z t" << "\n";
       for (int ipart = 0; ipart < num_particles; ipart++)
       {
         int mcid = particle_event_list[ievent][ipart].mcID;
@@ -781,12 +781,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         double t = particle_event_list[ievent][ipart].t;
         double z = particle_event_list[ievent][ipart].z;
 
-        //double mass = particle_list[ipart].mass;
-        double E = particle_event_list[ievent][ipart].E;
+        double m  = particle_event_list[ievent][ipart].mass;
+        double E  = particle_event_list[ievent][ipart].E;
         double px = particle_event_list[ievent][ipart].px;
         double py = particle_event_list[ievent][ipart].py;
         double pz = particle_event_list[ievent][ipart].pz;
-        spectraFile << mcid << "," << scientific <<  setw(5) << setprecision(16) << t << "," << x << "," << y << "," << z << "," << E << "," << px << "," << py << "," << pz << "\n";
+        spectraFile << ipart << " " << mcid << " " << scientific <<  setw(5) << setprecision(16) << px << " " << py << " " << pz << " " << E << " " << m << " " << x << " " << y << " " << z << " " << t << "\n";
       }//ipart
       spectraFile.close();
     } // ievent
@@ -795,7 +795,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::write_momentum_list_toFile()
   {
     printf("Writing sampled momentum list to file...\n");
-
     ofstream spectraFile("results/momentum_list.dat", ios_base::out);
 
     //write the header
@@ -840,11 +839,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     double y_cut = Y_CUT;                     // rapidity cut
 
     int pTbins = PT_BINS;
-
     double pTbinwidth = (pT_upper_cut - pT_lower_cut) / (double)pTbins;
-
     double pT_pdf[npart][pTbins];             // event averaged pT probability distribution of the particles
-
     long number_of_sampled_particles[npart];  // number of particles of each species sampled from all events
 
     for(int ipart = 0; ipart < npart; ipart++)
@@ -895,22 +891,16 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           if(ipT < pTbins) pT_pdf[ipart][ipT] += 1.0;   // add counts to each bin
     
           number_of_sampled_particles[ipart] += 1;      // count number for all pT
-
         } // rapidity cut
-
       }// n
-
     } // ievent
 
     // now normalize dNdpT to unity and write them to file
     for(int ipart = 0; ipart < npart; ipart++)
     {
       char filename[255] = "";
-
       int mcid = MCID[ipart]; // we can just use this in place
-
       sprintf(filename, "results/pT_pdf_%d.dat", mcid);
-
       ofstream spectra(filename, ios_base::out);
 
       // total number of particles of species ipart at top of file (header)
@@ -920,13 +910,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       {
         // normalization factor
         pT_pdf[ipart][ipT] /= (pTbinwidth * (double)number_of_sampled_particles[ipart]);
-
         spectra << setprecision(6) << scientific << pT_midpoint[ipT] << "\t" << pT_pdf[ipart][ipT] << "\n";
-
       } // ipT
-
       spectra.close();
-
     } // ipart
   }
 
@@ -1001,21 +987,17 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       Diffusion_Density[ipart] = particle->diff_density;
     }
 
-
     // gauss laguerre roots and weights
     Gauss_Laguerre * gla = new Gauss_Laguerre;
     gla->load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
-
 
     // gauss legendre roots and weights
     Gauss_Legendre * legendre = new Gauss_Legendre;
     legendre->load_roots_and_weights("tables/gauss_legendre_24pts.dat");
 
-
     // averaged thermodynamic quantities
     Plasma * QGP = new Plasma;
     QGP->load_thermodynamic_averages();
-
 
     // freezeout info
     FO_surf *surf = &surf_ptr[0];
@@ -1195,7 +1177,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
-
     // compute the particle spectra
 
     if (MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7) // viscous hydro
@@ -1231,9 +1212,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
-              write_particle_list_toFile();
+              //write_particle_list_toFile();
               write_particle_list_OSC();
-              write_sampled_pT_pdf_toFile(MCID);
+              //write_momentum_list_toFile();
+              //write_sampled_pT_pdf_toFile(MCID);
               write_yield_list_toFile();
 
               particle_event_list_in = particle_event_list[0];
@@ -1273,9 +1255,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
-              write_particle_list_toFile();
+              //write_particle_list_toFile();
               write_particle_list_OSC();
-              write_sampled_pT_pdf_toFile(MCID);
+              //write_momentum_list_toFile();
+              //write_sampled_pT_pdf_toFile(MCID);
               write_yield_list_toFile();
 
               particle_event_list_in = particle_event_list[0];

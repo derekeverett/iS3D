@@ -15,7 +15,6 @@ const int Maxparticle = 400; //size of array for storage of the particles
 const int Maxdecaychannel = 17;
 const int Maxdecaypart = 5;
 
-
 class IS3D {
 private:
 

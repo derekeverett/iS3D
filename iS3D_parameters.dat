@@ -1,8 +1,8 @@
-operation	                = 1	 # operation
+operation	                = 2	 # operation
 			                 # 1 : performs smooth cooper frye resulting in dN/pTdpTdphidy
 			                 # 2 : performs sampling of particle distribution resulting in particle list
 
-mode       		      	= 0 	 # mode for reading in freeze out information
+mode       		      	= 1 	 # mode for reading in freeze out information
 					 # 0: reads freezeout file from 3+1D viscous hydro (old gpu-vh format)
 				   	 # 1: reads freezeout file from 3+1D viscous hydro (gpu-vh format)
 					 # 2: reads freezeout file from 3+1D viscous anisotropic hydro (PL matching)
@@ -10,6 +10,7 @@ mode       		      	= 0 	 # mode for reading in freeze out information
 					 # 4: reads freezeout file from 2+1D viscous hydro (old MUSIC boost invariant format)
 					 # 5: reads freezeout file from 3+1D viscous hydro with thermal vorticity terms (gpu-vh format)
 					 # 6: reads freezeout file from 2+1D viscous hydro (new public MUSIC boost invariant format)
+					 # 7: reads freezeout file from 2+1D viscous hydro (hic-eventgen format)
 
 dimension  		     	= 2      # this switch determines the dimensionality of the freezeout surface
 	                	      	 # 2: boost invariant
@@ -30,7 +31,7 @@ include_shear_deltaf      	= 0      # switch to include shear df correction (or 
 include_baryondiff_deltaf 	= 0      # switch to include baryon diffusion df correction
 
 regulate_deltaf           	= 0      # if on, force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
-outflow 			= 1	 # switch to enforce p.dsigma > 0 in the smooth cooper frye formula
+outflow 			= 0	 # switch to enforce p.dsigma > 0 in the smooth cooper frye formula
 
 deta_min 			= 1.e-2  # minimum value of detA (feqmod break down)
 detc_min 			= 1.e-2  # minimum value of detC (famod break down)
@@ -47,11 +48,11 @@ lightest_particle 	        = 211    #PDG MC ID of lightest particle for resonanc
 oversample		        = 0      #run sampler iteratively until total number of hadrons across
 min_num_hadrons		        = 1.e+6 #across all samples >= min_num_hadrons
 
-sampler_seed		        = 1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
+sampler_seed		        = -1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
 
-pT_lower_cut		= 0.0		 # pT lower cut in GeV (for sampler tests) 
-pT_upper_cut		= 3.0		 # pT upper cut in GeV (for sampler tests)
-pT_bins				= 100		 # number of pT bins (for sampler tests)
-y_cut				= 5.0		 # |y| <= y_cut rapidity cut (for sampler tests)
+pT_lower_cut			= 0.0    # pT lower cut in GeV (for sampler tests) 
+pT_upper_cut			= 3.0	 # pT upper cut in GeV (for sampler tests)
+pT_bins				= 100	 # number of pT bins (for sampler tests)
+y_cut				= 5.0	 # |y| <= y_cut rapidity cut (for sampler tests)
 
-dynamical			= 0			 # sample particles that are reabsorbed into fireball dynamically (doesn't work right now)
+dynamical			= 0	 # sample particles that are reabsorbed into fireball dynamically (doesn't work right now)

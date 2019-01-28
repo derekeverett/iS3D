@@ -1,4 +1,3 @@
-//ver 1.1
 #ifndef READINDATA_H
 #define READINDATA_H
 

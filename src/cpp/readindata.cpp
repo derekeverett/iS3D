@@ -27,12 +27,9 @@ void Gauss_Laguerre::load_roots_and_weights(string file_name)
   file << file_name;
 
   FILE * gauss_file = fopen(file.str().c_str(), "r");
-
   if(gauss_file == NULL) printf("Error: couldn't open gauss laguerre file\n");
-
   // get the powers and number of gauss points
   fscanf(gauss_file, "%d\t%d", &alpha, &points);
-
   // allocate memory for the roots and weights
   root = (double **)calloc(alpha, sizeof(double));
   weight = (double **)calloc(alpha, sizeof(double));
@@ -53,10 +50,8 @@ void Gauss_Laguerre::load_roots_and_weights(string file_name)
       fscanf(gauss_file, "%d\t%lf\t%lf", &dummy, &root[i][j], &weight[i][j]);
     }
   }
-
   fclose(gauss_file);
 }
-
 
 Gauss_Legendre::Gauss_Legendre()
 {
@@ -78,7 +73,6 @@ void Gauss_Legendre::load_roots_and_weights(string file_name)
   root = (double *)calloc(points, sizeof(double));
   weight = (double *)calloc(points, sizeof(double));
 
-
   // load the arrays
   for(int i = 0; i < points; i++)
   {
@@ -88,12 +82,10 @@ void Gauss_Legendre::load_roots_and_weights(string file_name)
   fclose(gauss_file);
 }
 
-
 Plasma::Plasma()
 {
   /////////////////////////
 }
-
 
 void Plasma::load_thermodynamic_averages()
 {
@@ -103,9 +95,7 @@ void Plasma::load_thermodynamic_averages()
   FILE * thermodynamic_file = fopen("average_thermodynamic_quantities.dat", "r");
 
   if(thermodynamic_file == NULL) printf("Error opening average thermodynamic file\n");
-
   fscanf(thermodynamic_file, "%lf\n%lf\n%lf\n%lf\n%lf", &temperature, &energy_density, &pressure, &baryon_chemical_potential, &net_baryon_density);
-
   fclose(thermodynamic_file);
 }
 
@@ -129,7 +119,6 @@ FO_data_reader::~FO_data_reader()
   //////////////////////////////
 }
 
-
 int FO_data_reader::get_number_cells()
 {
   int number_of_cells = 0;
@@ -143,17 +132,16 @@ int FO_data_reader::get_number_cells()
 
 void FO_data_reader::read_surf_switch(long length, FO_surf* surf_ptr)
 {
-  if (mode == 0)      read_surf_VH_old(length, surf_ptr); //old surface file containing viscous hydro dissipative currents
-  else if (mode == 1) read_surf_VH(length, surf_ptr); //surface file containing viscous hydro dissipative currents
-  else if (mode == 2) read_surf_VAH_PLMatch(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents for use with CPU-VAH
+  if      (mode == 0) read_surf_VH_old(length, surf_ptr); //old GPU-VH surface file containing viscous hydro dissipative currents
+  else if (mode == 1) read_surf_VH(length, surf_ptr); //GPU-VH surface file containing viscous hydro dissipative currents
+  else if (mode == 2) read_surf_VAH_PLMatch(length, surf_ptr); //CPU-VAH surface file containing anisotropic viscous hydro dissipative currents for use with CPU-VAH
   else if (mode == 3) read_surf_VAH_PLPTMatch(length, surf_ptr); //surface file containing anisotropic viscous hydro dissipative currents for use with Mike's Hydro
   else if (mode == 4) read_surf_VH_MUSIC(length, surf_ptr); //boost invariant surface from old (private) version of MUSIC
-  else if (mode == 5) read_surf_VH_Vorticity(length, surf_ptr); //surface file containing viscous hydro dissipative currents and thermal vorticity tensor
+  else if (mode == 5) read_surf_VH_Vorticity(length, surf_ptr); //GPU-VH surface file containing viscous hydro dissipative currents and thermal vorticity tensor
   else if (mode == 6) read_surf_VH_MUSIC_New(length, surf_ptr); //boost invariant surface from new (public) version of MUSIC
   else if (mode == 7) read_surf_VH_hiceventgen(length, surf_ptr); //boost invariant surface produced by the hydro module in https://github.com/Duke-QCD/hic-eventgen
   return;
 }
-
 
 //THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! baryon number, baryon chemical potential at the end...
 // THIS IS THE OLD FORMAT
@@ -195,7 +183,7 @@ void FO_data_reader::read_surf_VH_old(long length, FO_surf* surf_ptr)
     if(dimension == 2 && surf_ptr[i].dan != 0)
     {
       cout << "2+1d boost invariant surface read-in error at cell # " << i << ": dsigma_eta is not zero. Please fix it to zero." << endl;
-      //exit(-1);
+      exit(-1);
     }
 
     // contravariant flow velocity
@@ -329,9 +317,6 @@ void FO_data_reader::read_surf_VH_old(long length, FO_surf* surf_ptr)
   return;
 }
 
-
-
-//THIS FORMAT IS DIFFERENT THAN MUSIC 3+1D FORMAT ! baryon number, baryon chemical potential at the end...
 void FO_data_reader::read_surf_VH(long length, FO_surf* surf_ptr)
 {
   cout << "Reading in freezeout surface in CPU-VH format" << endl;
@@ -685,14 +670,11 @@ void FO_data_reader::read_surf_VH_MUSIC(long length, FO_surf* surf_ptr)
   }
   surfdat.close();
 
-
-
   Tavg /= total_surface_volume;
   Eavg /= total_surface_volume;
   Pavg /= total_surface_volume;
   muBavg /= total_surface_volume;
   nBavg /= total_surface_volume;
-
 
   // write averaged thermodynamic quantities to file
   ofstream thermal_average("average_thermodynamic_quantities.dat", ios_base::out);
@@ -962,9 +944,6 @@ void FO_data_reader::read_surf_VAH_PLPTMatch(long FO_length, FO_surf * surface)
     // surface.dat file format (columns):
     // (x^mu, da_mu, u^mu, e, T, pl, pt, pi^munu, W^mu, Lambda, at, al, muB, upsilonB, nB, nBl, V^mu)
 
-    // need to make mode option for FO_surf struct
-    // Make sure all the units are correct
-
     // contravariant Milne spacetime position
     surface_data >> surface[i].tau; // (fm)
     surface_data >> surface[i].x;   // (fm)
@@ -1104,52 +1083,58 @@ void FO_data_reader::read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr)
     surfdat >> dummy; //eta
     surf_ptr[i].eta = 0.0;
 
-    surfdat >> dummy;
-    surf_ptr[i].dat = dummy;
-    surfdat >> dummy;
-    surf_ptr[i].dax = dummy;
-    surfdat >> dummy;
-    surf_ptr[i].day = dummy;
-    surfdat >> dummy; //dan
+    double tau = surf_ptr[i].tau;
+
+    //covariant surface normal (Missing jacobian factor of tau in surface file!)
+    surfdat >> dummy; // da_tau / tau
+    surf_ptr[i].dat = dummy * tau;
+    surfdat >> dummy; // da_x / tau
+    surf_ptr[i].dax = dummy * tau;
+    surfdat >> dummy; // da_y / tau
+    surf_ptr[i].day = dummy * tau;
+    surfdat >> dummy;  // da_eta / tau
     surf_ptr[i].dan = 0.0;
 
-    // contravariant flow velocity
+    // covariant flow velocity
     double vx, vy, vn;
     double ut, ux, uy, un;
-    double tau = surf_ptr[i].tau;
 
     surfdat >> vx;
     surfdat >> vy;
     surfdat >> vn;
 
-    double denom =  1.0 - vx*vx - vy*vy - tau*tau*vn*vn;
-    if (denom < 0.0) cout << "1.0 - vx*vx - vy*vy - tau*tau*vn*vn < 0 !" << endl;
+    vn = 0.0;
+
+    double denom =  1.0 - (vx * vx) - (vy * vy) - (vn * vn / tau / tau);
+    if (denom < 0.0) cout << "1.0 - vx*vx - vy*vy - vn*vn/tau/tau < 0 !" << endl;
 
     ut = sqrt( 1.0 / denom );
-    surf_ptr[i].ux = ut * vx;
-    surf_ptr[i].uy = ut * vy;
-    surf_ptr[i].un = ut * vn;
+    //vx is covariant , ux is contravariant, need metric factors
+    surf_ptr[i].ux = ut * vx * (-1.0);
+    surf_ptr[i].uy = ut * vy * (-1.0);
+    surf_ptr[i].un = ut * vn * (-1.0 / tau / tau);
 
     // ten contravariant components of shear stress tensor
-    surfdat >> dummy;
+    //units are GeV/fm^3
+    surfdat >> dummy; // pi^tt
     //surf_ptr[i].pitt = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^tx
     //surf_ptr[i].pitx = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^ty
     //surf_ptr[i].pity = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^tz
     //surf_ptr[i].pitn = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^xx
     surf_ptr[i].pixx = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^xy
     surf_ptr[i].pixy = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^xz
     surf_ptr[i].pixn = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^yy
     surf_ptr[i].piyy = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^yz
     surf_ptr[i].piyn = dummy;
-    surfdat >> dummy;
+    surfdat >> dummy; // pi^zz
     //surf_ptr[i].pinn = dummy;
 
     //bulk pressure
@@ -1157,21 +1142,21 @@ void FO_data_reader::read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr)
     surf_ptr[i].bulkPi = dummy;
 
     // thermodynamic quantities at freeze out
-    surfdat >> dummy;
+    surfdat >> dummy;   // temperature [GeV]
     double T = dummy;
-    surf_ptr[i].T = T;                         // temperature
+    surf_ptr[i].T = T;
 
-    surfdat >> dummy;
+    surfdat >> dummy;   // energy density [GeV/fm^3]
     double E = dummy;
-    surf_ptr[i].E = E;                         // energy density
+    surf_ptr[i].E = E;
 
-    surfdat >> dummy;                          // pressure
+    surfdat >> dummy;   // pressure [GeV/fm^3]
     double P = dummy;
     surf_ptr[i].P = P;
 
-    surfdat >> dummy;
+    surfdat >> dummy;    // baryon chemical potential [GeV/fm^33]
     double muB = dummy;
-    surf_ptr[i].muB = muB;                       // baryon chemical potential
+    surf_ptr[i].muB = muB;
 
     double nB = 0.0;
 

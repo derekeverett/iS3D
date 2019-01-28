@@ -12,7 +12,6 @@
 
 using namespace std;
 
-
 class Deltaf_Reader
 {
     private:
@@ -61,7 +60,6 @@ class Deltaf_Data
         double ** betaV_data;
         double ** betapi_data;
 
-
         // cubic splines of the coefficients as function of temperature only (neglect muB, nB, Vmu)
         // (c1, G = 0) for muB = 0 and (c3, c4, betaV) aren't needed since they couple to baryon diffusion
         // so in the cubic spline evaluation: just set (G, c1, c3, c4) = 0 and betaV = 1 (betaV is in denominator)
@@ -72,7 +70,7 @@ class Deltaf_Data
         gsl_spline * F_spline;
         gsl_spline * betabulk_spline;
         gsl_spline * betapi_spline;
-        
+
         // Jonah coefficients
         const int jonah_points = 301;       // # lambda interpolation points
         const double lambda_min = -1.0;     // lambda min / max values
@@ -86,7 +84,6 @@ class Deltaf_Data
 
         gsl_spline * lambda_spline;         // cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
         gsl_spline * z_spline;
-
 
         Deltaf_Data(ParameterReader * paraRdr_in);
         ~Deltaf_Data();

@@ -164,5 +164,3 @@ void ParameterReader::echo()
   if (names->size()==0) return;
   for (long ii=0; ii<names->size(); ii++) cout << (*names)[ii] << " = " << (*values)[ii] << "  " << endl;
 }
-
-

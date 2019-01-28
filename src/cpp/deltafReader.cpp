@@ -24,14 +24,12 @@ Deltaf_Reader::Deltaf_Reader(ParameterReader * paraRdr_in)
   mode = paraRdr->getVal("mode");
   df_mode = paraRdr->getVal("df_mode");
   include_baryon = paraRdr->getVal("include_baryon");
-
 }
 
 Deltaf_Reader::~Deltaf_Reader()
 {
 
 }
-
 
 deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_length)
 {
@@ -49,7 +47,6 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
 
   double T_FO = T / hbarC;
   double muB_FO = muB / hbarC;    // the file units are in fm
-
 
   printf("Reading in ");  // or I could compute these guys directly
 
@@ -147,7 +144,7 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
     fclose(c3_file);
     fclose(c4_file);
 
-  }
+  } //if(df_mode == 1)
   else if(df_mode == 2 || df_mode == 3 || df_mode == 4)
   {
     printf("Chapman-Enskog coefficients vhydro...\n");
@@ -242,7 +239,7 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
     fclose(betaV_file);
     fclose(betapi_file);
 
-  }
+  } // else if(df_mode == 2 || df_mode == 3 || df_mode == 4)
   else if(df_mode == 5)
   {
     printf("14-moment coefficients vahydro PL...\n");
@@ -293,9 +290,7 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
     double c3[n1][n2];
     double c4[n1][n2];
 
-
     double hbarC3 = (hbarC * hbarC * hbarC);
-
 
     for (long icell = 0; icell < FO_length; icell++)
     {
@@ -325,7 +320,6 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
             double aL1 = aL_array[i2-1];
             double aL2 = aL_array[i2];
 
-
             surface[icell].c0 = ((c0[i1-1][i2-1] * (Lambda2 - Lambda)  +  c0[i1][i2-1] * (Lambda - Lambda1)) * (aL2 - aL)
                               + (c0[i1-1][i2] * (Lambda2 - Lambda)  +  c0[i1][i2] * (Lambda - Lambda1)) * (aL - aL1)) / ((aL2 - aL1) * (Lambda2 - Lambda1));
 
@@ -340,7 +334,6 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
 
             surface[icell].c4 = ((c4[i1-1][i2-1] * (Lambda2 - Lambda)  +  c4[i1][i2-1] * (Lambda - Lambda1)) * (aL2 - aL)
                               + (c4[i1-1][i2] * (Lambda2 - Lambda)  +  c4[i1][i2] * (Lambda - Lambda1)) * (aL - aL1)) / ((aL2 - aL1) * (Lambda2 - Lambda1));
-
 
             // convert to real life units
 
@@ -364,12 +357,9 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
     fclose(c2_file);
     fclose(c3_file);
     fclose(c4_file);
-
   }
-
   return df_data;
 }
-
 
 Deltaf_Data::Deltaf_Data(ParameterReader * paraRdr_in)
 {
@@ -513,9 +503,7 @@ void Deltaf_Data::load_df_coefficient_data()
       F_data[iB][iT] *= hbarC;
       betabulk_data[iB][iT] *= hbarC;
       betapi_data[iB][iT] *= hbarC;
-
     } // iT
-
   } // iB
 
   fclose(c0_file);
@@ -560,7 +548,7 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
 
   double * pbar_weight1 = gla.weight[1];
   double * pbar_weight2 = gla.weight[2];
- 
+
   // calculate the interpolation points of z(bulkPi/P), lambda(bulkPi/P)
   for(int i = 0; i < jonah_points; i++)
   {
@@ -572,9 +560,9 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     double P_mod = 0.0;                   // modified pressure
 
     // calculate modified energy density (sum over hadron resonance contributions)
-    for(int n = 0; n < Nparticle; n++)  
+    for(int n = 0; n < Nparticle; n++)
     {
-      double degeneracy = (double)particle_data[n].gspin;     
+      double degeneracy = (double)particle_data[n].gspin;
       double mass = particle_data[n].mass;
       double sign = (double)particle_data[n].sign;
 
@@ -603,7 +591,7 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     //cout << lambda_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
   }
 
-  // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)  
+  // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
   lambda_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
   z_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
 
@@ -724,14 +712,3 @@ deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, 
 
   return df;
 }
-
-
-
-
-
-
-
-
-
-
-
