@@ -578,14 +578,14 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           baryon_enthalpy_ratio = nB / (E + P);
         }
 
-        double bulkPi_over_Peq_max = df_data->bulkPi_over_Peq_max;
-        double bulkPi_over_Peq = bulkPi / P;
-
-        // this can potentially happen... 
-        if(bulkPi_over_Peq > bulkPi_over_Peq_max || bulkPi_over_Peq < -1.0)
+        // regulate bulk pressure if goes out of bounds given 
+        // by Jonah's feqmod to avoid gsl interpolation errors
+        if(DF_MODE == 4)
         {
-          printf("Error: bulk pressure is out of bounds given by Jonah's feqmod\n");
-          exit(-1);
+          double bulkPi_over_Peq_max = df_data->bulkPi_over_Peq_max;
+
+          if(bulkPi < - P) bulkPi = - P;
+          else if(bulkPi / P > bulkPi_over_Peq_max) bulkPi = P * bulkPi_over_Peq_max;
         }
 
         // set df coefficients
@@ -599,8 +599,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double betapi = df.betapi;       
         double lambda = df.lambda;
         double z = df.z;
-
-        //cout << betapi << endl;
 
         // milne basis class
         Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);

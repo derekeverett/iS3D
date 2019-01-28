@@ -651,9 +651,6 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
       df.betaV = 1.0;
       df.betapi = gsl_spline_eval(betapi_spline, T, accel_T);
 
-      //cout << T << "\t" << df.F << "\t" << df.G << "\t" << df.betabulk << "\t" << df.betaV << "\t" << df.betapi << endl;
-      //exit(-1);
-
       break;
     }
     case 4: // Modified (Jonah)
@@ -661,9 +658,6 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
       df.lambda = gsl_spline_eval(lambda_spline, (bulkPi / P), accel_bulk);
       df.z = gsl_spline_eval(z_spline, (bulkPi / P), accel_bulk);
       df.betapi = gsl_spline_eval(betapi_spline, T, accel_T);
-
-      //cout << T << "\t" << (bulkPi / P) << "\t" << df.lambda << "\t" << df.z << "\t" << df.betapi << endl;
-      //exit(-1);
 
       break;
     }
