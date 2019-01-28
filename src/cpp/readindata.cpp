@@ -1083,23 +1083,27 @@ void FO_data_reader::read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr)
     surfdat >> dummy; //eta
     surf_ptr[i].eta = 0.0;
 
-    surfdat >> dummy;
-    surf_ptr[i].dat = dummy;
-    surfdat >> dummy;
-    surf_ptr[i].dax = dummy;
-    surfdat >> dummy;
-    surf_ptr[i].day = dummy;
-    surfdat >> dummy; //dan
+    double tau = surf_ptr[i].tau;
+
+    //covariant surface normal (Missing jacobian factor of tau in surface file!)
+    surfdat >> dummy; // da_tau / tau
+    surf_ptr[i].dat = dummy * tau;
+    surfdat >> dummy; // da_x / tau
+    surf_ptr[i].dax = dummy * tau;
+    surfdat >> dummy; // da_y / tau
+    surf_ptr[i].day = dummy * tau;
+    surfdat >> dummy;  // da_eta / tau
     surf_ptr[i].dan = 0.0;
 
     // covariant flow velocity
     double vx, vy, vn;
     double ut, ux, uy, un;
-    double tau = surf_ptr[i].tau;
 
     surfdat >> vx;
     surfdat >> vy;
     surfdat >> vn;
+
+    vn = 0.0;
 
     double denom =  1.0 - (vx * vx) - (vy * vy) - (vn * vn / tau / tau);
     if (denom < 0.0) cout << "1.0 - vx*vx - vy*vy - vn*vn/tau/tau < 0 !" << endl;
