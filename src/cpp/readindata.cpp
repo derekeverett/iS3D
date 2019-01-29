@@ -1105,14 +1105,20 @@ void FO_data_reader::read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr)
 
     vn = 0.0;
 
-    double denom =  1.0 - (vx * vx) - (vy * vy) - (vn * vn / tau / tau);
+    double denom =  1.0 - (vx * vx) - (vy * vy);
     if (denom < 0.0) cout << "1.0 - vx*vx - vy*vy - vn*vn/tau/tau < 0 !" << endl;
 
     ut = sqrt( 1.0 / denom );
-    //vx is covariant , ux is contravariant, need metric factors
-    surf_ptr[i].ux = ut * vx * (-1.0);
-    surf_ptr[i].uy = ut * vy * (-1.0);
-    surf_ptr[i].un = ut * vn * (-1.0 / tau / tau);
+    //vx is covariant , ux is contravariant, need metric factors ??
+    //surf_ptr[i].ux = ut * vx * (-1.0);
+    //surf_ptr[i].uy = ut * vy * (-1.0);
+
+    surf_ptr[i].ux = ut * vx;
+    surf_ptr[i].uy = ut * vy;
+    surf_ptr[i].un = 0.0;
+
+    //double vol = ut * surf_ptr[i].dat + surf_ptr[i].ux * surf_ptr[i].dax + surf_ptr[i].ux * surf_ptr[i].dax;
+    //if (vol < 0.0) cout << " vol = u.dsigma < 0 in this cell " << endl;
 
     // ten contravariant components of shear stress tensor
     //units are GeV/fm^3
