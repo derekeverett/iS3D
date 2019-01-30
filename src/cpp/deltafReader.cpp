@@ -658,6 +658,9 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
       df.lambda = gsl_spline_eval(lambda_spline, (bulkPi / P), accel_bulk);
       df.z = gsl_spline_eval(z_spline, (bulkPi / P), accel_bulk);
       df.betapi = gsl_spline_eval(betapi_spline, T, accel_T);
+      // linearized correction to lambda, z
+      df.delta_lambda = bulkPi / (5.0 * df.betapi -  3.0 * P * (E + P) / E);
+      df.delta_z = - 3.0 * df.delta_lambda * P / E; 
 
       break;
     }

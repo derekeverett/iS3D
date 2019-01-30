@@ -125,6 +125,9 @@ typedef struct
   double lambda;
   double z;
 
+  double delta_lambda;    // linearize lambda = 0 + delta_lambda
+  double delta_z;         // linearize z = 1 + delta_z
+
 } deltaf_coefficients;
 
 

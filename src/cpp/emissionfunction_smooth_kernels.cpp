@@ -599,6 +599,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double betapi = df.betapi;       
         double lambda = df.lambda;
         double z = df.z;
+        double delta_lambda = df.delta_lambda;
+        double delta_z = df.delta_z;
 
         // milne basis class
         Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
@@ -631,7 +633,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         }
 
         // linearized Chapman Enskog df coefficients (for Mike only)
-        double shear_coeff = 0.5 / (betapi * T);                 
+        double shear_coeff = 0.5 / (betapi * T);      // Jonah linear df also shares shear coeff            
         double bulk0_coeff = F / (T * T * betabulk);
         double bulk1_coeff = G / betabulk;
         double bulk2_coeff = 1.0 / (3.0 * T * betabulk);
@@ -800,29 +802,51 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double f;                                   // feqmod (if breakdown do feq(1+df))
 
                   // calculate feqmod
-                  if(feqmod_breaks_down && DF_MODE == 3)
+                  if(feqmod_breaks_down)
                   {
-                    double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
-                    double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
-                    double feqbar = 1.0  -  sign * feq;
+                    if(DF_MODE == 3)
+                    {
+                      double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
+                      double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
+                      double feqbar = 1.0  -  sign * feq;
 
-                     // pi^munu.p_mu.p_nu
-                    double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
-                     + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
+                       // pi^munu.p_mu.p_nu
+                      double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
+                       + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
 
-                    // V^mu.p_mu
-                    double Vmu_pmu = Vt * pt  -  Vx * px  -  Vy * py  -  Vn * tau2_pn;
+                      // V^mu.p_mu
+                      double Vmu_pmu = Vt * pt  -  Vx * px  -  Vy * py  -  Vn * tau2_pn;
 
-                    double df_shear = shear_coeff * pimunu_pmu_pnu / pdotu;
-                    double df_bulk = df_bulk = (bulk0_coeff * pdotu  +  bulk1_coeff * baryon +  bulk2_coeff * (pdotu  -  mass2 / pdotu)) * bulkPi;
-                    double df_diff = (baryon_enthalpy_ratio  -  baryon / pdotu) * Vmu_pmu / betaV;
-                  
-                    double df = feqbar * (df_shear + df_bulk + df_diff);
+                      double df_shear = shear_coeff * pimunu_pmu_pnu / pdotu;
+                      double df_bulk = (bulk0_coeff * pdotu  +  bulk1_coeff * baryon +  bulk2_coeff * (pdotu  -  mass2 / pdotu)) * bulkPi;
+                      double df_diff = (baryon_enthalpy_ratio  -  baryon / pdotu) * Vmu_pmu / betaV;
+                    
+                      double df = feqbar * (df_shear + df_bulk + df_diff);
 
-                    if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
+                      if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
 
-                    f = feq * (1.0 + df);
-                  }
+                      f = feq * (1.0 + df);
+                    }
+                    else if(DF_MODE == 4)
+                    {
+                      double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
+                      double feq = 1.0 / (exp(pdotu / T) + sign);
+                      double feqbar = 1.0  -  sign * feq;
+
+                       // pi^munu.p_mu.p_nu
+                      double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
+                       + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
+
+                      double df_shear = feqbar * shear_coeff * pimunu_pmu_pnu / pdotu;
+                      double df_bulk = delta_z  -  3.0 * delta_lambda  +  feqbar * delta_lambda * (pdotu  -  mass2 / pdotu) / T;
+                    
+                      double df = df_shear + df_bulk;
+
+                      if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
+
+                      f = feq * (1.0 + df);
+                    }
+                  } // feqmod breaks down
                   else
                   {
                     // LRF momentum components pi_LRF = - Xi.p
@@ -845,7 +869,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                     f = fabs(renorm) / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
 
-                    // test accuracy of the matrix solver 
+                    // // test accuracy of the matrix solver 
                     // double px_LRF_test = Axx * pLRF_mod[0]  +  Axy * pLRF_mod[1]  +  Axz * pLRF_mod[2];
                     // double py_LRF_test = Ayx * pLRF_mod[0]  +  Ayy * pLRF_mod[1]  +  Ayz * pLRF_mod[2];
                     // double pz_LRF_test = Azx * pLRF_mod[0]  +  Azy * pLRF_mod[1]  +  Azz * pLRF_mod[2];
@@ -857,7 +881,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     // double dp = sqrt(dpX * dpX  +  dpY * dpY  +  dpZ * dpZ);
                     // double p = sqrt(px_LRF * px_LRF  +  py_LRF * py_LRF  +  pz_LRF * pz_LRF);
 
-                    // is it not accurate enough?...
+                    // //is it not accurate enough?...
                     // if(dp / p > 1.e-10)
                     // {
                     //   cout << "Error: dp / p = " << setprecision(16) << dp / p << " not accurate enough at tau = " << tau << " fm/c:"<< endl;

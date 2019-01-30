@@ -1213,8 +1213,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
               //write_particle_list_toFile();
-              write_particle_list_OSC();
-              //write_sampled_pT_pdf_toFile(MCID);
+              //write_particle_list_OSC();
+              write_sampled_pT_pdf_toFile(MCID);
               write_yield_list_toFile();
 
               particle_event_list_in = particle_event_list[0];
@@ -1250,13 +1250,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               particle_event_list.resize(Nevents);
               particle_yield_list.resize(Nevents, 0);
 
-              printf("Sampling particles with feqmod...\n");
+              if(DF_MODE == 3) printf("Sampling particles with feqmod (Mike)...\n");
+              if(DF_MODE == 4) printf("Sampling particles with feqmod (Jonah)...\n");
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
               //write_particle_list_toFile();
-              write_particle_list_OSC();
-              //write_sampled_pT_pdf_toFile(MCID);
+              //write_particle_list_OSC();
+              write_sampled_pT_pdf_toFile(MCID);
               write_yield_list_toFile();
 
               particle_event_list_in = particle_event_list[0];
