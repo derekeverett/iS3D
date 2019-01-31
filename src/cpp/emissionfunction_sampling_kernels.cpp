@@ -125,6 +125,8 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
   double ds_space = dsigma.dsigma_space;
   double ds_time_over_ds_space = ds_time / ds_space;
 
+  double ds_max = dsigma.dsigma_magnitude;
+
   // rotation angles
   double costheta_ds = dsigma.costheta_LRF;
   double costheta_ds2 = costheta_ds * costheta_ds;
@@ -335,7 +337,12 @@ double particle_number_outflow(double mass, double degeneracy, double sign, doub
 
         } // i
 
-        particle_number *= 2.0 * ds_time * degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
+
+        // CHANGE THIS BACK
+        //particle_number *= 2.0 * ds_time * degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
+
+
+        particle_number *= 2.0 * ds_max * degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
 
         return particle_number;
 
@@ -864,7 +871,16 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       double w_mod = exp(p_mod/T_mod - chem_mod) / (exp(E_mod/T_mod - chem_mod) + sign) / w_mod_max;
       double w_flux = pdsigma_Theta / (pLRF.E * ds_magnitude);
 
-      double weight_light = w_mod * w_flux;
+
+
+
+      // CHANGE THIS BACK
+      //double weight_light = w_mod * w_flux;
+      double weight_light = w_mod;
+
+
+
+
 
       // check if 0 <= weight <= 1
       if(fabs(weight_light - 0.5) > 0.5) printf("Error: weight = %f out of bounds\n", weight_light);
@@ -1616,7 +1632,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         {
           int N_hadrons = poisson_hadrons(generator_poisson);   // sample total number of hadrons in FO cell
 
-          particle_yield_list[ievent] += N_hadrons;             // add sampled hadrons to yield list
+          //particle_yield_list[ievent] += N_hadrons;             // add sampled hadrons to yield list
 
           for(int n = 0; n < N_hadrons; n++)
           {
@@ -1662,6 +1678,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               }
             }
 
+            double pdsigma_max = pLRF.E * dsigma.dsigma_magnitude;
+
             // lab frame momentum
             Lab_Momentum pLab(pLRF);
             pLab.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
@@ -1690,8 +1708,24 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             // add sampled particle to particle_event_list
             //CAREFUL push_back is not a thread-safe operation
             //how should we modify for GPU version?
-            #pragma omp critical
-            particle_event_list[ievent].push_back(new_particle);
+
+            double pdsigma = pLab.ptau * dat + pLab.px * dax +  pLab.py * day  +  pLab.pn * dan;
+            if(pdsigma > 0.0)
+            {
+              double weight_flux = pdsigma / pdsigma_max;
+              
+              if(fabs(weight_flux - 0.5) > 0.5) printf("Error: weight_flux = %f out of bounds\n", weight_flux);
+
+              if(canonical(generator_momentum) < weight_flux)
+              {
+                #pragma omp critical
+                particle_event_list[ievent].push_back(new_particle);
+
+                particle_yield_list[ievent] += 1;  // add sampled hadrons to yield list
+              }
+              
+            }
+            
 
           } // sampled hadrons (n)
         } // sampled events (ievent)

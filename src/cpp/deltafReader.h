@@ -66,9 +66,11 @@ class Deltaf_Data
 
         gsl_spline * c0_spline;
         gsl_spline * c2_spline;
+        gsl_spline * c3_spline;
 
         gsl_spline * F_spline;
         gsl_spline * betabulk_spline;
+        gsl_spline * betaV_spline;
         gsl_spline * betapi_spline;
 
         // Jonah coefficients
