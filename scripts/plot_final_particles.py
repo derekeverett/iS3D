@@ -1,4 +1,5 @@
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -36,7 +37,6 @@ p_pT_mid_1 = []
 
 all_t_mid_1 = []
 all_x_mid_1 = []
-
 
 #species dependent info
 #pion 211
@@ -84,10 +84,10 @@ for sample in range(0, nsamples):
     py_1 = df_py.tolist()
     pz_1 = df_pz.tolist()
     E_1 = df_E.tolist()
-    m_1 = df_E.tolist()
-    x_1 = df_E.tolist()
-    z_1 = df_E.tolist()
-    t_1 = df_E.tolist()
+    m_1 = df_m.tolist()
+    x_1 = df_x.tolist()
+    z_1 = df_z.tolist()
+    t_1 = df_t.tolist()
 
     #3d momentum space lists
     for i in range(0, len(E_1) ):
@@ -145,7 +145,7 @@ for i in range(0, len(k_pT_1) ):
     if ( abs(k_y_1[i]) < ymax ):
         k_pT_mid_1.append( k_pT_1[i] )
 for i in range(0, len(p_pT_1) ):
-    if ( abs(p_y[i]) < ymax ):
+    if ( abs(p_y_1[i]) < ymax ):
         p_pT_mid_1.append( p_pT_1[i] )
 
 
@@ -169,10 +169,10 @@ px_2 = df_px.tolist()
 py_2 = df_py.tolist()
 pz_2 = df_pz.tolist()
 E_2 = df_E.tolist()
-m_2 = df_E.tolist()
-x_2 = df_E.tolist()
-z_2 = df_E.tolist()
-t_2 = df_E.tolist()
+m_2 = df_m.tolist()
+x_2 = df_x.tolist()
+z_2 = df_z.tolist()
+t_2 = df_t.tolist()
 
 #3d momentum space lists
 for i in range(0, len(E_2) ):
@@ -262,117 +262,95 @@ for j in range(-15, 15):
     y_bins.append( j * delta_y)
 np.savetxt("plots/y_bins.dat", y_bins)
 
-#plot pion
+#examine dN/dpT
 nPi_1, binsPi_1, patchesPi_1 = plt.hist(pi_pT_mid_1, bins = pT_bins_eqwidth, normed=False)
 plt.title("Pion dN/dpT")
 plt.xlabel("pT (GeV)")
-plt.savefig('plots/211_spectra.pdf')
+plt.savefig('plots/211_spectra_1.pdf')
 #plt.show()
 plt.close()
-np.savetxt("plots/pi_dN_dpT.dat", nPi)
-
-#plot kaon
-nK, binsK, patchesK = plt.hist(k_pT_mid, bins = pT_bins_eqwidth, normed=False)
-plt.title("Kaon dN/dpT")
-plt.xlabel("pT (GeV)")
-plt.savefig('plots/321_spectra.pdf')
-#plt.show()
-plt.close()
-np.savetxt("plots/k_dN_dpT.dat", nK)
-
-#plot proton
-nP, binsP, patchesP = plt.hist(p_pT_mid, bins = pT_bins_eqwidth, normed=False)
-plt.title("Proton dN/dpT")
-plt.xlabel("pT (GeV)")
-plt.savefig('plots/2212_spectra.pdf')
-#plt.show()
-plt.close()
-np.savetxt("plots/p_dN_dpT.dat", nP)
+np.savetxt("plots/pi_dN_dpT_1.dat", nPi_1)
 
 #examine dN/dphi
-n_pi_phi, bins_pi_phi, patches_pi_phi = plt.hist(pi_phi_mid, bins = phi_bins, normed=False)
-plt.title("Pion dN/dphi")
-plt.xlabel("phi")
-plt.savefig('plots/211_dNdphi.pdf')
+#n_pi_phi_1, bins_pi_phi_1, patches_pi_phi_1 = plt.hist(pi_phi_mid, bins = phi_bins, normed=False)
+#plt.title("Pion dN/dphi")
+#plt.xlabel("phi")
+#plt.savefig('plots/211_dNdphi_1.pdf')
 #plt.show()
-plt.close()
-np.savetxt("plots/pi_dN_dphi.dat", n_pi_phi)
-
-n_k_phi, bins_k_phi, patches_k_phi = plt.hist(k_phi_mid, bins = phi_bins, normed=False)
-plt.title("Kaon dN/dphi")
-plt.xlabel("phi")
-plt.savefig('plots/321_dNdphi.pdf')
-#plt.show()
-plt.close()
-np.savetxt("plots/k_dN_dphi.dat", n_k_phi)
-
-n_p_phi, bins_p_phi, patches_p_phi = plt.hist(p_phi_mid, bins = phi_bins, normed=False)
-plt.title("Proton dN/dphi")
-plt.xlabel("phi")
-plt.savefig('plots/2212_dNdphi.pdf')
-#plt.show()
-plt.close()
-np.savetxt("plots/p_dN_dphi.dat", n_p_phi)
-
-#examine dN/deta
-plt.hist(pi_eta, bins = eta_bins, normed=False)
-plt.title("Pion dN/deta")
-plt.xlabel("eta")
-plt.savefig('plots/211_dNdeta.pdf')
-#plt.show()
-plt.close()
-
-plt.hist(k_eta, bins = eta_bins, normed=False)
-plt.title("Kaon dN/deta")
-plt.xlabel("eta")
-plt.savefig('plots/321_dNdeta.pdf')
-#plt.show()
-plt.close()
-
-plt.hist(p_eta, bins = eta_bins, normed=False)
-plt.title("Proton dN/deta")
-plt.xlabel("eta")
-plt.savefig('plots/2212_dNdeta.pdf')
-#plt.show()
-plt.close()
+#plt.close()
+#np.savetxt("plots/pi_dN_dphi_1.dat", n_pi_phi)
 
 #examine dN/dy
-n_pi_y, bins_pi_y, patches_pi_y = plt.hist(pi_y, bins = y_bins, normed=False)
+n_pi_y_1, bins_pi_y_1, patches_pi_y_1 = plt.hist(pi_y_1, bins = y_bins, normed=False)
 plt.title("Pion dN/dy")
 plt.xlabel("y")
-plt.savefig('plots/211_dNdy.pdf')
+plt.savefig('plots/211_dNdy_1.pdf')
 #plt.show()
 plt.close()
-np.savetxt("plots/211_dN_dy.dat", n_pi_y)
-
-plt.hist(k_y, bins = y_bins, normed=False)
-plt.title("Kaon dN/dy")
-plt.xlabel("y")
-plt.savefig('plots/321_dNdy.pdf')
-#plt.show()
-plt.close()
-
-plt.hist(p_y, bins = y_bins, normed=False)
-plt.title("Proton dN/dy")
-plt.xlabel("y")
-plt.savefig('plots/2212_dNdy.pdf')
-#plt.show()
-plt.close()
+np.savetxt("plots/211_dN_dy_1.dat", n_pi_y_1)
 
 #examine dN/dt
-n_t, bins_t, patches_t = plt.hist(all_t_mid, bins = t_bins, normed=False)
+n_t_1, bins_t_1, patches_t_1 = plt.hist(all_t_mid_1, bins = t_bins, normed=False)
 plt.title("dN / dt")
 plt.xlabel("t")
-plt.savefig('plots/dNdt.pdf')
+plt.savefig('plots/dNdt_1.pdf')
 #plt.show()
 plt.close()
-np.savetxt("plots/dN_dt.dat", n_t)
+np.savetxt("plots/dN_dt_1.dat", n_t_1)
 
 #examine dN/dx
-n_x, bins_x, patches_x = plt.hist(all_x_mid, bins = x_bins, normed=False)
+n_x_1, bins_x_1, patches_x_1 = plt.hist(all_x_mid_1, bins = x_bins, normed=False)
 plt.title("dN / dx")
 plt.xlabel("x")
-plt.savefig('plots/dNdx.pdf')
+plt.savefig('plots/dN_dx_1.pdf')
 #plt.show()
 plt.close()
-np.savetxt("plots/dN_dx.dat", n_x)
+np.savetxt("plots/dN_dx_1.dat", n_x_1)
+
+
+## SECOND MODULE 
+
+#examine dN/dpT
+nPi_2, binsPi_2, patchesPi_2 = plt.hist(pi_pT_mid_2, bins = pT_bins_eqwidth, normed=False)
+plt.title("Pion dN/dpT")
+plt.xlabel("pT (GeV)")
+plt.savefig('plots/211_spectra_2.pdf')
+#plt.show()
+plt.close()
+np.savetxt("plots/pi_dN_dpT_2.dat", nPi_2)
+
+#examine dN/dphi
+#n_pi_phi_1, bins_pi_phi_1, patches_pi_phi_1 = plt.hist(pi_phi_mid, bins = phi_bins, normed=False)
+#plt.title("Pion dN/dphi")
+#plt.xlabel("phi")
+#plt.savefig('plots/211_dNdphi_1.pdf')
+#plt.show()
+#plt.close()
+#np.savetxt("plots/pi_dN_dphi_1.dat", n_pi_phi)
+
+#examine dN/dy
+n_pi_y_2, bins_pi_y_2, patches_pi_y_2 = plt.hist(pi_y_2, bins = y_bins, normed=False)
+plt.title("Pion dN/dy")
+plt.xlabel("y")
+plt.savefig('plots/211_dNdy_2.pdf')
+#plt.show()
+plt.close()
+np.savetxt("plots/211_dN_dy_2.dat", n_pi_y_2)
+
+#examine dN/dt
+n_t_2, bins_t_2, patches_t_2 = plt.hist(all_t_mid_2, bins = t_bins, normed=False)
+plt.title("dN / dt")
+plt.xlabel("t")
+plt.savefig('plots/dNdt_2.pdf')
+#plt.show()
+plt.close()
+np.savetxt("plots/dN_dt_2.dat", n_t_2)
+
+#examine dN/dx
+n_x_2, bins_x_2, patches_x_2 = plt.hist(all_x_mid_2, bins = x_bins, normed=False)
+plt.title("dN / dx")
+plt.xlabel("x")
+plt.savefig('plots/dN_dx_2.pdf')
+#plt.show()
+plt.close()
+np.savetxt("plots/dN_dx_2.dat", n_x_2)

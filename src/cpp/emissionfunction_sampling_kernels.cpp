@@ -1029,12 +1029,13 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
 
       // regulate bulk pressure if goes out of bounds given 
       // by Jonah's feqmod to avoid gsl interpolation errors
-      if(DF_MODE == 4)
+      if (DF_MODE == 4)
       {
         double bulkPi_over_Peq_max = df_data->bulkPi_over_Peq_max;
-
-        if(bulkPi < - P) bulkPi = - P;
-        else if(bulkPi / P > bulkPi_over_Peq_max) bulkPi = P * bulkPi_over_Peq_max;
+	double bulkPi_over_Peq = bulkPi / P;
+	double epsilon = 1.0e-5;
+	if (bulkPi_over_Peq > bulkPi_over_Peq_max) bulkPi = bulkPi_over_Peq_max * P - epsilon;
+	if (bulkPi_over_Peq < -1.0) bulkPi = -P + epsilon;
       }
 
       // evaluate df coefficients
@@ -1334,16 +1335,17 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       // regulate bulk pressure if goes out of bounds given 
       // by Jonah's feqmod to avoid gsl interpolation errors
-      if(DF_MODE == 4)
+      if (DF_MODE == 4)
       {
         double bulkPi_over_Peq_max = df_data->bulkPi_over_Peq_max;
-
-        if(bulkPi < - P) bulkPi = - P;
-        else if(bulkPi / P > bulkPi_over_Peq_max) bulkPi = P * bulkPi_over_Peq_max;
+	double bulkPi_over_Peq = bulkPi / P;
+	double epsilon = 1.0e-5;
+	if (bulkPi_over_Peq > bulkPi_over_Peq_max) bulkPi = bulkPi_over_Peq_max * P - epsilon;
+	if (bulkPi_over_Peq < -1.0) bulkPi = -P + epsilon;
       }
 
       deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
-
+      
       // modified coefficients (Mike / Jonah)
       double F = df.F;
       double G = df.G;
