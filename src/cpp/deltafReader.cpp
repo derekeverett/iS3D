@@ -382,7 +382,7 @@ Deltaf_Data::~Deltaf_Data()
   gsl_spline_free(betaV_spline);
   gsl_spline_free(betapi_spline);
 
-  gsl_spline_free(lambda_spline);
+  gsl_spline_free(lambda_squared_spline);
   gsl_spline_free(z_spline);
 }
 
@@ -391,13 +391,13 @@ void Deltaf_Data::load_df_coefficient_data()
   printf("Reading in 14 moment and Chapman-Enskog coefficient tables...");
 
   // coefficient files and names
-  FILE * c0_file = fopen("deltaf_coefficients/vh/c0.dat", "r"); // 14 moment
+  FILE * c0_file = fopen("deltaf_coefficients/vh/c0.dat", "r"); // 14 moment (coefficients are scaled by some power of temperature)
   FILE * c1_file = fopen("deltaf_coefficients/vh/c1.dat", "r");
   FILE * c2_file = fopen("deltaf_coefficients/vh/c2.dat", "r");
   FILE * c3_file = fopen("deltaf_coefficients/vh/c3.dat", "r");
   FILE * c4_file = fopen("deltaf_coefficients/vh/c4.dat", "r");
 
-  FILE * F_file = fopen("deltaf_coefficients/vh/F.dat", "r"); // Chapman Enskog
+  FILE * F_file = fopen("deltaf_coefficients/vh/F.dat", "r"); // Chapman Enskog (coefficients are scaled by some power of temperature)
   FILE * G_file = fopen("deltaf_coefficients/vh/G.dat", "r");
   FILE * betabulk_file = fopen("deltaf_coefficients/vh/betabulk.dat", "r");
   FILE * betaV_file = fopen("deltaf_coefficients/vh/betaV.dat", "r");
@@ -529,7 +529,7 @@ void Deltaf_Data::load_df_coefficient_data()
 void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int Nparticle)
 {
   // allocate memory for the arrays
-  lambda_array = (double *)calloc(jonah_points, sizeof(double));
+  lambda_squared_array = (double *)calloc(jonah_points, sizeof(double));
   z_array = (double *)calloc(jonah_points, sizeof(double));
   bulkPi_over_Peq_array = (double *)calloc(jonah_points, sizeof(double));
 
@@ -587,19 +587,19 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     double bulkPi_over_Peq = (P_mod / P) * z  -  1.0;
 
     // set the arrays and update the max bulk pressure
-    lambda_array[i] = lambda;
+    lambda_squared_array[i] = lambda * lambda;
     z_array[i] = z;
     bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
     bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
 
-    //cout << lambda_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
+    //cout << lambda_squared_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
   }
 
   // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
-  lambda_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
+  lambda_squared_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
   z_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
 
-  gsl_spline_init(lambda_spline, bulkPi_over_Peq_array, lambda_array, jonah_points);
+  gsl_spline_init(lambda_squared_spline, bulkPi_over_Peq_array, lambda_squared_array, jonah_points);
   gsl_spline_init(z_spline, bulkPi_over_Peq_array, z_array, jonah_points);
 }
 
@@ -641,15 +641,14 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
   {
     case 1: // 14 moment
     {
-      double T3 = T * T * T;
-      double T4 = T3 * T;
-      double T5 = T4 * T;
+      // undo the temperature power scaling of coefficients
+      double T4 = T * T * T * T;
 
       df.c0 = gsl_spline_eval(c0_spline, T, accel_T) / T4;
       df.c1 = 0.0;
       df.c2 = gsl_spline_eval(c2_spline, T, accel_T) / T4;
-      //df.c3 = 0.0;
-      df.c3 = gsl_spline_eval(c3_spline, T, accel_T) / T4;
+      df.c3 = 0.0;
+      //df.c3 = gsl_spline_eval(c3_spline, T, accel_T) / T4;
       df.c4 = 0.0;
       df.shear14_coeff = 2.0 * T * T * (E + P);
 
@@ -658,22 +657,33 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
     case 2: // Chapman Enskog
     case 3: // Modified (Mike)
     {
-      double T3 = T * T * T;
-      double T4 = T3 * T;
+      // undo the temperature power scaling of coefficients
+      //double T3 = T * T * T;
+      double T4 = T * T * T * T;
+
       df.F = gsl_spline_eval(F_spline, T, accel_T) * T;
       df.G = 0.0;
       df.betabulk = gsl_spline_eval(betabulk_spline, T, accel_T) * T4; 
-      //df.betaV = 1.0;
-      df.betaV = gsl_spline_eval(betaV_spline, T, accel_T) * T3;
+      df.betaV = 1.0;
+      //df.betaV = gsl_spline_eval(betaV_spline, T, accel_T) * T3;
       df.betapi = gsl_spline_eval(betapi_spline, T, accel_T) * T4;
 
       break;
     }
     case 4: // Modified (Jonah)
     {
+      // undo the temperature power scaling of betapi
       double T4 = T * T * T * T;
 
-      df.lambda = gsl_spline_eval(lambda_spline, (bulkPi / P), accel_bulk);
+      double lambda_squared = gsl_spline_eval(lambda_squared_spline, (bulkPi / P), accel_bulk);
+      if(bulkPi < 0.0)
+      {
+        df.lambda = - sqrt(lambda_squared);
+      }
+      else if(bulkPi > 0.0)
+      {
+        df.lambda = sqrt(lambda_squared);
+      }
       df.z = gsl_spline_eval(z_spline, (bulkPi / P), accel_bulk);
       df.betapi = gsl_spline_eval(betapi_spline, T, accel_T) * T4;
       // linearized correction to lambda, z
@@ -703,7 +713,7 @@ deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, do
 
 
   // FILL THIS IN LATER
-  printf("Error: bilinear interpolation routine is empty a.t.m.\n");
+  printf("df coefficient interpolation error: bilinear interpolation routine is empty atm\n");
   exit(-1);
 
 

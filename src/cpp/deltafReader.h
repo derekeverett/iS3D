@@ -79,12 +79,12 @@ class Deltaf_Data
         const double lambda_max = 2.0;
         const double delta_lambda = (lambda_max - lambda_min) / ((double)jonah_points - 1.0);
 
-        double * lambda_array;              // isotropic momentum scale
+        double * lambda_squared_array;      // squared isotropic momentum scale
         double * z_array;                   // renormalization factor (apart from detLambda)
         double * bulkPi_over_Peq_array;     // bulk pressure output
         double bulkPi_over_Peq_max;         // the maximum bulk pressure in the array
 
-        gsl_spline * lambda_spline;         // cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
+        gsl_spline * lambda_squared_spline; // cubic splines for lambda^2(bulkPi/Peq) and z(bulkPi/Peq)
         gsl_spline * z_spline;
 
         Deltaf_Data(ParameterReader * paraRdr_in);

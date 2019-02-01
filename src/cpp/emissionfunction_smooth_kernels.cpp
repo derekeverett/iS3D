@@ -584,8 +584,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         {
           double bulkPi_over_Peq_max = df_data->bulkPi_over_Peq_max;
 
-          if(bulkPi < - P) bulkPi = - P;
-          else if(bulkPi / P > bulkPi_over_Peq_max) bulkPi = P * bulkPi_over_Peq_max;
+          if(bulkPi < - P) bulkPi = - (1.0 - 1.e-5) * P;
+          else if(bulkPi / P > bulkPi_over_Peq_max) bulkPi = P * (bulkPi_over_Peq_max - 1.e-5);
         }
 
         // set df coefficients
