@@ -100,6 +100,14 @@ private:
   int PT_BINS;
   double Y_CUT;
 
+  double TAU_MIN;
+  double TAU_MAX;
+  int TAU_BINS;
+
+  double R_MIN;
+  double R_MAX;
+  int R_BINS;
+
 
   int DYNAMICAL;
 
@@ -191,16 +199,17 @@ public:
   void write_dN_twopipTdpTdy_toFile(int *MCID);
   void write_dN_twopidpTdy_toFile(int *MCID);
   void write_dN_dy_toFile(int *MCID);
+  void write_continuous_vn_toFile(int *MCID);
   void write_polzn_vector_toFile(); //write components of spin polarization vector to file
 
   void write_dN_dpTdphidy_toFile(int *MCID);   // write 3D spectra to file in experimental bins
   void write_dN_dpTdphidy_with_resonance_decays_toFile();   // write 3D spectra to file in experimental bins (w/ resonance decay effects)
-  void write_particle_list_toFile();  // write sampled particle list
-  void write_particle_list_OSC(); //write sampled particle list in OSCAR format for UrQMD/SMASH
-  void write_momentum_list_toFile();  // write sampled momentum list
-  void write_yield_list_toFile();     // write mean yield and sampled yield list to files
-  void write_sampled_pT_pdf_toFile(int * MCID);
-  void write_sampled_vn_toFile(int * MCID);
+  void write_particle_list_toFile();              // write sampled particle list
+  void write_particle_list_OSC();                 // write sampled particle list in OSCAR format for UrQMD/SMASH
+  void write_yield_list_toFile();                 // write mean yield and sampled yield list to files
+  void write_sampled_pT_pdf_toFile(int * MCID);   // sampled boost-invariant dNdpT / N distributions
+  void write_sampled_vn_toFile(int * MCID);       // sampled boost-invariant vn(pT)
+  void write_sampled_dN_dXdy_toFile(int * MCID);  // sampled boost-invariant spacetime distributions dN_dXdy (dX = dtau, dr or (dtaudr)) (y = rapidity)
 
 
   //:::::::::::::::::::::::::::::::::::::::::::::::::
