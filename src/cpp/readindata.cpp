@@ -1105,16 +1105,15 @@ void FO_data_reader::read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr)
 
     vn = 0.0;
 
-    double denom =  1.0 - (vx * vx) - (vy * vy) - (vn * vn / tau / tau);
+    double denom =  1.0 - (vx * vx) - (vy * vy);
     if (denom < 0.0) cout << "1.0 - vx*vx - vy*vy - vn*vn/tau/tau < 0 !" << endl;
 
     ut = sqrt( 1.0 / denom );
-    //vx is covariant , ux is contravariant, need metric factors
-    surf_ptr[i].ux = ut * vx * (-1.0);
-    surf_ptr[i].uy = ut * vy * (-1.0);
-    surf_ptr[i].un = ut * vn * (-1.0 / tau / tau);
+    surf_ptr[i].ux = ut * vx;
+    surf_ptr[i].uy = ut * vy;
+    surf_ptr[i].un = 0.0;
 
-    // ten contravariant components of shear stress tensor
+     // ten contravariant components of shear stress tensor
     //units are GeV/fm^3
     surfdat >> dummy; // pi^tt
     //surf_ptr[i].pitt = dummy;
@@ -1124,16 +1123,19 @@ void FO_data_reader::read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr)
     //surf_ptr[i].pity = dummy;
     surfdat >> dummy; // pi^tz
     //surf_ptr[i].pitn = dummy;
+
+    // at eta_s = 0, pi^xn = pi^xz / tau, same for pi^yn ... 
     surfdat >> dummy; // pi^xx
     surf_ptr[i].pixx = dummy;
     surfdat >> dummy; // pi^xy
     surf_ptr[i].pixy = dummy;
     surfdat >> dummy; // pi^xz
-    surf_ptr[i].pixn = dummy;
+    surf_ptr[i].pixn = dummy / tau;
     surfdat >> dummy; // pi^yy
     surf_ptr[i].piyy = dummy;
     surfdat >> dummy; // pi^yz
-    surf_ptr[i].piyn = dummy;
+    surf_ptr[i].piyn = dummy / tau;
+
     surfdat >> dummy; // pi^zz
     //surf_ptr[i].pinn = dummy;
 

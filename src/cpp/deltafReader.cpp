@@ -680,8 +680,6 @@ void Deltaf_Data::compute_jonah_coefficients(double *Degeneracy, double *Mass, d
   gsl_spline_init(z_spline, bulkPi_over_Peq_array, z_array, jonah_points);
 }
 
-
-
 void Deltaf_Data::construct_cubic_splines()
 {
   // Allocate memory for cubic splines
@@ -776,7 +774,7 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
       exit(-1);
     }
   }
-  
+
   gsl_interp_accel_free(accel_T);
   gsl_interp_accel_free(accel_bulk);
 

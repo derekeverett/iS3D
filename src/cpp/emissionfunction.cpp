@@ -865,7 +865,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         if(fabs(y) <= y_cut)
         {
           if(ipT < pTbins) pT_pdf[ipart][ipT] += 1.0;   // add counts to each bin
-    
+
           number_of_sampled_particles[ipart] += 1;      // count number for all pT
         } // rapidity cut
       }// n
@@ -1321,9 +1321,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
-    #ifdef _OPENMP
-    //double sec = omp_get_wtime();
-    #endif
     Stopwatch sw;
     sw.tic();
 
