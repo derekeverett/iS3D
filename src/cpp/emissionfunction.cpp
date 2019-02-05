@@ -865,7 +865,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         if(fabs(y) <= y_cut)
         {
           if(ipT < pTbins) pT_pdf[ipart][ipT] += 1.0;   // add counts to each bin
-    
+
           number_of_sampled_particles[ipart] += 1;      // count number for all pT
         } // rapidity cut
       }// n
@@ -1321,9 +1321,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
-    #ifdef _OPENMP
-    //double sec = omp_get_wtime();
-    #endif
     Stopwatch sw;
     sw.tic();
 
@@ -1363,6 +1360,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       Bulk_Density[ipart] = particle->bulk_density;
       Diffusion_Density[ipart] = particle->diff_density;
     }
+
+    //compute jonah feqmod coefficients summing over only chosen resonances
+    if (DF_MODE == 4) df_data->compute_jonah_coefficients(Degeneracy, Mass, Sign, number_of_chosen_particles);
 
     // gauss laguerre roots and weights
     Gauss_Laguerre * gla = new Gauss_Laguerre;

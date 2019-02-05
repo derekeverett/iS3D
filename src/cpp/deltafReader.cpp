@@ -603,6 +603,82 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
   gsl_spline_init(z_spline, bulkPi_over_Peq_array, z_array, jonah_points);
 }
 
+void Deltaf_Data::compute_jonah_coefficients(double *Degeneracy, double *Mass, double *Sign, int number_of_chosen_particles)
+{
+  // allocate memory for the arrays
+  lambda_array = (double *)calloc(jonah_points, sizeof(double));
+  z_array = (double *)calloc(jonah_points, sizeof(double));
+  bulkPi_over_Peq_array = (double *)calloc(jonah_points, sizeof(double));
+
+  bulkPi_over_Peq_max = -1.0;      // default to lowest value
+
+  // get the average temperature, energy density, pressure
+  Plasma QGP;
+  QGP.load_thermodynamic_averages();
+
+  const double T = QGP.temperature;    // GeV (assume freezeout surface of constant temperature)
+
+  // gauss laguerre roots and weights
+  Gauss_Laguerre gla;
+  gla.load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
+
+  const int pbar_pts = gla.points;
+
+  double * pbar_root1 = gla.root[1];
+  double * pbar_root2 = gla.root[2];
+
+  double * pbar_weight1 = gla.weight[1];
+  double * pbar_weight2 = gla.weight[2];
+
+  // calculate the interpolation points of z(bulkPi/P), lambda(bulkPi/P)
+  for(int i = 0; i < jonah_points; i++)
+  {
+    double lambda = lambda_min + (double)i * delta_lambda;
+
+    double E = 0.0;                       // energy density (computed with kinetic theory)
+    double P = 0.0;                       // pressure
+    double E_mod = 0.0;                   // modified energy density
+    double P_mod = 0.0;                   // modified pressure
+
+    // calculate modified energy density (sum over hadron resonance contributions)
+    for(int n = 0; n < number_of_chosen_particles; n++)
+    {
+      double degeneracy = Degeneracy[n];
+      double mass = Mass[n];
+      double sign = Sign[n];
+
+      double mbar = mass / T;
+
+      if(mass == 0.0) continue;   // I skip the photon (Gamma) because the calculation breaks down for lambda = -1.0
+
+      // ignore common prefactor = pow(T,4) / two_pi2_hbarC3 (since they will cancel out)
+      E += degeneracy * Gauss1D_mod(E_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, 0.0, sign);
+      P += (1.0 / 3.0) * degeneracy * Gauss1D_mod(P_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, 0.0, sign);
+
+      E_mod += degeneracy * Gauss1D_mod(E_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, lambda, sign);
+      P_mod += (1.0 / 3.0) * degeneracy * Gauss1D_mod(P_mod_int, pbar_root2, pbar_weight2, pbar_pts, mbar, lambda, sign);
+    }
+
+    // jonah's formula (ignoring detLambda factor i.e. n_mod / n -> 1)
+    double z = E / E_mod;
+    double bulkPi_over_Peq = (P_mod / P) * z  -  1.0;
+
+    // set the arrays and update the max bulk pressure
+    lambda_array[i] = lambda;
+    z_array[i] = z;
+    bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
+    bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
+
+    //cout << lambda_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
+  }
+
+  // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
+  lambda_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
+  z_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
+
+  gsl_spline_init(lambda_spline, bulkPi_over_Peq_array, lambda_array, jonah_points);
+  gsl_spline_init(z_spline, bulkPi_over_Peq_array, z_array, jonah_points);
+}
 
 void Deltaf_Data::construct_cubic_splines()
 {
@@ -698,7 +774,7 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
       exit(-1);
     }
   }
-  
+
   gsl_interp_accel_free(accel_T);
   gsl_interp_accel_free(accel_bulk);
 
