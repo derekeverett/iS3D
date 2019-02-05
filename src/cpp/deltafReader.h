@@ -97,6 +97,8 @@ class Deltaf_Data
         // I skip the photon because I think it breaks down for lambda = -1
         void compute_jonah_coefficients(particle_info * particle_data, int Nparticle);
 
+        void compute_jonah_coefficients(double *Degeneracy, double *Mass, double *Sign, int number_of_chosen_particles);
+
         deltaf_coefficients evaluate_df_coefficients(double T, double muB, double E, double P, double bulkPi);
 
         deltaf_coefficients cubic_spline(double T, double E, double P, double bulkPi);

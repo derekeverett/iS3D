@@ -1364,6 +1364,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       Diffusion_Density[ipart] = particle->diff_density;
     }
 
+    //compute jonah feqmod coefficients summing over only chosen resonances
+    if (DF_MODE == 4) df_data->compute_jonah_coefficients(Degeneracy, Mass, Sign, number_of_chosen_particles);
+
     // gauss laguerre roots and weights
     Gauss_Laguerre * gla = new Gauss_Laguerre;
     gla->load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
