@@ -1099,7 +1099,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     double tau_midpoint[taubins];
     for(int itau = 0; itau < taubins; itau++)
     {
-      tau_midpoint[itau] = TAU_MIN + taubinwidth * ((double)itau + 0.5);            
+      tau_midpoint[itau] = TAU_MIN + taubinwidth * ((double)itau + 0.5);    
     }
 
     // r grid (bin midpoints)
@@ -1111,23 +1111,18 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       r_midpoint[ir] = R_MIN + rbinwidth * ((double)ir + 0.5);  
     }
 
-    double dN_dtaudy[npart][taubins];          // event averaged dN_dtaudy distribution of each species
-    double dN_drdy[npart][rbins];              // event averaged dN_drdy distribution of each species
-    double dN_dtaudrdy[npart][taubins][rbins]; // event averaged dN_dtaudrdy distribution of each species
-    long count[npart];                         // number of counts of each species from all events
+    double ** dN_dtaudy = (double **)calloc(npart, sizeof(double));     // event averaged dN_dtaudy distribution of each species
+    double ** dN_drdy = (double **)calloc(npart, sizeof(double));       // event averaged dN_drdy distribution of each species
+    double *** dN_dtaudrdy = (double ***)calloc(npart, sizeof(double)); // event averaged dN_dtaudrdy distribution of each species   
+    long * count = (long*)calloc(npart, sizeof(long));                  // number of counts of each species from all events
 
     for(int ipart = 0; ipart < npart; ipart++)
     {
-      count[ipart] = 0;
+      dN_dtaudy[ipart] = (double *)calloc(taubins, sizeof(double));
+      dN_drdy[ipart] = (double *)calloc(taubins, sizeof(double));
 
-      for(int ir = 0; ir < rbins; ir++) dN_drdy[ipart][ir] = 0.0;
-
-      for(int itau = 0; itau < taubins; itau++)
-      {
-        dN_dtaudy[ipart][itau] = 0.0;
-
-        for(int ir = 0; ir < rbins; ir++) dN_dtaudrdy[ipart][itau][ir] = 0.0;
-      }      
+      dN_dtaudrdy[ipart] = (double **)calloc(taubins, sizeof(double));
+      for(int itau = 0; itau < taubins; itau++) dN_dtaudrdy[ipart][itau] = (double *)calloc(rbins, sizeof(double));
     }
 
     // now go through all the events
@@ -1149,7 +1144,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         double yp = 0.5 * log((E + pz) / (E - pz));
 
         int itau = (int)floor(tau / taubinwidth); // tau bin index
-        int ir = (int)floor(r/ rbinwidth);        // r bin index
+        int ir = (int)floor(r / rbinwidth);       // r bin index
+
+        //cout << ipart << "\t" << itau << "\t" << ir << endl;
+
+        if(itau < 0) printf("Error: tau bin index is negative\n");
+        if(ir < 0) printf("Error: r bin index is negative\n");
 
         if(fabs(yp) <= Y_CUT)
         {
@@ -1157,11 +1157,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           count[ipart] += 1;  
 
           // add count to the corresponding bin(s)
-          if(itau < taubins)
+          if(itau >= 0 && itau < taubins)
           {
             dN_dtaudy[ipart][itau] += 1.0;  
 
-            if(ir < rbins)
+            if(ir >= 0 && ir < rbins)
             {
               dN_dtaudrdy[ipart][itau][ir] += 1.0;
             }
@@ -1174,6 +1174,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
       } // n
     } // ievent
+
+    cout << "Finished counting" << endl;
 
     // now event-average dN_dXdy and normalize to dNdy and write them to file
     for(int ipart = 0; ipart < npart; ipart++)
@@ -1219,6 +1221,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       radial_distribution.close();
       timeradial_distribution.close();
     } // ipart
+
+    //delete dN_dtaudy;
+    //delete dN_drdy;
+    //delete dN_dtaudrdy;
   }
 
   /*
