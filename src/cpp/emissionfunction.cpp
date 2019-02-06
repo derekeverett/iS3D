@@ -107,6 +107,40 @@ bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pio
   return false;
 }
 
+bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi, double betabulk, double detA, double detA_min, double z, Gauss_Laguerre * laguerre, int df_mode)
+{
+  if(df_mode == 3)
+  {
+    const int laguerre_pts = laguerre->points;
+    double * pbar_root1 = laguerre->root[1];
+    double * pbar_root2 = laguerre->root[2];
+    double * pbar_weight1 = laguerre->weight[1];
+    double * pbar_weight2 = laguerre->weight[2];
+
+    // calculate linearized pion density
+    double mbar_pion0 = mass_pion0 / T;
+
+    double neq_fact = T * T * T / two_pi2_hbarC3;
+    double J20_fact = T * neq_fact;
+
+    double neq_pion0 = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_pion0, 0., 0., -1.);
+    double J20_pion0 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, laguerre_pts, mbar_pion0, 0., 0., -1.);
+
+    bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
+
+    if(detA <= detA_min || pion_density_negative) return true;
+  }
+  else if(df_mode == 4)
+  {
+    if(z < 0.0) printf("Error: z should be positive");
+
+    if(detA <= detA_min || z < 0.0) return true;
+  }
+
+  return false;
+}
+
+
 
 // Class EmissionFunctionArray ------------------------------------------
 EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in,
@@ -865,7 +899,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         if(fabs(y) <= y_cut)
         {
           if(ipT < pTbins) pT_pdf[ipart][ipT] += 1.0;   // add counts to each bin
-    
+
           number_of_sampled_particles[ipart] += 1;      // count number for all pT
         } // rapidity cut
       }// n
@@ -901,7 +935,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     int npart = number_of_chosen_particles;
 
-    int y_pts = y_tab_length;           // default 3+1d 
+    int y_pts = y_tab_length;           // default 3+1d
     if(DIMENSION == 2) y_pts = 1;       // 2+1d (y = 0)
 
     const complex<double> I(0.0,1.0);   // imaginary i
@@ -1001,7 +1035,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     double vn_imag[k_max][npart][pTbins];     // event & rapidity averaged vn(pT) (imaginary part) of each species
 
     long pT_count[npart][pTbins];             // number of sampled particles of each species in each pT bin for all events
-    
+
 
     for(int ipT = 0; ipT < pTbins; ipT++)
     {
@@ -1048,13 +1082,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           if(ipT < pTbins)
           {
             // add counts to each pT bin
-            pT_count[ipart][ipT] += 1;      
+            pT_count[ipart][ipT] += 1;
 
             for(int k = 0; k < k_max; k++)
             {
               // add exponential weights to each bin
-              vn_real[k][ipart][ipT] += cos(((double)k + 1.0) * phi);  
-              vn_imag[k][ipart][ipT] += sin(((double)k + 1.0) * phi);     
+              vn_real[k][ipart][ipT] += cos(((double)k + 1.0) * phi);
+              vn_imag[k][ipart][ipT] += sin(((double)k + 1.0) * phi);
             }
           }
         } // rapidity cut
@@ -1084,12 +1118,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     } // ipart
   }
 
-  
+
   void EmissionFunctionArray::write_sampled_dN_dX_toFile(int * MCID)
   {
     printf("Writing event-averaged boost invariant spacetime distributions dN_dX of each species to file...\n");
 
-    // dX = tau.dtau.deta, 2.pi.r.dr.deta or 2.pi.tau.r.dtau.dr.deta 
+    // dX = tau.dtau.deta, 2.pi.r.dr.deta or 2.pi.tau.r.dtau.dr.deta
     // only have boost invariance in mind right now so deta = dy (rapidity)
 
     const int npart = number_of_chosen_particles;
@@ -1100,7 +1134,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     double tau_midpoint[taubins];
     for(int itau = 0; itau < taubins; itau++)
     {
-      tau_midpoint[itau] = TAU_MIN + taubinwidth * ((double)itau + 0.5);    
+      tau_midpoint[itau] = TAU_MIN + taubinwidth * ((double)itau + 0.5);
     }
 
     // r grid (bin midpoints)
@@ -1109,12 +1143,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     double r_midpoint[rbins];
     for(int ir = 0; ir < rbins; ir++)
     {
-      r_midpoint[ir] = R_MIN + rbinwidth * ((double)ir + 0.5);  
+      r_midpoint[ir] = R_MIN + rbinwidth * ((double)ir + 0.5);
     }
 
     double ** dN_taudtaudy = (double **)calloc(npart, sizeof(double));           // event averaged dN_tau.dtau.dy distribution of each species
     double ** dN_twopirdrdy = (double **)calloc(npart, sizeof(double));          // event averaged dN_twopi.r.dr.dy distribution of each species
-    double *** dN_twopitaurdtaudrdy = (double ***)calloc(npart, sizeof(double)); // event averaged dN_twopi.tau.r.dtau.dr.dy distribution of each species   
+    double *** dN_twopitaurdtaudrdy = (double ***)calloc(npart, sizeof(double)); // event averaged dN_twopi.tau.r.dtau.dr.dy distribution of each species
     long * count = (long*)calloc(npart, sizeof(long));                           // number of counts of each species from all events
 
     for(int ipart = 0; ipart < npart; ipart++)
@@ -1134,7 +1168,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       // number of particles of a given event
       for(int n = 0; n < N; n++)
       {
-        int ipart = particle_event_list[ievent][n].chosen_index; 
+        int ipart = particle_event_list[ievent][n].chosen_index;
         double tau = particle_event_list[ievent][n].tau;
         double x = particle_event_list[ievent][n].x;
         double y = particle_event_list[ievent][n].y;
@@ -1153,12 +1187,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         if(fabs(yp) <= Y_CUT)
         {
           // total count
-          count[ipart] += 1;  
+          count[ipart] += 1;
 
           // add count to the corresponding bin(s)
           if(itau >= 0 && itau < taubins)
           {
-            dN_taudtaudy[ipart][itau] += 1.0;  
+            dN_taudtaudy[ipart][itau] += 1.0;
 
             if(ir >= 0 && ir < rbins)
             {
@@ -1168,8 +1202,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           if(ir < rbins)
           {
             dN_twopirdrdy[ipart][ir] += 1.0;
-          }                         
-        } 
+          }
+        }
 
       } // n
     } // ievent
@@ -1226,12 +1260,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     } // ipart
 
     // free memory
-    free_2D(dN_taudtaudy, npart);      
-    free_2D(dN_twopirdrdy, npart);         
-    free_3D(dN_twopitaurdtaudrdy, npart, taubins);  
-    free(count);   
+    free_2D(dN_taudtaudy, npart);
+    free_2D(dN_twopirdrdy, npart);
+    free_3D(dN_twopitaurdtaudrdy, npart, taubins);
+    free(count);
   }
-  
+
 
   void EmissionFunctionArray::write_yield_list_toFile()
   {

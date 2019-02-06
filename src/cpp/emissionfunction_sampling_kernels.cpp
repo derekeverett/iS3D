@@ -75,8 +75,8 @@ double equilibrium_particle_density(double mbar, double chem, double sign)
   double tolerance = 1.e-5;  // 0.001% tolarance
   double error;
 
-  // sum truncated expansion of Bose-Fermi distribution 
-  for(n = 1; n < n_min; n++)            
+  // sum truncated expansion of Bose-Fermi distribution
+  for(n = 1; n < n_min; n++)
   {
     double k = (double)n;
     sign_factor *= (-sign);
@@ -101,7 +101,9 @@ double equilibrium_particle_density(double mbar, double chem, double sign)
 
 
 
-double mean_particle_number(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, deltaf_coefficients df, double equilibrium_density, double bulk_density, double T_mod, double alphaB_mod, double modified_density, bool feqmod_breaks_down, const int legendre_pts, double * pbar_root, double * pbar_weight, int df_mode, int outflow)
+
+
+double mean_particle_number(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, deltaf_coefficients df, double T_mod, double alphaB_mod, bool feqmod_breaks_down, Gauss_Laguerre * laguerre, const int legendre_pts, double * pbar_root, double * pbar_weight, int df_mode, int outflow, int include_baryon)
 {
   // computes the particle number from the CFF with Theta(p.dsigma) (outflow) and feq + df_regulated (or feqmod)
   // for spacelike cells: (neq + dn_regulated)_outflow > neq + dn_regulated
@@ -141,23 +143,60 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
 
   // feqmod terms
   double mbar_mod = mass / T_mod;
-  double chem_mod = 0.0;
+  double chem_mod;
+  double bulk_mod;
 
-  double bulk_mod = 0.0;
-  double renorm = 1.0;
+  double equilibrium_density;
+  double linearized_density;
+  double modified_density;
+  double renorm;
 
   if(df_mode == 3)
   {
     chem_mod = baryon * alphaB_mod;
     bulk_mod = bulkPi / (3.0 * betabulk);
 
-    double linearized_density = equilibrium_density  +  bulkPi * bulk_density;
+    // compute the equilibrium, linearized and modified densities
+    const int laguerre_pts = laguerre->points;
+    double * pbar_root1 = laguerre->root[1];
+    double * pbar_root2 = laguerre->root[2];
+    double * pbar_weight1 = laguerre->weight[1];
+    double * pbar_weight2 = laguerre->weight[2];
+
+    double T2 = T * T;
+
+    double neq_fact = T2 * T / two_pi2_hbarC3;
+    double J20_fact = T * neq_fact;
+    double nmod_fact = T_mod * T_mod * T_mod / two_pi2_hbarC3;
+
+    equilibrium_density = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar, alphaB, baryon, sign);
+
+    double J10 = 0.0;
+    if(include_baryon)
+    {
+      J10 = neq_fact * degeneracy * GaussThermal(J10_int, pbar_root1, pbar_weight1, laguerre_pts, mbar, alphaB, baryon, sign);
+    }
+    double J20 = J20_fact * degeneracy * GaussThermal(J20_int, pbar_root2, pbar_weight2, laguerre_pts, mbar, alphaB, baryon, sign);
+
+    double bulk_density = (equilibrium_density + (baryon * J10 * G) + (J20 * F / T2)) / betabulk;
+
+    linearized_density = equilibrium_density  +  bulkPi * bulk_density;
+    modified_density = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_mod, alphaB_mod, baryon, sign);
 
     renorm = linearized_density / modified_density;
   }
   else if(df_mode == 4)
   {
+    chem_mod = 0.0;
     bulk_mod = lambda;
+
+    const int laguerre_pts = laguerre->points;
+    double * pbar_root1 = laguerre->root[1];
+    double * pbar_weight1 = laguerre->weight[1];
+
+    double neq_fact = T * T * T / two_pi2_hbarC3;
+
+    equilibrium_density = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar, 0.0, 0.0, sign);
     renorm = z;
   }
 
@@ -183,8 +222,8 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
   // costheta_ds2 = 1.0;
   // sintheta_ds = 0.0;
 
-  // mean particle number of a given species
-  // emitted from freezeout cell with outflow and df corrections
+  // mean particle number of a given species emitted
+  // from freezeout cell with outflow and df corrections
   double particle_number = 0.0;
 
   switch(df_mode)
@@ -343,11 +382,14 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
     {
       if(feqmod_breaks_down) goto chapman_enskog;
 
-      feqmod:
-
       if(!outflow || ds_time >= ds_space)
       {
+        if(linearized_density < 0.0) printf("Error: linearized density is negative\n");
+
+        particle_number = ds_time * linearized_density;
+
         // radial momentum pbar integral (pbar = p / T)
+        /*
         for(int i = 0; i < legendre_pts; i++)
         {
           double pbar_mod = pbar_root[i];
@@ -361,6 +403,7 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
         } // i
 
         particle_number *= 2.0 * ds_time * degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
+        */
       } // timelike cell
       else
       {
@@ -390,7 +433,50 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
     {
       if(!feqmod_breaks_down)
       {
-        goto feqmod;
+        if(!outflow || ds_time >= ds_space)
+        {
+          if(z < 0.0) printf("Error: z is negative\n");
+
+          particle_number = ds_time * z * equilibrium_density;
+
+          // radial momentum pbar integral (pbar = p / T)
+          /*
+          for(int i = 0; i < legendre_pts; i++)
+          {
+            double pbar_mod = pbar_root[i];
+            double weight = pbar_weight[i];
+
+            double Ebar_mod = sqrt(pbar_mod * pbar_mod  +  mbar_mod * mbar_mod);
+
+            double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
+
+            particle_number += weight * feqmod;
+          } // i
+
+          particle_number *= 2.0 * ds_time * degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
+          */
+        }
+        else
+        {
+          // radial momentum pbar integral (pbar = p / T)
+          for(int i = 0; i < legendre_pts; i++)
+          {
+            double pbar_mod = pbar_root[i];
+            double weight = pbar_weight[i];
+
+            double Ebar_mod = sqrt(pbar_mod * pbar_mod  +  mbar_mod * mbar_mod);
+
+            double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
+
+            double costheta_star_mod = min(1.0, Ebar_mod * ds_time_over_ds_space / pbar_mod);
+            double mbar_bulk = mbar_mod / (1.0 + bulk_mod);
+            double Ebar_bulk = sqrt(pbar_mod * pbar_mod  +  mbar_bulk * mbar_bulk);
+
+            particle_number += weight * (ds_time * (1.0 + costheta_star_mod)  -  0.5 * ds_space * pbar_mod / Ebar_bulk * (costheta_star_mod * costheta_star_mod - 1.0)) * feqmod;
+          } // i
+
+          particle_number *= degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
+        }
       }
       else
       {
@@ -479,6 +565,8 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
     }
   } // df_mode
 
+  if(particle_number < 0.0) printf("Error: particle number is negative\n");
+
   return particle_number;
 }
 
@@ -486,12 +574,12 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
 /*
 double calculate_particle_number(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, deltaf_coefficients df, double equilibrium_density, double bulk_density, double T_mod, double alphaB_mod, double modified_density, bool feqmod_breaks_down, const int legendre_pts, double * pbar_root, double * pbar_weight, int df_mode, int outflow)
 {
-  // mean particle number of a given species emitted from freezeout cell 
+  // mean particle number of a given species emitted from freezeout cell
   // - actual mean number for linear df: call mean_particle_number()
-  // - max mean number ~ particle_density * ds_max for feqmod if it doesn't break down 
+  // - max mean number ~ particle_density * ds_max for feqmod if it doesn't break down
 
   double ds_max = dsigma.dsigma_magnitude;
-  
+
   double particle_number = 0.0;
 
   switch(df_mode)
@@ -510,14 +598,14 @@ double calculate_particle_number(double mass, double degeneracy, double sign, do
     }
     case 3: // modified (Mike)
     {
-      if(!feqmod_breaks_down) 
+      if(!feqmod_breaks_down)
       {
-        double linearized_density = equilibrium_density  +  bulkPi * bulk_density;    
+        double linearized_density = equilibrium_density  +  bulkPi * bulk_density;
 
         if(linearized_density < 0.0) printf("Error in Mike's feqmod: the linearized density is negative\n");
 
         particle_number = ds_max * linearized_density;
-      }      
+      }
       else
       {
         particle_number = mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, equilibrium_density, bulk_density, T_mod, alphaB_mod, modified_density, feqmod_breaks_down, legendre_pts, pbar_root, pbar_weight, df_mode, outflow);
@@ -715,7 +803,6 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       double w_visc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, df_mode);
 
       double weight_light = w_eq * w_flux * w_visc;
-      //double weight_light = w_eq * w_visc;
 
       // check if 0 <= weight <= 1
       if(fabs(weight_light - 0.5) > 0.5) printf("Error: df weight_light = %lf out of bounds\n", weight_light);
@@ -821,7 +908,6 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       double w_visc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, df_mode);
 
       double weight_heavy = w_eq * w_flux * w_visc;
-      //double weight_heavy = w_eq * w_visc;
 
       // check if 0 <= weight <= 1
       if(fabs(weight_heavy - 0.5) > 0.5) printf("Error: df weight_heavy = %f out of bounds\n", weight_heavy);
@@ -943,7 +1029,6 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       double w_flux = pdsigma_Theta / (pLRF.E * ds_magnitude);
 
       double weight_light = w_mod * w_flux;
-      //double weight_light = w_mod;
 
       // check if 0 <= weight <= 1
       if(fabs(weight_light - 0.5) > 0.5) printf("Error: modified light weight = %f out of bounds\n", weight_light);
@@ -1047,7 +1132,6 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
       double w_flux = pdsigma_Theta / (pLRF.E * ds_magnitude);
 
       double weight_heavy = w_mod * w_flux;
-      //double weight_heavy = w_mod;
 
       // check if 0 <= weight <= 1
       if(fabs(weight_heavy - 0.5) > 0.5) printf("Error: modified heavy weight = %f out of bounds\n", weight_heavy);
@@ -1113,17 +1197,6 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       pbar_root_outflow[i] = pbar;
       pbar_weight_outflow[i] = 0.5 * pbar * pbar * legendre_weight[i] / (s * s);
     }
-
-
-    // gauss laguerre roots and weights for negative pion density calculation
-    const int laguerre_pts = laguerre->points;
-
-    double * pbar_root1 = laguerre->root[1];
-    double * pbar_root2 = laguerre->root[2];
-
-    double * pbar_weight1 = laguerre->weight[1];
-    double * pbar_weight2 = laguerre->weight[2];
-
 
     /*
     // these are default densities if no outflow or regulated dfcorrection
@@ -1250,6 +1323,12 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
       basis_vectors.test_orthonormality(tau2);
 
+      // surface element class
+      Surface_Element_Vector dsigma(dat, dax, day, dan);
+      dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
+      dsigma.compute_dsigma_magnitude();
+      dsigma.compute_dsigma_lrf_polar_angle();
+
       // shear stress class
       Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
       pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
@@ -1277,41 +1356,10 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
         bulk_mod = lambda;
       }
 
-
       double detA = compute_detA(pimunu, shear_mod, bulk_mod);
-      //double detA_bulk = pow(1.0 + bulk_mod, 3);
-      double nmod_fact = T_mod * T_mod * T_mod / two_pi2_hbarC3;   // omit detA factor
-
 
       // determine if feqmod breaks down
-      bool feqmod_breaks_down = false;
-
-      if(DF_MODE == 3)
-      {
-        // calculate linearized pion density
-        double mbar_pion0 = MASS_PION0 / T;
-        double neq_pion0 = pow(T,3) / two_pi2_hbarC3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_pion0, 0., 0., -1.);
-        double J20_pion0 = pow(T,4) / two_pi2_hbarC3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, laguerre_pts, mbar_pion0, 0., 0., -1.);
-
-        bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
-
-        //if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
-
-        if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
-      }
-      else if(DF_MODE == 4)
-      {
-        if(z < 0.0) printf("Error: z should be positive");
-
-        if(detA <= detA_min || z < 0.0) feqmod_breaks_down = true;
-      }
-
-      // surface element class
-      Surface_Element_Vector dsigma(dat, dax, day, dan);
-      dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
-      dsigma.compute_dsigma_magnitude();
-      dsigma.compute_dsigma_lrf_polar_angle();
-
+      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, detA_min, z, laguerre, DF_MODE);
 
       // total number of hadrons / eta_weight in FO_cell
       double dn_tot = 0.0;
@@ -1324,22 +1372,8 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
         double sign = Sign[ipart];
         double baryon = Baryon[ipart];
 
-        // I may want to calculate equilibrium density with the function
-        // maybe there's an semi-analytic formula for bulk density?
-        double equilibrium_density = Equilibrium_Density[ipart];  // what should I do about this? in general this needs to change
-        double bulk_density = Bulk_Density[ipart];
-
-        double modified_density = equilibrium_density;
-        if(DF_MODE == 3)
-        {
-          double mbar_mod = mass / T_mod;
-
-          modified_density = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_mod, alphaB_mod, baryon, sign);
-        }
-
-        dn_tot += mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, equilibrium_density, bulk_density, T_mod, alphaB_mod, modified_density, feqmod_breaks_down, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW);
+        dn_tot += mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, T_mod, alphaB_mod,feqmod_breaks_down, laguerre, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW, INCLUDE_BARYON);
       }
-
 
       // add mean number of hadrons in FO cell to total yield
       for(int ieta = 0; ieta < eta_pts; ieta++)
@@ -1350,7 +1384,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
     } // freezeout cells (icell)
 
     mean_yield = Ntot;
-    printf("%lf\n", Ntot/14.0); // dN/deta
+    printf("%lf\n", Ntot/14.0); // dN/deta (for the eta_trapezoid_table_57pt.dat)
 
     return Ntot;
 
@@ -1416,15 +1450,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       pbar_root_outflow[i] = pbar;
       pbar_weight_outflow[i] = 0.5 * pbar * pbar * legendre_weight[i] / (s * s);
     }
-
-    // gauss laguerre roots and weights
-    const int laguerre_pts = laguerre->points;
-
-    double * pbar_root1 = laguerre->root[1];
-    double * pbar_root2 = laguerre->root[2];
-
-    double * pbar_weight1 = laguerre->weight[1];
-    double * pbar_weight2 = laguerre->weight[2];
 
 
     // compute contributions to total mean hadron number / cell volume
@@ -1543,7 +1568,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       }
 
       deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
-      
+
       // modified coefficients (Mike / Jonah)
       double F = df.F;
       double G = df.G;
@@ -1599,31 +1624,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
 
       double detA = compute_detA(pimunu, shear_mod, bulk_mod);
-      //double detA_bulk = pow(1.0 + bulk_mod, 3);
-      double nmod_fact = T_mod * T_mod * T_mod / two_pi2_hbarC3;   // omit detA factor
 
       // determine if feqmod breaks down
-      bool feqmod_breaks_down = false;
-
-      if(DF_MODE == 3)
-      {
-        // calculate linearized pion density
-        double mbar_pion0 = MASS_PION0 / T;
-        double neq_pion0 = pow(T,3) / two_pi2_hbarC3 * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_pion0, 0., 0., -1.);
-        double J20_pion0 = pow(T,4) / two_pi2_hbarC3 * GaussThermal(J20_int, pbar_root2, pbar_weight2, laguerre_pts, mbar_pion0, 0., 0., -1.);
-
-        bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
-
-        //if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative
-
-        if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
-      }
-      else if(DF_MODE == 4)
-      {
-        if(z < 0.0) printf("Error: z should be positive");
-
-        if(detA <= detA_min || z < 0.0) feqmod_breaks_down = true;
-      }
+      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, detA_min, z, laguerre, DF_MODE);
 
       if(feqmod_breaks_down)
       {
@@ -1645,31 +1648,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         double degeneracy = Degeneracy[ipart];  // spin degeneracy
         double sign = Sign[ipart];              // quantum statistics sign
         double baryon = Baryon[ipart];          // baryon number
-        double chem = baryon * alphaB;          // chemical potential term in feq
 
-        double equilibrium_density = Equilibrium_Density[ipart];  // this needs to change because it assumes constant temperature or no corona
-        double bulk_density = Bulk_Density[ipart];
-
-        // can't I also compute this with the equilibrium particle density?
-        // there's some breakdown of the taylor expansion if muB is high
-        // maybe I can do a do while up to some interation or precision
-        double modified_density = equilibrium_density;
-        if(DF_MODE == 3)
-        {
-          double mbar_mod = mass / T_mod;
-
-          modified_density = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar_mod, alphaB_mod, baryon, sign);
-        }
-
-     
-        dn_list[ipart] = mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, equilibrium_density, bulk_density, T_mod, alphaB_mod, modified_density, feqmod_breaks_down, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW);
+        dn_list[ipart] = mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, T_mod, alphaB_mod,feqmod_breaks_down, laguerre, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW, INCLUDE_BARYON);
 
         dn_tot += dn_list[ipart];
-
       }
 
-
-      // discrete probability distribution for particle types (weight[ipart] ~ dn_list[ipart] / dn_tot)
+      // construct discrete probability distribution for particle types (weight[ipart] ~ dn_list[ipart] / dn_tot)
       std::discrete_distribution<int> particle_type(dn_list.begin(), dn_list.end());
 
       // loop over eta points
@@ -1683,16 +1668,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
         if(dN_tot <= 0.0) continue;                             // error: poisson mean value out of bounds
 
-        // poisson probability distribution for number of hadrons
+        // construct poisson probability distribution for number of hadrons
         std::poisson_distribution<int> poisson_hadrons(dN_tot);
-
 
         // sample events for each FO cell
         for(int ievent = 0; ievent < Nevents; ievent++)
         {
           int N_hadrons = poisson_hadrons(generator_poisson);   // sample total number of hadrons in FO cell
-
-          //particle_yield_list[ievent] += N_hadrons;           // add sampled hadrons to yield list
 
           for(int n = 0; n < N_hadrons; n++)
           {
@@ -1768,39 +1750,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             #pragma omp critical
             particle_event_list[ievent].push_back(new_particle);
             particle_yield_list[ievent] += 1;
-
-            /*
-            if((DF_MODE == 3 || DF_MODE == 4) && !feqmod_breaks_down)
-            {
-              // compute the flux weight separately
-              double pdsigma_Theta = max(0.0, pLab.ptau * dat  +  pLab.px * dax  +  pLab.py * day  +  pLab.pn * dan);
-              double pdsigma_max = pLRF.E * dsigma.dsigma_magnitude;
-
-              double weight_flux = pdsigma_Theta / pdsigma_max;
-
-              if(fabs(weight_flux - 0.5) > 0.5) printf("Error: flux weight = %f out of bounds\n", weight_flux);
-
-              // add sampled particle to event list with probability = weight_flux
-              if(canonical(generator_momentum) < weight_flux)
-              {
-                //CAREFUL push_back is not a thread-safe operation
-                //how should we modify for GPU version?
-                #pragma omp critical
-                particle_event_list[ievent].push_back(new_particle);
-                particle_yield_list[ievent] += 1;
-              }
-            }
-            else
-            {
-              //CAREFUL push_back is not a thread-safe operation
-              //how should we modify for GPU version?
-              #pragma omp critical
-              particle_event_list[ievent].push_back(new_particle);
-              particle_yield_list[ievent] += 1;
-            }
-            */
-            
-
 
           } // sampled hadrons (n)
         } // sampled events (ievent)
