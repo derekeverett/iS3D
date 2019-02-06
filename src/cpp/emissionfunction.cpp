@@ -865,7 +865,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         if(fabs(y) <= y_cut)
         {
           if(ipT < pTbins) pT_pdf[ipart][ipT] += 1.0;   // add counts to each bin
-
+    
           number_of_sampled_particles[ipart] += 1;      // count number for all pT
         } // rapidity cut
       }// n
@@ -1085,11 +1085,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
   
-  void EmissionFunctionArray::write_sampled_dN_dXdy_toFile(int * MCID)
+  void EmissionFunctionArray::write_sampled_dN_dX_toFile(int * MCID)
   {
-    printf("Writing event-averaged boost invariant spacetime distributions dN_dXdy of each species to file...\n");
+    printf("Writing event-averaged boost invariant spacetime distributions dN_dX of each species to file...\n");
 
-    // dX = dtau, dr or dtaudr
+    // dX = tau.dtau.deta, 2.pi.r.dr.deta or 2.pi.tau.r.dtau.dr.deta 
+    // only have boost invariance in mind right now so deta = dy (rapidity)
 
     const int npart = number_of_chosen_particles;
 
@@ -1111,18 +1112,18 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       r_midpoint[ir] = R_MIN + rbinwidth * ((double)ir + 0.5);  
     }
 
-    double ** dN_dtaudy = (double **)calloc(npart, sizeof(double));     // event averaged dN_dtaudy distribution of each species
-    double ** dN_drdy = (double **)calloc(npart, sizeof(double));       // event averaged dN_drdy distribution of each species
-    double *** dN_dtaudrdy = (double ***)calloc(npart, sizeof(double)); // event averaged dN_dtaudrdy distribution of each species   
-    long * count = (long*)calloc(npart, sizeof(long));                  // number of counts of each species from all events
+    double ** dN_taudtaudy = (double **)calloc(npart, sizeof(double));           // event averaged dN_tau.dtau.dy distribution of each species
+    double ** dN_twopirdrdy = (double **)calloc(npart, sizeof(double));          // event averaged dN_twopi.r.dr.dy distribution of each species
+    double *** dN_twopitaurdtaudrdy = (double ***)calloc(npart, sizeof(double)); // event averaged dN_twopi.tau.r.dtau.dr.dy distribution of each species   
+    long * count = (long*)calloc(npart, sizeof(long));                           // number of counts of each species from all events
 
     for(int ipart = 0; ipart < npart; ipart++)
     {
-      dN_dtaudy[ipart] = (double *)calloc(taubins, sizeof(double));
-      dN_drdy[ipart] = (double *)calloc(taubins, sizeof(double));
+      dN_taudtaudy[ipart] = (double *)calloc(taubins, sizeof(double));
+      dN_twopirdrdy[ipart] = (double *)calloc(taubins, sizeof(double));
 
-      dN_dtaudrdy[ipart] = (double **)calloc(taubins, sizeof(double));
-      for(int itau = 0; itau < taubins; itau++) dN_dtaudrdy[ipart][itau] = (double *)calloc(rbins, sizeof(double));
+      dN_twopitaurdtaudrdy[ipart] = (double **)calloc(taubins, sizeof(double));
+      for(int itau = 0; itau < taubins; itau++) dN_twopitaurdtaudrdy[ipart][itau] = (double *)calloc(rbins, sizeof(double));
     }
 
     // now go through all the events
@@ -1146,8 +1147,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         int itau = (int)floor(tau / taubinwidth); // tau bin index
         int ir = (int)floor(r / rbinwidth);       // r bin index
 
-        //cout << ipart << "\t" << itau << "\t" << ir << endl;
-
         if(itau < 0) printf("Error: tau bin index is negative\n");
         if(ir < 0) printf("Error: r bin index is negative\n");
 
@@ -1159,23 +1158,21 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           // add count to the corresponding bin(s)
           if(itau >= 0 && itau < taubins)
           {
-            dN_dtaudy[ipart][itau] += 1.0;  
+            dN_taudtaudy[ipart][itau] += 1.0;  
 
             if(ir >= 0 && ir < rbins)
             {
-              dN_dtaudrdy[ipart][itau][ir] += 1.0;
+              dN_twopitaurdtaudrdy[ipart][itau][ir] += 1.0;
             }
           }
           if(ir < rbins)
           {
-            dN_drdy[ipart][ir] += 1.0;
+            dN_twopirdrdy[ipart][ir] += 1.0;
           }                         
         } 
 
       } // n
     } // ievent
-
-    cout << "Finished counting" << endl;
 
     // now event-average dN_dXdy and normalize to dNdy and write them to file
     for(int ipart = 0; ipart < npart; ipart++)
@@ -1186,35 +1183,41 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       char file_radial[255] = "";
       char file_timeradial[255] = "";
 
-      sprintf(file_time, "results/spacetime_distribution/dN_dtaudy_sampled_%d.dat", mcid);
-      sprintf(file_radial, "results/spacetime_distribution/dN_drdy_sampled_%d.dat", mcid);
-      sprintf(file_timeradial, "results/spacetime_distribution/dN_dtaudrdy_sampled_%d.dat", mcid);
+      sprintf(file_time, "results/spacetime_distribution/dN_taudtaudy_sampled_%d.dat", mcid);
+      sprintf(file_radial, "results/spacetime_distribution/dN_twopirdrdy_sampled_%d.dat", mcid);
+      sprintf(file_timeradial, "results/spacetime_distribution/dN_twopitaurdtaudrdy_sampled_%d.dat", mcid);
 
       ofstream time_distribution(file_time, ios_base::out);
       ofstream radial_distribution(file_radial, ios_base::out);
       ofstream timeradial_distribution(file_timeradial, ios_base::out);
 
-      // normalize
+      // normalize by the binwidth(s), jacobian factor(s), events and rapidity cut
       for(int ir = 0; ir < rbins; ir++)
       {
-        dN_drdy[ipart][ir] /= (rbinwidth * (double)Nevents * 2.0 * Y_CUT);
+        double r_mid = r_midpoint[ir];
 
-        radial_distribution << setprecision(6) << scientific << r_midpoint[ir] << "\t" << dN_drdy[ipart][ir] << "\n";
+        dN_twopirdrdy[ipart][ir] /= (2.0 * M_PI * r_mid * rbinwidth * (double)Nevents * 2.0 * Y_CUT);
+
+        radial_distribution << setprecision(6) << scientific << r_midpoint[ir] << "\t" << dN_twopirdrdy[ipart][ir] << "\n";
 
         for(int itau = 0; itau < taubins; itau++)
         {
-          dN_dtaudrdy[ipart][itau][ir] /= (rbinwidth * taubinwidth * (double)Nevents * 2.0 * Y_CUT);
+          double tau_mid = tau_midpoint[itau];
 
-          timeradial_distribution << setprecision(6) << scientific << tau_midpoint[itau] << "\t" << r_midpoint[ir] << "\t" << dN_dtaudrdy[ipart][itau][ir] << "\n";
+          dN_twopitaurdtaudrdy[ipart][itau][ir] /= (2.0 * M_PI * tau_mid * r_mid * rbinwidth * taubinwidth * (double)Nevents * 2.0 * Y_CUT);
+
+          timeradial_distribution << setprecision(6) << scientific << tau_mid << "\t" << r_mid << "\t" << dN_twopitaurdtaudrdy[ipart][itau][ir] << "\n";
         }
       }
 
-      // normalize
+      // normalize by the binwidth, jacobian factors(s), events and rapidity cut
       for(int itau = 0; itau < taubins; itau++)
       {
-        dN_dtaudy[ipart][itau] /= (taubinwidth * (double)Nevents * 2.0 * Y_CUT);
+        double tau_mid = tau_midpoint[itau];
 
-        time_distribution << setprecision(6) << scientific << tau_midpoint[itau] << "\t" << dN_dtaudy[ipart][itau] << "\n";
+        dN_taudtaudy[ipart][itau] /= (tau_mid * taubinwidth * (double)Nevents * 2.0 * Y_CUT);
+
+        time_distribution << setprecision(6) << scientific << tau_mid << "\t" << dN_taudtaudy[ipart][itau] << "\n";
       }
 
       time_distribution.close();
@@ -1222,83 +1225,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       timeradial_distribution.close();
     } // ipart
 
-    //delete dN_dtaudy;
-    //delete dN_drdy;
-    //delete dN_dtaudrdy;
+    // free memory
+    free_2D(dN_taudtaudy, npart);      
+    free_2D(dN_twopirdrdy, npart);         
+    free_3D(dN_twopitaurdtaudrdy, npart, taubins);  
+    free(count);   
   }
-
-  /*
-
-  void EmissionFunctionArray::write_sampled_dN_drdy_toFile(int * MCID)
-  {
-    printf("Writing event-averaged boost invariant dN_drdy of each species to file...\n");
-
-    const int npart = number_of_chosen_particles;
-    const int rbins = R_BINS;
-    const double rbinwidth = (R_MAX - R_MIN) / (double)R_BINS;
-    double r_midpoint[rbins];                 // r grid (the bin midpoints)
-
-    double dN_drdy[npart][rbins];             // event averaged dN_drdy distribution of each species
-    long count[npart];                        // number of counts of each species from all events
-
-    for(int ipart = 0; ipart < npart; ipart++) count[ipart] = 0;
-    
-    // set r grid and initialize distributions to zero
-    for(int ir = 0; ir < rbins; ir++)
-    {
-      r_midpoint[ir] = R_MIN + rbinwidth * ((double)ir + 0.5);
-
-      for(int ipart = 0; ipart < npart; ipart++) dN_drdy[ipart][ir] = 0.0;
-    }
-
-    // now go through all the events
-    for(int ievent = 0; ievent < Nevents; ievent++)
-    {
-      int N = particle_event_list[ievent].size();
-
-      // number of particles of a given event
-      for(int n = 0; n < N; n++)
-      {
-        int ipart = particle_event_list[ievent][n].chosen_index; 
-        double x = particle_event_list[ievent][n].x;
-        double y = particle_event_list[ievent][n].y;
-        double E = particle_event_list[ievent][n].E;
-        double pz = particle_event_list[ievent][n].pz;
-
-        double r = sqrt(x * x  +  y * y);
-        double y = 0.5 * log((E + pz) / (E - pz));
-
-        int ir = (int)floor(r / rbinwidth);           // r bin index
-
-        if(fabs(y) <= Y_CUT)
-        {
-          if(ir < rbins) dN_drdy[ipart][ir] += 1.0;   // add counts to each bin
-          count[ipart] += 1;                          // count number for all r
-        } 
-
-      } // n
-    } // ievent
-
-    // now event-average dN_drdy and normalize to dNdy and write them to file
-    for(int ipart = 0; ipart < npart; ipart++)
-    {
-      char filename[255] = "";
-      int mcid = MCID[ipart]; // we can just use this in place
-      sprintf(filename, "results/r_distribution/dN_drdy_sampled_%d.dat", mcid);
-      ofstream radial_distribution(filename, ios_base::out);
-
-      for(int ir = 0; ir < rbins; ir++)
-      {
-        // normalizate
-        dN_drdy[ipart][ir] /= (rbinwidth * (double)Nevents * 2.0 * Y_CUT);
-
-        radial_distribution << setprecision(6) << scientific << r_midpoint[ir] << "\t" << dN_drdy[ipart][ir] << "\n";
-      } // ipT
-      radial_distribution.close();
-    } // ipart
-  }
-
-  */
   
 
   void EmissionFunctionArray::write_yield_list_toFile()
@@ -1321,6 +1253,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
+    #ifdef _OPENMP
+    //double sec = omp_get_wtime();
+    #endif
     Stopwatch sw;
     sw.tic();
 
@@ -1362,7 +1297,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     }
 
     //compute jonah feqmod coefficients summing over only chosen resonances
-    if (DF_MODE == 4) df_data->compute_jonah_coefficients(Degeneracy, Mass, Sign, number_of_chosen_particles);
+    //if (DF_MODE == 4) df_data->compute_jonah_coefficients(Degeneracy, Mass, Sign, number_of_chosen_particles);
 
     // gauss laguerre roots and weights
     Gauss_Laguerre * gla = new Gauss_Laguerre;
@@ -1565,7 +1500,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         {
           switch(OPERATION)
           {
-            case 1: // smooth CFF
+            case 0: // smooth CFF spacetime distribution
+            {
+              calculate_dN_dX(MCID, Mass, Sign, Degeneracy, Baryon, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data);
+              break;
+            }
+            case 1: // smooth CFF momentum distribution
             {
               calculate_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, T, P, E, tau, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data);
               break;
@@ -1593,7 +1533,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               //write_particle_list_OSC();
               write_sampled_pT_pdf_toFile(MCID);
               write_sampled_vn_toFile(MCID);
-              write_sampled_dN_dXdy_toFile(MCID);
+              write_sampled_dN_dX_toFile(MCID);
               write_yield_list_toFile();
 
               particle_event_list_in = particle_event_list[0];
@@ -1612,6 +1552,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         {
           switch(OPERATION)
           {
+            case 0: // smooth CFF spacetime distribution
+            {
+              calculate_dN_dX_feqmod(MCID, Mass, Sign, Degeneracy, Baryon, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, gla, df_data);
+              break;
+            }
             case 1: // smooth CF
             {
               calculate_dN_ptdptdphidy_feqmod(Mass, Sign, Degeneracy, Baryon, T, P, E, tau, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, gla, df_data);
@@ -1638,7 +1583,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               //write_particle_list_OSC();
               write_sampled_pT_pdf_toFile(MCID);
               write_sampled_vn_toFile(MCID);
-              write_sampled_dN_dXdy_toFile(MCID);
+              write_sampled_dN_dX_toFile(MCID);
               write_yield_list_toFile();
 
               particle_event_list_in = particle_event_list[0];

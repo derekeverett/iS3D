@@ -74,5 +74,6 @@ double R200(double aL);
 void LUP_decomposition(double ** A, int n, int * pvector);
 void LUP_solve(double ** PA, int n, int pvector[], double b[]);
 void free_2D(double ** M, int n);
+void free_3D(double *** M, int n, int m);
 
 #endif
