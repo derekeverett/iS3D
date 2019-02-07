@@ -60,6 +60,7 @@ typedef struct
 double compute_detA(Shear_Stress pimunu, double betapi, double bulk_mod);
 
 bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pion0, double bulkPi, double F, double betabulk);
+bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi, double betabulk, double detA, double detA_min, double z, Gauss_Laguerre * laguerre, int df_mode);
 
 // thermal particle density with outflow only (needed if enforce p.dsigma > 0)
 //double equilibrium_density_outflow(double mbar_squared, double sign, double chem, double dsigmaTime_over_dsigmaSpace, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
@@ -94,14 +95,21 @@ private:
   long int MIN_NUM_HADRONS; //min number of particles summed over all samples
   long int SAMPLER_SEED; //the seed for the particle sampler. If chosen < 0, seed set with clocktime
 
+  int TEST_SAMPLER;
+
   // for binning sampled particles (for sampler tests)
   double PT_LOWER_CUT;
   double PT_UPPER_CUT;
   int PT_BINS;
   double Y_CUT;
 
+  double TAU_MIN;
+  double TAU_MAX;
+  int TAU_BINS;
 
-  int DYNAMICAL;
+  double R_MIN;
+  double R_MAX;
+  int R_BINS;
 
   int Nevents;              // number of sampled events
   double mean_yield;        // mean number of particles emitted from freezeout surface (includes backflow)
@@ -125,14 +133,13 @@ private:
   int number_of_chosen_particles;
   particle_info* particles;       // contains all the particle info from pdg.dat
   FO_surf* surf_ptr;
-  deltaf_coefficients * df;
   Deltaf_Data * df_data;
   bool particles_are_the_same(int, int);
 
 public:
 
   // constructor / destructor
-  EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients * df_in, Deltaf_Data * df_data_in);
+  EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, Deltaf_Data * df_data_in);
   ~EmissionFunctionArray();
 
   // main function
@@ -146,7 +153,15 @@ public:
   void calculate_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Deltaf_Data *df_data);
 
   // continuous spectra with feqmod
-  void calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Gauss_Laguerre * gla, Deltaf_Data * df_data);
+  void calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Gauss_Laguerre * laguerre, Deltaf_Data * df_data);
+
+  void calculate_dN_dX(int *MCID, double *Mass, double *Sign, double *Degeneracy, double *Baryon,
+  double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
+  double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
+  double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
+  double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Deltaf_Data *df_data);
+
+   void calculate_dN_dX_feqmod(int *MCID, double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Gauss_Laguerre * laguerre, Deltaf_Data * df_data);
 
   // continuous spectra with fa + dft
   void calculate_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
@@ -191,16 +206,17 @@ public:
   void write_dN_twopipTdpTdy_toFile(int *MCID);
   void write_dN_twopidpTdy_toFile(int *MCID);
   void write_dN_dy_toFile(int *MCID);
+  void write_continuous_vn_toFile(int *MCID);
   void write_polzn_vector_toFile(); //write components of spin polarization vector to file
 
   void write_dN_dpTdphidy_toFile(int *MCID);   // write 3D spectra to file in experimental bins
   void write_dN_dpTdphidy_with_resonance_decays_toFile();   // write 3D spectra to file in experimental bins (w/ resonance decay effects)
-  void write_particle_list_toFile();  // write sampled particle list
-  void write_particle_list_OSC(); //write sampled particle list in OSCAR format for UrQMD/SMASH
-  void write_momentum_list_toFile();  // write sampled momentum list
-  void write_yield_list_toFile();     // write mean yield and sampled yield list to files
-  void write_sampled_pT_pdf_toFile(int * MCID);
-  void write_sampled_vn_toFile(int * MCID);
+  void write_particle_list_toFile();              // write sampled particle list
+  void write_particle_list_OSC();                 // write sampled particle list in OSCAR format for UrQMD/SMASH
+  void write_yield_list_toFile();                 // write mean yield and sampled yield list to files
+  void write_sampled_pT_pdf_toFile(int * MCID);   // sampled boost-invariant dNdpT / N distributions
+  void write_sampled_vn_toFile(int * MCID);       // sampled boost-invariant vn(pT)
+  void write_sampled_dN_dX_toFile(int * MCID);  // sampled boost-invariant spacetime distributions dN_dXdy (dX = dtau, dr or (dtaudr)) (y = rapidity)
 
 
   //:::::::::::::::::::::::::::::::::::::::::::::::::

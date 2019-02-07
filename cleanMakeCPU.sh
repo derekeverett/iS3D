@@ -2,6 +2,9 @@
 rm "average_thermodynamic_quantities.dat"
 rm -r results
 mkdir results
+mkdir results/vn
+mkdir results/vn_continuous
+mkdir results/spacetime_distribution
 
 rm iS3D.e
 cd src

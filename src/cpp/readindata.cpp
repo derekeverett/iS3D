@@ -1196,7 +1196,7 @@ void FO_data_reader::read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr)
 }
 
 
-int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_ptr, deltaf_coefficients * df)
+int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_ptr)
 {
   double eps = 1e-15;
   int Nparticle=0;
@@ -1291,6 +1291,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
     else particle[i].sign = 1;
   }
 
+  /*
   // get the average temperature, energy density, pressure
   Plasma QGP;
   QGP.load_thermodynamic_averages();
@@ -1398,6 +1399,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
     particle[i].bulk_density = dn_bulk;
     particle[i].diff_density = dn_diff;
   }
+  */
 
   return Nparticle;
 }

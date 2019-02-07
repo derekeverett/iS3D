@@ -17,6 +17,8 @@
 
 using namespace std;
 
+/*
+
 Deltaf_Reader::Deltaf_Reader(ParameterReader * paraRdr_in)
 {
   paraRdr = paraRdr_in;
@@ -54,11 +56,11 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
   {
     printf("14-moment coefficients vhydro...\n");
     // coefficient files and names
-    FILE * c0_file = fopen("deltaf_coefficients/vh/c0_df14_vh.dat", "r");
-    FILE * c1_file = fopen("deltaf_coefficients/vh/c1_df14_vh.dat", "r");
-    FILE * c2_file = fopen("deltaf_coefficients/vh/c2_df14_vh.dat", "r");
-    FILE * c3_file = fopen("deltaf_coefficients/vh/c3_df14_vh.dat", "r");
-    FILE * c4_file = fopen("deltaf_coefficients/vh/c4_df14_vh.dat", "r");
+    FILE * c0_file = fopen("deltaf_coefficients/vh/old/c0_df14_vh.dat", "r");
+    FILE * c1_file = fopen("deltaf_coefficients/vh/old/c1_df14_vh.dat", "r");
+    FILE * c2_file = fopen("deltaf_coefficients/vh/old/c2_df14_vh.dat", "r");
+    FILE * c3_file = fopen("deltaf_coefficients/vh/old/c3_df14_vh.dat", "r");
+    FILE * c4_file = fopen("deltaf_coefficients/vh/old/c4_df14_vh.dat", "r");
 
     if(c0_file == NULL) printf("Couldn't open c0 coefficient file!\n");
     if(c1_file == NULL) printf("Couldn't open c1 coefficient file!\n");
@@ -150,11 +152,11 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
     printf("Chapman-Enskog coefficients vhydro...\n");
 
     // coefficient files and names
-    FILE * F_file = fopen("deltaf_coefficients/vh/F_dfce_vh.dat", "r");
-    FILE * G_file = fopen("deltaf_coefficients/vh/G_dfce_vh.dat", "r");
-    FILE * betabulk_file = fopen("deltaf_coefficients/vh/betabulk_dfce_vh.dat", "r");
-    FILE * betaV_file = fopen("deltaf_coefficients/vh/betaV_dfce_vh.dat", "r");
-    FILE * betapi_file = fopen("deltaf_coefficients/vh/betapi_dfce_vh.dat", "r");
+    FILE * F_file = fopen("deltaf_coefficients/vh/old/F_dfce_vh.dat", "r");
+    FILE * G_file = fopen("deltaf_coefficients/vh/old/G_dfce_vh.dat", "r");
+    FILE * betabulk_file = fopen("deltaf_coefficients/vh/old/betabulk_dfce_vh.dat", "r");
+    FILE * betaV_file = fopen("deltaf_coefficients/vh/old/betaV_dfce_vh.dat", "r");
+    FILE * betapi_file = fopen("deltaf_coefficients/vh/old/betapi_dfce_vh.dat", "r");
 
     if(F_file == NULL) printf("Couldn't open F coefficient file!\n");
     if(G_file == NULL) printf("Couldn't open G coefficient file!\n");
@@ -360,6 +362,7 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
   }
   return df_data;
 }
+*/
 
 Deltaf_Data::Deltaf_Data(ParameterReader * paraRdr_in)
 {
@@ -375,12 +378,14 @@ Deltaf_Data::~Deltaf_Data()
   // is there any harm in deallocating memory, while it's being used?
   gsl_spline_free(c0_spline);
   gsl_spline_free(c2_spline);
+  gsl_spline_free(c3_spline);
 
   gsl_spline_free(F_spline);
   gsl_spline_free(betabulk_spline);
+  gsl_spline_free(betaV_spline);
   gsl_spline_free(betapi_spline);
 
-  gsl_spline_free(lambda_spline);
+  gsl_spline_free(lambda_squared_spline);
   gsl_spline_free(z_spline);
 }
 
@@ -389,17 +394,17 @@ void Deltaf_Data::load_df_coefficient_data()
   printf("Reading in 14 moment and Chapman-Enskog coefficient tables...");
 
   // coefficient files and names
-  FILE * c0_file = fopen("deltaf_coefficients/vh/c0_df14_vh.dat", "r");
-  FILE * c1_file = fopen("deltaf_coefficients/vh/c1_df14_vh.dat", "r");
-  FILE * c2_file = fopen("deltaf_coefficients/vh/c2_df14_vh.dat", "r");
-  FILE * c3_file = fopen("deltaf_coefficients/vh/c3_df14_vh.dat", "r");
-  FILE * c4_file = fopen("deltaf_coefficients/vh/c4_df14_vh.dat", "r");
+  FILE * c0_file = fopen("deltaf_coefficients/vh/c0.dat", "r"); // 14 moment (coefficients are scaled by some power of temperature)
+  FILE * c1_file = fopen("deltaf_coefficients/vh/c1.dat", "r");
+  FILE * c2_file = fopen("deltaf_coefficients/vh/c2.dat", "r");
+  FILE * c3_file = fopen("deltaf_coefficients/vh/c3.dat", "r");
+  FILE * c4_file = fopen("deltaf_coefficients/vh/c4.dat", "r");
 
-  FILE * F_file = fopen("deltaf_coefficients/vh/F_dfce_vh.dat", "r");
-  FILE * G_file = fopen("deltaf_coefficients/vh/G_dfce_vh.dat", "r");
-  FILE * betabulk_file = fopen("deltaf_coefficients/vh/betabulk_dfce_vh.dat", "r");
-  FILE * betaV_file = fopen("deltaf_coefficients/vh/betaV_dfce_vh.dat", "r");
-  FILE * betapi_file = fopen("deltaf_coefficients/vh/betapi_dfce_vh.dat", "r");
+  FILE * F_file = fopen("deltaf_coefficients/vh/F.dat", "r"); // Chapman Enskog (coefficients are scaled by some power of temperature)
+  FILE * G_file = fopen("deltaf_coefficients/vh/G.dat", "r");
+  FILE * betabulk_file = fopen("deltaf_coefficients/vh/betabulk.dat", "r");
+  FILE * betaV_file = fopen("deltaf_coefficients/vh/betaV.dat", "r");
+  FILE * betapi_file = fopen("deltaf_coefficients/vh/betapi.dat", "r");
 
   if(c0_file == NULL) printf("Couldn't open c0 coefficient file!\n");
   if(c1_file == NULL) printf("Couldn't open c1 coefficient file!\n");
@@ -491,6 +496,7 @@ void Deltaf_Data::load_df_coefficient_data()
       fscanf(betapi_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &betapi_data[iB][iT]);
 
       // convert to the real-life units (the file units were in hbar*c = 1 or fm only)
+      /*
       T_array[iT] *= hbarC;
       muB_array[iB] *= hbarC;
 
@@ -503,6 +509,7 @@ void Deltaf_Data::load_df_coefficient_data()
       F_data[iB][iT] *= hbarC;
       betabulk_data[iB][iT] *= hbarC;
       betapi_data[iB][iT] *= hbarC;
+      */
     } // iT
   } // iB
 
@@ -525,7 +532,7 @@ void Deltaf_Data::load_df_coefficient_data()
 void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int Nparticle)
 {
   // allocate memory for the arrays
-  lambda_array = (double *)calloc(jonah_points, sizeof(double));
+  lambda_squared_array = (double *)calloc(jonah_points, sizeof(double));
   z_array = (double *)calloc(jonah_points, sizeof(double));
   bulkPi_over_Peq_array = (double *)calloc(jonah_points, sizeof(double));
 
@@ -583,26 +590,26 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     double bulkPi_over_Peq = (P_mod / P) * z  -  1.0;
 
     // set the arrays and update the max bulk pressure
-    lambda_array[i] = lambda;
+    lambda_squared_array[i] = lambda * lambda;
     z_array[i] = z;
     bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
     bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
 
-    //cout << lambda_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
+    //cout << lambda_squared_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
   }
 
   // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
-  lambda_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
+  lambda_squared_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
   z_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
 
-  gsl_spline_init(lambda_spline, bulkPi_over_Peq_array, lambda_array, jonah_points);
+  gsl_spline_init(lambda_squared_spline, bulkPi_over_Peq_array, lambda_squared_array, jonah_points);
   gsl_spline_init(z_spline, bulkPi_over_Peq_array, z_array, jonah_points);
 }
 
 void Deltaf_Data::compute_jonah_coefficients(double *Degeneracy, double *Mass, double *Sign, int number_of_chosen_particles)
 {
   // allocate memory for the arrays
-  lambda_array = (double *)calloc(jonah_points, sizeof(double));
+  lambda_squared_array = (double *)calloc(jonah_points, sizeof(double));
   z_array = (double *)calloc(jonah_points, sizeof(double));
   bulkPi_over_Peq_array = (double *)calloc(jonah_points, sizeof(double));
 
@@ -660,19 +667,19 @@ void Deltaf_Data::compute_jonah_coefficients(double *Degeneracy, double *Mass, d
     double bulkPi_over_Peq = (P_mod / P) * z  -  1.0;
 
     // set the arrays and update the max bulk pressure
-    lambda_array[i] = lambda;
+    lambda_squared_array[i] = lambda * lambda;
     z_array[i] = z;
     bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
     bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
 
-    //cout << lambda_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
+    //cout << lambda_squared_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
   }
 
   // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
-  lambda_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
+  lambda_squared_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
   z_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
 
-  gsl_spline_init(lambda_spline, bulkPi_over_Peq_array, lambda_array, jonah_points);
+  gsl_spline_init(lambda_squared_spline, bulkPi_over_Peq_array, lambda_squared_array, jonah_points);
   gsl_spline_init(z_spline, bulkPi_over_Peq_array, z_array, jonah_points);
 }
 
@@ -681,17 +688,21 @@ void Deltaf_Data::construct_cubic_splines()
   // Allocate memory for cubic splines
   c0_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
   c2_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
+  c3_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
 
   F_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
   betabulk_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
   betapi_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
+  betaV_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
 
   // Initialize the cubic splines
   gsl_spline_init(c0_spline, T_array, c0_data[0], points_T);
   gsl_spline_init(c2_spline, T_array, c2_data[0], points_T);
+  gsl_spline_init(c3_spline, T_array, c3_data[0], points_T);
 
   gsl_spline_init(F_spline, T_array, F_data[0], points_T);
   gsl_spline_init(betabulk_spline, T_array, betabulk_data[0], points_T);
+  gsl_spline_init(betaV_spline, T_array, betaV_data[0], points_T);
   gsl_spline_init(betapi_spline, T_array, betapi_data[0], points_T);
 
   // I'm not sure what to do with jonah's coefficients though...(maybe it makes sense to do linear interpolation?)
@@ -709,10 +720,14 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
   {
     case 1: // 14 moment
     {
-      df.c0 = gsl_spline_eval(c0_spline, T, accel_T);
+      // undo the temperature power scaling of coefficients
+      double T4 = T * T * T * T;
+
+      df.c0 = gsl_spline_eval(c0_spline, T, accel_T) / T4;
       df.c1 = 0.0;
-      df.c2 = gsl_spline_eval(c2_spline, T, accel_T);
+      df.c2 = gsl_spline_eval(c2_spline, T, accel_T) / T4;
       df.c3 = 0.0;
+      //df.c3 = gsl_spline_eval(c3_spline, T, accel_T) / T4;
       df.c4 = 0.0;
       df.shear14_coeff = 2.0 * T * T * (E + P);
 
@@ -721,19 +736,38 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
     case 2: // Chapman Enskog
     case 3: // Modified (Mike)
     {
-      df.F = gsl_spline_eval(F_spline, T, accel_T);
+      // undo the temperature power scaling of coefficients
+      //double T3 = T * T * T;
+      double T4 = T * T * T * T;
+
+      df.F = gsl_spline_eval(F_spline, T, accel_T) * T;
       df.G = 0.0;
-      df.betabulk = gsl_spline_eval(betabulk_spline, T, accel_T);
+      df.betabulk = gsl_spline_eval(betabulk_spline, T, accel_T) * T4; 
       df.betaV = 1.0;
-      df.betapi = gsl_spline_eval(betapi_spline, T, accel_T);
+      //df.betaV = gsl_spline_eval(betaV_spline, T, accel_T) * T3;
+      df.betapi = gsl_spline_eval(betapi_spline, T, accel_T) * T4;
 
       break;
     }
     case 4: // Modified (Jonah)
     {
-      df.lambda = gsl_spline_eval(lambda_spline, (bulkPi / P), accel_bulk);
+      // undo the temperature power scaling of betapi
+      double T4 = T * T * T * T;
+
+      double lambda_squared = gsl_spline_eval(lambda_squared_spline, (bulkPi / P), accel_bulk);
+      if(bulkPi < 0.0)
+      {
+        df.lambda = - sqrt(lambda_squared);
+      }
+      else if(bulkPi > 0.0)
+      {
+        df.lambda = sqrt(lambda_squared);
+      }
       df.z = gsl_spline_eval(z_spline, (bulkPi / P), accel_bulk);
-      df.betapi = gsl_spline_eval(betapi_spline, T, accel_T);
+      df.betapi = gsl_spline_eval(betapi_spline, T, accel_T) * T4;
+      // linearized correction to lambda, z
+      df.delta_lambda = bulkPi / (5.0 * df.betapi -  3.0 * P * (E + P) / E);
+      df.delta_z = - 3.0 * df.delta_lambda * P / E; 
 
       break;
     }
@@ -758,7 +792,7 @@ deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, do
 
 
   // FILL THIS IN LATER
-  printf("Error: bilinear interpolation routine is empty a.t.m.\n");
+  printf("df coefficient interpolation error: bilinear interpolation routine is empty atm\n");
   exit(-1);
 
 

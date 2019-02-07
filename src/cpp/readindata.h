@@ -125,6 +125,9 @@ typedef struct
   double lambda;
   double z;
 
+  double delta_lambda;    // linearize lambda = 0 + delta_lambda
+  double delta_z;         // linearize z = 1 + delta_z
+
 } deltaf_coefficients;
 
 
@@ -155,7 +158,7 @@ class FO_data_reader
         void read_surf_VH_MUSIC(long length, FO_surf * surf_ptr);
         void read_surf_VH_MUSIC_New(long length, FO_surf* surf_ptr);
         void read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr);
-        int read_resonances_list(particle_info * particle, FO_surf * surf_ptr, deltaf_coefficients * df);
+        int read_resonances_list(particle_info * particle, FO_surf * surf_ptr);
 };
 
 #endif
