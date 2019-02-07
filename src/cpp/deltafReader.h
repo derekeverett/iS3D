@@ -12,6 +12,7 @@
 
 using namespace std;
 
+/*
 class Deltaf_Reader
 {
     private:
@@ -27,7 +28,7 @@ class Deltaf_Reader
 
         deltaf_coefficients load_coefficients(FO_surf *surface, long FO_length_in);
 };
-
+*/
 
 class Deltaf_Data
 {

@@ -134,21 +134,21 @@ void IS3D::run_particlization(int fo_from_file)
   }
 
   // load delta-f coefficients
+  /*
   deltaf_coefficients * df = new deltaf_coefficients;
   Deltaf_Reader deltaf(paraRdr);
   *df = deltaf.load_coefficients(surf_ptr, FO_length);
+  */
 
   // load particle info
   particle_info *particle_data = new particle_info [Maxparticle];
-  int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr, df); //number of resonances in pdg file
+  int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr); //number of resonances in pdg file
 
   // this will replace Deltaf_Reader
   Deltaf_Data * df_data = new Deltaf_Data(paraRdr);
   df_data->load_df_coefficient_data();
   df_data->construct_cubic_splines();
-  //instead of computing lambda and z assuming all resonances in pdg.dat,
-  //evaluate them instead assuming only chosen resonances
-  //df_data->compute_jonah_coefficients(particle_data, Nparticle);
+  df_data->compute_jonah_coefficients(particle_data, Nparticle);
 
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
   //switch to different method of reading chosen_particles.dat file that doesn't
@@ -158,15 +158,15 @@ void IS3D::run_particlization(int fo_from_file)
   cout << "Total number of freezeout cells: " <<  FO_length << endl;
   cout << "Number of chosen particles: " << chosen_particles.getNumberOfRows() << endl;
 
-  Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
+  Table pT_tab("tables/pT_gauss_table.dat");   // pT value and weight table
   Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
-  Table y_tab("tables/y_trapezoid_table_21pt.dat"); //y values and weights
-  string etaTableFile = "tables/eta_gauss_table.dat"; //for smooth C.F.
+  Table y_tab("tables/y_trapezoid_table_21pt.dat"); // y values and weights
+  string etaTableFile = "tables/eta_gauss_table.dat"; // for smooth C.F.
   int operation = paraRdr->getVal("operation");
   if (operation == 2) etaTableFile = "tables/eta_sampling_gauss_table.dat";
   Table eta_tab(etaTableFile); //eta_s values and weights
 
-  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df, df_data);
+  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df_data);
 
   std::vector<Sampled_Particle> particle_event_list_in;
   efa.calculate_spectra(particle_event_list_in);

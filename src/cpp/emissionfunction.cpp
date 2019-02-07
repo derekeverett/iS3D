@@ -134,7 +134,7 @@ bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi,
   {
     if(z < 0.0) printf("Error: z should be positive");
 
-    if(detA <= detA_min || z < 0.0) return true;
+    //if(detA <= detA_min || z < 0.0) return true;
   }
 
   return false;
@@ -145,7 +145,7 @@ bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi,
 // Class EmissionFunctionArray ------------------------------------------
 EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in,
   Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in,
-  int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in,  deltaf_coefficients * df_in, Deltaf_Data * df_data_in)
+  int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in, Deltaf_Data * df_data_in)
   {
     paraRdr = paraRdr_in;
     pT_tab = pT_tab_in;
@@ -184,6 +184,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     SAMPLER_SEED = paraRdr->getVal("sampler_seed");
     if (OPERATION == 2) printf("Sampler seed set to %d \n", SAMPLER_SEED);
 
+    TEST_SAMPLER = paraRdr->getVal("test_sampler");
+
     // for binning the sampled particles (for sampler tests)
     PT_LOWER_CUT = paraRdr->getVal("pT_lower_cut");
     PT_UPPER_CUT = paraRdr->getVal("pT_upper_cut");
@@ -199,16 +201,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     R_MAX = paraRdr->getVal("r_max");
     R_BINS = paraRdr->getVal("r_bins");
 
-
-    DYNAMICAL = paraRdr->getVal("dynamical");
-
     Nevents = 1;    // default value for number of sampled events
 
     particles = particles_in;
     Nparticles = Nparticles_in;
     surf_ptr = surf_ptr_in;
     FO_length = FO_length_in;
-    df = df_in;
     df_data = df_data_in;
     number_of_chosen_particles = chosen_particles_in->getNumberOfRows();
 
@@ -1287,9 +1285,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
-    #ifdef _OPENMP
-    //double sec = omp_get_wtime();
-    #endif
     Stopwatch sw;
     sw.tic();
 
@@ -1329,9 +1324,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       Bulk_Density[ipart] = particle->bulk_density;
       Diffusion_Density[ipart] = particle->diff_density;
     }
-
-    //compute jonah feqmod coefficients summing over only chosen resonances
-    //if (DF_MODE == 4) df_data->compute_jonah_coefficients(Degeneracy, Mass, Sign, number_of_chosen_particles);
 
     // gauss laguerre roots and weights
     Gauss_Laguerre * gla = new Gauss_Laguerre;
@@ -1560,19 +1552,24 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               particle_event_list.resize(Nevents);
               particle_yield_list.resize(Nevents, 0);
 
-              if(DF_MODE == 1) printf("Sampling particles with df 14 moment...\n");
-              if(DF_MODE == 2) printf("Sampling particles with df Chapman Enskog...\n");
+              if(DF_MODE == 1) printf("Sampling particles with Grad 14 moment df...\n");
+              if(DF_MODE == 2) printf("Sampling particles with Chapman Enskog df...\n");
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
+            
+              if(TEST_SAMPLER) // only for testing the sampler 
+              {
+                write_sampled_pT_pdf_toFile(MCID);
+                write_sampled_vn_toFile(MCID);
+                write_sampled_dN_dX_toFile(MCID);
+                write_yield_list_toFile();
+              }
+              else // do for actual runs
+              {
+                write_particle_list_OSC();  
+              }
 
-              //write_particle_list_toFile();
-              //write_particle_list_OSC();
-              write_sampled_pT_pdf_toFile(MCID);
-              write_sampled_vn_toFile(MCID);
-              write_sampled_dN_dX_toFile(MCID);
-              write_yield_list_toFile();
-
-              particle_event_list_in = particle_event_list[0];
+              particle_event_list_in = particle_event_list[0];  // only one event per core
               break;
             }
             default:
@@ -1612,17 +1609,23 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               particle_event_list.resize(Nevents);
               particle_yield_list.resize(Nevents, 0);
 
-              if(DF_MODE == 3) printf("Sampling particles with feqmod (Mike)...\n");
-              if(DF_MODE == 4) printf("Sampling particles with feqmod (Jonah)...\n");
+              if(DF_MODE == 3) printf("Sampling particles with Mike's modified distribution...\n");
+              if(DF_MODE == 4) printf("Sampling particles with Jonah's modified distribution...\n");
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
-              //write_particle_list_toFile();
-              //write_particle_list_OSC();
-              write_sampled_pT_pdf_toFile(MCID);
-              write_sampled_vn_toFile(MCID);
-              write_sampled_dN_dX_toFile(MCID);
-              write_yield_list_toFile();
+
+              if(TEST_SAMPLER) // only for testing the sampler 
+              {
+                write_sampled_pT_pdf_toFile(MCID);
+                write_sampled_vn_toFile(MCID);
+                write_sampled_dN_dX_toFile(MCID);
+                write_yield_list_toFile();
+              }
+              else // do for actual runs
+              {
+                write_particle_list_OSC();  
+              }
 
               particle_event_list_in = particle_event_list[0];
 
@@ -1681,12 +1684,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     {
       write_dN_pTdpTdphidy_toFile(MCID);
       //write_dN_dpTdphidy_toFile(MCID);
-      write_continuous_vn_toFile(MCID);
-
-      //write_dN_dphidy_toFile(MCID);
-      write_dN_dy_toFile(MCID);
+      //write_continuous_vn_toFile(MCID);
       //write_dN_twopipTdpTdy_toFile(MCID);
       //write_dN_twopidpTdy_toFile(MCID);
+      //write_dN_dphidy_toFile(MCID);
+      //write_dN_dy_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)

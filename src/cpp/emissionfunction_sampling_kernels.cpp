@@ -384,26 +384,10 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
 
       if(!outflow || ds_time >= ds_space)
       {
-        if(linearized_density < 0.0) printf("Error: linearized density is negative\n");
+        if(linearized_density < 0.0) printf("Error: linearized density is negative. Adjust the mass_pion0 parameter...\n");
 
         particle_number = ds_time * linearized_density;
 
-        // radial momentum pbar integral (pbar = p / T)
-        /*
-        for(int i = 0; i < legendre_pts; i++)
-        {
-          double pbar_mod = pbar_root[i];
-          double weight = pbar_weight[i];
-
-          double Ebar_mod = sqrt(pbar_mod * pbar_mod  +  mbar_mod * mbar_mod);
-
-          double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
-
-          particle_number += weight * feqmod;
-        } // i
-
-        particle_number *= 2.0 * ds_time * degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
-        */
       } // timelike cell
       else
       {
@@ -438,23 +422,6 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           if(z < 0.0) printf("Error: z is negative\n");
 
           particle_number = ds_time * z * equilibrium_density;
-
-          // radial momentum pbar integral (pbar = p / T)
-          /*
-          for(int i = 0; i < legendre_pts; i++)
-          {
-            double pbar_mod = pbar_root[i];
-            double weight = pbar_weight[i];
-
-            double Ebar_mod = sqrt(pbar_mod * pbar_mod  +  mbar_mod * mbar_mod);
-
-            double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
-
-            particle_number += weight * feqmod;
-          } // i
-
-          particle_number *= 2.0 * ds_time * degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
-          */
         }
         else
         {
@@ -744,9 +711,18 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
   double mass_squared = mass * mass;
   double chem = baryon * alphaB;
 
-  // currently the momentum sampler does not work for bosons with nonzero chemical potential
+  // currently the momentum sampler does not work for photons and bosons with nonzero chemical potential
   // so non-equilibrium or electric / strange charge chemical potentials are not considered
-  if(sign == -1.0 && chem != 0.0) printf("Error: bosons have chemical potential\n");
+  if(mass == 0.0)
+  {
+    printf("Error: cannot sample photons with this method. Exiting...\n");
+    exit(-1);
+  }
+  if(sign == -1.0 && chem != 0.0)
+  {
+    printf("Error: bosons have chemical potential. Exiting...\n");
+    exit(-1);
+  }
 
   // uniform distributions in (phi,costheta) on standby:
   uniform_real_distribution<double> phi_distribution(0.0, two_pi);
@@ -967,9 +943,18 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
   double mass_squared = mass * mass;
   double chem_mod = baryon * alphaB_mod;
 
-  // currently the momentum sampler does not work for bosons with nonzero chemical potential
+  // currently the momentum sampler does not work for photons and bosons with nonzero chemical potential
   // so non-equilibrium or electric / strange charge chemical potentials are not considered
-  if(sign == -1.0 && chem_mod != 0.0) printf("Error: bosons have chemical potential\n");
+  if(mass == 0.0)
+  {
+    printf("Error: cannot sample photons with this method. Exiting...\n");
+    exit(-1);
+  }
+  if(sign == -1.0 && chem_mod != 0.0)
+  {
+    printf("Error: bosons have chemical potential. Exiting...\n");
+    exit(-1);
+  }
 
    // uniform distributions in (phi_mod, costheta_mod) on standby
   uniform_real_distribution<double> phi_distribution(0.0, two_pi);

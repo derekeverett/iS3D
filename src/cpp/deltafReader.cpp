@@ -17,6 +17,8 @@
 
 using namespace std;
 
+/*
+
 Deltaf_Reader::Deltaf_Reader(ParameterReader * paraRdr_in)
 {
   paraRdr = paraRdr_in;
@@ -360,6 +362,7 @@ deltaf_coefficients Deltaf_Reader::load_coefficients(FO_surf *surface, long FO_l
   }
   return df_data;
 }
+*/
 
 Deltaf_Data::Deltaf_Data(ParameterReader * paraRdr_in)
 {

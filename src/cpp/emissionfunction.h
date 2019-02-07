@@ -95,6 +95,8 @@ private:
   long int MIN_NUM_HADRONS; //min number of particles summed over all samples
   long int SAMPLER_SEED; //the seed for the particle sampler. If chosen < 0, seed set with clocktime
 
+  int TEST_SAMPLER;
+
   // for binning sampled particles (for sampler tests)
   double PT_LOWER_CUT;
   double PT_UPPER_CUT;
@@ -108,9 +110,6 @@ private:
   double R_MIN;
   double R_MAX;
   int R_BINS;
-
-
-  int DYNAMICAL;
 
   int Nevents;              // number of sampled events
   double mean_yield;        // mean number of particles emitted from freezeout surface (includes backflow)
@@ -134,14 +133,13 @@ private:
   int number_of_chosen_particles;
   particle_info* particles;       // contains all the particle info from pdg.dat
   FO_surf* surf_ptr;
-  deltaf_coefficients * df;
   Deltaf_Data * df_data;
   bool particles_are_the_same(int, int);
 
 public:
 
   // constructor / destructor
-  EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients * df_in, Deltaf_Data * df_data_in);
+  EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, Deltaf_Data * df_data_in);
   ~EmissionFunctionArray();
 
   // main function
