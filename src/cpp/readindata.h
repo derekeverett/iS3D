@@ -51,7 +51,7 @@ class Plasma
 
 typedef struct
 {
-  int mc_id; // Monte Carlo number according PDG
+  long int mc_id; // Monte Carlo number according PDG
   string name;
   double mass;
   double width;
