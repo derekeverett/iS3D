@@ -457,7 +457,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             double pT = pT_tab->get(1,ipT + 1);
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
             double value = dN_pTdpTdphidy[iS3D] * pT;
-            spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << value << "\n";
+            spectraFile << scientific << setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << value << "\n";
           } //ipT
           spectraFile << "\n";
         } //iphip
@@ -703,11 +703,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
 
-            dN_dy += pT * phip_gauss_weight * pT_gauss_weight * dN_pTdpTdphidy[iS3D];
+            dN_dy += phip_gauss_weight * pT_gauss_weight * dN_pTdpTdphidy[iS3D];
           } //ipT
 
         } //iphip
-        spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << dN_dy << "\n";
+        spectraFile << setw(5) << setprecision(8) << y << "\t" << dN_dy << "\n";
       } //iy
       spectraFile.close();
     }
@@ -1555,6 +1555,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
 
+              printf("Sampling %d event(s)\n", Nevents);
+
               particle_event_list.resize(Nevents);
               particle_yield_list.resize(Nevents, 0);
 
@@ -1604,6 +1606,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
+
+              printf("Sampling %d event(s)\n", Nevents);
 
               particle_event_list.resize(Nevents);
               particle_yield_list.resize(Nevents, 0);
@@ -1680,7 +1684,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       write_continuous_vn_toFile(MCID);
 
       //write_dN_dphidy_toFile(MCID);
-      //write_dN_dy_toFile(MCID);
+      write_dN_dy_toFile(MCID);
       //write_dN_twopipTdpTdy_toFile(MCID);
       //write_dN_twopidpTdy_toFile(MCID);
 

@@ -78,7 +78,7 @@ class Deltaf_Data
         const double lambda_min = -1.0;     // lambda min / max values
         const double lambda_max = 2.0;
         const double delta_lambda = (lambda_max - lambda_min) / ((double)jonah_points - 1.0);
-
+        
         double * lambda_squared_array;      // squared isotropic momentum scale
         double * z_array;                   // renormalization factor (apart from detLambda)
         double * bulkPi_over_Peq_array;     // bulk pressure output

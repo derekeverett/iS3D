@@ -392,7 +392,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
   }
 
 
-  void EmissionFunctionArray::calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Gauss_Laguerre * gla, Deltaf_Data * df_data)
+  void EmissionFunctionArray::calculate_dN_ptdptdphidy_feqmod(double *Mass, double *Sign, double *Degeneracy, double *Baryon, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Gauss_Laguerre * laguerre, Deltaf_Data * df_data)
   {
     printf("computing thermal spectra from vhydro with feqmod...\n\n");
 
@@ -458,13 +458,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     }
 
     /// gauss laguerre roots
-    const int pbar_pts = gla->points;
+    const int pbar_pts = laguerre->points;
 
-    double * pbar_root1 = gla->root[1];
-    double * pbar_root2 = gla->root[2];
+    double * pbar_root1 = laguerre->root[1];
+    double * pbar_root2 = laguerre->root[2];
 
-    double * pbar_weight1 = gla->weight[1];
-    double * pbar_weight2 = gla->weight[2];
+    double * pbar_weight1 = laguerre->weight[1];
+    double * pbar_weight2 = laguerre->weight[2];
 
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spectra for each surface cell in a chunk, for all particle species
@@ -690,28 +690,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double N10_fact = neq_fact;
         double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
 
-        bool feqmod_breaks_down = false;
-
-        if(DF_MODE == 3)
-        {
-          // calculate linearized pion0 density
-          double mbar_pion0 = MASS_PION0 / T;
-          double neq_pion0 = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
-          double J20_pion0 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
-
-          bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
-          // for future reference if one includes muB, then the heaviest antibaryon density (e.g. anti-omega2550) should be computed too
-
-          //if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative 
-
-          if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
-        }
-        else if(DF_MODE == 4)
-        {
-          if(z < 0.0) printf("Error: z should be positive");       
-
-          if(detA <= detA_min || z < 0.0) feqmod_breaks_down = true;
-        }
+        // determine if feqmod breaks down
+        bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, detA_min, z, laguerre, DF_MODE);
 
         if(feqmod_breaks_down)
         {
@@ -1403,7 +1383,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
   double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo,
   double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo,
   double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo,
-  double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Gauss_Laguerre * gla, Deltaf_Data *df_data)
+  double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Gauss_Laguerre * laguerre, Deltaf_Data *df_data)
   {
     printf("computing thermal spacetime distribution from vhydro with feqmod...\n\n");
 
@@ -1506,13 +1486,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
 
     /// gauss laguerre roots
-    const int pbar_pts = gla->points;
+    const int pbar_pts = laguerre->points;
 
-    double * pbar_root1 = gla->root[1];
-    double * pbar_root2 = gla->root[2];
+    double * pbar_root1 = laguerre->root[1];
+    double * pbar_root2 = laguerre->root[2];
 
-    double * pbar_weight1 = gla->weight[1];
-    double * pbar_weight2 = gla->weight[2];
+    double * pbar_weight1 = laguerre->weight[1];
+    double * pbar_weight2 = laguerre->weight[2];
 
 
     // momentum rescaling matrix (so far, w/ shear and bulk corrections only)
@@ -1756,6 +1736,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
           double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
 
+
+          // determine if feqmod breaks down
+          bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, detA_min, z, laguerre, DF_MODE);
+
           // I'm considering axing this
           //double detA_bulk = pow(1.0 + bulk_mod, 3);
 
@@ -1773,29 +1757,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           double J20_fact = T * neq_fact;
           double N10_fact = neq_fact;
           double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
-
-          bool feqmod_breaks_down = false;
-
-          if(DF_MODE == 3)
-          {
-            // calculate linearized pion0 density
-            double mbar_pion0 = MASS_PION0 / T;
-            double neq_pion0 = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
-            double J20_pion0 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar_pion0, 0.0, 0.0, -1.0);
-
-            bool pion_density_negative = is_linear_pion0_density_negative(T, neq_pion0, J20_pion0, bulkPi, F, betabulk);
-            // for future reference if one includes muB, then the heaviest antibaryon density (e.g. anti-omega2550) should be computed too
-
-            //if(pion_density_negative) detA_min = max(detA_min, detA_bulk); // update min value if pion0 density negative 
-
-            if(detA <= detA_min || pion_density_negative) feqmod_breaks_down = true;
-          }
-          else if(DF_MODE == 4)
-          {
-            if(z < 0.0) printf("Error: z should be positive");       
-
-            if(detA <= detA_min || z < 0.0) feqmod_breaks_down = true;
-          }
 
           if(feqmod_breaks_down)
           {
