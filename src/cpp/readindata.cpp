@@ -1236,7 +1236,7 @@ int FO_data_reader::read_resonances_list(particle_info* particle, FO_surf* surf_
     else particle[local_i].stable = 0;
 
     //add anti-particle entry
-    if (particle[local_i].baryon == 1)
+    if (particle[local_i].baryon > 0)
     {
       local_i++;
       particle[local_i].mc_id = -particle[local_i-1].mc_id;

@@ -63,6 +63,11 @@ int read_resonances_list(particle_info * particle)
 
   while(!pdg.eof())
   {
+    if(local_i > (Maxparticle -1))
+    {
+      printf("\nError: number of particles in file exceeds Maxparticle = %d. Exiting...\n\n", Maxparticle);
+      exit(-1);
+    }
     pdg >> particle[local_i].mc_id;     // monte carlo id
     pdg >> particle[local_i].name;      // name (now it's in strange characters is that okay?)
     pdg >> particle[local_i].mass;      // mass (GeV)
@@ -75,6 +80,12 @@ int read_resonances_list(particle_info * particle)
     pdg >> particle[local_i].gisospin;  // isospin degeneracy
     pdg >> particle[local_i].charge;    // electric charge
     pdg >> particle[local_i].decays;    // decay channels
+
+    if(particle[local_i].decays > Maxdecaychannel)
+    {
+      printf("\nError: number of decay channels of resonance exceeds Maxdecaychannel = %d. Exiting...\n\n", Maxdecaychannel);
+      exit(-1);
+    }
 
      for (int j = 0; j < particle[local_i].decays; j++)
       {
@@ -94,7 +105,7 @@ int read_resonances_list(particle_info * particle)
 
       // add anti-particle entry
       //if (particle[local_i].baryon == 1)
-      if (particle[local_i].baryon != 0)
+      if (particle[local_i].baryon > 0)
       {
         local_i++;
         particle[local_i].mc_id = -particle[local_i-1].mc_id;
@@ -144,14 +155,13 @@ int read_resonances_list(particle_info * particle)
 
   pdg.close();
 
+  int Nparticle = local_i - 1;      // subtract blank line at end of file
 
-  const int Nparticle = local_i;             // take account the final fake one (not yet resolved)
-  //Nparticle = local_i - 1;         // take account the final fake one (why were there two blanks?)
-
+  printf("\nTotal number of particles = %d\n", Nparticle);
 
   for(int i = 0; i < Nparticle; i++)
   {
-    if(particle[i].baryon == 0)       // set the quantum statistics sign
+    if(particle[i].baryon == 0)           // set the quantum statistics sign
     {
       particle[i].sign = -1;
     }
@@ -159,8 +169,8 @@ int read_resonances_list(particle_info * particle)
   }
 
 
-  // count the number of mesons, baryons and antibaryons
-  // to make sure it makes sense
+  // count the number of mesons, baryons and
+  // antibaryons to make sure it makes sense
   int meson = 0;
   int baryon = 0;
   int antibaryon = 0;
@@ -168,13 +178,16 @@ int read_resonances_list(particle_info * particle)
   for(int i = 0; i < Nparticle; i++)
   {
     if(particle[i].baryon == 0) meson++;
-    else if(particle[i].baryon == 1) baryon++;
-    else if(particle[i].baryon == -1) antibaryon++;
-    else printf("Error: particle (%d) has baryon number = %d\n", particle[i].mc_id, particle[i].baryon);
+    else if(particle[i].baryon > 0) baryon++;
+    else if(particle[i].baryon < 0) antibaryon++;
   }
   if(baryon != antibaryon) printf("Error: (anti)baryons not paired correctly\n");
 
   printf("\nThere are %d mesons, %d baryons and %d antibaryons\n\n", meson, baryon, antibaryon);
+
+  particle_info last_particle = particle[Nparticle - 1];
+
+  printf("The last particle is (mcid = %ld, %s, m = %lf GeV) (please check this) \n\n", last_particle.mc_id, last_particle.name.c_str(), last_particle.mass);
 
   return Nparticle;
 }

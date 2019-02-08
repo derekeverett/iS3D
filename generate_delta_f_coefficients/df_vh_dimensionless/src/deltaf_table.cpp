@@ -19,42 +19,9 @@ using namespace std;
 const double hbarC = 0.197327053;  // GeV*fm
 const double two_pi2_hbarC3 = 2.0 * pow(M_PI, 2) * pow(hbarC, 3);
 
-// temporary
-const int a = 21;
-const int gla_pts = 64;
-double root_gla[a][gla_pts];
-double weight_gla[a][gla_pts];
-
-int load_gauss_laguerre_data()
-{
-  FILE *fp;
-
-  stringstream laguerre_roots_weights;
-  laguerre_roots_weights << "gauss_laguerre/gla_roots_weights_" << gla_pts << "_points.txt";
-
-  if((fp = fopen(laguerre_roots_weights.str().c_str(), "r")) == NULL)
-  {
-     return 1;
-  }
-  for(int i = 0; i < a; i++)
-  {
-   for(int j = 0; j < gla_pts; j++)
-   {
-      if(fscanf(fp, "%i %lf %lf", &i, &root_gla[i][j], &weight_gla[i][j])!= 3)
-      	{
-        	printf("error loading roots/weights of Gauss-Laguerre Quadradture at %d %d\n", i, j);
-    		return 1;
-    	}
-   }
-  }
-  fclose(fp);
-  return 0;
-}
-
-
 int main()
 {
-  	printf("\nLoading particle info from pdg.dat (check that there's only 1 blank line at end of file)\n\n");
+  	printf("\nLoading particle info from pdg.dat (check that there's only 1 blank line at end of file)\n");
 
   	particle_info * particle = new particle_info[Maxparticle];		// particle info struct
   	int N_resonances = read_resonances_list(particle);				// count number of resonances in pdg file
@@ -69,7 +36,7 @@ int main()
 
 	if(!config_read_file(&initCondConfig, "table.properties"))
 	{
-		printf("Error: table configuration file not found. Exiting...\n");
+		printf("\nError: table configuration file not found. Exiting...\n");
 		exit(-1);
 	}
 
@@ -131,7 +98,7 @@ int main()
 	//																					        ::
 	// df ~ (cT.m^2 + b.c1.(u.p) + cE.(u.p)^2).Pi + (b.c3 + c4(u.p))pmu.Vmu + c5.pmu.pnu.pimunu ::
 	//																					        ::
-	//      			cT = c0 - c2		cE = 4c2 - c0 		c5 = 1 / (2(E+P).T^2)			::
+	//      			cT = c0 - c2		cE = 4c2 - c0 		c5 = 1 / (2(E+P)T^2)			::
 	//																						    ::
 	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 

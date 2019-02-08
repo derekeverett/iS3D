@@ -86,7 +86,7 @@ double compute_detA(Shear_Stress pimunu, double shear_mod, double bulk_mod)
   double Ayz = piyz_LRF * shear_mod;
   double Azz = 1.0  +  pizz_LRF * shear_mod  +  bulk_mod;
 
-  // Aij is symmetric
+  // assume Aij is symmetric (need to change this formula if include diffusion)
   double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
 
   return detA;
@@ -95,8 +95,6 @@ double compute_detA(Shear_Stress pimunu, double shear_mod, double bulk_mod)
 bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pion0, double bulkPi, double F, double betabulk)
 {
   // determine if linear pion0 density goes negative
-
-  // calculate the pion-0 density by itself: that way I don't need to include multiple particles when testing single particle spectra
 
   double dn_pion0 = bulkPi * (neq_pion0  +  J20_pion0 * F / T / T) / betabulk;
 

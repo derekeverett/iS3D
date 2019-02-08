@@ -713,11 +713,6 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
   // currently the momentum sampler does not work for photons and bosons with nonzero chemical potential
   // so non-equilibrium or electric / strange charge chemical potentials are not considered
-  if(mass == 0.0)
-  {
-    printf("Error: cannot sample photons with this method. Exiting...\n");
-    exit(-1);
-  }
   if(sign == -1.0 && chem != 0.0)
   {
     printf("Error: bosons have chemical potential. Exiting...\n");
@@ -740,7 +735,12 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
   bool rejected = true;
 
-  if(mass / T < 1.008)
+  if(mass == 0.0)
+  {
+    printf("Error: cannot sample photons with this method. Exiting...\n");
+    exit(-1);
+  }
+  else if(mass / T < 1.008)
   {
     double weq_max = 1.0; // default value if don't need to rescale weq = exp(p/T) / (exp(E/T) + sign)
 
@@ -945,11 +945,6 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
 
   // currently the momentum sampler does not work for photons and bosons with nonzero chemical potential
   // so non-equilibrium or electric / strange charge chemical potentials are not considered
-  if(mass == 0.0)
-  {
-    printf("Error: cannot sample photons with this method. Exiting...\n");
-    exit(-1);
-  }
   if(sign == -1.0 && chem_mod != 0.0)
   {
     printf("Error: bosons have chemical potential. Exiting...\n");
@@ -972,6 +967,11 @@ LRF_Momentum sample_momentum_feqmod(default_random_engine& generator, long * acc
 
   bool rejected = true;
 
+  if(mass == 0.0)
+  {
+    printf("Error: cannot sample photons with this method. Exiting...\n");
+    exit(-1);
+  }
   if(mass / T_mod < 1.008)
   {
     double w_mod_max = 1.0; // default value if don't rescale w_mod = exp(p'/T') / (exp(E'/T') - 1)

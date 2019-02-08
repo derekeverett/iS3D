@@ -5,9 +5,9 @@
 
 using namespace std;
 
-const int Maxparticle = 600;     // size of array for particle info storage
-const int Maxdecaychannel = 50;
-const int Maxdecaypart = 5;
+const int Maxparticle = 500;     // max size of array for particle info storage (make sure it's big enough)
+const int Maxdecaychannel = 20;  // max number of decays channels for given resonance (make sure it's big enough)
+const int Maxdecaypart = 5;      // don't change this (it's the default number of decay particle entries in pdg.dat)
 
 class Gauss_Laguerre
 {

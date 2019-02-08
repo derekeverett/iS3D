@@ -494,22 +494,6 @@ void Deltaf_Data::load_df_coefficient_data()
       fscanf(betabulk_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &betabulk_data[iB][iT]);
       fscanf(betaV_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &betaV_data[iB][iT]);
       fscanf(betapi_file, "%lf\t\t%lf\t\t%lf\n", &T_array[iT], &muB_array[iB], &betapi_data[iB][iT]);
-
-      // convert to the real-life units (the file units were in hbar*c = 1 or fm only)
-      /*
-      T_array[iT] *= hbarC;
-      muB_array[iB] *= hbarC;
-
-      c0_data[iB][iT] /= (hbarC * hbarC * hbarC);
-      c1_data[iB][iT] /= (hbarC * hbarC);
-      c2_data[iB][iT] /= (hbarC * hbarC * hbarC);
-      c3_data[iB][iT] /= hbarC;
-      c4_data[iB][iT] /= (hbarC * hbarC); // I don't remember if I fixed c3, c4 units?...
-
-      F_data[iB][iT] *= hbarC;
-      betabulk_data[iB][iT] *= hbarC;
-      betapi_data[iB][iT] *= hbarC;
-      */
     } // iT
   } // iB
 
@@ -595,7 +579,7 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
     bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
 
-    //cout << lambda_squared_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
+    cout << lambda_squared_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
   }
 
   // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
