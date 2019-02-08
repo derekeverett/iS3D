@@ -53,5 +53,3 @@ int read_resonances_list(particle_info* particle);
 
 
 #endif
-
-

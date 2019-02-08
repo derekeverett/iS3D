@@ -13,7 +13,6 @@ using namespace std;
 #include "../include/gauss_integration.hpp"
 #include "../include/thermal_integrands.hpp"
 #include "../include/freearray.hpp"
-#include "../include/properties.hpp"
 #include "../include/readindata.hpp"
 
 const double hbarC = 0.197327053;  // GeV*fm
@@ -27,29 +26,23 @@ int main()
   	int N_resonances = read_resonances_list(particle);				// count number of resonances in pdg file
 
 
-  	// table parameters
-	double T_min, T_max, muB_min, muB_max;
-	int Tpts, muBpts, gla_pts;
+  	// table parameters:
+  	//::::::::::::::::::::::::::::::::::::::
+	
+	double T_min = 0.1;			// min and max baryon chemical potential (GeV)
+	double T_max = 0.2;
 
-	config_t initCondConfig;
-	config_init(&initCondConfig);
+	double muB_min = 0.0;		// min and max baryon chemical potential (GeV)
+	double muB_max = 0.8;
 
-	if(!config_read_file(&initCondConfig, "table.properties"))
-	{
-		printf("\nError: table configuration file not found. Exiting...\n");
-		exit(-1);
-	}
+	int Tpts = 101;				// number of grid points
+	int muBpts = 81;
 
-	printf("Table configuration:\n\n");
-	getDoubleProperty(&initCondConfig, "Tmin", &T_min);
-	getDoubleProperty(&initCondConfig, "Tmax", &T_max);
-	printf("\n");
-	getDoubleProperty(&initCondConfig, "muBmin", &muB_min);
-	getDoubleProperty(&initCondConfig, "muBmax", &muB_max);
-	printf("\n");
-	getIntegerProperty(&initCondConfig, "muBpoints", &muBpts);
-	getIntegerProperty(&initCondConfig, "Tpoints", &Tpts);
-	printf("\n");
+	int gla_pts = 64;			// gauss laguerre points
+
+	//::::::::::::::::::::::::::::::::::::::
+
+
 
 	// load temperature and chemical potential arrays
 	double T_array[Tpts];
@@ -71,8 +64,7 @@ int main()
 	}
 
 
-	printf("Loading gauss laguerre roots and weights:\n\n");
-	getIntegerProperty(&initCondConfig, "laguerrePoints", &gla_pts);
+	//printf("Loading gauss laguerre roots and weights..\n");
 
   	char laguerre_file[255] = "";
   	sprintf(laguerre_file, "gauss_laguerre/gla_roots_weights_%d_points.txt", gla_pts);
