@@ -579,7 +579,7 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
     bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
 
-    cout << lambda_squared_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
+    //cout << lambda_squared_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
   }
 
   // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
