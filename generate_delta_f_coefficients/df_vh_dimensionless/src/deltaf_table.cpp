@@ -9,16 +9,15 @@
 using namespace std;
 #include <sstream>
 #include <fstream>
+#include <libconfig.h>
 #include "../include/gauss_integration.hpp"
 #include "../include/thermal_integrands.hpp"
 #include "../include/freearray.hpp"
+#include "../include/properties.hpp"
+#include "../include/readindata.hpp"
 
 const double hbarC = 0.197327053;  // GeV*fm
 const double two_pi2_hbarC3 = 2.0 * pow(M_PI, 2) * pow(hbarC, 3);
-
-const int Maxparticle = 600; //size of array for storage of the particles
-const int Maxdecaychannel = 50;
-const int Maxdecaypart = 5;
 
 // temporary
 const int a = 21;
@@ -53,323 +52,107 @@ int load_gauss_laguerre_data()
 }
 
 
-
-typedef struct
-{
-  long int mc_id; 	// Monte Carlo number according PDG
-  string name;		// name
-  double mass;		// mass (GeV)
-  double width;		// resonance width (GeV)
-  int gspin; 		// spin degeneracy
-  int baryon;		// baryon number
-  int strange;		// strangeness
-  int charm;		// charmness
-  int bottom;		// bottomness
-  int gisospin; 	// isospin degeneracy
-  int charge;		// electric charge
-  int decays; 		// amount of decays listed for this resonance
-  int stable; 		// defines whether this particle is considered as stable under strong interactions
-
-  int decays_Npart[Maxdecaychannel];
-  double decays_branchratio[Maxdecaychannel];
-  int decays_part[Maxdecaychannel][Maxdecaypart];
-
-  int sign; 		// Bose-Einstein or Dirac-Fermi statistics
-
-} particle_info;
-
-
 int main()
 {
-  	printf("Loading particle info from pdg.dat...(make sure only 1 blank line at end of file\n");
+  	printf("\nLoading particle info from pdg.dat (check that there's only 1 blank line at end of file)\n\n");
 
-  	particle_info particle[Maxparticle];		// particle info struct
+  	particle_info * particle = new particle_info[Maxparticle];		// particle info struct
+  	int N_resonances = read_resonances_list(particle);				// count number of resonances in pdg file
 
-  	int N_resonances = 0;						// count number of resonances in pdg file
 
-	double eps = 1e-15;
-	
-	ifstream pdg("pdg.dat");
-	int local_i = 0;
-	int dummy_int;
+  	// table parameters
+	double T_min, T_max, muB_min, muB_max;
+	int Tpts, muBpts, gla_pts;
 
-	while(!pdg.eof())
+	config_t initCondConfig;
+	config_init(&initCondConfig);
+
+	if(!config_read_file(&initCondConfig, "table.properties"))
 	{
-		pdg >> particle[local_i].mc_id;			// monte carlo id
-		pdg >> particle[local_i].name;			// name (now it's in strange characters is that okay?)
-		pdg >> particle[local_i].mass;			// mass (GeV)
-		pdg >> particle[local_i].width;			// resonance width (GeV)
-		pdg >> particle[local_i].gspin;	      	// spin degeneracy
-		pdg >> particle[local_i].baryon;		// baryon number
-		pdg >> particle[local_i].strange;	   	// strangeness
-		pdg >> particle[local_i].charm;			// charmness
-		pdg >> particle[local_i].bottom;	   	// bottomness
-		pdg >> particle[local_i].gisospin;     	// isospin degeneracy
-		pdg >> particle[local_i].charge;		// electric charge
-		pdg >> particle[local_i].decays;		// decay channels
-
-	   for (int j = 0; j < particle[local_i].decays; j++)
-	    {
-	      pdg >> dummy_int;
-	      pdg >> particle[local_i].decays_Npart[j];
-	      pdg >> particle[local_i].decays_branchratio[j];
-	      pdg >> particle[local_i].decays_part[j][0];
-	      pdg >> particle[local_i].decays_part[j][1];
-	      pdg >> particle[local_i].decays_part[j][2];
-	      pdg >> particle[local_i].decays_part[j][3];
-	      pdg >> particle[local_i].decays_part[j][4];
-	    }
-
-	    //decide whether particle is stable under strong interactions
-	    if (particle[local_i].decays_Npart[0] == 1) particle[local_i].stable = 1;
-	    else particle[local_i].stable = 0;
-
-	    // add anti-particle entry
-	    if (particle[local_i].baryon == 1)
-	    {
-	      local_i++;
-	      particle[local_i].mc_id = -particle[local_i-1].mc_id;
-	      ostringstream antiname;
-	      antiname << "Anti-baryon-" << particle[local_i-1].name;
-	      particle[local_i].name = antiname.str();
-	      particle[local_i].mass = particle[local_i-1].mass;
-	      particle[local_i].width = particle[local_i-1].width;
-	      particle[local_i].gspin = particle[local_i-1].gspin;
-	      particle[local_i].baryon = -particle[local_i-1].baryon;
-	      particle[local_i].strange = -particle[local_i-1].strange;
-	      particle[local_i].charm = -particle[local_i-1].charm;
-	      particle[local_i].bottom = -particle[local_i-1].bottom;
-	      particle[local_i].gisospin = particle[local_i-1].gisospin;
-	      particle[local_i].charge = -particle[local_i-1].charge;
-	      particle[local_i].decays = particle[local_i-1].decays;
-	      particle[local_i].stable = particle[local_i-1].stable;
-
-	      for (int j = 0; j < particle[local_i].decays; j++)
-	      {
-	        particle[local_i].decays_Npart[j]=particle[local_i-1].decays_Npart[j];
-	        particle[local_i].decays_branchratio[j]=particle[local_i-1].decays_branchratio[j];
-
-	        for (int k=0; k< Maxdecaypart; k++)
-	        {
-	          if(particle[local_i-1].decays_part[j][k] == 0) particle[local_i].decays_part[j][k] = (particle[local_i-1].decays_part[j][k]);
-	          else
-	          {
-	            int idx;
-	            // find the index for decay particle
-	            for(idx = 0; idx < local_i; idx++)
-	            if (particle[idx].mc_id == particle[local_i-1].decays_part[j][k]) break;
-	            if(idx == local_i && particle[local_i-1].stable == 0 && particle[local_i-1].decays_branchratio[j] > eps)
-	            {
-	              cout << "Error: can not find decay particle index for anti-baryon!" << endl;
-	              cout << "particle mc_id : " << particle[local_i-1].decays_part[j][k] << endl;
-	              exit(1);
-	            }
-	            if (particle[idx].baryon == 0 && particle[idx].charge == 0 && particle[idx].strange == 0) particle[local_i].decays_part[j][k] = (particle[local_i-1].decays_part[j][k]);
-	            else particle[local_i].decays_part[j][k] = (- particle[local_i-1].decays_part[j][k]);
-	          }
-	        }
-	      }
-	    }
-	    local_i++;	// add one to the counting variable "i" for the meson/baryon
+		printf("Error: table configuration file not found. Exiting...\n");
+		exit(-1);
 	}
 
-	pdg.close();
-
-	N_resonances = local_i; 				    // take account the final fake one
-	//N_resonances = local_i - 1; 				// take account the final fake one (why were there two blanks?)
-
-	for(int i = 0; i < N_resonances; i++)
-	{
-		if(particle[i].baryon == 0) 			// set the quantum statistics sign
-		{
-			particle[i].sign = -1;
-		}
-		else particle[i].sign = 1;
-	}
-
-
-	// pdg.dat contains (anti)mesons and baryons but
-	// not antibaryons, so add antibaryons manually
-	/*
-	int N_mesons;												// number of mesons
-	int N_baryons;												// number of baryons
-	int N_antibaryons;											// number of antibaryons
-
-	fscanf(HRG, "%d", &N_mesons);								// read first line: number of mesons
-	fscanf(HRG, "%d", &N_baryons);								// read second line: number of baryons
-
-	N_antibaryons = N_baryons;
-
-	int N_resonances = N_mesons + N_baryons + N_antibaryons;    // total number of resonances
-
-	// any extraneous data type is not an array
-	int particle_id;											// particle #id
-	char name[20];												// particle name
-	double mass[N_resonances]; 									// (***) mass (GeV)
-	double width;												// resonance width (GeV)
-	int degeneracy[N_resonances];								// (***) degeneracy factor ~ 2*spin+1
-	int baryon[N_resonances]; 									// (***) baryon number
-	int strange;												// strangeness
-	int charm;													// charmness
-	int bottom;													// bottomness
-	int isospin;												// isospin
-	double charge;												// electric charge
-	int decays;													// decay modes
-
-	int anti_counter = 0; 									    // antibaryon counter (see for_loop below)
-
-	// load data of mesons+baryons
-	for(int k = 0; k < N_mesons + N_baryons; k++)
-	{
-		fscanf(HRG, "%d %s %lf %lf %d %d %d %d %d %d %lf %d", &particle_id, name, &mass[k], &width, &degeneracy[k], &baryon[k], &strange, &charm, &bottom, &isospin, &charge, &decays);
-
-		if(baryon[k] == 1)
-		{
-			// fill in antibaryon data at end of array
-			mass[anti_counter+N_mesons+N_baryons] = mass[k];
-			degeneracy[anti_counter+N_mesons+N_baryons] = degeneracy[k];
-			baryon[anti_counter+N_mesons+N_baryons] = -1;
-			anti_counter++;
-			// antibaryons correctly ammended to list (checked)
-		}
-	}
-
-	int sign[N_resonances];										// sign array for bose/fermi distributions
-
-	for(int k = 0; k < N_resonances; k++)
-	{
-		// degeneracy = (2*spin + 1)    			            // (isospin degeneracy split as individual particles)
-		if(degeneracy[k] % 2 == 0) sign[k] = 1; 				// fermions
-		else if(degeneracy[k] % 2 == 1) sign[k] = -1;			// bosons
-	}
-
-	fclose(HRG);												// close pdg.dat
-
-   printf("done\n\n");
-   */
-
-
-	// set up momentum-bar (pbar) roots and weights for thermodynamic integrals
-	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-	// associated Laguerre polynomial type a
-	const int a1 = 1; // a = 1 for X1q, where X = I, J, N, or M
-	const int a2 = 2; // a = 2 for X2q
-	const int a3 = 3; // a = 3 for X3q
-	const int a4 = 4; // a = 4 for X4q
-
-
-	// allocate roots
-	double * pbar_root1 = (double *)malloc(gla_pts * sizeof(double));
-	double * pbar_root2 = (double *)malloc(gla_pts * sizeof(double));
-	double * pbar_root3 = (double *)malloc(gla_pts * sizeof(double));
-	double * pbar_root4 = (double *)malloc(gla_pts * sizeof(double));
-
-
-	// allocate weights
-	double * pbar_weight1 = (double *)malloc(gla_pts * sizeof(double));
-	double * pbar_weight2 = (double *)malloc(gla_pts * sizeof(double));
-	double * pbar_weight3 = (double *)malloc(gla_pts * sizeof(double));
-	double * pbar_weight4 = (double *)malloc(gla_pts * sizeof(double));
-
-
-	// Load gauss laguerre roots-weights
-	printf("Start loading gauss data...");
-	int num_error;
-	if((num_error = load_gauss_laguerre_data()) != 0)
-	{
-		fprintf(stderr, "Error loading gauss data (%d)!\n", num_error);
-		return 1;
-	}
-	printf("done\n\n");
-
-
-	// // set root-weight values
-	for(int i = 0; i < gla_pts; i++)
-	{
-		pbar_root1[i] = root_gla[a1][i];
-		pbar_root2[i] = root_gla[a2][i];
-		pbar_root3[i] = root_gla[a3][i];
-		pbar_root4[i] = root_gla[a4][i];
-
-		pbar_weight1[i] = weight_gla[a1][i];
-		pbar_weight2[i] = weight_gla[a2][i];
-		pbar_weight3[i] = weight_gla[a3][i];
-		pbar_weight4[i] = weight_gla[a4][i];
-	}
-
-	cout << "Starting..." << endl;
-
-
-	//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-	//																					   ::
-	// 					   Compute coefficients of 14 moment approximation 		     	   ::
-	//																					   ::
-	// df ~ (c0 + b*c1*(u.p) + c2*(u.p)^2)*Pi + (b*c3 + c4(u.p))p_u*V^u + c5*p_u*p_v*pi^uv ::
-	//																					   ::
-	//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-
-
-	// set up (T,muB) ranges
-	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-	// Temperature / chemical potential table based on chemical freezeout data (Andronic 2017)
-
-	int Tpts = 101;													// temperature grid points
-	int muBpts = 81;												// chemical potential grid points
-
-	double T_min = 0.1;       				               			// min / max temperature (GeV)
-	double T_max = 0.2;
-	double dT = (T_max - T_min)/(double)(Tpts-1);				    // temperature resolution
-
-
-	double muB_min = 0.0;	   						    			// min / max chemical potential
-	double muB_max = 0.8;
-	double dmuB = (muB_max - muB_min)/(double)(muBpts-1);		    // chemical potential resolution
-
-	printf("\nTable properties:\n\n");
-	printf("T_min = %lf GeV\n", T_min);
-	printf("T_max = %lf GeV\n", T_max);
-	printf("T_pts = %d\n", Tpts);
-	printf("dT = %lf GeV\n", dT);
+	printf("Table configuration:\n\n");
+	getDoubleProperty(&initCondConfig, "Tmin", &T_min);
+	getDoubleProperty(&initCondConfig, "Tmax", &T_max);
 	printf("\n");
-	printf("muB_min = %lf GeV\n", muB_min);
-	printf("muB_max = %lf GeV\n", muB_max);
-	printf("muB_pts = %d\n", muBpts);
-	printf("dmuB = %lf GeV\n", dmuB);
+	getDoubleProperty(&initCondConfig, "muBmin", &muB_min);
+	getDoubleProperty(&initCondConfig, "muBmax", &muB_max);
+	printf("\n");
+	getIntegerProperty(&initCondConfig, "muBpoints", &muBpts);
+	getIntegerProperty(&initCondConfig, "Tpoints", &Tpts);
 	printf("\n");
 
-	double * T_array = (double *)malloc(Tpts * sizeof(double));		// allocate temperature array
-	double * muB_array = (double *)malloc(muBpts * sizeof(double));	// allocate chemical potential array
+	// load temperature and chemical potential arrays
+	double T_array[Tpts];
+	double muB_array[muBpts];
 
-	// load temperature array
-	for(int i = 0; i < Tpts; i++) T_array[i] = T_min + (double)i*dT;
+	T_array[0] = T_min;
+	muB_array[0] = muB_min;
 
-	// load chemical potential array
-	for(int i = 0; i < muBpts; i++)	muB_array[i] = muB_min + (double)i*dmuB;
+	double dT = (T_max - T_min)/(double)(Tpts - 1);
+	double dmuB = (muB_max - muB_min)/(double)(muBpts - 1);
+
+	for(int i = 1; i < Tpts; i++)
+	{
+		T_array[i] = T_min + (double)i*dT;
+	}
+	for(int i = 1; i < muBpts; i++)
+	{
+		muB_array[i] = muB_min + (double)i*dmuB;
+	}
 
 
-	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+	printf("Loading gauss laguerre roots and weights:\n\n");
+	getIntegerProperty(&initCondConfig, "laguerrePoints", &gla_pts);
 
-	size_t SF = 8;	        	// significant digits (better way?)
+  	char laguerre_file[255] = "";
+  	sprintf(laguerre_file, "gauss_laguerre/gla_roots_weights_%d_points.txt", gla_pts);
 
-	// data tables for the (T,muB) dependent coefficients
-	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  	Gauss_Laguerre laguerre;
 
-	ofstream c0_table_df14;								// output file stream coefficient tables
+  	laguerre.load_roots_and_weights(laguerre_file);
+
+	// gauss laguerre (alpha specific) roots and weights
+	double * pbar_root1 = laguerre.root[1];
+	double * pbar_root2 = laguerre.root[2];
+	double * pbar_root3 = laguerre.root[3];
+	double * pbar_root4 = laguerre.root[4];
+
+	double * pbar_weight1 = laguerre.weight[1];
+	double * pbar_weight2 = laguerre.weight[2];
+	double * pbar_weight3 = laguerre.weight[3];
+	double * pbar_weight4 = laguerre.weight[4];
+
+	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+	//																					        ::
+	// 					   Compute coefficients of 14 moment approximation 		     	        ::
+	//																					        ::
+	// df ~ (cT.m^2 + b.c1.(u.p) + cE.(u.p)^2).Pi + (b.c3 + c4(u.p))pmu.Vmu + c5.pmu.pnu.pimunu ::
+	//																					        ::
+	//      			cT = c0 - c2		cE = 4c2 - c0 		c5 = 1 / (2(E+P).T^2)			::
+	//																						    ::
+	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+	size_t SF = 8;	// significant digits
+
+
+	printf("\nComputing 14 moment df coefficients...\n");
+
+	ofstream c0_table_df14;
 	ofstream c1_table_df14;
 	ofstream c2_table_df14;
 	ofstream c3_table_df14;
 	ofstream c4_table_df14;
 
-	c0_table_df14.open("vh/c0_df14_vh.dat", ios::out);	// open .dat files for output
-	c1_table_df14.open("vh/c1_df14_vh.dat", ios::out);
-	c2_table_df14.open("vh/c2_df14_vh.dat", ios::out);
-	c3_table_df14.open("vh/c3_df14_vh.dat", ios::out);
-	c4_table_df14.open("vh/c4_df14_vh.dat", ios::out);
+	c0_table_df14.open("vh/c0.dat", ios::out);
+	c1_table_df14.open("vh/c1.dat", ios::out);
+	c2_table_df14.open("vh/c2.dat", ios::out);
+	c3_table_df14.open("vh/c3.dat", ios::out);
+	c4_table_df14.open("vh/c4.dat", ios::out);
 
-	// put number of T, muB points at header
+	// put number of T, muB points before header
 	c0_table_df14 << Tpts << "\n" << muBpts << endl;
 	c1_table_df14 << Tpts << "\n" << muBpts << endl;
 	c2_table_df14 << Tpts << "\n" << muBpts << endl;
@@ -377,27 +160,22 @@ int main()
 	c4_table_df14 << Tpts << "\n" << muBpts << endl;
 
 	// header labels
-	c0_table_df14 << "T [GeV]" << "\t\t" << "muB [GeV]" << "\t\t" << "c0_T4 [fm^3/GeV^3 * GeV^4]" << endl; // output stream first lines
-	c1_table_df14 << "T [GeV]" << "\t\t" << "muB [GeV]" << "\t\t" << "c1_T3 [fm^3/GeV^2 * GeV^3]" << endl; // (fill in units later)
+	c0_table_df14 << "T [GeV]" << "\t\t" << "muB [GeV]" << "\t\t" << "c0_T4 [fm^3/GeV^3 * GeV^4]" << endl;
+	c1_table_df14 << "T [GeV]" << "\t\t" << "muB [GeV]" << "\t\t" << "c1_T3 [fm^3/GeV^2 * GeV^3]" << endl;
 	c2_table_df14 << "T [GeV]" << "\t\t" << "muB [GeV]" << "\t\t" << "c2_T4 [fm^3/GeV^3 * GeV^4]" << endl;
 	c3_table_df14 << "T [GeV]" << "\t\t" << "muB [GeV]" << "\t\t" << "c3_T4 [fm^3/GeV * GeV^4]" << endl;
 	c4_table_df14 << "T [GeV]" << "\t\t" << "muB [GeV]" << "\t\t" << "c4_T5 [fm^3/GeV^2 * GeV^5]" << endl;
 
 
-
-
 	// main calculation (14 moment approximation)
-	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
 	for(int i = 0; i < muBpts; i++)					// baryon chemical potential column
 	{
 		for(int j = 0; j < Tpts; j++)				// temperature column
 		{
-			// set T and muB
 			double muB = muB_array[i];
 			double T = T_array[j];
 
-			// evaluate prefactors
+			// prefactors
 			double J20_fact = pow(T,4) / (two_pi2_hbarC3);
 			double J21_fact = pow(T,4) / (3.0 * two_pi2_hbarC3);
 			double J40_fact = pow(T,6) / (two_pi2_hbarC3);
@@ -411,7 +189,7 @@ int main()
 			double A21_fact = J21_fact;
 			double B10_fact = N10_fact;
 
-			// reset thermodynamic integrals to zero
+			// thermodynamic integrals
 			double J20 = 0.0;
 			double J21 = 0.0;
 			double J40 = 0.0;
@@ -447,7 +225,6 @@ int main()
 				J21 += dof * J21_fact * Gauss1D(J21_int, pbar_root2, pbar_weight2, gla_pts, mbar, T, muB, b, Theta);
 				J40 += dof * J40_fact * Gauss1D(J40_int, pbar_root4, pbar_weight4, gla_pts, mbar, T, muB, b, Theta);
 				J41 += dof * J41_fact * Gauss1D(J41_int, pbar_root4, pbar_weight4, gla_pts, mbar, T, muB, b, Theta);
-				//J42 += dof * J42_fact * Gauss1D(J42_int, pbar_root4, pbar_weight4, gla_pts, mbar, T, muB, b, Theta);
 
 				// skip iterations for baryon = 0
 				if(particle[k].baryon != 0)
@@ -473,7 +250,6 @@ int main()
 			double bulk1 = (B10-N30)*(4.0*J40-A20) - (4.0*N30-B10)*(A20-J40);
 			double bulk2 = M20*(A20-J40) - (B10-N30)*N30;
 			double denom = (A21-J41)*bulk0 + N31*bulk1 + (4.0*J41-A21)*bulk2;
-
 
 			double c0_df14 = bulk0 / denom;
 			double c1_df14 = bulk1 / denom;
@@ -505,14 +281,11 @@ int main()
 		} // j
 	} // i
 
-	c0_table_df14.close();	// close table files (14 moment approximation)
+	c0_table_df14.close();
 	c1_table_df14.close();
 	c2_table_df14.close();
 	c3_table_df14.close();
 	c4_table_df14.close();
-
-	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
 
 
 
@@ -520,29 +293,25 @@ int main()
 	//																					         ::
 	// 					  Compute coefficients of chapman-enskog expansion 		     	         ::
 	//																					         ::
-	// df ~ (b*G + (u.p)*F/T^2 - Delta_munu*p^mu*p^nu/(3(u.p)T))*Pi/betaPi 						 ::
+	// df ~ (b.G + (u.p).F/T^2 - Deltamunu.pmu.pnu/(3(u.p)T)).Pi/betaPi 						 ::
 	//																							 ::
-	//		+ (nB/(e+p) - b/(u.p))p_u*V^u/betaV                                                  ::
+	//		+ (nB/(e+p) - b/(u.p))pmu.Vmu/beta  +  pmu.pnu.pimunu/(2.betapi.T(u.p))              ::
 	//																							 ::
-	//		+ p_u*p_v*pi^uv/(2*betapi*T(u.p)) 		                                             ::
-	//																					         ::
 	//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
+	printf("Computing Chapman Enskog df coefficients...\n");
 
-	// thermodynamic integrals and prefactors
-
-	// data tables for the (T,muB) dependent coefficients
 	ofstream G_table_dfce;
 	ofstream F_table_dfce;
 	ofstream betabulk_table_dfce;
 	ofstream betaV_table_dfce;
 	ofstream betapi_table_dfce;
 
-	G_table_dfce.open("vh/G_dfce_vh.dat", ios::out);
-	F_table_dfce.open("vh/F_dfce_vh.dat", ios::out);
-	betabulk_table_dfce.open("vh/betabulk_dfce_vh.dat", ios::out);
-	betaV_table_dfce.open("vh/betaV_dfce_vh.dat", ios::out);
-	betapi_table_dfce.open("vh/betapi_dfce_vh.dat", ios::out);
+	G_table_dfce.open("vh/G.dat", ios::out);
+	F_table_dfce.open("vh/F.dat", ios::out);
+	betabulk_table_dfce.open("vh/betabulk.dat", ios::out);
+	betaV_table_dfce.open("vh/betaV.dat", ios::out);
+	betapi_table_dfce.open("vh/betapi.dat", ios::out);
 
 	G_table_dfce << Tpts << "\n" << muBpts << endl;
 	F_table_dfce << Tpts << "\n" << muBpts << endl;
@@ -558,8 +327,6 @@ int main()
 
 
 	// main calculation (Chapman-Enskog expansion)
-	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
 	for(int i = 0; i < muBpts; i++)					// baryon chemical potential column
 	{
 		for(int j = 0; j < Tpts; j++)				// temperature column
@@ -661,13 +428,12 @@ int main()
 		} // j
 	} // i
 
-	G_table_dfce.close();	// close table files (Chapman-Enskog expansion)
+	G_table_dfce.close();
 	F_table_dfce.close();
 	betabulk_table_dfce.close();
 	betaV_table_dfce.close();
 	betapi_table_dfce.close();
 
-	//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
 	printf("Freeing memory...");
@@ -682,9 +448,7 @@ int main()
 	free(pbar_weight3);
 	free(pbar_weight4);
 
-
-	free(T_array);
-	free(muB_array);
+	delete[] particle;
 
 
 	printf("done\n\n");

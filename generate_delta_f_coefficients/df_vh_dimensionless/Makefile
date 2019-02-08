@@ -15,10 +15,10 @@ CFLAGS := $(CFLAG) -Wno-comment
 
 # Library options
 ifeq ($(UNAME), Linux)
-LIBS := -lm -lgsl
+LIBS := -lm -lgsl -lconfig
 endif
 ifeq ($(UNAME), Darwin)
-LIBS := -lc++ -lm
+LIBS := -lc++ -lm -lconfig
 #LIBS := -lm -lgsl
 endif
 
