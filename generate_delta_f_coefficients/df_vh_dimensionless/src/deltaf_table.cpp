@@ -12,12 +12,13 @@ using namespace std;
 #include "../include/gauss_integration.hpp"
 #include "../include/thermal_integrands.hpp"
 #include "../include/freearray.hpp"
-//#include <gsl/gsl_sf.h>
-
-#define GEV_TO_INVERSE_FM 5.067731
 
 const double hbarC = 0.197327053;  // GeV*fm
 const double two_pi2_hbarC3 = 2.0 * pow(M_PI, 2) * pow(hbarC, 3);
+
+const int Maxparticle = 600; //size of array for storage of the particles
+const int Maxdecaychannel = 50;
+const int Maxdecaypart = 5;
 
 // temporary
 const int a = 21;
@@ -53,20 +54,143 @@ int load_gauss_laguerre_data()
 
 
 
+typedef struct
+{
+  long int mc_id; 	// Monte Carlo number according PDG
+  string name;		// name
+  double mass;		// mass (GeV)
+  double width;		// resonance width (GeV)
+  int gspin; 		// spin degeneracy
+  int baryon;		// baryon number
+  int strange;		// strangeness
+  int charm;		// charmness
+  int bottom;		// bottomness
+  int gisospin; 	// isospin degeneracy
+  int charge;		// electric charge
+  int decays; 		// amount of decays listed for this resonance
+  int stable; 		// defines whether this particle is considered as stable under strong interactions
+
+  int decays_Npart[Maxdecaychannel];
+  double decays_branchratio[Maxdecaychannel];
+  int decays_part[Maxdecaychannel][Maxdecaypart];
+
+  int sign; 		// Bose-Einstein or Dirac-Fermi statistics
+
+} particle_info;
+
 
 int main()
 {
+  	printf("Loading particle info from pdg.dat...(make sure only 1 blank line at end of file\n");
 
-  printf("Start loading pdg.dat resonance info...");
-	FILE *HRG;													// load hadron resonance data from pdg.dat
-	stringstream resonances;
-	resonances << "pdg.dat";
-	HRG = fopen(resonances.str().c_str(),"r");					// open pdg.dat
+  	particle_info particle[Maxparticle];		// particle info struct
+
+  	int N_resonances = 0;						// count number of resonances in pdg file
+
+	double eps = 1e-15;
+	
+	ifstream pdg("pdg.dat");
+	int local_i = 0;
+	int dummy_int;
+
+	while(!pdg.eof())
+	{
+		pdg >> particle[local_i].mc_id;			// monte carlo id
+		pdg >> particle[local_i].name;			// name (now it's in strange characters is that okay?)
+		pdg >> particle[local_i].mass;			// mass (GeV)
+		pdg >> particle[local_i].width;			// resonance width (GeV)
+		pdg >> particle[local_i].gspin;	      	// spin degeneracy
+		pdg >> particle[local_i].baryon;		// baryon number
+		pdg >> particle[local_i].strange;	   	// strangeness
+		pdg >> particle[local_i].charm;			// charmness
+		pdg >> particle[local_i].bottom;	   	// bottomness
+		pdg >> particle[local_i].gisospin;     	// isospin degeneracy
+		pdg >> particle[local_i].charge;		// electric charge
+		pdg >> particle[local_i].decays;		// decay channels
+
+	   for (int j = 0; j < particle[local_i].decays; j++)
+	    {
+	      pdg >> dummy_int;
+	      pdg >> particle[local_i].decays_Npart[j];
+	      pdg >> particle[local_i].decays_branchratio[j];
+	      pdg >> particle[local_i].decays_part[j][0];
+	      pdg >> particle[local_i].decays_part[j][1];
+	      pdg >> particle[local_i].decays_part[j][2];
+	      pdg >> particle[local_i].decays_part[j][3];
+	      pdg >> particle[local_i].decays_part[j][4];
+	    }
+
+	    //decide whether particle is stable under strong interactions
+	    if (particle[local_i].decays_Npart[0] == 1) particle[local_i].stable = 1;
+	    else particle[local_i].stable = 0;
+
+	    // add anti-particle entry
+	    if (particle[local_i].baryon == 1)
+	    {
+	      local_i++;
+	      particle[local_i].mc_id = -particle[local_i-1].mc_id;
+	      ostringstream antiname;
+	      antiname << "Anti-baryon-" << particle[local_i-1].name;
+	      particle[local_i].name = antiname.str();
+	      particle[local_i].mass = particle[local_i-1].mass;
+	      particle[local_i].width = particle[local_i-1].width;
+	      particle[local_i].gspin = particle[local_i-1].gspin;
+	      particle[local_i].baryon = -particle[local_i-1].baryon;
+	      particle[local_i].strange = -particle[local_i-1].strange;
+	      particle[local_i].charm = -particle[local_i-1].charm;
+	      particle[local_i].bottom = -particle[local_i-1].bottom;
+	      particle[local_i].gisospin = particle[local_i-1].gisospin;
+	      particle[local_i].charge = -particle[local_i-1].charge;
+	      particle[local_i].decays = particle[local_i-1].decays;
+	      particle[local_i].stable = particle[local_i-1].stable;
+
+	      for (int j = 0; j < particle[local_i].decays; j++)
+	      {
+	        particle[local_i].decays_Npart[j]=particle[local_i-1].decays_Npart[j];
+	        particle[local_i].decays_branchratio[j]=particle[local_i-1].decays_branchratio[j];
+
+	        for (int k=0; k< Maxdecaypart; k++)
+	        {
+	          if(particle[local_i-1].decays_part[j][k] == 0) particle[local_i].decays_part[j][k] = (particle[local_i-1].decays_part[j][k]);
+	          else
+	          {
+	            int idx;
+	            // find the index for decay particle
+	            for(idx = 0; idx < local_i; idx++)
+	            if (particle[idx].mc_id == particle[local_i-1].decays_part[j][k]) break;
+	            if(idx == local_i && particle[local_i-1].stable == 0 && particle[local_i-1].decays_branchratio[j] > eps)
+	            {
+	              cout << "Error: can not find decay particle index for anti-baryon!" << endl;
+	              cout << "particle mc_id : " << particle[local_i-1].decays_part[j][k] << endl;
+	              exit(1);
+	            }
+	            if (particle[idx].baryon == 0 && particle[idx].charge == 0 && particle[idx].strange == 0) particle[local_i].decays_part[j][k] = (particle[local_i-1].decays_part[j][k]);
+	            else particle[local_i].decays_part[j][k] = (- particle[local_i-1].decays_part[j][k]);
+	          }
+	        }
+	      }
+	    }
+	    local_i++;	// add one to the counting variable "i" for the meson/baryon
+	}
+
+	pdg.close();
+
+	N_resonances = local_i; 				    // take account the final fake one
+	//N_resonances = local_i - 1; 				// take account the final fake one (why were there two blanks?)
+
+	for(int i = 0; i < N_resonances; i++)
+	{
+		if(particle[i].baryon == 0) 			// set the quantum statistics sign
+		{
+			particle[i].sign = -1;
+		}
+		else particle[i].sign = 1;
+	}
 
 
 	// pdg.dat contains (anti)mesons and baryons but
 	// not antibaryons, so add antibaryons manually
-
+	/*
 	int N_mesons;												// number of mesons
 	int N_baryons;												// number of baryons
 	int N_antibaryons;											// number of antibaryons
@@ -121,7 +245,8 @@ int main()
 
 	fclose(HRG);												// close pdg.dat
 
-  printf("done\n\n");
+   printf("done\n\n");
+   */
 
 
 	// set up momentum-bar (pbar) roots and weights for thermodynamic integrals
@@ -191,11 +316,6 @@ int main()
 
 	// Temperature / chemical potential table based on chemical freezeout data (Andronic 2017)
 
-																	// (for main calculation loop below)
-	double T;				  					            		// temperature (fm^-1)
-	double muB;				   						        		// baryon chemical potential (fm^-1)
-
-
 	int Tpts = 101;													// temperature grid points
 	int muBpts = 81;												// chemical potential grid points
 
@@ -208,8 +328,17 @@ int main()
 	double muB_max = 0.8;
 	double dmuB = (muB_max - muB_min)/(double)(muBpts-1);		    // chemical potential resolution
 
-	cout << "dT =  " << dT << "\t" << "dmuB = " << dmuB << endl;
-	//exit(-1);
+	printf("\nTable properties:\n\n");
+	printf("T_min = %lf GeV\n", T_min);
+	printf("T_max = %lf GeV\n", T_max);
+	printf("T_pts = %d\n", Tpts);
+	printf("dT = %lf GeV\n", dT);
+	printf("\n");
+	printf("muB_min = %lf GeV\n", muB_min);
+	printf("muB_max = %lf GeV\n", muB_max);
+	printf("muB_pts = %d\n", muBpts);
+	printf("dmuB = %lf GeV\n", dmuB);
+	printf("\n");
 
 	double * T_array = (double *)malloc(Tpts * sizeof(double));		// allocate temperature array
 	double * muB_array = (double *)malloc(muBpts * sizeof(double));	// allocate chemical potential array
@@ -221,48 +350,14 @@ int main()
 	for(int i = 0; i < muBpts; i++)	muB_array[i] = muB_min + (double)i*dmuB;
 
 
-	// declare thermodynamic integrals and prefactors
 	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-	double A20, A20_fact;
-	double A21, A21_fact;			// update bulk formula
-	double J20, J20_fact;			// bulk
-	double J21, J21_fact;			// bulk
-	double J40, J40_fact;			// bulk
-	double J41, J41_fact;			// bulk and diffusion
-	//double J42, J42_fact; 			// shear
-
-	double B10, B10_fact;
-	double N10, N10_fact;			// bulk
-	double N30, N30_fact;			// bulk
-	double N31, N31_fact;			// bulk and difussion
-
-	double M20, M20_fact;			// bulk
-	double M21, M21_fact;			// diffusion
-
-
-	// set up coefficient placeholders
-	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-	size_t SF = 8;	        // significant digits (better way?)
-
-	double c0_df14;				// scalar bulk
-	double c1_df14;				// baryon bulk
-	double c2_df14;				// energy bulk
-	double c3_df14;				// baryon diffusion
-	double c4_df14;				// energy diffusion
-	double c5_df14;				// shear (not required)
-
-	double bulk0;			// to facilitate organization of the bulk coefficients
-	double bulk1;
-	double bulk2;
-	double denom;
-
+	size_t SF = 8;	        	// significant digits (better way?)
 
 	// data tables for the (T,muB) dependent coefficients
 	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-	ofstream c0_table_df14;							// output file stream coefficient tables
+	ofstream c0_table_df14;								// output file stream coefficient tables
 	ofstream c1_table_df14;
 	ofstream c2_table_df14;
 	ofstream c3_table_df14;
@@ -289,16 +384,9 @@ int main()
 	c4_table_df14 << "T [GeV]" << "\t\t" << "muB [GeV]" << "\t\t" << "c4_T5 [fm^3/GeV^2 * GeV^5]" << endl;
 
 
-	// stat mech quantities for resonance sum
-	//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-	double dof;		// degrees of freedom
-	double Theta;	// quantum statistics sign
-	double mbar; 	// mass/T
-	double b; 		// baryon number
 
 
-		// main calculation (14 moment approximation)
+	// main calculation (14 moment approximation)
 	//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 	for(int i = 0; i < muBpts; i++)					// baryon chemical potential column
@@ -306,50 +394,50 @@ int main()
 		for(int j = 0; j < Tpts; j++)				// temperature column
 		{
 			// set T and muB
-			muB = muB_array[i];
-			T = T_array[j];
+			double muB = muB_array[i];
+			double T = T_array[j];
 
 			// evaluate prefactors
-			J20_fact = pow(T,4) / (two_pi2_hbarC3);
-			J21_fact = pow(T,4) / (3.0 * two_pi2_hbarC3);
-			J40_fact = pow(T,6) / (two_pi2_hbarC3);
-			J41_fact = pow(T,6) / (3.0 * two_pi2_hbarC3);
-			//J42_fact = pow(T,6) / (15.0 * two_pi2_hbarC3);
-			N10_fact = pow(T,3) / (two_pi2_hbarC3);
-			N30_fact = pow(T,5) / (two_pi2_hbarC3);
-			N31_fact = pow(T,5) / (3.0 * two_pi2_hbarC3);
-			M20_fact = J20_fact;
-			M21_fact = J21_fact;
-			A20_fact = J20_fact;
-			A21_fact = J21_fact;
-			B10_fact = N10_fact;
+			double J20_fact = pow(T,4) / (two_pi2_hbarC3);
+			double J21_fact = pow(T,4) / (3.0 * two_pi2_hbarC3);
+			double J40_fact = pow(T,6) / (two_pi2_hbarC3);
+			double J41_fact = pow(T,6) / (3.0 * two_pi2_hbarC3);
+			double N10_fact = pow(T,3) / (two_pi2_hbarC3);
+			double N30_fact = pow(T,5) / (two_pi2_hbarC3);
+			double N31_fact = pow(T,5) / (3.0 * two_pi2_hbarC3);
+			double M20_fact = J20_fact;
+			double M21_fact = J21_fact;
+			double A20_fact = J20_fact;
+			double A21_fact = J21_fact;
+			double B10_fact = N10_fact;
 
 			// reset thermodynamic integrals to zero
-			J20 = 0.0;
-			J21 = 0.0;
-			J40 = 0.0;
-			J41 = 0.0;
-			//J42 = 0.0;
-			N10 = 0.0;
-			N30 = 0.0;
-			N31 = 0.0;
-			M20 = 0.0;
-			M21 = 0.0;
+			double J20 = 0.0;
+			double J21 = 0.0;
+			double J40 = 0.0;
+			double J41 = 0.0;
+			double N10 = 0.0;
+			double N30 = 0.0;
+			double N31 = 0.0;
+			double M20 = 0.0;
+			double M21 = 0.0;
 
-			A20 = 0.0;
-			A21 = 0.0;
-			B10 = 0.0;
+			double A20 = 0.0;
+			double A21 = 0.0;
+			double B10 = 0.0;
 
 			// sum over resonance contributions to thermodynamic integrals
 			for(int k = 0; k < N_resonances; k++)
 			{
-				// degrees of freedom, etc for particle k
-				dof = (double)degeneracy[k];
-				mbar = mass[k]/T;
-				b = (double)baryon[k];
-				Theta = (double)sign[k];
+				if(particle[k].mass == 0.0) continue;	// skip the photon contribution
 
-				double mass2 = mass[k]*mass[k];
+				// spin degeneracy , m/T, baryon number, quantum statistics sign for particle k
+				double dof = (double)particle[k].gspin;
+				double mbar = particle[k].mass/T;
+				double b = (double)particle[k].baryon;
+				double Theta = (double)particle[k].sign;
+
+				double mass2 = particle[k].mass * particle[k].mass;
 
 				// evaluate gauss integrals
 				A20 += mass2 * dof * A20_fact * Gauss1D(J20_int, pbar_root2, pbar_weight2, gla_pts, mbar, T, muB, b, Theta);
@@ -362,7 +450,7 @@ int main()
 				//J42 += dof * J42_fact * Gauss1D(J42_int, pbar_root4, pbar_weight4, gla_pts, mbar, T, muB, b, Theta);
 
 				// skip iterations for baryon = 0
-				if(baryon[k] != 0)
+				if(particle[k].baryon != 0)
 				{
 				 	B10 += mass2 * dof * B10_fact * Gauss1D(N10_int, pbar_root1, pbar_weight1, gla_pts, mbar, T, muB, b, Theta);
 				 	N10 += dof * N10_fact * Gauss1D(N10_int, pbar_root1, pbar_weight1, gla_pts, mbar, T, muB, b, Theta);
@@ -381,18 +469,18 @@ int main()
 			//denom = J21*bulk0 - N31*bulk1 + J41*bulk2;
 
 			// update 3/25
-			bulk0 = (4.0*N30-B10)*N30 - M20*(4.0*J40-A20);
-			bulk1 = (B10-N30)*(4.0*J40-A20) - (4.0*N30-B10)*(A20-J40);
-			bulk2 = M20*(A20-J40) - (B10-N30)*N30;
-			denom = (A21-J41)*bulk0 + N31*bulk1 + (4.0*J41-A21)*bulk2;
+			double bulk0 = (4.0*N30-B10)*N30 - M20*(4.0*J40-A20);
+			double bulk1 = (B10-N30)*(4.0*J40-A20) - (4.0*N30-B10)*(A20-J40);
+			double bulk2 = M20*(A20-J40) - (B10-N30)*N30;
+			double denom = (A21-J41)*bulk0 + N31*bulk1 + (4.0*J41-A21)*bulk2;
 
 
-			c0_df14 = bulk0 / denom;
-			c1_df14 = bulk1 / denom;
-			c2_df14 = bulk2 / denom;
+			double c0_df14 = bulk0 / denom;
+			double c1_df14 = bulk1 / denom;
+			double c2_df14 = bulk2 / denom;
 
-			c3_df14 = J41 / (N31*N31 - M21*J41);
-			c4_df14 = - N31 / (N31*N31 - M21*J41);   // (accounted for the factor of 2)
+			double c3_df14 = J41 / (N31*N31 - M21*J41);
+			double c4_df14 = - N31 / (N31*N31 - M21*J41);   // (accounted for the factor of 2)
 
 			// check for singularities
 			if(J21*bulk0 - N31*bulk1 + J41*bulk2 == 0.0)
@@ -442,23 +530,6 @@ int main()
 
 
 	// thermodynamic integrals and prefactors
-	double nB, nB_fact;		// bulk and diffusion
-	double e, e_fact;		// bulk and diffusion
-	double p, p_fact;		// bulk and diffusion
-	double J30, J30_fact;	// bulk
-	double J32, J32_fact;	// shear
-	double N20, N20_fact;	// bulk
-	double M10, M10_fact;	// bulk
-	double M11, M11_fact;	// diffusion
-
-
-	// coefficient placeholders
-	double G;
-	double F;
-	double betabulk;
-	double betaV;
-	double betapi;
-
 
 	// data tables for the (T,muB) dependent coefficients
 	ofstream G_table_dfce;
@@ -494,38 +565,39 @@ int main()
 		for(int j = 0; j < Tpts; j++)				// temperature column
 		{
 			// set T and muB
-			muB = muB_array[i];
-			T = T_array[j];
+			double muB = muB_array[i];
+			double T = T_array[j];
 
 			// evaluate prefactors
-			nB_fact = pow(T,3) / (two_pi2_hbarC3);
-			e_fact = pow(T,4) / (two_pi2_hbarC3);
-			p_fact = pow(T,4) / (3.0 * two_pi2_hbarC3);
-			J30_fact = pow(T,5) / (two_pi2_hbarC3);
-			J32_fact = pow(T,5) / (15.0 * two_pi2_hbarC3);
-			N20_fact = pow(T,4) / (two_pi2_hbarC3);
-			M10_fact = pow(T,3) / (two_pi2_hbarC3);
-			M11_fact = pow(T,3) / (3.0 * two_pi2_hbarC3);
+			double nB_fact = pow(T,3) / (two_pi2_hbarC3);
+			double e_fact = pow(T,4) / (two_pi2_hbarC3);
+			double p_fact = pow(T,4) / (3.0 * two_pi2_hbarC3);
+			double J30_fact = pow(T,5) / (two_pi2_hbarC3);
+			double J32_fact = pow(T,5) / (15.0 * two_pi2_hbarC3);
+			double N20_fact = pow(T,4) / (two_pi2_hbarC3);
+			double M10_fact = pow(T,3) / (two_pi2_hbarC3);
+			double M11_fact = pow(T,3) / (3.0 * two_pi2_hbarC3);
 
 			// reset thermodynamic integrals to zero
-			nB = 0.0;
-			e = 0.0;
-			p = 0.0;
-			J30 = 0.0;
-			J32 = 0.0;
-			N20 = 0.0;
-			M10 = 0.0;
-			M11 = 0.0;
+			double nB = 0.0;
+			double e = 0.0;
+			double p = 0.0;
+			double J30 = 0.0;
+			double J32 = 0.0;
+			double N20 = 0.0;
+			double M10 = 0.0;
+			double M11 = 0.0;
 
 			// sum over resonance contributions to thermodynamic integrals
 			for(int k = 0; k < N_resonances; k++)
 			{
-				// degrees of freedom, etc for particle k
-				dof = (double)degeneracy[k];
-				mbar = mass[k]/T;
-				b = (double)baryon[k];
-				Theta = (double)sign[k];
+				if(particle[k].mass == 0.0) continue;	// skip the photon contribution
 
+				// spin degeneracy , m/T, baryon number, quantum statistics sign for particle k
+				double dof = (double)particle[k].gspin;
+				double mbar = particle[k].mass/T;
+				double b = (double)particle[k].baryon;
+				double Theta = (double)particle[k].sign;
 
 				// evaluate gauss integrals
 				e += dof * e_fact * Gauss1D(e_int, pbar_root2, pbar_weight2, gla_pts, mbar, T, muB, b, Theta);
@@ -535,7 +607,7 @@ int main()
 
 
 				// skip iterations for baryon = 0
-				if(baryon[k] != 0)
+				if(particle[k].baryon != 0)
 				{
 					nB += dof * nB_fact * Gauss1D(nB_int, pbar_root1, pbar_weight1, gla_pts, mbar, T, muB, b, Theta);
 					N20 += dof * N20_fact * Gauss1D(N20_int, pbar_root2, pbar_weight2, gla_pts, mbar, T, muB, b, Theta);
@@ -545,14 +617,10 @@ int main()
 
 			} // k
 
-			// cout << "e = " << e << endl;
-			// cout << "p = " << p << endl;
-			// cout << "nB = " << nB << endl;
-
 			// evaluate Chapman-Enskog coefficients (alphaB form)   // changed 3/29
-			G = ((e+p)*N20 - J30*nB) / (J30*M10 - N20*N20);
-			F = T * T * (N20*nB - (e+p)*M10) / (J30*M10 - N20*N20);
-			betabulk = G*nB*T + F*(e+p)/T + 5.0*J32/(3.0*T);
+			double G = ((e+p)*N20 - J30*nB) / (J30*M10 - N20*N20);
+			double F = T * T * (N20*nB - (e+p)*M10) / (J30*M10 - N20*N20);
+			double betabulk = G*nB*T + F*(e+p)/T + 5.0*J32/(3.0*T);
 
 
 			// evaluate Chapman-Enskog coefficients (muB form)
@@ -561,8 +629,8 @@ int main()
 			//betabulk = G*nB + F*(e+p-muB*nB)/T + 5.0*J32/(3.0*T);     // why is this different than the formula in my paper?
 																	    // this was done in muB, my paper done in alphaB
 
-			betaV = M11 - nB*nB*T/(e+p);
-			betapi = J32/T;
+			double betaV = M11 - nB*nB*T/(e+p);
+			double betapi = J32/T;
 
 
 			// check for singularities
@@ -618,8 +686,6 @@ int main()
 	free(T_array);
 	free(muB_array);
 
-
-	//free_2D(A,n);
 
 	printf("done\n\n");
 
