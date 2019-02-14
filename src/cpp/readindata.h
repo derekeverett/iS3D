@@ -131,6 +131,54 @@ typedef struct
 } deltaf_coefficients;
 
 
+const int max_digits = 10;  // max number of mcid digits (goes up to nuclei)
+
+class read_mcid
+{
+  // determine the remaining particle properties based on mcid
+  // (borrows some functionality from smash's pdgcode.hpp)
+
+  // note: only have hadrons in mind (print errors if have leptons, etc)
+
+  private:
+    long int mcid;          // mcid of particle
+  public:
+    bool is_deuteron;       // label particle as deuteron (nothing yet for fake dibaryon d')
+    bool is_hadron;         // label particle as hadron
+    bool is_meson;          // label particle as meson
+    bool is_baryon;         // label particle as baryon
+    bool has_antiparticle;  // does particle have a distinct antiparticle?
+    int baryon;             // baryon number
+    int spin;               // spin x 2
+    int gspin;              // spin degeneracy
+    int sign;               // quantum statistics sign (BE, FD) = (-1, 1)
+
+    uint32_t nJ  : 4;       // spin quantum number nJ = 2J + 1
+    uint32_t nq3 : 4;       // third quark field
+    uint32_t nq2 : 4;       // second quark field
+    uint32_t nq1 : 4;       // first quark field, 0 for mesons
+    uint32_t nL  : 4;       // "angular momentum"
+    uint32_t nR  : 4;       // "radial excitation"
+    uint32_t n   : 4, :3;   // first field: "counter"
+    uint32_t n8;
+    uint32_t n9;
+    uint32_t n10;           // nuclei have 10-digits
+
+    read_mcid(long int mcid_in);
+
+    void is_particle_a_deuteron();// determine if particle is a deuteron
+    void is_particle_a_hadron();  // determine if particle is a hadron
+    void is_particle_a_meson();
+    void is_particle_a_baryon();  // determine if the hadron is a baryon
+    void get_baryon();            // get the baryon number
+    void get_spin();              // get the spin x 2
+    void get_gspin();             // get the spin degeneracy
+    void get_sign();              // get the quantum statistics sign
+    void does_particle_have_distinct_antiparticle();  // determine if there's a distinct antiparticle
+
+};
+
+
 class FO_data_reader
 {
     private:
@@ -158,7 +206,11 @@ class FO_data_reader
         void read_surf_VH_MUSIC(long length, FO_surf * surf_ptr);
         void read_surf_VH_MUSIC_New(long length, FO_surf* surf_ptr);
         void read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr);
-        int read_resonances_list(particle_info * particle, FO_surf * surf_ptr);
 };
+
+// read resonances from pdg file
+int read_resonances_conventional(particle_info * particle, string pdg_filename);
+int read_resonances_smash_box(particle_info * particle, string pdg_filename);
+int read_resonances(particle_info * particle, ParameterReader * paraRdr);
 
 #endif

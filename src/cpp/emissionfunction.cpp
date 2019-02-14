@@ -1554,8 +1554,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               if(DF_MODE == 2) printf("Sampling particles with Chapman Enskog df...\n");
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
-            
-              if(TEST_SAMPLER) // only for testing the sampler 
+
+              if(TEST_SAMPLER) // only for testing the sampler
               {
                 write_sampled_pT_pdf_toFile(MCID);
                 write_sampled_vn_toFile(MCID);
@@ -1564,7 +1564,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               }
               else // do for actual runs
               {
-                write_particle_list_OSC();  
+                write_particle_list_OSC();
               }
 
               particle_event_list_in = particle_event_list[0];  // only one event per core
@@ -1613,7 +1613,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
 
 
-              if(TEST_SAMPLER) // only for testing the sampler 
+              if(TEST_SAMPLER) // only for testing the sampler
               {
                 write_sampled_pT_pdf_toFile(MCID);
                 write_sampled_vn_toFile(MCID);
@@ -1622,7 +1622,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               }
               else // do for actual runs
               {
-                write_particle_list_OSC();  
+                write_particle_list_OSC();
               }
 
               particle_event_list_in = particle_event_list[0];

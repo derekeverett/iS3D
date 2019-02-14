@@ -141,14 +141,45 @@ void IS3D::run_particlization(int fo_from_file)
   */
 
   // load particle info
-  particle_info *particle_data = new particle_info [Maxparticle];
-  int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr); //number of resonances in pdg file
+  particle_info *particle_data = new particle_info[Maxparticle];
+  //int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr); //number of resonances in pdg file
+
+  int Nparticle = read_resonances(particle_data, paraRdr);
+
 
   // this will replace Deltaf_Reader
   Deltaf_Data * df_data = new Deltaf_Data(paraRdr);
   df_data->load_df_coefficient_data();
   df_data->construct_cubic_splines();
   df_data->compute_jonah_coefficients(particle_data, Nparticle);
+
+
+  // print out average df coefficients (also choose bulkPi = -0.1 * P)
+  Plasma QGP;
+  QGP.load_thermodynamic_averages();
+
+  double E = QGP.energy_density;
+  double T = QGP.temperature;
+  double P = QGP.pressure;
+  double muB = QGP.baryon_chemical_potential;
+
+  deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, -0.1 * P);
+
+  int df_mode = paraRdr->getVal("df_mode");
+
+  if(df_mode == 1)
+  {
+    printf("\n(c0, c1, c2, c3, c4, shear14) = (%lf, %lf, %lf, %lf, %lf, %lf)\n", df.c0, df.c1, df.c2, df.c3, df.c4, df.shear14_coeff);
+  }
+  else if(df_mode == 2 || df_mode == 3)
+  {
+    printf("\n(F, G, betabulk, betaV, betapi) = (%lf, %lf, %lf, %lf, %lf)\n", df.F, df.G, df.betabulk, df.betaV, df.betapi);
+  }
+  else if(df_mode == 4)
+  {
+    printf("\n(lambda, z, dlambda, dz, betapi) = (%lf, %lf, %lf, %lf, %lf)\n", df.lambda, df.z, df.delta_lambda, df.delta_z, df.betapi);
+  }
+
 
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
   //switch to different method of reading chosen_particles.dat file that doesn't
