@@ -1424,7 +1424,20 @@ void read_mcid::does_particle_have_distinct_antiparticle()
 }
 
 
-int read_resonances_conventional(particle_info* particle, string pdg_filename)
+PDG_Data::PDG_Data(ParameterReader * paraRdr_in)
+{
+  paraRdr = paraRdr_in;
+  hrg_eos = paraRdr->getVal("hrg_eos"); 
+}
+
+
+PDG_Data::~PDG_Data()
+{
+  //////////////////////////////
+}
+
+
+int PDG_Data::read_resonances_conventional(particle_info * particle, string pdg_filename)
 {
   double eps = 1e-15;
   int Nparticle=0;
@@ -1520,6 +1533,24 @@ int read_resonances_conventional(particle_info* particle, string pdg_filename)
     else particle[i].sign = 1;
   }
 
+  // count the number of mesons, baryons and antibaryons
+  int meson = 0;
+  int baryon = 0;
+  int antibaryon = 0;
+
+  for(int i = 0; i < Nparticle; i++)
+  {
+    if(particle[i].baryon == 0) meson++;
+    else if(particle[i].baryon > 0) baryon++;
+    else if(particle[i].baryon < 0) antibaryon++;
+  }
+  if(baryon != antibaryon) printf("Error: (anti)baryons not paired correctly\n");
+
+  printf("\nThere are %d resonances: %d mesons, %d baryons and %d antibaryons\n\n", Nparticle, meson, baryon, antibaryon);
+
+  particle_info last_particle = particle[Nparticle - 1];
+
+  printf("Last particle: mcid = %ld, %s, m = %lf GeV (please check this) \n\n", last_particle.mc_id, last_particle.name.c_str(), last_particle.mass);
   /*
   // get the average temperature, energy density, pressure
   Plasma QGP;
@@ -1634,7 +1665,7 @@ int read_resonances_conventional(particle_info* particle, string pdg_filename)
 }
 
 
-int read_resonances_smash_box(particle_info * particle, string pdg_filename)
+int PDG_Data::read_resonances_smash_box(particle_info * particle, string pdg_filename)
 {
   printf("\nReading in resonances smash box pdg.dat (check if mcid_entries large enough)\n");
 
@@ -1740,7 +1771,7 @@ int read_resonances_smash_box(particle_info * particle, string pdg_filename)
   }
   if(baryon != antibaryon) printf("Error: (anti)baryons not paired correctly\n");
 
-  printf("There are %d resonances: %d mesons, %d baryons and %d antibaryons\n\n", Nparticle, meson, baryon, antibaryon);
+  printf("\nThere are %d resonances: %d mesons, %d baryons and %d antibaryons\n\n", Nparticle, meson, baryon, antibaryon);
 
   particle_info last_particle = particle[Nparticle - 1];
 
@@ -1750,27 +1781,25 @@ int read_resonances_smash_box(particle_info * particle, string pdg_filename)
 }
 
 
-int read_resonances(particle_info * particle, ParameterReader * paraRdr)
+int PDG_Data::read_resonances(particle_info * particle)
 {
-  int hrg_eos = paraRdr->getVal("hrg_eos");
-
   int Nparticle;
 
   switch(hrg_eos)
   {
     case 1:
     {
-      Nparticle = read_resonances_conventional(particle, "PDG/pdg-urqmd_v3.3+.dat");
+      Nparticle = read_resonances_conventional(particle, urqmd);
       break;
     }
     case 2:
     {
-      Nparticle = read_resonances_conventional(particle, "PDG/pdg_smash.dat");
+      Nparticle = read_resonances_conventional(particle, smash);
       break;
     }
     case 3:
     {
-      Nparticle = read_resonances_smash_box(particle, "PDG/pdg_box.dat");
+      Nparticle = read_resonances_smash_box(particle, smash_box);
       break;
     }
     default:

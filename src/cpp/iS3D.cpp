@@ -144,7 +144,9 @@ void IS3D::run_particlization(int fo_from_file)
   particle_info *particle_data = new particle_info[Maxparticle];
   //int Nparticle = freeze_out_data.read_resonances_list(particle_data, surf_ptr); //number of resonances in pdg file
 
-  int Nparticle = read_resonances(particle_data, paraRdr);
+  PDG_Data pdg(paraRdr);
+
+  int Nparticle = pdg.read_resonances(particle_data);
 
 
   // this will replace Deltaf_Reader

@@ -208,9 +208,23 @@ class FO_data_reader
         void read_surf_VH_hiceventgen(long length, FO_surf* surf_ptr);
 };
 
-// read resonances from pdg file
-int read_resonances_conventional(particle_info * particle, string pdg_filename);
-int read_resonances_smash_box(particle_info * particle, string pdg_filename);
-int read_resonances(particle_info * particle, ParameterReader * paraRdr);
+
+class PDG_Data
+{ 
+  private:
+    ParameterReader * paraRdr;
+    int hrg_eos;
+    string urqmd = "PDG/pdg-urqmd_v3.3+.dat"; // list of available pdg files
+    string smash = "PDG/pdg_smash.dat";
+    string smash_box = "PDG/pdg_box.dat";
+  public:
+    // read resonances from pdg file
+    PDG_Data(ParameterReader * paraRdr_in);
+    ~PDG_Data();
+
+    int read_resonances_conventional(particle_info * particle, string pdg_filename);
+    int read_resonances_smash_box(particle_info * particle, string pdg_filename);
+    int read_resonances(particle_info * particle);
+};
 
 #endif
