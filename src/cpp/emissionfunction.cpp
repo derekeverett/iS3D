@@ -132,7 +132,7 @@ bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi,
   {
     if(z < 0.0) printf("Error: z should be positive");
 
-    //if(detA <= detA_min || z < 0.0) return true;
+    if(detA <= detA_min || z < 0.0) return true;
   }
 
   return false;
@@ -1682,7 +1682,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     {
       write_dN_pTdpTdphidy_toFile(MCID);
       //write_dN_dpTdphidy_toFile(MCID);
-      //write_continuous_vn_toFile(MCID);
+      write_continuous_vn_toFile(MCID);
       //write_dN_twopipTdpTdy_toFile(MCID);
       //write_dN_twopidpTdy_toFile(MCID);
       //write_dN_dphidy_toFile(MCID);

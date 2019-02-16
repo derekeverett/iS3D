@@ -368,9 +368,28 @@ Deltaf_Data::Deltaf_Data(ParameterReader * paraRdr_in)
 {
   paraRdr = paraRdr_in;
 
+  hrg_eos = paraRdr->getVal("hrg_eos");
   mode = paraRdr->getVal("mode");
   df_mode = paraRdr->getVal("df_mode");
   include_baryon = paraRdr->getVal("include_baryon");
+
+  if(hrg_eos == 1) 
+  {
+    hrg_eos_path = urqmd;
+  }
+  else if(hrg_eos == 2)
+  {
+    hrg_eos_path = smash;
+  }
+  else if(hrg_eos == 3)
+  {
+    hrg_eos_path = smash_box;
+  }
+  else
+  {
+    printf("Error: please choose hrg_eos = (1,2,3)\n");
+    exit(-1);
+  }
 }
 
 Deltaf_Data::~Deltaf_Data()
@@ -393,18 +412,44 @@ void Deltaf_Data::load_df_coefficient_data()
 {
   printf("Reading in 14 moment and Chapman-Enskog coefficient tables...");
 
-  // coefficient files and names
-  FILE * c0_file = fopen("deltaf_coefficients/vh/c0.dat", "r"); // 14 moment (coefficients are scaled by some power of temperature)
-  FILE * c1_file = fopen("deltaf_coefficients/vh/c1.dat", "r");
-  FILE * c2_file = fopen("deltaf_coefficients/vh/c2.dat", "r");
-  FILE * c3_file = fopen("deltaf_coefficients/vh/c3.dat", "r");
-  FILE * c4_file = fopen("deltaf_coefficients/vh/c4.dat", "r");
+  // now string join
+  char c0[100] = "";
+  char c1[100] = "";
+  char c2[100] = "";
+  char c3[100] = "";
+  char c4[100] = "";
 
-  FILE * F_file = fopen("deltaf_coefficients/vh/F.dat", "r"); // Chapman Enskog (coefficients are scaled by some power of temperature)
-  FILE * G_file = fopen("deltaf_coefficients/vh/G.dat", "r");
-  FILE * betabulk_file = fopen("deltaf_coefficients/vh/betabulk.dat", "r");
-  FILE * betaV_file = fopen("deltaf_coefficients/vh/betaV.dat", "r");
-  FILE * betapi_file = fopen("deltaf_coefficients/vh/betapi.dat", "r");
+  char F[100] = "";
+  char G[100] = "";
+  char betabulk[100] = "";
+  char betaV[100] = "";
+  char betapi[100] = "";
+
+  sprintf(c0, "%s%s", hrg_eos_path.c_str(), "c0.dat");
+  sprintf(c1, "%s%s", hrg_eos_path.c_str(), "c1.dat");
+  sprintf(c2, "%s%s", hrg_eos_path.c_str(), "c2.dat");
+  sprintf(c3, "%s%s", hrg_eos_path.c_str(), "c3.dat");
+  sprintf(c4, "%s%s", hrg_eos_path.c_str(), "c4.dat");
+
+  sprintf(F, "%s%s", hrg_eos_path.c_str(), "F.dat");
+  sprintf(G, "%s%s", hrg_eos_path.c_str(), "G.dat");
+  sprintf(betabulk, "%s%s", hrg_eos_path.c_str(), "betabulk.dat");
+  sprintf(betaV, "%s%s", hrg_eos_path.c_str(), "betaV.dat");
+  sprintf(betapi, "%s%s", hrg_eos_path.c_str(), "betapi.dat");
+
+
+  // coefficient files and names
+  FILE * c0_file = fopen(c0, "r"); // 14 moment (coefficients are scaled by some power of temperature)
+  FILE * c1_file = fopen(c1, "r");
+  FILE * c2_file = fopen(c2, "r");
+  FILE * c3_file = fopen(c3, "r");
+  FILE * c4_file = fopen(c4, "r");
+
+  FILE * F_file = fopen(F, "r"); // Chapman Enskog (coefficients are scaled by some power of temperature)
+  FILE * G_file = fopen(G, "r");
+  FILE * betabulk_file = fopen(betabulk, "r");
+  FILE * betaV_file = fopen(betaV, "r");
+  FILE * betapi_file = fopen(betapi, "r");
 
   if(c0_file == NULL) printf("Couldn't open c0 coefficient file!\n");
   if(c1_file == NULL) printf("Couldn't open c1 coefficient file!\n");
@@ -526,7 +571,7 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
   Plasma QGP;
   QGP.load_thermodynamic_averages();
 
-  const double T = QGP.temperature;    // GeV (assume freezeout surface of constant temperature)
+  const double T = QGP.temperature;    // GeV (assumes freezeout surface of constant temperature)
 
   // gauss laguerre roots and weights
   Gauss_Laguerre gla;
@@ -800,3 +845,35 @@ deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, 
 
   return df;
 }
+
+
+void Deltaf_Data::test_df_coefficients(double bulkPi_over_P)
+{
+  // test print the output of the df coefficients at average temperature, etc (and a fixed value of bulkPi)
+
+  Plasma QGP;
+  QGP.load_thermodynamic_averages();
+
+  double E = QGP.energy_density;
+  double T = QGP.temperature;
+  double P = QGP.pressure;
+  double muB = QGP.baryon_chemical_potential;
+  double bulkPi = bulkPi_over_P * P;
+
+  deltaf_coefficients df = evaluate_df_coefficients(T, muB, E, P, bulkPi);
+
+  if(df_mode == 1)
+  {
+    printf("\n(c0, c1, c2, c3, c4, shear14) = (%lf, %lf, %lf, %lf, %lf, %lf)\n\n", df.c0, df.c1, df.c2, df.c3, df.c4, df.shear14_coeff);
+  }
+  else if(df_mode == 2 || df_mode == 3)
+  {
+    printf("\n(F, G, betabulk, betaV, betapi) = (%lf, %lf, %lf, %lf, %lf)\n\n", df.F, df.G, df.betabulk, df.betaV, df.betapi);
+  }
+  else if(df_mode == 4)
+  {
+    printf("\n(lambda, z, dlambda, dz, betapi) = (%lf, %lf, %lf, %lf, %lf)\n\n", df.lambda, df.z, df.delta_lambda, df.delta_z, df.betapi);
+  }
+}
+
+
