@@ -1686,7 +1686,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       //write_dN_twopipTdpTdy_toFile(MCID);
       //write_dN_twopidpTdy_toFile(MCID);
       //write_dN_dphidy_toFile(MCID);
-      //write_dN_dy_toFile(MCID);
+      write_dN_dy_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)
