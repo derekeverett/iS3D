@@ -145,6 +145,11 @@ void Shear_Stress::boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2)
     pizz_LRF = - (pixx_LRF + piyy_LRF);
 }
 
+void Shear_Stress::compute_pi_magnitude()
+{
+    pi_magnitude = sqrt(pixx_LRF * pixx_LRF  +  piyy_LRF * piyy_LRF  +  pizz_LRF * pizz_LRF  +  2.0 * (pixy_LRF * pixy_LRF + pixz_LRF * pixz_LRF + piyz_LRF * piyz_LRF));
+}
+
 Baryon_Diffusion::Baryon_Diffusion(double Vt_in, double Vx_in, double Vy_in, double Vn_in)
 {
     Vt = Vt_in;

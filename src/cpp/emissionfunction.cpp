@@ -1329,7 +1329,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // gauss legendre roots and weights
     Gauss_Legendre * legendre = new Gauss_Legendre;
-    legendre->load_roots_and_weights("tables/gauss_legendre_24pts.dat");
+    legendre->load_roots_and_weights("tables/gauss_legendre_48pts.dat");
 
     // averaged thermodynamic quantities
     Plasma * QGP = new Plasma;
@@ -1686,7 +1686,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       //write_dN_twopipTdpTdy_toFile(MCID);
       //write_dN_twopidpTdy_toFile(MCID);
       //write_dN_dphidy_toFile(MCID);
-      write_dN_dy_toFile(MCID);
+      //write_dN_dy_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)

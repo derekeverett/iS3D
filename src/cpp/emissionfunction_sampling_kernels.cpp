@@ -124,6 +124,7 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
   double piyy_LRF = pimunu.piyy_LRF;
   double pizz_LRF = pimunu.pizz_LRF;
   double pixz_LRF = pimunu.pixz_LRF;
+  //double pi_magnitude = pimunu.pi_magnitude;
 
   // df coefficients
   double c0 = df.c0;
@@ -209,19 +210,7 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
   double costheta_ds = dsigma.costheta_LRF;
   double costheta_ds2 = costheta_ds * costheta_ds;
   double sintheta_ds = sqrt(fabs(1.0 - costheta_ds2));
-
-  // temporary test
-  // pizz_LRF = -0.008934/0.014314/sqrt(1.5)*shear14_coeff;
-  // pixx_LRF = - 0.5 * pizz_LRF;
-  // piyy_LRF = pixx_LRF;
-  // pixz_LRF = 0.0;
-
-  // ds_time_over_ds_space = 1.0/1.4;
-  // ds_space = 1.4;
-  // costheta_ds = 1.0;
-  // costheta_ds2 = 1.0;
-  // sintheta_ds = 0.0;
-
+  
   // mean particle number of a given species emitted
   // from freezeout cell with outflow and df corrections
   double particle_number = 0.0;
@@ -246,7 +235,9 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
 
           double df_bulk = ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
 
-          double df = max(-1.0, min(feqbar * df_bulk, 1.0)); // regulate df
+          double df = feqbar * df_bulk;
+
+          df = max(-1.0, min(df, 1.0)); // regulate df
 
           particle_number += weight * feq * (1.0 + df);
         } // i
@@ -282,20 +273,35 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           double df_bulk_time = df_bulk * (1.0 + costheta_star);
           double df_bulk_space = 0.5 * df_bulk * (costheta_star2 - 1.0);
 
+          //double df_shear_max = feq * feqbar * E * E * pi_magnitude / shear14_coeff;
+          //double df_shear_max_time = df_shear_max * (1.0 + costheta_star);
+          //double df_shear_max_space = 0.5 * df_shear_max * (costheta_star2 - 1.0);
+
           double df_shear_time = 0.5 * feq * feqbar / shear14_coeff * p * p * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
 
           double df_shear_space = 0.5 * feq * feqbar / shear14_coeff * p * p * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
 
-
           double f_time = feq_time + df_shear_time + df_bulk_time;
           double f_space = feq_space + df_shear_space + df_bulk_space;
 
+          // place crude bounds on the integrated distribution functions:
+          // more exact answer requires solving for nontrivial boundary in (phi,costheta) space
+          /*
+          f_time = max(0.0, min(f_time, 2.0 * feq_time));     // feq_time > 0
+          f_space = max(2.0 * feq_space, min(f_space, 0.0));  // feq_space < 0    
+  
           double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
-          double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
-
-          integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
 
           particle_number += weight * integrand;
+          */
+          
+          // old method
+          double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
+          double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
+          integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
+          particle_number += weight * integrand;
+          
+                  
         } // i
 
         particle_number *= degeneracy * T * T * T / four_pi2_hbarC3;
@@ -323,7 +329,9 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
 
           double df_bulk = (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
 
-          double df = max(-1.0, min(feqbar * df_bulk, 1.0));
+          double df = feqbar * df_bulk;
+
+          df = max(-1.0, min(df, 1.0));
 
           particle_number += weight * feq * (1.0 + df);
         } // i
@@ -358,6 +366,11 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           double df_bulk_time = df_bulk * (1.0 + costheta_star);
           double df_bulk_space = 0.5 * df_bulk * (costheta_star2 - 1.0);
 
+          // isotropic bound of shear contribution (for refining the bounds)
+          //double df_shear_max = feq * feqbar * E * E * pi_magnitude / shear14_coeff;
+          //double df_shear_max_time = df_shear_max * (1.0 + costheta_star);
+          //double df_shear_max_space = 0.5 * df_shear_max * (costheta_star2 - 1.0);
+
           double df_shear_time = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
 
           double df_shear_space = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
@@ -365,12 +378,24 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           double f_time = feq_time + df_shear_time + df_bulk_time;
           double f_space = feq_space + df_shear_space + df_bulk_space;
 
+          // place crude bounds on the integrated distribution functions:
+          // more exact answer requires solving for nontrivial boundary in (phi,costheta) space
+          /*
+          f_time = max(0.0, min(f_time, 2.0 * feq_time));     // feq_time > 0
+          f_space = max(2.0 * feq_space, min(f_space, 0.0));  // feq_space < 0  
+  
           double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
-          double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
-
-          integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df?)
 
           particle_number += weight * integrand;
+          */
+       
+          // old method
+          double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
+          double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
+          integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df?)
+          particle_number += weight * integrand;
+          
+        
         } // i
 
         particle_number *= degeneracy * T * T * T / four_pi2_hbarC3;
@@ -504,6 +529,11 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
             double df_bulk_time = df_bulk * (1.0 + costheta_star);
             double df_bulk_space = 0.5 * df_bulk * (costheta_star2 - 1.0);
 
+            // isotropic bound of shear contribution (for refining the bounds)
+            //double df_shear_max = feq * feqbar * E * E * pi_magnitude / shear14_coeff;
+            //double df_shear_max_time = df_shear_max * (1.0 + costheta_star);
+            //double df_shear_max_space = 0.5 * df_shear_max * (costheta_star2 - 1.0);
+
             double df_shear_time = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
 
             double df_shear_space = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
@@ -511,12 +541,24 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
             double f_time = feq_time + df_shear_time + df_bulk_time;
             double f_space = feq_space + df_shear_space + df_bulk_space;
 
+            // place crude bounds on the integrated distribution functions:
+            // more exact answer requires solving for nontrivial boundary in (phi,costheta) space
+            /*
+            f_time = max(0.0, min(f_time, 2.0 * feq_time));     // feq_time > 0
+            f_space = max(2.0 * feq_space, min(f_space, 0.0));  // feq_space < 0 
+    
             double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
-            double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
-
-            integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df?)
 
             particle_number += weight * integrand;
+            */
+
+            // old method
+            double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
+            double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
+            integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df?)
+            particle_number += weight * integrand;
+            
+            
           } // i
 
           particle_number *= degeneracy * T * T * T / four_pi2_hbarC3;
@@ -1318,6 +1360,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
       pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
       pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
+      pimunu.compute_pi_magnitude(); 
 
 
       // modified temperature / chemical potential and rescaling coefficients
@@ -1577,6 +1620,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
       pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
       pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
+      pimunu.compute_pi_magnitude();
 
       // baryon diffusion class
       Baryon_Diffusion Vmu(Vt, Vx, Vy, Vn);
@@ -1739,7 +1783,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           } // sampled hadrons (n)
         } // sampled events (ievent)
       } // eta points (ieta)
-      //cout << "\r" << "Finished " << setwidth(4) << setprecision(3) << (double)(icell + 1) / (double)FO_length * 100.0 << " \% of freezeout cells" << flush;
+      //cout << "\r" << "Finished " << setw(4) << setprecision(3) << (double)(icell + 1) / (double)FO_length * 100.0 << " \% of freezeout cells" << flush;
     } // freezeout cells (icell)
     printf("\nMomentum sampling efficiency = %f %%\n", (float)(100.0 * (double)acceptances / (double)samples));
 }

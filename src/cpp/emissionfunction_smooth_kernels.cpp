@@ -419,13 +419,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     // pT array
     double pTValues[pT_tab_length];
-    double pTWeights[pT_tab_length];
-
 
     for(int ipT = 0; ipT < pT_tab_length; ipT++)
     {
       pTValues[ipT] = pT_tab->get(1, ipT + 1);
-      pTWeights[ipT] = pT_tab->get(2, ipT + 1);
     }
 
     // y and eta arrays
@@ -484,9 +481,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     double ** A_inv = (double**)calloc(3, sizeof(double*));
     for(int i = 0; i < 3; i++) A_inv[i] = (double*)calloc(3, sizeof(double));
-
-
-    double * dN_dy = (double*)calloc(npart, sizeof(double));
 
     //loop over bite size chunks of FO surface
     for (int n = 0; n < (FO_length / FO_chunk) + 1; n++)
@@ -728,6 +722,12 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\t detA_min = " << detA_min << endl;
         }
 
+        // uniformly rescale eta space by detA if modified momentum space elements are shrunk
+        // this rescales the dsigma components orthogonal to the eta direction (only works for 2+1d, y = 0)
+        // for integrating modified distribution with narrow (y-eta) distributions
+        double eta_scale = 1.0;
+        if(detA > detA_min && detA < 1.0 && DIMENSION == 2) eta_scale = detA;
+
         // loop over hadrons
         for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
         {
@@ -783,8 +783,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             double mT = sqrt(mass2  +  pT * pT);    // m_T (GeV)
             double mT_over_tau = mT / tau;
 
-            double pT_weight = pTWeights[ipT];
-
             for(int iphip = 0; iphip < phi_tab_length; iphip++)
             {
               double px = pT * cosphiValues[iphip]; // p^x
@@ -804,19 +802,30 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double eta = etaValues[ieta];
                   double eta_weight = etaWeights[ieta];  
 
-                  double pt = mT * cosh(y - eta);          // p^\tau (GeV)
-                  double pn = mT_over_tau * sinh(y - eta); // p^\eta (GeV^2)
-                  double tau2_pn = tau2 * pn;
+                  bool feqmod_breaks_down_narrow = false;
 
-                  double pdotdsigma = eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan);
+                  if(DIMENSION == 3 && !feqmod_breaks_down)
+                  {
+                    if(detA < 0.01 && fabs(y - eta) < detA) 
+                    {
+                      feqmod_breaks_down_narrow = true;
+                    }
+                  }
 
-                  if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
-
-                  double f;                                   // feqmod (if breakdown do feq(1+df))
+                  double pdotdsigma;
+                  double f;           // feqmod (if breakdown do feq(1+df))                               
 
                   // calculate feqmod
-                  if(feqmod_breaks_down)
+                  if(feqmod_breaks_down || feqmod_breaks_down_narrow)
                   {
+                    double pt = mT * cosh(y - eta);          // p^\tau (GeV)
+                    double pn = mT_over_tau * sinh(y - eta); // p^\eta (GeV^2)
+                    double tau2_pn = tau2 * pn;
+
+                    pdotdsigma = eta_weight * (pt * dat  +  px * dax  +  py * day)  +  pn * dan;
+
+                    if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
+
                     if(DF_MODE == 3)
                     {
                       double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
@@ -862,6 +871,14 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   } // feqmod breaks down
                   else
                   {
+                    double pt = mT * cosh(y - eta_scale * eta);          // p^\tau (GeV)
+                    double pn = mT_over_tau * sinh(y - eta_scale * eta); // p^\eta (GeV^2)
+                    double tau2_pn = tau2 * pn;
+
+                    pdotdsigma = eta_weight * eta_scale * (pt * dat  +  px * dax  +  py * day)  +  pn * dan;
+
+                    if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
+
                     // LRF momentum components pi_LRF = - Xi.p
                     double px_LRF = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;
                     double py_LRF = Yx * px  +  Yy * py;
@@ -880,7 +897,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     
                     double dp;
                     double eps = 1.e-16;
-
                     
                     for(int i = 0; i < 5; i++)
                     {
@@ -896,38 +912,14 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                       vector_addition(pLRF_mod_prev, dpLRF_mod, pLRF_mod, 3);         // add correction to pLRF_mod
                     } 
                     
-                   
                     double px_LRF_mod = pLRF_mod[0];
                     double py_LRF_mod = pLRF_mod[1];
                     double pz_LRF_mod = pLRF_mod[2];
 
                     double E_mod = sqrt(mass2  +  px_LRF_mod * px_LRF_mod  +  py_LRF_mod * py_LRF_mod  +  pz_LRF_mod * pz_LRF_mod);
 
-                    // killing bad matrix inversions has some effect?
-                    f = fabs(renorm) / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
-
-                    /*
-                    if(false)
-                    {
-                      f = 0.0;
-                    }
-                    else 
-                    {
-                      double exponential = exp(E_mod / T_mod  -  chem_mod);
-              
-                      if(isinf(exponential)) 
-                      {
-                        f = 0.0;  // this wasn't the problem...
-                      }
-                      else
-                      {
-                        f = fabs(renorm) / (exponential + sign); // feqmod
-                      }
-                      
-                    }*/
-
+                    f = fabs(renorm) / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod 
                   }
-                  
 
                   pdotdsigma_f_eta_sum += (pdotdsigma * f); // add contribution to integral
 
@@ -936,9 +928,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                 long long int iSpectra = (long long int)icell + (long long int)endFO * ((long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy)));
 
                 dN_pTdpTdphidy_all[iSpectra] = (prefactor * degeneracy * pdotdsigma_f_eta_sum);
-
-                dN_dy[ipart] += pT_weight * phi_weight * prefactor * degeneracy * pdotdsigma_f_eta_sum;
-
 
               } // rapidity points (iy)
 
@@ -994,18 +983,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
     } // FO surface chunks (n)
 
-    //free_2D(M,3);
-
     cout << setw(5) << setprecision(4) << "\nfeqmod breaks down for " << breakdown << " cells\n" << endl;
-
-    for(int i = 0; i < npart; i++)
-    {
-      printf("dNdy = %lf\n", dN_dy[i]);
-    }
 
     //free memory
     free(dN_pTdpTdphidy_all);
-    free(dN_dy);
   }
 
 
@@ -1062,7 +1043,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
     double yValues[y_pts];
     double etaValues[eta_pts];
     double etaWeights[eta_pts];
-
 
     if(DIMENSION == 2)
     {
@@ -1866,6 +1846,11 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           cout << setw(5) << setprecision(4) << "feqmod breaks down for " << breakdown << " / " << FO_length << " cells  (cell = " << icell << ", tau = " << tau << " fm/c, " << ", detA = " << detA << ", detA_min = " << detA_min << ")" << endl;
         }
 
+        // rescale eta by detA if modified momentum space elements are shrunk
+        // for integrating modified distribution with narrow (y-eta) distributions
+        // note: this only works for boost invariant surfaces, where dsigma is always orthogonal to eta direction (dan = 0)
+        double eta_scale = 1.0;
+        if(detA > detA_min && detA < 1.0 && DIMENSION == 2) eta_scale = detA;
 
         // compute the modified renormalization factor
         double renorm = 1.0 / detA;             // default (shear only)
@@ -1934,19 +1919,30 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                 double eta = etaValues[ieta];
                 double eta_weight = etaWeights[ieta];
 
-                double pt = mT * cosh(y - eta);           // p^\tau (GeV)
-                double pn = mT_over_tau * sinh(y - eta);  // p^\eta (GeV^2)
-                double tau2_pn = tau2 * pn;
+                bool feqmod_breaks_down_narrow = false;
 
-                double pdotdsigma = eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
-
-                if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
+                if(DIMENSION == 3 && !feqmod_breaks_down)
+                {
+                  if(detA < 0.01 && fabs(y - eta) < detA) 
+                  {
+                    feqmod_breaks_down_narrow = true;
+                  }
+                }
 
                 double f;                                   // feqmod (if breakdown do feq(1+df))
+                double pdotdsigma;
 
                 // calculate feqmod
                 if(feqmod_breaks_down)
                 {
+                  double pt = mT * cosh(y - eta);           // p^\tau (GeV)
+                  double pn = mT_over_tau * sinh(y - eta);  // p^\eta (GeV^2)
+                  double tau2_pn = tau2 * pn;
+
+                  pdotdsigma = eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
+
+                  if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
+
                   if(DF_MODE == 3)
                   {
                     double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;
@@ -1992,6 +1988,13 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                 } // feqmod breaks down
                 else
                 {
+                  double pt = mT * cosh(y - eta_scale * eta);           // p^\tau (GeV)
+                  double pn = mT_over_tau * sinh(y - eta_scale * eta);  // p^\eta (GeV^2)
+                  double tau2_pn = tau2 * pn;
+
+                  pdotdsigma = eta_weight * eta_scale * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
+
+                  if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
                   // LRF momentum components pi_LRF = - Xi.p
                   double px_LRF = -Xt * pt  +  Xx * px  +  Xy * py  +  Xn * tau2_pn;
                   double py_LRF = Yx * px  +  Yy * py;
