@@ -35,10 +35,15 @@ class Deltaf_Data
     private:
         ParameterReader * paraRdr;
 
+        int hrg_eos; // type of pdg file for hadron resonance gas EoS 
         int mode; //type of freezeout surface, VH or VAH
         int df_mode; // type of delta-f correction (e.g. 14-moment, CE, or modified distribution)
         int include_baryon;
 
+        string hrg_eos_path;
+        string urqmd = "deltaf_coefficients/vh/urqmd/"; // directories of df coefficient tables
+        string smash = "deltaf_coefficients/vh/smash/";
+        string smash_box = "deltaf_coefficients/vh/smash_box/";
     public:
         int points_T;
         int points_muB;
@@ -105,6 +110,8 @@ class Deltaf_Data
         deltaf_coefficients cubic_spline(double T, double E, double P, double bulkPi);
 
         deltaf_coefficients bilinear_interpolation(double T, double muB, double E, double P, double bulkPi);
+
+        void test_df_coefficients(double bulkPi_over_P);
 
 };
 

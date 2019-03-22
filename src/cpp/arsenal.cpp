@@ -1206,6 +1206,50 @@ void LUP_solve(double ** PA, int n, int pvector[], double b[])
   }
 }
 
+
+void matrix_multiplication(double ** A, const double x[], double y[], int n, int m)
+{
+  // multiplies y_i = A_ij * x_j (stores result in y)
+
+  for(int i = 0; i < n; i++)    // rows
+  {
+    // initialize to zero
+    y[i] = 0.0; 
+
+    for(int j = 0; j < m; j++)  // columns
+    {
+      y[i] += A[i][j] * x[j];
+    }
+  }
+}
+
+void vector_copy(const double a[], double c[], int n)
+{
+  // copy a to c
+  for(int i = 0; i < n; i++)
+  {
+    c[i] = a[i];
+  } 
+}
+
+void vector_addition(const double a[], const double b[], double c[], int n)
+{
+  // adds c_i = a_i + b_i (stores result in c)
+  for(int i = 0; i < n; i++)
+  {
+    c[i] = a[i] + b[i];
+  } 
+}
+
+void vector_subtraction(const double a[], const double b[], double c[], int n)
+{
+  // adds c_i = a_i - b_i (stores result in c)
+  for(int i = 0; i < n; i++)
+  {
+    c[i] = a[i] - b[i];
+  } 
+}
+
 // for deallocating 2D matrices
 
 void free_2D(double ** M, int n)

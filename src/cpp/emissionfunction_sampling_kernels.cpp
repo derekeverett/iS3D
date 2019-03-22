@@ -27,6 +27,113 @@
 
 using namespace std;
 
+
+void EmissionFunctionArray::sample_dN_dpT(Sampled_Particle new_particle)
+{ 
+  // construct the dN/dpT distribution by adding counts from all events
+  
+  double E = new_particle.E;
+  double pz = new_particle.pz;
+  double yp = 0.5 * log((E + pz) / (E - pz));
+
+  if(fabs(yp) <= Y_CUT)
+  {
+    int ipart = new_particle.chosen_index; 
+
+    total_count[ipart] += 1.0;              // add counts within rapidity cut                
+
+    double px = new_particle.px;
+    double py = new_particle.py;
+    double pT = sqrt(px * px  +  py * py);
+
+    double pTbinwidth = (PT_UPPER_CUT - PT_LOWER_CUT) / (double)PT_BINS;
+
+    int ipT = (int)floor((pT - PT_LOWER_CUT) / pTbinwidth);  // pT bin index
+
+    if(ipT >= 0 && ipT < PT_BINS)
+    {
+      sampled_pT_PDF[ipart][ipT] += 1.0;    // add counts to each pT bin 
+    }
+  }
+}
+
+void EmissionFunctionArray::sample_vn(Sampled_Particle new_particle)
+{ 
+  // construct the vn's by adding counts from all events
+  
+  double E = new_particle.E;
+  double pz = new_particle.pz;
+  double yp = 0.5 * log((E + pz) / (E - pz));
+
+  if(fabs(yp) <= Y_CUT)
+  {
+    int ipart = new_particle.chosen_index; 
+
+    double px = new_particle.px;
+    double py = new_particle.py;
+    double pz = new_particle.pz;
+
+    double phi = atan2(py, px);
+    if(phi < 0.0) 
+    {
+      phi += 2.0 * M_PI;
+    }
+    double pT = sqrt(px * px  +  py * py);
+
+    double pTbinwidth = (PT_UPPER_CUT - PT_LOWER_CUT) / (double)PT_BINS;
+
+    int ipT = (int)floor((pT - PT_LOWER_CUT) / pTbinwidth);  // pT bin index
+
+    if(ipT >= 0 && ipT < PT_BINS)
+    {
+      // add counts to each pT bin
+      pT_count_vn[ipart][ipT] += 1.0;
+
+      for(int k = 0; k < K_MAX; k++)
+      {
+        // add complex exponential weights to each bin
+        sampled_vn_real[k][ipart][ipT] += cos(((double)k + 1.0) * phi);
+        sampled_vn_imag[k][ipart][ipT] += sin(((double)k + 1.0) * phi);
+      }
+    }
+  }
+}
+
+void EmissionFunctionArray::sample_dN_dX(Sampled_Particle new_particle)
+{
+  // construct spacetime distributions by adding counts from all events
+
+  double E = new_particle.E;
+  double pz = new_particle.pz;
+  double yp = 0.5 * log((E + pz) / (E - pz));
+
+  if(fabs(yp) <= Y_CUT)
+  {
+    int ipart = new_particle.chosen_index;
+
+    double taubinwidth = (TAU_MAX - TAU_MIN) / (double)TAU_BINS;
+    double rbinwidth = (R_MAX - R_MIN) / (double)R_BINS;
+
+    double tau = new_particle.tau;
+    double x = new_particle.x;
+    double y = new_particle.y;
+    double r = sqrt(x * x  +  y * y);
+
+    int itau = (int)floor((tau - TAU_MIN) / taubinwidth); // tau bin index
+    int ir = (int)floor((r - R_MIN) / rbinwidth);         // r bin index
+
+    if(itau >= 0 && itau < TAU_BINS)
+    {
+      sampled_dN_taudtaudy[ipart][itau] += 1.0; // add count to tau bin
+    }
+    if(ir >= 0 && ir < R_BINS)
+    {
+      sampled_dN_twopirdrdy[ipart][ir] += 1.0;  // add count to rbin
+    }
+  }
+}
+
+
 double canonical(default_random_engine & generator)
 {
   // random number between [0,1)
@@ -103,7 +210,7 @@ double equilibrium_particle_density(double mbar, double chem, double sign)
 
 
 
-double mean_particle_number(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, deltaf_coefficients df, double T_mod, double alphaB_mod, bool feqmod_breaks_down, Gauss_Laguerre * laguerre, const int legendre_pts, double * pbar_root, double * pbar_weight, int df_mode, int outflow, int include_baryon)
+double mean_particle_number(double mass, double degeneracy, double sign, double baryon, double T, double alphaB, Surface_Element_Vector dsigma, Shear_Stress pimunu, double bulkPi, deltaf_coefficients df, double T_mod, double alphaB_mod, bool feqmod_breaks_down, Gauss_Laguerre * laguerre, const int legendre_pts, double * pbar_root, double * pbar_weight, int df_mode, int outflow, int include_baryon, double detA, double detA_bulk)
 {
   // computes the particle number from the CFF with Theta(p.dsigma) (outflow) and feq + df_regulated (or feqmod)
   // for spacelike cells: (neq + dn_regulated)_outflow > neq + dn_regulated
@@ -124,6 +231,7 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
   double piyy_LRF = pimunu.piyy_LRF;
   double pizz_LRF = pimunu.pizz_LRF;
   double pixz_LRF = pimunu.pixz_LRF;
+  double pi_magnitude = pimunu.pi_magnitude;
 
   // df coefficients
   double c0 = df.c0;
@@ -200,6 +308,8 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
     renorm = z;
   }
 
+  double detA_ratio = detA_bulk / detA; 
+
   // dsigma terms
   double ds_time = dsigma.dsigmat_LRF;
   double ds_space = dsigma.dsigma_space;
@@ -209,19 +319,7 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
   double costheta_ds = dsigma.costheta_LRF;
   double costheta_ds2 = costheta_ds * costheta_ds;
   double sintheta_ds = sqrt(fabs(1.0 - costheta_ds2));
-
-  // temporary test
-  // pizz_LRF = -0.008934/0.014314/sqrt(1.5)*shear14_coeff;
-  // pixx_LRF = - 0.5 * pizz_LRF;
-  // piyy_LRF = pixx_LRF;
-  // pixz_LRF = 0.0;
-
-  // ds_time_over_ds_space = 1.0/1.4;
-  // ds_space = 1.4;
-  // costheta_ds = 1.0;
-  // costheta_ds2 = 1.0;
-  // sintheta_ds = 0.0;
-
+  
   // mean particle number of a given species emitted
   // from freezeout cell with outflow and df corrections
   double particle_number = 0.0;
@@ -239,16 +337,23 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           double weight = pbar_weight[i];
 
           double Ebar = sqrt(pbar * pbar +  mbar_squared);
+
+          double p = pbar * T;
           double E = Ebar * T;
 
           double feq = 1.0 / (exp(Ebar - chem) + sign);
           double feqbar = 1.0 - sign * feq;
 
-          double df_bulk = ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
+          double df_bulk = feqbar * ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
 
-          double df = max(-1.0, min(feqbar * df_bulk, 1.0)); // regulate df
+          double df_shear_rms = sqrt(2.0 / 15.0) * feqbar * p * p * pi_magnitude / shear14_coeff;
 
-          particle_number += weight * feq * (1.0 + df);
+          double df_isotropic = df_bulk;
+
+          // regulate df isotropic term (df_shear_rms refines the bounds averaged wpt angles)
+          df_isotropic = max(-1.0 + 0.5 * df_shear_rms, min(df_isotropic, 1.0 - 0.5 * df_shear_rms));
+
+          particle_number += weight * feq * (1.0 + df_isotropic);
         } // i
 
         particle_number *= 2.0 * ds_time * degeneracy * T * T * T / four_pi2_hbarC3;
@@ -275,27 +380,49 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           double costheta_star4 = costheta_star3 * costheta_star;
 
           // (phi, costheta) integrated feq + df time and space terms
-          double feq_time = feq * (1.0 + costheta_star);
-          double feq_space = 0.5 * feq * (costheta_star2 - 1.0);
 
-          double df_bulk = feq * feqbar * ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
-          double df_bulk_time = df_bulk * (1.0 + costheta_star);
-          double df_bulk_space = 0.5 * df_bulk * (costheta_star2 - 1.0);
+          double df_bulk = feqbar * ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
+          double df_shear_rms = sqrt(2.0 / 15.0) * feqbar * p * p * pi_magnitude / shear14_coeff;
 
-          double df_shear_time = 0.5 * feq * feqbar / shear14_coeff * p * p * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+          // regulate df isotropic term (df_shear_rms refines the bounds averaged wpt angles)
+          double df_isotropic = df_bulk;
 
-          double df_shear_space = 0.5 * feq * feqbar / shear14_coeff * p * p * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+          df_isotropic = max(-1.0 + 0.5 * df_shear_rms, min(df_isotropic, 1.0 - 0.5 * df_shear_rms)); 
+
+          double f_isotropic = feq * (1.0 + df_isotropic); // regulated isotropic part of distribution
+
+          double df_shear_time = 0.5 * feq * feqbar / shear14_coeff * p * p * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  2.0 * pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+
+          double df_shear_space = 0.5 * feq * feqbar / shear14_coeff * p * p * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  0.5 * pixz_LRF * (3.0 * costheta_star4 -  2.0 * costheta_star2  -  1.0) * sintheta_ds * costheta_ds);        
 
 
-          double f_time = feq_time + df_shear_time + df_bulk_time;
-          double f_space = feq_space + df_shear_space + df_bulk_space;
+
+          double f_time = f_isotropic * (1.0 + costheta_star)  +  0.0*df_shear_time;
+          double f_space = 0.5 * f_isotropic * (costheta_star2 - 1.0)  +  0.0*df_shear_space;
+
+          //double f_max = feq * (2.0 - 0.5 * df_shear_rms);
+          //double f_min = 0.5 * feq * df_shear_rms;
+
+          // double f_max = 2.0 * feq;
+          // double f_min = 0.0;
+
+          // double f_time_max = f_max * (1.0 + costheta_star);
+          // double f_space_min = 0.5 * f_max * (costheta_star2 - 1.0);
+
+          // double f_time_min = f_min * (1.0 + costheta_star);
+          // double f_space_max = 0.5 * f_min * (costheta_star2 - 1.0);
+
+          // f_time = max(f_time_min, min(f_time, f_time_max));
+          // f_space = max(f_space_min, min(f_space, f_space_max));
 
           double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
-          double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
 
-          integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df)
-
+          //double integrand_max = f_max * (ds_time * (1.0 + costheta_star)  -  0.5 * ds_space * (costheta_star2 - 1.0) * pbar / Ebar);
+          //double integrand_min = f_min * (ds_time * (1.0 + costheta_star)  -  0.5 * ds_space * (costheta_star2 - 1.0) * pbar / Ebar);
+          //integrand = max(integrand_min, min(integrand, integrand_max)); 
+          
           particle_number += weight * integrand;
+          
         } // i
 
         particle_number *= degeneracy * T * T * T / four_pi2_hbarC3;
@@ -321,11 +448,16 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           double feq = 1.0 / (exp(Ebar - chem) + sign);
           double feqbar = 1.0 - sign * feq;
 
-          double df_bulk = (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
+          double df_bulk = feqbar * (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
 
-          double df = max(-1.0, min(feqbar * df_bulk, 1.0));
+          double df_shear_rms = sqrt(2.0 / 15.0) * feqbar * pbar * pbar * pi_magnitude / (2.0 * betapi * Ebar);
 
-          particle_number += weight * feq * (1.0 + df);
+          double df_isotropic = df_bulk;
+
+          // regulate df isotropic term (df_shear_rms refines the bounds averaged wpt angles)
+          df_isotropic = max(-1.0 + 0.5 * df_shear_rms, min(df_isotropic, 1.0 - 0.5 * df_shear_rms));
+
+          particle_number += weight * feq * (1.0 + df_isotropic);   
         } // i
 
         particle_number *= 2.0 * ds_time * degeneracy * T * T * T / four_pi2_hbarC3;
@@ -350,27 +482,47 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           double costheta_star3 = costheta_star2 * costheta_star;
           double costheta_star4 = costheta_star3 * costheta_star;
 
-          // (phi, costheta) integrated feq + df time and space terms
-          double feq_time = feq * (1.0 + costheta_star);
-          double feq_space = 0.5 * feq * (costheta_star2 - 1.0);
 
-          double df_bulk = feq * feqbar * (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
-          double df_bulk_time = df_bulk * (1.0 + costheta_star);
-          double df_bulk_space = 0.5 * df_bulk * (costheta_star2 - 1.0);
+          double df_bulk = feqbar * (F / T * Ebar  +  baryon * G  +  (Ebar  -  mbar_squared / Ebar) / 3.0) * bulkPi / betabulk;
+          double df_shear_rms = sqrt(2.0 / 15.0) * feqbar * pbar * pbar * pi_magnitude / (2.0 * betapi * Ebar);
 
-          double df_shear_time = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+          // regulate df isotropic term (df_shear_rms refines the bounds averaged wpt angles)
+          double df_isotropic = df_bulk;
 
-          double df_shear_space = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+          df_isotropic = max(-1.0 + 0.5 * df_shear_rms, min(df_isotropic, 1.0 - 0.5 * df_shear_rms)); 
 
-          double f_time = feq_time + df_shear_time + df_bulk_time;
-          double f_space = feq_space + df_shear_space + df_bulk_space;
+          double f_isotropic = feq * (1.0 + df_isotropic); // regulated isotropic part of distribution
+
+
+          double df_shear_time = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  2.0 * pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+
+          double df_shear_space = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  0.5 * pixz_LRF * (3.0 * costheta_star4 -  2.0 * costheta_star2  -  1.0) * sintheta_ds * costheta_ds);
+
+
+          double f_time = f_isotropic * (1.0 + costheta_star)  +  0.0*df_shear_time;
+          double f_space = 0.5 * f_isotropic * (costheta_star2 - 1.0)  +  0.0*df_shear_space;
+
+          //double f_max = feq * (2.0 - 0.5 * df_shear_rms);
+          //double f_min = 0.5 * feq * df_shear_rms;
+
+          // double f_time_max = f_max * (1.0 + costheta_star);
+          // double f_space_min = 0.5 * f_max * (costheta_star2 - 1.0);
+
+          // double f_time_min = f_min * (1.0 + costheta_star);
+          // double f_space_max = 0.5 * f_min * (costheta_star2 - 1.0);
+
+          // f_time = max(f_time_min, min(f_time, f_time_max));
+          // f_space = max(f_space_min, min(f_space, f_space_max));
 
           double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
-          double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
 
-          integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df?)
+          //double integrand_max = f_max * (ds_time * (1.0 + costheta_star)  -  0.5 * ds_space * (costheta_star2 - 1.0) * pbar / Ebar);
+          //double integrand_min = f_min * (ds_time * (1.0 + costheta_star)  -  0.5 * ds_space * (costheta_star2 - 1.0) * pbar / Ebar);
 
+          //integrand = max(integrand_min, min(integrand, integrand_max)); 
+          
           particle_number += weight * integrand;
+        
         } // i
 
         particle_number *= degeneracy * T * T * T / four_pi2_hbarC3;
@@ -394,6 +546,8 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
         // radial momentum pbar integral (pbar = p / T)
         for(int i = 0; i < legendre_pts; i++)
         {
+          // old method
+          /*
           double pbar_mod = pbar_root[i];
           double weight = pbar_weight[i];
 
@@ -401,14 +555,102 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
 
           double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
 
-          double costheta_star_mod = min(1.0, Ebar_mod * ds_time_over_ds_space / pbar_mod);
           double mbar_bulk = mbar_mod / (1.0 + bulk_mod);
           double Ebar_bulk = sqrt(pbar_mod * pbar_mod  +  mbar_bulk * mbar_bulk);
 
+          // fixed minor bug on 3/21/19
+          double costheta_star_mod = min(1.0, Ebar_bulk * ds_time_over_ds_space / pbar_mod);
+          double costheta_star_mod2 = costheta_star_mod * costheta_star_mod;
+
           particle_number += weight * (ds_time * (1.0 + costheta_star_mod)  -  0.5 * ds_space * pbar_mod / Ebar_bulk * (costheta_star_mod * costheta_star_mod - 1.0)) * feqmod;
+          */
+          
+
+          // new method
+          
+          double pbar_mod = pbar_root[i];
+          double weight = pbar_weight[i];
+
+          double mbar_bulk = mbar_mod / (1.0 + bulk_mod);
+
+          double Ebar_mod = sqrt(pbar_mod * pbar_mod  +  mbar_mod * mbar_mod);
+          double Ebar_bulk = sqrt(pbar_mod * pbar_mod  +  mbar_bulk * mbar_bulk);
+
+          // fixed minor bug on 3/21/19
+          double costheta_star_mod = min(1.0, Ebar_bulk * ds_time_over_ds_space / pbar_mod);
+          double costheta_star_mod2 = costheta_star_mod * costheta_star_mod;
+          double costheta_star_mod3 = costheta_star_mod2 * costheta_star_mod;
+          double costheta_star_mod4 = costheta_star_mod3 * costheta_star_mod;
+
+          double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
+
+          double feqmodbar = 1.0 - sign * feqmod; 
+
+          //double pbar = pbar_mod * (1.0 + bulk_mod);
+          //double Ebar = sqrt(pbar * pbar  +  mbar_mod * mbar_mod);
+          //double feq = 1.0 / (exp(Ebar * T_mod / T - chem_mod) + sign);
+          //double feqbar = 1.0 - sign * feq; 
+          //double df_shear_rms_mod = sqrt(2.0 / 15.0) * feq * feqbar * pbar * pbar * pi_magnitude / (2.0 * betapi * Ebar) * T_mod / T;
+
+          double df_shear_rms_mod = sqrt(2.0 / 15.0) * feqmod * feqmodbar * pbar_mod * pbar_mod * pi_magnitude / (2.0 * (1.0 + bulk_mod) * betapi * Ebar_mod);
+
+          double fmod_isotropic = feqmod;
+
+          fmod_isotropic = max(0.5 * df_shear_rms_mod, min(fmod_isotropic, 2.0 * feqmod  -  0.5 * df_shear_rms_mod));
+
+
+          double df_shear_mod_time = 0.25 * feqmod * feqmodbar / Ebar_mod / betapi / (1.0 + bulk_mod) * pbar_mod * pbar_mod * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star_mod)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star_mod3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star_mod - costheta_star_mod3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star_mod)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star_mod3) / 3.0)  +  2.0 * pixz_LRF * costheta_star_mod * (costheta_star_mod2 - 1.0) * sintheta_ds * costheta_ds);
+
+          double df_shear_mod_space = 0.25 * feqmod * feqmodbar / Ebar_mod / betapi / (1.0 + bulk_mod) * pbar_mod * pbar_mod * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star_mod2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star_mod4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star_mod2 - 1.0) * (costheta_star_mod2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star_mod2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star_mod4 - 1.0))  +  0.5 * pixz_LRF * (3.0 * costheta_star_mod4 -  2.0 * costheta_star_mod2  -  1.0) * sintheta_ds * costheta_ds);
+
+
+          double f_time = fmod_isotropic * (1.0 + costheta_star_mod)  +  0.0*df_shear_mod_time;
+          double f_space = 0.5 * fmod_isotropic * (costheta_star_mod2 - 1.0)  +  0.0*df_shear_mod_space;
+          
+          //double f_max = 2.0 * feqmod  -  0.5 * df_shear_rms_mod;
+          //double f_min = 0.5 * df_shear_rms_mod;
+
+          // double f_time_max = f_max * (1.0 + costheta_star_mod);
+          // double f_space_max = 0.5 * f_min * (costheta_star_mod2 - 1.0);
+
+          // double f_time_min = f_min * (1.0 + costheta_star_mod);
+          // double f_space_min = 0.5 * f_max * (costheta_star_mod2 - 1.0);
+          
+          // f_time = max(f_time_min, min(f_time, f_time_max));
+          // f_space = max(f_space_min, min(f_space, f_space_max));
+
+          double integrand = ds_time * f_time  -  ds_space * f_space * pbar_mod / Ebar_bulk;
+
+          //double integrand_max = f_max * (ds_time * (1.0 + costheta_star_mod)  -  0.5 * ds_space * (costheta_star_mod2 - 1.0) * pbar_mod / Ebar_bulk);
+          //double integrand_min = f_min * (ds_time * (1.0 + costheta_star_mod)  -  0.5 * ds_space * (costheta_star_mod2 - 1.0) * pbar_mod / Ebar_bulk);
+          //integrand = max(integrand_min, min(integrand, integrand_max)); 
+
+          particle_number += weight * integrand;
+          
+
+          /*
+          double pbar = pbar_root[i];
+          double weight = pbar_weight[i];
+
+          double Ebar_mod = sqrt(pbar * pbar  +  mbar_mod * mbar_mod);
+
+          double costheta_star_mod = min(1.0, Ebar_mod * ds_time_over_ds_space / pbar);
+          double costheta_star_mod2 = costheta_star_mod * costheta_star_mod;
+
+          double pbar_bulk = pbar / (1.0 + bulk_mod);
+          double Ebar_bulk = sqrt(pbar_bulk * pbar_bulk  +  mbar_mod * mbar_mod);
+
+          double feqmod = 1.0 / (exp(Ebar_bulk - chem_mod) + sign);
+
+          particle_number += weight * (ds_time * (1.0 + costheta_star_mod)  -  0.5 * ds_space * pbar / Ebar_mod * (costheta_star_mod2 - 1.0)) * feqmod;
+          */
         } // i
 
+        //particle_number *= detA_ratio * degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
         particle_number *= degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
+
+        // I may need detA or not depending on how I write the formula with shear 
+        //particle_number *= degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3 / pow(1.0 + bulk_mod, 3);
       } // spacelike cell
 
       break;
@@ -428,6 +670,7 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           // radial momentum pbar integral (pbar = p / T)
           for(int i = 0; i < legendre_pts; i++)
           {
+            /*
             double pbar_mod = pbar_root[i];
             double weight = pbar_weight[i];
 
@@ -435,11 +678,72 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
 
             double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
 
-            double costheta_star_mod = min(1.0, Ebar_mod * ds_time_over_ds_space / pbar_mod);
+            
             double mbar_bulk = mbar_mod / (1.0 + bulk_mod);
             double Ebar_bulk = sqrt(pbar_mod * pbar_mod  +  mbar_bulk * mbar_bulk);
 
-            particle_number += weight * (ds_time * (1.0 + costheta_star_mod)  -  0.5 * ds_space * pbar_mod / Ebar_bulk * (costheta_star_mod * costheta_star_mod - 1.0)) * feqmod;
+            double costheta_star_mod = min(1.0, Ebar_bulk * ds_time_over_ds_space / pbar_mod);
+            double costheta_star_mod2 = costheta_star_mod * costheta_star_mod;
+
+            particle_number += weight * (ds_time * (1.0 + costheta_star_mod)  -  0.5 * ds_space * pbar_mod / Ebar_bulk * (costheta_star_mod2 - 1.0)) * feqmod;
+            */
+
+            // new method
+          
+          double pbar_mod = pbar_root[i];
+          double weight = pbar_weight[i];
+
+          double mbar_bulk = mbar_mod / (1.0 + bulk_mod);
+
+          double Ebar_mod = sqrt(pbar_mod * pbar_mod  +  mbar_mod * mbar_mod);
+          double Ebar_bulk = sqrt(pbar_mod * pbar_mod  +  mbar_bulk * mbar_bulk);
+
+          // fixed minor bug on 3/21/19
+          double costheta_star_mod = min(1.0, Ebar_bulk * ds_time_over_ds_space / pbar_mod);
+          double costheta_star_mod2 = costheta_star_mod * costheta_star_mod;
+          double costheta_star_mod3 = costheta_star_mod2 * costheta_star_mod;
+          double costheta_star_mod4 = costheta_star_mod3 * costheta_star_mod;
+
+          double feqmod = 1.0 / (exp(Ebar_mod - chem_mod) + sign);
+
+          double feqmodbar = 1.0 - sign * feqmod; 
+
+          
+          double df_shear_rms_mod = sqrt(2.0 / 15.0) * feqmod * feqmodbar * pbar_mod * pbar_mod * pi_magnitude / (2.0 * (1.0 + bulk_mod) * betapi * Ebar_mod);
+
+          double fmod_isotropic = feqmod;
+
+          fmod_isotropic = max(0.5 * df_shear_rms_mod, min(fmod_isotropic, 2.0 * feqmod  -  0.5 * df_shear_rms_mod));
+
+
+          double df_shear_mod_time = 0.25 * feqmod * feqmodbar / Ebar_mod / betapi / (1.0 + bulk_mod) * pbar_mod * pbar_mod * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star_mod)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star_mod3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star_mod - costheta_star_mod3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star_mod)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star_mod3) / 3.0)  +  2.0 * pixz_LRF * costheta_star_mod * (costheta_star_mod2 - 1.0) * sintheta_ds * costheta_ds);
+
+          double df_shear_mod_space = 0.25 * feqmod * feqmodbar / Ebar_mod / betapi / (1.0 + bulk_mod) * pbar_mod * pbar_mod * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star_mod2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star_mod4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star_mod2 - 1.0) * (costheta_star_mod2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star_mod2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star_mod4 - 1.0))  +  0.5 * pixz_LRF * (3.0 * costheta_star_mod4 -  2.0 * costheta_star_mod2  -  1.0) * sintheta_ds * costheta_ds);
+
+
+          double f_time = fmod_isotropic * (1.0 + costheta_star_mod)  +  0.0*df_shear_mod_time;
+          double f_space = 0.5 * fmod_isotropic * (costheta_star_mod2 - 1.0)  +  0.0*df_shear_mod_space;
+          
+          //double f_max = 2.0 * feqmod  -  0.5 * df_shear_rms_mod;
+          //double f_min = 0.5 * df_shear_rms_mod;
+
+          // double f_time_max = f_max * (1.0 + costheta_star_mod);
+          // double f_space_max = 0.5 * f_min * (costheta_star_mod2 - 1.0);
+
+          // double f_time_min = f_min * (1.0 + costheta_star_mod);
+          // double f_space_min = 0.5 * f_max * (costheta_star_mod2 - 1.0);
+          
+          // f_time = max(f_time_min, min(f_time, f_time_max));
+          // f_space = max(f_space_min, min(f_space, f_space_max));
+
+          double integrand = ds_time * f_time  -  ds_space * f_space * pbar_mod / Ebar_bulk;
+
+          //double integrand_max = f_max * (ds_time * (1.0 + costheta_star_mod)  -  0.5 * ds_space * (costheta_star_mod2 - 1.0) * pbar_mod / Ebar_bulk);
+          //double integrand_min = f_min * (ds_time * (1.0 + costheta_star_mod)  -  0.5 * ds_space * (costheta_star_mod2 - 1.0) * pbar_mod / Ebar_bulk);
+          //integrand = max(integrand_min, min(integrand, integrand_max)); 
+
+          particle_number += weight * integrand;
+          
           } // i
 
           particle_number *= degeneracy * renorm * T_mod * T_mod * T_mod / four_pi2_hbarC3;
@@ -465,9 +769,13 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
             double df_bulk = delta_z  - 3.0 * delta_lambda  +  feqbar * delta_lambda * (Ebar  -  mbar_squared / Ebar);
             //::::::::::::::::::::::::::::::::::::::::::
 
-            double df = max(-1.0, min(df_bulk, 1.0));
+            double df_shear_rms = sqrt(2.0 / 15.0) * feqbar * pbar * pbar * pi_magnitude / (2.0 * betapi * Ebar);
 
-            particle_number += weight * feq * (1.0 + df);
+            double df_isotropic = df_bulk;
+
+            df_isotropic = max(-1.0 + 0.5 * df_shear_rms, min(df_isotropic, 1.0 - 0.5 * df_shear_rms));
+
+            particle_number += weight * feq * (1.0 + df_isotropic);
           } // i
 
           particle_number *= 2.0 * ds_time * degeneracy * T * T * T / four_pi2_hbarC3;
@@ -492,31 +800,51 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
             double costheta_star3 = costheta_star2 * costheta_star;
             double costheta_star4 = costheta_star3 * costheta_star;
 
-            // (phi, costheta) integrated feq + df time and space terms
-            double feq_time = feq * (1.0 + costheta_star);
-            double feq_space = 0.5 * feq * (costheta_star2 - 1.0);
-
             // df_bulk correction is key difference from chapman enskog
             //::::::::::::::::::::::::::::::::::::::::::
-            double df_bulk = feq * (delta_z  -  3.0 * delta_lambda  +  feqbar * delta_lambda * (Ebar  -  mbar_squared / Ebar));
+            double df_bulk = delta_z  -  3.0 * delta_lambda  +  feqbar * delta_lambda * (Ebar  -  mbar_squared / Ebar);
             //::::::::::::::::::::::::::::::::::::::::::
 
-            double df_bulk_time = df_bulk * (1.0 + costheta_star);
-            double df_bulk_space = 0.5 * df_bulk * (costheta_star2 - 1.0);
+            double df_shear_rms = 0.5 * sqrt(2.0 / 15.0) * feqbar * pbar * pbar * pi_magnitude / betapi / Ebar;
 
-            double df_shear_time = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+            // regulate isotropic df term (df_shear_rms refines the bounds averaged wpt angles)
+            double df_isotropic = df_bulk;
 
-            double df_shear_space = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+            df_isotropic = max(-1.0 + 0.5 * df_shear_rms, min(df_isotropic, 1.0 - 0.5 * df_shear_rms)); 
 
-            double f_time = feq_time + df_shear_time + df_bulk_time;
-            double f_space = feq_space + df_shear_space + df_bulk_space;
+            double f_isotropic = feq * (1.0 + df_isotropic); // regulated isotropic part of distribution
+
+
+            // (phi, costheta) integrated feq + df time and space terms
+            double df_shear_time = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (costheta_ds2 * (1.0 + costheta_star)  +  (2.0 - 3.0 * costheta_ds2) * (1.0 + costheta_star3) / 3.0)  +  piyy_LRF * (2.0 / 3.0 + costheta_star - costheta_star3 / 3.0)  +  pizz_LRF * ((1.0 - costheta_ds2) * (1.0 + costheta_star)  +  (3.0 * costheta_ds2 - 1.0) * (1.0 + costheta_star3) / 3.0)  +  2.0 * pixz_LRF * costheta_star * (costheta_star2 - 1.0) * sintheta_ds * costheta_ds);
+
+            double df_shear_space = 0.25 * feq * feqbar / Ebar / betapi * pbar * pbar * (pixx_LRF * (0.5 * costheta_ds2 * (costheta_star2 - 1.0)  +  0.25 * (2.0 - 3.0 * costheta_ds2) * (costheta_star4 - 1.0))  -  0.25 * piyy_LRF * (costheta_star2 - 1.0) * (costheta_star2 - 1.0)  +  pizz_LRF * (0.5 * (1.0 - costheta_ds2) * (costheta_star2 - 1.0)  +  0.25 * (3.0 * costheta_ds2 - 1.0) * (costheta_star4 - 1.0))  +  0.5 * pixz_LRF * (3.0 * costheta_star4 -  2.0 * costheta_star2  -  1.0) * sintheta_ds * costheta_ds);
+
+           
+            double f_time = f_isotropic * (1.0 + costheta_star)  +  0.0*df_shear_time;
+            double f_space = 0.5 * f_isotropic * (costheta_star2 - 1.0)  +  0.0*df_shear_space;
+
+
+            //double f_max = feq * (2.0 - 0.5 * df_shear_rms);
+            //double f_min = 0.5 * feq * df_shear_rms;
+
+            // double f_time_max = f_max * (1.0 + costheta_star);
+            // double f_space_min = 0.5 * f_max * (costheta_star2 - 1.0);
+
+            // double f_time_min = f_min * (1.0 + costheta_star);
+            // double f_space_max = 0.5 * f_min * (costheta_star2 - 1.0);
+
+            // f_time = max(f_time_min, min(f_time, f_time_max));
+            // f_space = max(f_space_min, min(f_space, f_space_max));
 
             double integrand = ds_time * f_time  -  ds_space * pbar / Ebar * f_space;
-            double integrand_upper_bound = 2.0 * (ds_time * feq_time  -  ds_space * pbar / Ebar * feq_space);
 
-            integrand = max(0.0, min(integrand, integrand_upper_bound));  // regulate integrand (corresponds to regulating df?)
-
+            // double integrand_max = f_max * (ds_time * (1.0 + costheta_star)  -  0.5 * ds_space * (costheta_star2 - 1.0) * pbar / Ebar);
+            // double integrand_min = f_min * (ds_time * (1.0 + costheta_star)  -  0.5 * ds_space * (costheta_star2 - 1.0) * pbar / Ebar);
+            // integrand = max(integrand_min, min(integrand, integrand_max)); 
+            
             particle_number += weight * integrand;
+                
           } // i
 
           particle_number *= degeneracy * T * T * T / four_pi2_hbarC3;
@@ -1318,6 +1646,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
       pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
       pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
+      pimunu.compute_pi_magnitude(); 
 
 
       // modified temperature / chemical potential and rescaling coefficients
@@ -1342,6 +1671,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       }
 
       double detA = compute_detA(pimunu, shear_mod, bulk_mod);
+      double detA_bulk = pow(1.0 + bulk_mod, 3);
 
       // determine if feqmod breaks down
       bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, detA_min, z, laguerre, DF_MODE);
@@ -1357,7 +1687,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
         double sign = Sign[ipart];
         double baryon = Baryon[ipart];
 
-        dn_tot += mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, T_mod, alphaB_mod,feqmod_breaks_down, laguerre, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW, INCLUDE_BARYON);
+        dn_tot += mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, T_mod, alphaB_mod,feqmod_breaks_down, laguerre, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW, INCLUDE_BARYON, detA, detA_bulk);
       }
 
       // add mean number of hadrons in FO cell to total yield
@@ -1577,6 +1907,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
       pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
       pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
+      pimunu.compute_pi_magnitude();
 
       // baryon diffusion class
       Baryon_Diffusion Vmu(Vt, Vx, Vy, Vn);
@@ -1609,6 +1940,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
 
       double detA = compute_detA(pimunu, shear_mod, bulk_mod);
+      double detA_bulk = pow(1.0 + bulk_mod, 3);
 
       // determine if feqmod breaks down
       bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, detA_min, z, laguerre, DF_MODE);
@@ -1634,7 +1966,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         double sign = Sign[ipart];              // quantum statistics sign
         double baryon = Baryon[ipart];          // baryon number
 
-        dn_list[ipart] = mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, T_mod, alphaB_mod,feqmod_breaks_down, laguerre, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW, INCLUDE_BARYON);
+        dn_list[ipart] = mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, T_mod, alphaB_mod,feqmod_breaks_down, laguerre, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW, INCLUDE_BARYON, detA, detA_bulk);
 
         dn_tot += dn_list[ipart];
       }
@@ -1730,16 +2062,28 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             new_particle.pz = pz;
             new_particle.E = sqrt(mass * mass  +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
 
-            //CAREFUL push_back is not a thread-safe operation
-            //how should we modify for GPU version?
-            #pragma omp critical
-            particle_event_list[ievent].push_back(new_particle);
+            if(TEST_SAMPLER)
+            {
+              // main purpose is to avoid memory bottleneck
+              sample_dN_dpT(new_particle);
+              sample_vn(new_particle);
+              sample_dN_dX(new_particle);
+            }
+            //if(true)
+            else
+            {
+              //CAREFUL push_back is not a thread-safe operation
+              //how should we modify for GPU version?
+              #pragma omp critical
+              particle_event_list[ievent].push_back(new_particle);
+            }
+            
             particle_yield_list[ievent] += 1;
 
           } // sampled hadrons (n)
         } // sampled events (ievent)
       } // eta points (ieta)
-      //cout << "\r" << "Finished " << setwidth(4) << setprecision(3) << (double)(icell + 1) / (double)FO_length * 100.0 << " \% of freezeout cells" << flush;
+      //cout << "\r" << "Finished " << setw(4) << setprecision(3) << (double)(icell + 1) / (double)FO_length * 100.0 << " \% of freezeout cells" << flush;
     } // freezeout cells (icell)
     printf("\nMomentum sampling efficiency = %f %%\n", (float)(100.0 * (double)acceptances / (double)samples));
 }

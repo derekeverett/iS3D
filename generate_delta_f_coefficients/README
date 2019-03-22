@@ -1,12 +1,24 @@
-The script generate_vh_coeff.sh will pull the pdg list of resonances from 
-PDG/pdg.dat and generate the corresponding 14 moment and Chapman Enskog coefficients
-(these depend on the HRG).
-By default these coefficients are calculated with the smash list of resonances.
+Running one of the following scripts:
 
-To run iS3D with a different list, one should 
+generate_vh_coeff_urqmd.sh
+generate_vh_coeff_smash.sh
+generate_vh_coeff_smash_box.sh
 
-1. copy the new pdg file to PDG/pdg.dat
+will pull one of the three pdg list of resonances
 
-2. run generate_vh_coeff.sh
+PDG/pdg-urqmdv3.3+.dat 
+PDG/pdg_smash.dat 
+PDG/pdg_box.dat
 
-3. run iS3D
+and generate the corresponding 14 moment and Chapman Enskog coefficients, which depend on the HRG. These coefficient tables are stored in deltaf_coefficients/vh
+
+* one should take note that the pdg_box.dat file format is different than the urqmd and smash ones. 
+
+
+For example, to run iS3D with the smash HRG, one should 
+
+1. run generate_vh_coeff_smash.sh
+
+2. set hrg_eos = 2 in iS3D_parameters.dat
+
+2. run iS3D
