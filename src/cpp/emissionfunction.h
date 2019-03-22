@@ -97,6 +97,9 @@ private:
 
   int TEST_SAMPLER;
 
+  int Nevents;              // number of sampled events
+  double mean_yield;        // mean number of particles emitted from freezeout surface (includes backflow)
+
   // for binning sampled particles (for sampler tests)
   double PT_LOWER_CUT;
   double PT_UPPER_CUT;
@@ -111,8 +114,18 @@ private:
   double R_MAX;
   int R_BINS;
 
-  int Nevents;              // number of sampled events
-  double mean_yield;        // mean number of particles emitted from freezeout surface (includes backflow)
+  // for sampler test (2+1d)
+  double **sampled_pT_PDF;    // holds event-averaged sampled (1/N) dN/dpT for each species
+  double *total_count;        // tracks total count within rapidity cut for each species
+
+  double ***sampled_vn_real;  // holds event-averaged sampled Re(Vn) for each species
+  double ***sampled_vn_imag;  // holds event-averaged sampled Im(Vn) for each species
+  const int K_MAX = 7;        // {v_1, ..., v7}
+  double **pT_count_vn;       // tracks count in each pT bin for each species (for vn calculation)
+
+  double **sampled_dN_taudtaudy;
+  double **sampled_dN_twopirdrdy;
+
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
   int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
@@ -122,6 +135,9 @@ private:
 
   double *St, *Sx, *Sy, *Sn; //to hold the polarization vector of all species
   double *Snorm; //the normalization of the polarization vector of all species
+
+  
+  
 
   std::vector<Sampled_Particle> particle_list;                        // to hold sampled particle list (inactive)
   std::vector< std::vector<Sampled_Particle> > particle_event_list;   // holds sampled particle list of all events
@@ -181,6 +197,16 @@ public:
 
   // sample particles with feq + df or feqmod
   void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB, double *nB, double *Vx_fo, double *Vy_fo, double *Vn_fo, Deltaf_Data * df_data, Gauss_Laguerre * laguerre, Gauss_Legendre * legendre);
+
+  // add counts for sampled spectra / spacetime distributions (normalization in the write to file function)
+  void sample_dN_dpT(Sampled_Particle new_particle);
+  void sample_vn(Sampled_Particle new_particle);
+  void sample_dN_dX(Sampled_Particle new_particle);
+
+  void write_sampled_pT_PDF_to_file_test(int * MCID);
+  void write_sampled_vn_to_file_test(int * MCID);
+  void write_sampled_dN_dX_to_file_test(int * MCID);
+
 
   void sample_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
   double *, double *, double *, double *, double *,

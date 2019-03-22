@@ -14,7 +14,7 @@ mode       		      	= 0 	 # mode for reading in freeze out information
 					 # 6: reads freezeout file from 2+1D viscous hydro (new public MUSIC boost invariant format)
 					 # 7: reads freezeout file from 2+1D viscous hydro (hic-eventgen format)
 
-hrg_eos					= 1		# HRG equation of state (PDG/chosen_particles.dat MUST be subset of corresponding file)
+hrg_eos					= 2		# HRG equation of state (PDG/chosen_particles.dat MUST be subset of corresponding file)
 								# 1: reads pdg-urqmd_v3.3+.dat (goes up to n-2250)
 								# 2: reads pdg_smash.dat (goes up to Υ(3S))
 								# 3: reads pdg_box.dat (smash box: no decay info now, so can't do resdecays)
@@ -23,7 +23,7 @@ dimension  		     	= 2      # this switch determines the dimensionality of the f
 	                	      	 # 2: boost invariant
 	                	      	 # 3: full 3+1D
 
-df_mode		                = 4      # mode for type of delta-f correction
+df_mode		                = 1      # mode for type of delta-f correction
 			              	 # 1: 14-moment approximation viscous hydro
 			              	 # 2: Chapman-Enskog expansion viscous hydro
 			              	 # 3: Modified equilibrium distribution (Mike)
@@ -40,12 +40,12 @@ include_baryondiff_deltaf 	= 0      # switch to include baryon diffusion df corr
 regulate_deltaf           	= 1      # switch to force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
 outflow 			= 1	 # switch to include Theta(p.dsigma) in smooth CFF and sampled precomputed mean hadron number
 
-deta_min 			= 1.e-2  # minimum value of detA (for feqmod break down)
+deta_min 			= 1.e-6  # minimum value of detA (for feqmod break down, for 3+1d want to increase to 0.01) 
 
 group_particles                 = 0	 # group particles with the similar mass and to speed up calculations
 particle_diff_tolerance         = 0.01   # grouping particle mass tolerance
 
-mass_pion0			= 0.138  # lightest pion mass (GeV) (SMASH pdg.dat = 0.138)
+mass_pion0			= 0.138  # lightest pion mass (GeV) 
 				         # for feqmod breakdown criteria (pion0 most susceptible negative density)
 
 do_resonance_decays	        = 0      #switch for resonance decays after thermal spectra calculation
@@ -54,11 +54,11 @@ lightest_particle 	        = 111    #PDG MC ID of lightest particle for resonanc
 oversample		        = 1      # run sampler iteratively until mininum number of hadrons sampled
 								 # should be turned off for JETSCAPE
 
-min_num_hadrons		        = 1.0e+6 #across all samples >= min_num_hadrons
+min_num_hadrons		        = 1.4e+7 #across all samples >= min_num_hadrons
 
 sampler_seed		        = 1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
 
-test_sampler			= 0		 # perform sampler test only (i.e. write sampled pT spectra and vn to file in addition)
+test_sampler			= 1		 # perform sampler test only (i.e. write sampled pT spectra and vn to file in addition)
 								 # set to zero for actual runs
 
 pT_lower_cut			= 0.0    # pT lower cut in GeV (for sampler tests)
@@ -72,6 +72,6 @@ tau_bins		= 120			 # number of tau bins (for sampled dN_dtaudy test)
 								 # dtau stepsize should be about twice the time resolution of surface
 
 r_min			= 0.0    		 # r min in fm (for sampled dN_drdy test)
-r_max			= 10.0	 		 # r max in fm (for sampled dN_drdy test)
-r_bins			= 50			 # number of r bins (for sampled dN_drdy test)
+r_max			= 12.0	 		 # r max in fm (for sampled dN_drdy test)
+r_bins			= 60			 # number of r bins (for sampled dN_drdy test)
 								 # dr stepsize should be about twice the spatial resolution of surface
