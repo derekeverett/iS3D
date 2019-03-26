@@ -28,8 +28,17 @@ class Shear_Stress
     double pizz_LRF;
     double pi_magnitude;
 
+    // diagonalized components of pi_ij
+    double pixx_D;
+    double piyy_D;
+    double pizz_D;
+    double delta_piperp;    // transverse asymmetry measure = [-1,1]
+    double azi_plus;
+    double azi_minus;
+
     Shear_Stress(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in);
     void boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2);
+    void diagonalize_pimunu_in_lrf();
     void compute_pi_magnitude(); 
     void test_pimunu_orthogonality_and_tracelessness(double ut, double ux, double uy, double un, double tau2);
 };

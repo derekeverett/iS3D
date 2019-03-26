@@ -241,6 +241,12 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
   double pixz = pixz_LRF;
   double piyz = pimunu.piyz_LRF;
 
+
+  // diagonalized components and amplitudes of the azimuthal square wave approximation
+  double pizz_D = pimunu.pizz_D;
+  double azi_plus = pimunu.azi_plus;
+  double azi_minus = pimunu.azi_minus;
+
   // df coefficients
   double c0 = df.c0;
   double c1 = df.c1;
@@ -356,17 +362,80 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
 
           double df_bulk = feqbar * ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
 
-          double df_shear_rms = sqrt(2.0 / 15.0) * feqbar * p * p * pi_magnitude / shear14_coeff;
 
-          double df_isotropic = df_bulk;
+
+          double g = pizz_D * feqbar * p * p / shear14_coeff; // g[p]
+          double h = df_bulk;
+
+          double f; 
+
+          // the function wpt x is concave (g < 0) or convex (g > 0)
+          // so the roots of the lower/upper bounds change
+          if(g < 0.0)
+          {
+            // evaluate angular integral ~ int dx.dphi feq[p].max(0.0, min(1.0 + h[p] + g[p].pizz_D(x^2 - 0.5(1-x^2)(1 + delta_piperp.cos(2phi)))), 2.0)
+            //    - x = costheta (polar angle)
+            //    - phi = azimuthal angle
+
+            // we evaluate the x-integral by piecewise integration after approximating the
+            // azimuthal term (1 + delta_piperp.cos(2phi)) as a square wave with mean amplitudes
+            
+            // index notation (g > 0)
+            //    . L = roots of lower bound feq.(1 + df) = 0
+            //    . H = roots of upper bound feq.(1 + df) = 2feq
+            //    . plus = square wave region w/ azi_plus
+            //    . minus = square wave region w/ azi_minus
+
+            // here xL_plus > xH_plus
+            double xL_plus = max(0.0, min(1.0, sqrt(max(0.0, (azi_plus + 2.0*(1.0 - h)/g) / (2.0 + azi_plus)))));
+            double xH_plus = max(0.0, min(1.0, sqrt(max(0.0, (azi_plus - 2.0*(1.0 + h)/g)  / (2.0 + azi_plus)))));
+
+            if(!(xL_plus > xH_plus)) printf("Error..\n");
+
+            double xL_minus = max(0.0, min(1.0, sqrt(max(0.0, (azi_minus + 2.0*(1.0 - h)/g) / (2.0 + azi_minus)))));
+            double xH_minus = max(0.0, min(1.0, sqrt(max(0.0, (azi_minus - 2.0*(1.0 - h)/g) / (2.0 + azi_minus)))));
+
+            double f1 = feq * (xL_plus + xH_plus + h * (xL_plus - xH_plus) + 0.5*g*((2.0 + azi_plus)*(xL_plus*xL_plus*xL_plus - xH_plus*xH_plus*xH_plus)/3.0 - azi_plus*(xL_plus - xH_plus)));
+
+            double f2 = feq * (xL_minus + xH_minus + h * (xL_minus - xH_minus) + 0.5*g*((2.0 + azi_minus)*(xL_minus*xL_minus*xL_minus - xH_minus*xH_minus*xH_minus)/3.0 - azi_minus*(xL_minus - xH_minus)));
+
+            f = f1 + f2;
+          }
+          else if(g > 0.0)
+          {
+            double xL_plus = max(0.0, min(1.0, sqrt(max(0.0, (azi_plus - 2.0*(1.0 + h)/g) / (2.0 + azi_plus)))));
+            double xH_plus = max(0.0, min(1.0, sqrt(max(0.0, (azi_plus + 2.0*(1.0 - h)/g)  / (2.0 + azi_plus)))));
+
+            double xL_minus = max(0.0, min(1.0, sqrt(max(0.0, (azi_minus - 2.0*(1.0 + h)/g) / (2.0 + azi_minus)))));
+            double xH_minus = max(0.0, min(1.0, sqrt(max(0.0, (azi_minus + 2.0*(1.0 - h)/g) / (2.0 + azi_minus)))));
+
+            double f1 = feq * (2.0 - xL_plus - xH_plus + h * (xH_plus - xL_plus) + 0.5*g*((2.0 + azi_plus)*(xH_plus*xH_plus*xH_plus - xL_plus*xL_plus*xL_plus)/3.0 - azi_plus*(xH_plus - xL_plus)));
+
+            double f2 = feq * (2.0 - xL_minus - xH_minus + h * (xH_minus - xL_minus) + 0.5*g*((2.0 + azi_minus)*(xH_minus*xH_minus*xH_minus - xL_minus*xL_minus*xL_minus)/3.0 - azi_minus*(xH_minus - xL_minus)));
+
+            f = f1 + f2;
+          }
+          else
+          {
+            // shear correction vanishes (factor or 2 = int dx 1)
+            f = 2.0 * max(0.0, min(feq * (1.0 + df_bulk), 2.0 * feq));
+          }
+
+          //double df_shear_rms = sqrt(2.0 / 15.0) * feqbar * p * p * pi_magnitude / shear14_coeff;
+
+          //double df_isotropic = df_bulk;
 
           // regulate df isotropic term (df_shear_rms refines the bounds averaged wpt angles)
-          df_isotropic = max(-1.0 + 0.25 * df_shear_rms, min(df_isotropic, 1.0 - 0.25 * df_shear_rms));
+          //df_isotropic = max(-1.0 + 0.5 * df_shear_rms, min(df_isotropic, 1.0 - 0.5 * df_shear_rms));
 
-          particle_number += weight * feq * (1.0 + df_isotropic);
+
+
+
+
+          particle_number += weight * f;
         } // i
 
-        particle_number *= 2.0 * ds_time * degeneracy * T * T * T / four_pi2_hbarC3;
+        particle_number *= ds_time * degeneracy * T * T * T / four_pi2_hbarC3;
       } // timelike cell
       else
       {
@@ -500,7 +569,7 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           double df_isotropic = df_bulk;
 
           // regulate df isotropic term (df_shear_rms refines the bounds averaged wpt angles)
-          df_isotropic = max(-1.0 + 0.5 * df_shear_rms, min(df_isotropic, 1.0 - 0.5 * df_shear_rms));
+          df_isotropic = max(-1.0 + 0.25 * df_shear_rms, min(df_isotropic, 1.0 - 0.25 * df_shear_rms));
 
           particle_number += weight * feq * (1.0 + df_isotropic);   
         } // i
@@ -534,7 +603,7 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
           // regulate df isotropic term (df_shear_rms refines the bounds averaged wpt angles)
           double df_isotropic = df_bulk;
 
-          df_isotropic = max(-1.0 + 0.5 * df_shear_rms, min(df_isotropic, 1.0 - 0.5 * df_shear_rms)); 
+          df_isotropic = max(-1.0 + 0.25 * df_shear_rms, min(df_isotropic, 1.0 - 0.25 * df_shear_rms)); 
 
           double f_isotropic = feq * (1.0 + df_isotropic); // regulated isotropic part of distribution
 
@@ -1691,6 +1760,7 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       Shear_Stress pimunu(pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn);
       pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
       pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
+      pimunu.diagonalize_pimunu_in_lrf();
       pimunu.compute_pi_magnitude(); 
 
 

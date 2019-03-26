@@ -1,7 +1,10 @@
 #include "viscous_correction.h"
 #include <math.h>
 #include <iostream>
+#include <iomanip> 
 #include <stdlib.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_eigen.h>
 using namespace std;
 
 // should rename file local_rest_frame.cpp
@@ -143,6 +146,46 @@ void Shear_Stress::boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2)
     piyz_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
 
     pizz_LRF = - (pixx_LRF + piyy_LRF);
+}
+
+void Shear_Stress::diagonalize_pimunu_in_lrf()
+{
+    double pi_LRF[] = {pixx_LRF, pixy_LRF, pixz_LRF,
+                         pixy_LRF, piyy_LRF, piyz_LRF,
+                         pixz_LRF, piyz_LRF, pizz_LRF};
+
+    // diagonalize pi_ij (just need the eigenvalues)
+    gsl_matrix_view A = gsl_matrix_view_array(pi_LRF, 3, 3);
+    gsl_vector * evalues = gsl_vector_alloc(3);
+    gsl_eigen_symm_workspace * work = gsl_eigen_symm_alloc(3);
+
+    // compute eigenvalues
+    gsl_eigen_symm(&A.matrix, evalues, work);
+
+    // gsl manual says the eigenvalues are unordered
+    pixx_D = gsl_vector_get(evalues, 0);
+    piyy_D = gsl_vector_get(evalues, 1);
+    pizz_D = gsl_vector_get(evalues, 2);
+
+    // check that Tr(D) = 0 (okay it seems to work)
+    //cout << setprecision(15) << pixx_D << "\t" << piyy_D << "\t" << pizz_D << "\t" << pixx_D + piyy_D + pizz_D << endl;
+
+    // finally extract the transverse asymmetry measure
+    if(pixx_D + piyy_D == 0.0)
+    {
+        delta_piperp = 0.0;
+    }
+    else
+    {
+        delta_piperp = (pixx_D - piyy_D) / (pixx_D + piyy_D);   
+    }
+
+    azi_plus = 1.0 + 2.0 * delta_piperp / M_PI;  // mean amplitudes of the azimuthal shear factor
+    azi_minus = 1.0 - 2.0 * delta_piperp / M_PI; // 1 + delta_perpcos(2.phi) approximated as a square wave
+    
+    // free memory
+    gsl_vector_free(evalues);
+    gsl_eigen_symm_free(work);
 }
 
 void Shear_Stress::compute_pi_magnitude()
