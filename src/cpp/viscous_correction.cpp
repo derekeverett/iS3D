@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_eigen.h>
+#include <gsl/gsl_linalg.h>
 using namespace std;
 
 // should rename file local_rest_frame.cpp
@@ -156,11 +157,57 @@ void Shear_Stress::diagonalize_pimunu_in_lrf()
 
     // diagonalize pi_ij (just need the eigenvalues)
     gsl_matrix_view A = gsl_matrix_view_array(pi_LRF, 3, 3);
+    //gsl_matrix_view A_copy = gsl_matrix_view_array(pi_LRF, 3, 3);
+
+    /*
+    printf("\n");
+
+    for(int i = 0; i < 3; i++)  
+    {
+        for(int j = 0; j < 3; j++)
+        {
+            printf("%g\t", gsl_matrix_get(&A.matrix, i, j));
+        }
+        printf("\n");
+    }
+
+    printf("\n");
+    */
+
     gsl_vector * evalues = gsl_vector_alloc(3);
     gsl_eigen_symm_workspace * work = gsl_eigen_symm_alloc(3);
 
-    // compute eigenvalues
+    //gsl_vector * tau = gsl_vector_alloc(3);
+
+    //gsl_linalg_hessenberg_decomp(&A.matrix, tau);
     gsl_eigen_symm(&A.matrix, evalues, work);
+
+    /*
+    for(int i = 0; i < 3; i++)  
+    {
+        for(int j = 0; j < 3; j++)
+        {
+            printf("%g\t", gsl_matrix_get(&A.matrix, i, j));
+        }
+        printf("\n");
+    }
+    
+    printf("\n");
+
+
+    // compute eigenvalues
+    gsl_eigen_symm(&A_copy.matrix, evalues, work);
+
+    for(int i = 0; i < 3; i++) 
+    {
+        printf("%g\n", gsl_vector_get(evalues,i));
+    }
+
+    printf("\n");
+
+    exit(-1);
+
+    */
 
     // gsl manual says the eigenvalues are unordered
     pixx_D = gsl_vector_get(evalues, 0);
@@ -171,13 +218,15 @@ void Shear_Stress::diagonalize_pimunu_in_lrf()
     //cout << setprecision(15) << pixx_D << "\t" << piyy_D << "\t" << pizz_D << "\t" << pixx_D + piyy_D + pizz_D << endl;
 
     // finally extract the transverse asymmetry measure
-    if(pixx_D + piyy_D == 0.0)
+    if(fabs(pixx_D + piyy_D) < 1.e-2)
     {
         delta_piperp = 0.0;
     }
     else
     {
         delta_piperp = (pixx_D - piyy_D) / (pixx_D + piyy_D);   
+
+        if(isinf(delta_piperp)) printf("Error: |delta_piperp| = %lf\n", delta_piperp);
     }
 
     azi_plus = 1.0 + 2.0 * delta_piperp / M_PI;  // mean amplitudes of the azimuthal shear factor

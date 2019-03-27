@@ -247,6 +247,11 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
   double azi_plus = pimunu.azi_plus;
   double azi_minus = pimunu.azi_minus;
 
+  // temporary
+  //azi_plus = 1.0;
+  //azi_minus = 1.0;
+
+
   // df coefficients
   double c0 = df.c0;
   double c1 = df.c1;
@@ -362,16 +367,28 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
 
           double df_bulk = feqbar * ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2 - c0) * E) * E) * bulkPi;
 
+          /*
+          double df_shear_rms = sqrt(2.0 / 15.0) * feqbar * p * p * pi_magnitude / shear14_coeff;
 
+          double df = df_bulk;
 
+          //df = max(-1.0, min(df, 1.0));
+          df = max(-1.0 + 0.5 * df_shear_rms, min(df, 1.0 - 0.5 * df_shear_rms));
+
+          particle_number += 2.0 * weight * feq * (1.0 + df);
+          */
+
+          
           double g = pizz_D * feqbar * p * p / shear14_coeff; // g[p]
           double h = df_bulk;
+
+          //cout << g << "\t" << pizz_D << endl;
 
           double f; 
 
           // the function wpt x is concave (g < 0) or convex (g > 0)
           // so the roots of the lower/upper bounds change
-          if(g < 0.0)
+          if(pizz_D < 0.0)
           {
             // evaluate angular integral ~ int dx.dphi feq[p].max(0.0, min(1.0 + h[p] + g[p].pizz_D(x^2 - 0.5(1-x^2)(1 + delta_piperp.cos(2phi)))), 2.0)
             //    - x = costheta (polar angle)
@@ -380,28 +397,29 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
             // we evaluate the x-integral by piecewise integration after approximating the
             // azimuthal term (1 + delta_piperp.cos(2phi)) as a square wave with mean amplitudes
             
-            // index notation (g > 0)
+            // index notation  (g > 0)
             //    . L = roots of lower bound feq.(1 + df) = 0
             //    . H = roots of upper bound feq.(1 + df) = 2feq
             //    . plus = square wave region w/ azi_plus
             //    . minus = square wave region w/ azi_minus
 
             // here xL_plus > xH_plus
-            double xL_plus = max(0.0, min(1.0, sqrt(max(0.0, (azi_plus + 2.0*(1.0 - h)/g) / (2.0 + azi_plus)))));
-            double xH_plus = max(0.0, min(1.0, sqrt(max(0.0, (azi_plus - 2.0*(1.0 + h)/g)  / (2.0 + azi_plus)))));
+            double xL_plus = max(0.0, min(1.0, sqrt(max(0.0, (azi_plus - 2.0*(1.0 + h)/g)  / (2.0 + azi_plus)))));
+            double xH_plus = max(0.0, min(1.0, sqrt(max(0.0, (azi_plus + 2.0*(1.0 - h)/g) / (2.0 + azi_plus)))));
+            
 
-            if(!(xL_plus > xH_plus)) printf("Error..\n");
+            //if(!(xL_plus > xH_plus)) printf("Error..\n");
 
-            double xL_minus = max(0.0, min(1.0, sqrt(max(0.0, (azi_minus + 2.0*(1.0 - h)/g) / (2.0 + azi_minus)))));
-            double xH_minus = max(0.0, min(1.0, sqrt(max(0.0, (azi_minus - 2.0*(1.0 - h)/g) / (2.0 + azi_minus)))));
-
+            double xL_minus = max(0.0, min(1.0, sqrt(max(0.0, (azi_minus - 2.0*(1.0 + h)/g) / (2.0 + azi_minus)))));
+            double xH_minus = max(0.0, min(1.0, sqrt(max(0.0, (azi_minus + 2.0*(1.0 - h)/g) / (2.0 + azi_minus)))));
+           
             double f1 = feq * (xL_plus + xH_plus + h * (xL_plus - xH_plus) + 0.5*g*((2.0 + azi_plus)*(xL_plus*xL_plus*xL_plus - xH_plus*xH_plus*xH_plus)/3.0 - azi_plus*(xL_plus - xH_plus)));
 
             double f2 = feq * (xL_minus + xH_minus + h * (xL_minus - xH_minus) + 0.5*g*((2.0 + azi_minus)*(xL_minus*xL_minus*xL_minus - xH_minus*xH_minus*xH_minus)/3.0 - azi_minus*(xL_minus - xH_minus)));
 
             f = f1 + f2;
           }
-          else if(g > 0.0)
+          else if(pizz_D > 0.0)
           {
             double xL_plus = max(0.0, min(1.0, sqrt(max(0.0, (azi_plus - 2.0*(1.0 + h)/g) / (2.0 + azi_plus)))));
             double xH_plus = max(0.0, min(1.0, sqrt(max(0.0, (azi_plus + 2.0*(1.0 - h)/g)  / (2.0 + azi_plus)))));
@@ -420,19 +438,11 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
             // shear correction vanishes (factor or 2 = int dx 1)
             f = 2.0 * max(0.0, min(feq * (1.0 + df_bulk), 2.0 * feq));
           }
-
-          //double df_shear_rms = sqrt(2.0 / 15.0) * feqbar * p * p * pi_magnitude / shear14_coeff;
-
-          //double df_isotropic = df_bulk;
-
-          // regulate df isotropic term (df_shear_rms refines the bounds averaged wpt angles)
-          //df_isotropic = max(-1.0 + 0.5 * df_shear_rms, min(df_isotropic, 1.0 - 0.5 * df_shear_rms));
-
-
-
-
-
+          
           particle_number += weight * f;
+
+          
+
         } // i
 
         particle_number *= ds_time * degeneracy * T * T * T / four_pi2_hbarC3;
@@ -1642,6 +1652,9 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
 
     double Ntot = 0.0;                    // total particle yield
 
+    std::vector<double> N_list;           // particle yield of each species
+    N_list.resize(npart);
+
     //#pragma omp parallel for
     for(long icell = 0; icell < FO_length; icell++)
     {
@@ -1794,6 +1807,9 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
       // total number of hadrons / eta_weight in FO_cell
       double dn_tot = 0.0;
 
+      std::vector<double> dn_list;
+      dn_list.resize(npart);
+
       // sum over hadrons
       for(int ipart = 0; ipart < npart; ipart++)
       {
@@ -1802,19 +1818,34 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
         double sign = Sign[ipart];
         double baryon = Baryon[ipart];
 
-        dn_tot += mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, T_mod, alphaB_mod,feqmod_breaks_down, laguerre, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW, INCLUDE_BARYON, detA, detA_bulk);
+        dn_list[ipart] = mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, T_mod, alphaB_mod,feqmod_breaks_down, laguerre, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, OUTFLOW, INCLUDE_BARYON, detA, detA_bulk);
+        
+        dn_tot += dn_list[ipart];
       }
 
       // add mean number of hadrons in FO cell to total yield
       for(int ieta = 0; ieta < eta_pts; ieta++)
       {
         Ntot += dn_tot * etaWeights[ieta];
+
+        for(int ipart = 0; ipart < npart; ipart++)
+        {
+          N_list[ipart] += dn_list[ipart] * etaWeights[ieta];
+        }
       }
 
     } // freezeout cells (icell)
 
     mean_yield = Ntot;
-    printf("%lf\n", Ntot/14.0); // dN/deta (for the eta_trapezoid_table_57pt.dat)
+    printf("Total dN_dy = %lf\n\n", Ntot/14.0); // dN/deta (for the eta_trapezoid_table_57pt.dat)
+
+    for(int ipart = 0; ipart < npart; ipart++)
+    {
+      printf("%lf\n", ipart, N_list[ipart]/14.0);
+    }
+
+    exit(-1);
+
 
     return Ntot;
 
