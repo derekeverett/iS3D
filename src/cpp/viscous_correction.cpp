@@ -152,85 +152,31 @@ void Shear_Stress::boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2)
 void Shear_Stress::diagonalize_pimunu_in_lrf()
 {
     double pi_LRF[] = {pixx_LRF, pixy_LRF, pixz_LRF,
-                         pixy_LRF, piyy_LRF, piyz_LRF,
-                         pixz_LRF, piyz_LRF, pizz_LRF};
+                       pixy_LRF, piyy_LRF, piyz_LRF,
+                       pixz_LRF, piyz_LRF, pizz_LRF};
 
     // diagonalize pi_ij (just need the eigenvalues)
-    gsl_matrix_view A = gsl_matrix_view_array(pi_LRF, 3, 3);
-    //gsl_matrix_view A_copy = gsl_matrix_view_array(pi_LRF, 3, 3);
-
-    /*
-    printf("\n");
-
-    for(int i = 0; i < 3; i++)  
-    {
-        for(int j = 0; j < 3; j++)
-        {
-            printf("%g\t", gsl_matrix_get(&A.matrix, i, j));
-        }
-        printf("\n");
-    }
-
-    printf("\n");
-    */
+    gsl_matrix_view U_D_UT = gsl_matrix_view_array(pi_LRF, 3, 3);
 
     gsl_vector * evalues = gsl_vector_alloc(3);
     gsl_eigen_symm_workspace * work = gsl_eigen_symm_alloc(3);
 
-    //gsl_vector * tau = gsl_vector_alloc(3);
-
-    //gsl_linalg_hessenberg_decomp(&A.matrix, tau);
-    gsl_eigen_symm(&A.matrix, evalues, work);
-
-    /*
-    for(int i = 0; i < 3; i++)  
-    {
-        for(int j = 0; j < 3; j++)
-        {
-            printf("%g\t", gsl_matrix_get(&A.matrix, i, j));
-        }
-        printf("\n");
-    }
-    
-    printf("\n");
-
-
-    // compute eigenvalues
-    gsl_eigen_symm(&A_copy.matrix, evalues, work);
-
-    for(int i = 0; i < 3; i++) 
-    {
-        printf("%g\n", gsl_vector_get(evalues,i));
-    }
-
-    printf("\n");
-
-    exit(-1);
-
-    */
-
+    // compute the eigenvalues
+    gsl_eigen_symm(&U_D_UT.matrix, evalues, work);
+   
     // gsl manual says the eigenvalues are unordered
     pixx_D = gsl_vector_get(evalues, 0);
     piyy_D = gsl_vector_get(evalues, 1);
     pizz_D = gsl_vector_get(evalues, 2);
 
-    // check that Tr(D) = 0 (okay it seems to work)
+    // check that Tr(D) = 0
     //cout << setprecision(15) << pixx_D << "\t" << piyy_D << "\t" << pizz_D << "\t" << pixx_D + piyy_D + pizz_D << endl;
 
-    // finally extract the transverse asymmetry measure
-    if(fabs(pixx_D + piyy_D) < 1.e-2)
-    {
-        delta_piperp = 0.0;
-    }
-    else
-    {
-        delta_piperp = (pixx_D - piyy_D) / (pixx_D + piyy_D);   
+    double piperp = (pixx_D + piyy_D) / 2.0;
+    double delta_piperp = (pixx_D - piyy_D) / 2.0;
 
-        if(isinf(delta_piperp)) printf("Error: |delta_piperp| = %lf\n", delta_piperp);
-    }
-
-    azi_plus = 1.0 + 2.0 * delta_piperp / M_PI;  // mean amplitudes of the azimuthal shear factor
-    azi_minus = 1.0 - 2.0 * delta_piperp / M_PI; // 1 + delta_perpcos(2.phi) approximated as a square wave
+    piperp_plus = piperp + 2.0 * delta_piperp / M_PI;  // mean amplitudes of the azimuthal shear factor
+    piperp_minus = piperp - 2.0 * delta_piperp / M_PI; // piperp + delta_piperp.cos(2phi) approximated as a square wave
     
     // free memory
     gsl_vector_free(evalues);

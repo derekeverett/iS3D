@@ -32,9 +32,8 @@ class Shear_Stress
     double pixx_D;
     double piyy_D;
     double pizz_D;
-    double delta_piperp;    // transverse asymmetry measure = [-1,1]
-    double azi_plus;
-    double azi_minus;
+    double piperp_plus;
+    double piperp_minus;
 
     Shear_Stress(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in);
     void boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2);
