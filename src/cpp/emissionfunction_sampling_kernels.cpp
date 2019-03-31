@@ -210,13 +210,14 @@ double equilibrium_particle_density(double mbar, double chem, double sign)
   return neq;
 }
 
-double compute_outflow_integrand(double ds_time, double ds_perp_amp, double dsz, double p, double E)
+double compute_outflow_integrand(double dst, double dsperp, double dsz, double p, double E)
 {
   double a = dsz;
-  double b = ds_perp_amp;
-  double c = ds_time * E / p;
+  double b = dsperp;
+  double c = dst * E / p;
 
-
+  // I think the current issue I have the wrong weights for the amplitudes
+  // bc the square wave can be shifted 
   // solve for the root(s) of f(x) = c - a.x - b.sqrt(1-x^2)
   double a2 = a * a;
   double b2 = b * b;
@@ -227,88 +228,169 @@ double compute_outflow_integrand(double ds_time, double ds_perp_amp, double dsz,
   if(isnan(sqrt_term))
   {
     // no solution and f(x) > 0 or Theta(f(x)) = 1 (since c > 0)
-    return 2.0 * ds_time;
+    //printf("Solutions are complex\n");
+    return 2.0 * dst;
   }
 
   // solutions (within costheta domain = [-1,1])
   double x1 = max(-1.0, min(1.0, (a*c - sqrt_term) / (a2 + b2)));
   double x2 = max(-1.0, min(1.0, (a*c + sqrt_term) / (a2 + b2)));
 
+  if(x1 > x2) printf("Error solutions ordered wrong\n");
+
   // check if one of the solutions is extraneous
-  double sol1 = c - a*x1 - b*sqrt(1.-x1*x1);
-  double sol2 = c - a*x2 - b*sqrt(1.-x2*x2);
+  
 
-  double x_single = x1;
+  // positive part of azimuthal square wave
+  // b -> + ds_perp_amp
+  // f(x) = convex
+  double sol1_plus = c - a*x1 - b*sqrt(1.-x1*x1); // proposed solutions
+  double sol2_plus = c - a*x2 - b*sqrt(1.-x2*x2);
 
-  int solutions = 2;
-  if(fabs(sol1) > solution_tolerance)
+  double xp = x1;
+
+  int sols_plus = 2;
+  
+  if(fabs(sol1_plus) > solution_tolerance)        // check if solutions are extraneous
   {
-    x_single = x2;
-    solutions--;
+    xp = x2;
+    sols_plus--;
   }
-  if(fabs(sol2) > solution_tolerance)
+  if(fabs(sol2_plus) > solution_tolerance)
   {
-    solutions--;
-  }
-  if(solutions == 0)
-  {
-    printf("Error: no solutions exist, but there should be at least one at this point\n");
+    sols_plus--;
   }
 
+  double integrand_plus;
 
-  double integrand;
-
-  if(solutions == 2)
+  if(sols_plus == 0)
   {
-    // positive part of azimuthal square wave (b -> + ds_perp_amp)
-    // f(x) = convex
+     // Theta(f(x)) = 1 in [-1, 1]
+    integrand_plus = 2.*dst - p/E*dsperp*pi_over2;
+  }
+  else if(sols_plus == 1 && a > 0.0)
+  {
+    // Theta(f(x)) = 1 in [-1, xp]
+    integrand_plus = dst*(1.+xp) - p/E*(dsperp*(0.5*(xp*sqrt(1.-xp*xp) + asin(xp) + pi_over2)) + 0.5*dsz*(xp*xp-1.));
+  }
+  else if(sols_plus == 1 && a < 0.0)
+  {
+    // Theta(f(x)) = 1 in [xp, 1]
+    integrand_plus = dst*(1.-xp) - p/E*(dsperp*(0.5*(pi_over2 - xp*sqrt(1.-xp*xp) - asin(xp))) + 0.5*dsz*(1.-xp*xp));
+  }
+  else if(sols_plus == 2)
+  {
     // Theta(f(x)) = 1 in [-1, x1] + [x2, 1]
-    double integrand1 = ds_time*(2.+x1-x2) - p/E*(ds_perp_amp*(pi_over2 + 0.5*(x1*sqrt(1.-x1*x1) - x2*sqrt(1.-x2*x2) + asin(x1) - asin(x2))) + 0.5*dsz*(x1*x1 - x2*x2));
+    integrand_plus = dst*(2.+x1-x2) - p/E*(dsperp*(pi_over2 + 0.5*(x1*sqrt(1.-x1*x1) - x2*sqrt(1.-x2*x2) + asin(x1) - asin(x2))) + 0.5*dsz*(x1*x1 - x2*x2));
+  }
 
-    // negative part of azimuthal square wave (b -> - ds_perp_amp)
-    // f(x) = concave
+
+
+  // negative part of azimuthal square wave
+  // b -> - ds_perp_amp
+  // f(x) = concave
+  double sol1_minus = c - a*x1 + b*sqrt(1.-x1*x1); // proposed solutions
+  double sol2_minus = c - a*x2 + b*sqrt(1.-x2*x2);
+
+  double xm = x1;
+
+  int sols_minus = 2;
+  
+  if(fabs(sol1_minus) > solution_tolerance)        // check if solutions are extraneous
+  {
+    xm = x2;
+    sols_minus--;
+  }
+  if(fabs(sol2_minus) > solution_tolerance)
+  {
+    sols_minus--;
+  }
+
+  double integrand_minus;
+
+  if(sols_minus == 0)
+  {
+     // Theta(f(x)) = 1 in [-1, 1]
+    integrand_minus = 2.*dst + p/E*dsperp*pi_over2;
+  }
+  else if(sols_minus == 1 && a > 0.0)
+  {
+    // Theta(f(x)) = 1 in [-1, xm]
+    integrand_minus = dst*(1.+xm) - p/E*(-dsperp*(0.5*(xm*sqrt(1.-xm*xm) + asin(xm) - pi_over2)) + 0.5*dsz*(xm*xm-1.));
+  }
+  else if(sols_minus == 1 && a < 0.0)
+  {
+    // Theta(f(x)) = 1 in [xm, 1]
+    integrand_minus = dst*(1.-xm) - p/E*(-dsperp*(0.5*(pi_over2 - xm*sqrt(1.-xm*xm) - asin(xm))) + 0.5*dsz*(1.-xm*xm));
+  }
+  else if(sols_minus == 2)
+  {
     // Theta(f(x)) = 1 in [x1,x2]
-    double integrand2 = ds_time*(x2-x1) - p/E*(-ds_perp_amp*(0.5*(x2*sqrt(1.-x2*x2) - x1*sqrt(1.-x1*x1) + asin(x2) - asin(x1))) + 0.5*dsz*(x2*x2 - x1*x1));
-
-    // simplified
-    //integrand = 2.*ds_time - p/E*ds_perp_amp*(pi_over2 + x1*sqrt(1.-x1*x1) - x2*sqrt(1.-x2*x2) + asin(x1) - asin(x2));
-
-    integrand = (integrand1 + integrand2) / 2.0;
+    integrand_minus = dst*(x2-x1) - p/E*(-dsperp*(0.5*(x2*sqrt(1.-x2*x2) - x1*sqrt(1.-x1*x1) + asin(x2) - asin(x1))) + 0.5*dsz*(x2*x2 - x1*x1));
   }
-  if(solutions == 1 && a > 0.0)
+
+  return (integrand_plus + integrand_minus) / 2.0;
+}
+
+
+// boost-invariant approximation
+double compute_outflow_integrand_2(double dst, double dsperp, double p, double E)
+{
+  double b = dsperp;
+  double c = dst * E / p;
+
+  double sqrt_term = sqrt(b*b - c*c);
+
+  if(isnan(sqrt_term)) return 2.*dst;
+  
+  // solutions (within costheta domain = [-1,1])
+  double x1 = max(-1.0, min(1.0, - sqrt_term / b));
+  double x2 = max(-1.0, min(1.0, sqrt_term / b));
+
+  if(x1 > x2) printf("Error solutions ordered wrong\n");
+
+  // positive part of azimuthal square wave
+  // b -> + ds_perp_amp
+  // f(x) = convex
+  double sol_plus = c - b*sqrt(1.-x1*x1); // either 2 solutions or no solution
+ 
+  int sols_plus = 2;
+  if(fabs(sol_plus) > solution_tolerance) // check if solutions are extraneous
   {
-    // positive part of azimuthal square wave (b -> + ds_perp_amp)
-    // f(x) = convex
-    // Theta(f(x)) = 1 in [-1, x_single]
-    double integrand1 = ds_time * (1.0 + x_single) - p/E*(ds_perp_amp*(0.5*(x_single*sqrt(1.-x_single*x_single) + asin(x_single) - pi_over2)) + 0.5*dsz*(x_single*x_single-1.));
-
-     // negative part of azimuthal square wave (b -> - ds_perp_amp)
-    // f(x) = concave
-    // Theta(f(x)) = 1 in [x_single, 1]
-    double integrand2 = ds_time * (1.0 - x_single) - p/E*(-ds_perp_amp*(0.5*(pi_over2 - x_single*sqrt(1.-x_single*x_single) - asin(x_single))) + 0.5*dsz*(1.-x_single*x_single));
-
-    integrand = (integrand1 + integrand2) / 2.0;
-    //integrand = 2.*ds_time - p/E*ds_perp_amp*(pi)
+    sols_plus = 0;
   }
-  if(solutions == 1 && a < 0.0)
+
+  double integrand_plus;
+
+  if(sols_plus == 0)
   {
-    // positive part of azimuthal square wave (b -> + ds_perp_amp)
-    // f(x) = convex
-    // Theta(f(x)) = 1 in [x_single, 1]
-    double integrand1 = ds_time * (1.0 - x_single) - p/E*(ds_perp_amp*(0.5*(pi_over2 - x_single*sqrt(1.-x_single*x_single) - asin(x_single))) + 0.5*dsz*(1.-x_single*x_single));
-
-
-     // negative part of azimuthal square wave (b -> - ds_perp_amp)
-    // f(x) = concave
-    // Theta(f(x)) = 1 in [-1, x_single]
-    double integrand2 = ds_time * (1.0 + x_single) - p/E*(-ds_perp_amp*(0.5*(x_single*sqrt(1.-x_single*x_single) + asin(x_single) - pi_over2)) + 0.5*dsz*(x_single*x_single-1.));
-
-    integrand = (integrand1 + integrand2) / 2.0;
-    //integrand = 2.*ds_time - p/E*ds_perp_amp*(pi)
+     // Theta(f(x)) = 1 in [-1, 1]
+    integrand_plus = 2.*dst - p/E*dsperp*pi_over2;
+  }
+  else if(sols_plus == 2)
+  {
+    // Theta(f(x)) = 1 in [-1, x1] + [x2, 1]
+    integrand_plus = 2.*dst*(1.+x1) - p/E*(dsperp*(pi_over2 + x1*sqrt(1.-x1*x1) + asin(x1)));
   }
 
+  // f(x) is always positive
+  double integrand_minus = 2.*dst + p/E*dsperp*pi_over2;
 
-  return integrand;
+  return (integrand_plus + integrand_minus) / 2.0;
+}
+
+double compute_outflow_integrand_exact(double dst, double dsperp, double p, double E)
+{
+  double b = dsperp;
+  double c = dst * E / p;
+
+
+  double integrand_plus;
+
+  if(b > c)
+  {
+    return 2.0;
+  }
 }
 
 
@@ -522,9 +604,12 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
         double dsy = dsigma.dsigmay_LRF;
         double dsz = dsigma.dsigmaz_LRF;
 
-        double ds_perp = sqrt(dsx * dsx + dsy * dsy);
-        // don't need the angle now
+        double ds_perp = sqrt(dsx * dsx + dsy * dsy); // these should be stored in the dsigma class 
+        //double phi_perp = atan2(dsy / dsx);
+        //if(phi_perp < 0.0) phi_perp += 2.0 * M_PI;
         double ds_perp_amp = 2.0 * ds_perp / M_PI;
+
+
 
         for(int i = 0; i < legendre_pts; i++)
         {
@@ -534,7 +619,9 @@ double mean_particle_number(double mass, double degeneracy, double sign, double 
 
           double feq = 1.0 / (exp(Ebar - chem) + sign);
 
-          double integrand = feq * compute_outflow_integrand(ds_time, ds_perp_amp, dsz, pbar, Ebar);
+          //double integrand = feq * compute_outflow_integrand(ds_time, ds_perp_amp, dsz, pbar, Ebar);
+
+          double integrand = feq * compute_outflow_integrand_2(ds_time, ds_perp_amp, pbar, Ebar);
 
           particle_number += weight * integrand;
         }
@@ -2037,11 +2124,11 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
     mean_yield = Ntot;
     printf("Total dN_dy = %lf\n\n", Ntot/14.0); // dN/deta (for the eta_trapezoid_table_57pt.dat)
 
-    for(int ipart = 0; ipart < npart; ipart++)
-    {
-      cout << setprecision(5) << N_list[ipart]/14.0 << endl;
-    }
-    exit(-1);
+    // for(int ipart = 0; ipart < npart; ipart++)
+    // {
+    //   cout << setprecision(5) << N_list[ipart]/14.0 << endl;
+    // }
+    // exit(-1);
 
 
     return Ntot;
