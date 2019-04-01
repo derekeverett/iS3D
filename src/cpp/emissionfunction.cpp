@@ -167,6 +167,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     REGULATE_DELTAF = paraRdr->getVal("regulate_deltaf");
     OUTFLOW = paraRdr->getVal("outflow");
+    SAMPLE_WITH_MAX_VOLUME = paraRdr->getVal("sample_with_max_volume");
 
     DETA_MIN = paraRdr->getVal("deta_min");
     GROUP_PARTICLES = paraRdr->getVal("group_particles");
@@ -242,7 +243,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
-    
+
 
 
     chosen_particles_01_table = new int[Nparticles];
@@ -880,7 +881,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     // set up the pT grid (midpoints of each bin)
     const double pTbinwidth = (PT_UPPER_CUT - PT_LOWER_CUT) / (double)PT_BINS;
 
-    double pT_mid[PT_BINS]; 
+    double pT_mid[PT_BINS];
     for(int ipT = 0; ipT < PT_BINS; ipT++)
     {
       pT_mid[ipT] = PT_LOWER_CUT  +  pTbinwidth * ((double)ipT + 0.5);
@@ -902,11 +903,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
       for(int ipT = 0; ipT < PT_BINS; ipT++)
       {
-        // normalize dN/dpT 
+        // normalize dN/dpT
         sampled_pT_PDF[ipart][ipT] /= (pTbinwidth * total_count[ipart]);
 
         spectra << setprecision(6) << scientific << pT_mid[ipT] << "\t" << sampled_pT_PDF[ipart][ipT] << "\n";
-      } 
+      }
 
       spectra.close();
 
@@ -1098,13 +1099,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     printf("Writing event-averaged v_n(pT) (rapidity averaged) of each species to file...\n");
 
     // imaginary i
-    const complex<double> I(0,1.0);           
+    const complex<double> I(0,1.0);
 
 
     // set up the pT grid (midpoints of each bin)
     const double pTbinwidth = (PT_UPPER_CUT - PT_LOWER_CUT) / (double)PT_BINS;
 
-    double pT_mid[PT_BINS]; 
+    double pT_mid[PT_BINS];
     for(int ipT = 0; ipT < PT_BINS; ipT++)
     {
       pT_mid[ipT] = PT_LOWER_CUT  +  pTbinwidth * ((double)ipT + 0.5);
@@ -1250,8 +1251,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   {
     printf("Writing event-averaged boost invariant spacetime distributions dN_dX of each species to file...\n");
 
-    // dX = tau.dtau.deta or 2.pi.r.dr.deta 
-    // only have boost invariance in mind right now so deta <-> dyp 
+    // dX = tau.dtau.deta or 2.pi.r.dr.deta
+    // only have boost invariance in mind right now so deta <-> dyp
 
     const double taubinwidth = (TAU_MAX - TAU_MIN) / (double)TAU_BINS;
     double tau_mid[TAU_BINS];
@@ -1276,7 +1277,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
       sprintf(file_time, "results/spacetime_distribution/dN_taudtaudy_sampled_%d_test.dat", MCID[ipart]);
       sprintf(file_radial, "results/spacetime_distribution/dN_twopirdrdy_sampled_%d_test.dat", MCID[ipart]);
-   
+
       ofstream time_distribution(file_time, ios_base::out);
       ofstream radial_distribution(file_radial, ios_base::out);
 

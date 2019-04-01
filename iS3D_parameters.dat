@@ -33,19 +33,23 @@ df_mode		                = 1     # mode for type of delta-f correction
 			              	 # 7: Modified anisotropic distribution
 
 include_baryon            	= 0      # switch to include baryon chemical potential in distribution function
-include_bulk_deltaf       	= 1      # switch to include bulk df correction (or residual bulk for VAH)
-include_shear_deltaf      	= 1      # switch to include shear df correction (or residual pi~ and W_perp for VAH)
+include_bulk_deltaf       	= 0      # switch to include bulk df correction (or residual bulk for VAH)
+include_shear_deltaf      	= 0      # switch to include shear df correction (or residual pi~ and W_perp for VAH)
 include_baryondiff_deltaf 	= 0      # switch to include baryon diffusion df correction
+
+sample_with_max_volume		= 1		# switch to sample particles from max volume and keep w/ flux_weight prob.
+									# this is not equivalent to sampling method w/ "exact" mean hadron number
+									# should be on for jonah's best fit parameters run
 
 regulate_deltaf           	= 1      # switch to force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
 outflow 			= 1	 # switch to include Theta(p.dsigma) in smooth CFF and sampled precomputed mean hadron number
 
-deta_min 			= 1.e-6  # minimum value of detA (for feqmod break down, for 3+1d want to increase to 0.01) 
+deta_min 			= 1.e-6  # minimum value of detA (for feqmod break down, for 3+1d want to increase to 0.01)
 
 group_particles                 = 0	 # group particles with the similar mass and to speed up calculations
 particle_diff_tolerance         = 0.01   # grouping particle mass tolerance
 
-mass_pion0			= 0.138  # lightest pion mass (GeV) 
+mass_pion0			= 0.138  # lightest pion mass (GeV)
 				         # for feqmod breakdown criteria (pion0 most susceptible negative density)
 
 do_resonance_decays	        = 0      #switch for resonance decays after thermal spectra calculation
