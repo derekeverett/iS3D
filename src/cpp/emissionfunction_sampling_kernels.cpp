@@ -2090,11 +2090,11 @@ double EmissionFunctionArray::calculate_total_yield(double *Mass, double *Sign, 
     mean_yield = Ntot;
     printf("Total dN_dy = %lf\n\n", Ntot/14.0); // dN/deta (for the eta_trapezoid_table_57pt.dat)
 
-    for(int ipart = 0; ipart < npart; ipart++)
-    {
-      cout << setprecision(5) << N_list[ipart]/14.0 << endl;
-    }
-    exit(-1);
+    // for(int ipart = 0; ipart < npart; ipart++)
+    // {
+    //   cout << setprecision(5) << N_list[ipart]/14.0 << endl;
+    // }
+    // exit(-1);
 
 
     return Ntot;
