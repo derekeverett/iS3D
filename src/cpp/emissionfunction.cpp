@@ -1500,11 +1500,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
-    //Stopwatch sw;
-    //sw.tic();
+    Stopwatch sw;
+    sw.tic();
 
-    struct timeval t1, t2;
-    gettimeofday(&t1, NULL);
+    //struct timeval t1, t2;
+    //gettimeofday(&t1, NULL);
 
     //fill arrays with all particle info and freezeout info to pass to function which will perform the integral
 
@@ -2003,9 +2003,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         free(c4);
       }
     }
-    //sw.toc();
-    //cout << "\ncalculate_spectra() took " << sw.takeTime() << " seconds." << endl;
-    cout << "\ncalculate_spectra() took " << t2.tv_sec - t1.tv_sec << " seconds." << endl;
+    sw.toc();
+    cout << "\ncalculate_spectra() took " << sw.takeTime() << " seconds." << endl;
+    //cout << "\ncalculate_spectra() took " << t2.tv_sec - t1.tv_sec << " seconds." << endl;
   }
 
 
