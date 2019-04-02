@@ -167,7 +167,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     REGULATE_DELTAF = paraRdr->getVal("regulate_deltaf");
     OUTFLOW = paraRdr->getVal("outflow");
-    SAMPLE_WITH_MAX_VOLUME = paraRdr->getVal("sample_with_max_volume");
 
     DETA_MIN = paraRdr->getVal("deta_min");
     GROUP_PARTICLES = paraRdr->getVal("group_particles");
@@ -211,6 +210,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
 
     // allocate memory for sampled distributions / spectra (for sampler testing)
+    dN_dy_count = (double *)calloc(number_of_chosen_particles, sizeof(double));
+
     total_count = (double *)calloc(number_of_chosen_particles, sizeof(double));
     sampled_pT_PDF = (double **)calloc(number_of_chosen_particles, sizeof(double));
 
@@ -871,6 +872,30 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     } // ievent
   }
 
+  void EmissionFunctionArray::write_sampled_dN_dy_average_to_file_test(int * MCID)
+  {
+    printf("Writing event-averaged (1/N) * dN/dy of each species to file...\n");
+
+    const int npart = number_of_chosen_particles;
+
+    // write (1/N)dN/dy distribution each species
+    for(int ipart = 0; ipart < npart; ipart++)
+    {
+      char filename[255] = "";
+      int mcid = MCID[ipart]; // we can just use this in place
+      sprintf(filename, "results/dN_dy/dN_dy_%d_test.dat", mcid);
+      ofstream spectra(filename, ios_base::out);
+
+      // dN/dy averaged over rapidity window (assumes boost invariance in this window)
+      spectra << dN_dy_count[ipart] / (Nevents * 2.0 * Y_CUT) << endl;
+
+      spectra.close();
+
+    } // ipart
+
+    // free memory
+    free(dN_dy_count);
+  }
 
 
 
@@ -895,7 +920,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     {
       char filename[255] = "";
       int mcid = MCID[ipart]; // we can just use this in place
-      sprintf(filename, "results/pT_pdf_%d_test.dat", mcid);
+      sprintf(filename, "results/momentum_distribution/pT_pdf_%d_test.dat", mcid);
       ofstream spectra(filename, ios_base::out);
 
       // header = total number of particles of species ipart
@@ -1748,6 +1773,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               if(TEST_SAMPLER) // only for testing the sampler
               {
+                write_sampled_dN_dy_average_to_file_test(MCID);
                 //write_sampled_pT_pdf_toFile(MCID);
                 write_sampled_pT_PDF_to_file_test(MCID);
                 //write_sampled_vn_toFile(MCID);
@@ -1809,6 +1835,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               if(TEST_SAMPLER) // only for testing the sampler
               {
+                write_sampled_dN_dy_average_to_file_test(MCID);
                 //write_sampled_pT_pdf_toFile(MCID);
                 write_sampled_pT_PDF_to_file_test(MCID);
                 //write_sampled_vn_toFile(MCID);

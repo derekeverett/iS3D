@@ -80,7 +80,6 @@ private:
 
   int REGULATE_DELTAF;
   int OUTFLOW;
-  int SAMPLE_WITH_MAX_VOLUME;
 
   int INCLUDE_BARYON;
   double DETA_MIN;
@@ -116,6 +115,8 @@ private:
   int R_BINS;
 
   // for sampler test (2+1d)
+  double *dN_dy_count;        // holds total count within rapidity cut for each species (for sampling boost inv. dN_dy)
+
   double **sampled_pT_PDF;    // holds event-averaged sampled (1/N) dN/dpT for each species
   double *total_count;        // tracks total count within rapidity cut for each species
 
@@ -206,9 +207,11 @@ public:
 
   // add counts for sampled spectra / spacetime distributions (normalization in the write to file function)
   void sample_dN_dpT(Sampled_Particle new_particle);
+  void sample_dN_dy_average(Sampled_Particle new_particle);
   void sample_vn(Sampled_Particle new_particle);
   void sample_dN_dX(Sampled_Particle new_particle);
 
+  void write_sampled_dN_dy_average_to_file_test(int * MCID);
   void write_sampled_pT_PDF_to_file_test(int * MCID);
   void write_sampled_vn_to_file_test(int * MCID);
   void write_sampled_dN_dX_to_file_test(int * MCID);

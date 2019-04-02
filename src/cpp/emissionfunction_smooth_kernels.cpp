@@ -104,7 +104,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       int endFO = FO_chunk;
       if(n == (FO_length / FO_chunk)) endFO = FO_length - (n * FO_chunk); // don't go out of array bounds
       #pragma omp parallel for
-      for(int icell = 0; icell < endFO; icell++) // cell index inside each chunk
+      for(int icell = 0; icell < endFO; icell++)  // cell index inside each chunk
       {
         int icell_glb = n * FO_chunk + icell;     // global FO cell index
 
@@ -945,7 +945,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       if(endFO != 0)
       {
         // now perform the reduction over cells
-        #pragma omp parallel for collapse(3)
+        #pragma omp parallel for collapse(4)
         //#pragma acc kernels
         for(int ipart = 0; ipart < npart; ipart++)
         {

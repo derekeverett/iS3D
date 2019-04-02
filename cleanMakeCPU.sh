@@ -5,6 +5,8 @@ mkdir results
 mkdir results/vn
 mkdir results/vn_continuous
 mkdir results/spacetime_distribution
+mkdir results/momentum_distribution
+mkdir results/dN_dy
 
 rm iS3D.e
 cd src
