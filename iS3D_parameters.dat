@@ -51,10 +51,10 @@ mass_pion0			= 0.138  # lightest pion mass (GeV)
 do_resonance_decays	        = 0      #switch for resonance decays after thermal spectra calculation
 lightest_particle 	        = 111    #PDG MC ID of lightest particle for resonance decay feed-down
 
-oversample		        = 1      # run sampler iteratively until mininum number of hadrons sampled
+oversample		        = 0      # run sampler iteratively until mininum number of hadrons sampled
 								 # should be turned off for JETSCAPE
 
-min_num_hadrons		        = 2.8e+6 #across all samples >= min_num_hadrons
+min_num_hadrons		        = 1.4e+6 #across all samples >= min_num_hadrons
 
 sampler_seed		        = 1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
 

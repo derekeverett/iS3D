@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <complex>
 #include <array>
+#include <sys/time.h>
 #ifdef _OMP
 #include <omp.h>
 #endif
@@ -1150,7 +1151,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         for(int k = 0; k < K_MAX; k++)
         {
           double vn_abs = abs(sampled_vn_real[k][ipart][ipT]  +  I * sampled_vn_imag[k][ipart][ipT]) / pT_count_vn[ipart][ipT];
-          if(isnan(vn_abs) || isinf(vn_abs)) vn_abs = 0.0;
+          if(std::isnan(vn_abs) || std::isinf(vn_abs)) vn_abs = 0.0;
           spectra << "\t" << vn_abs;
         }
         spectra << "\n";
@@ -1262,7 +1263,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         for(int k = 0; k < k_max; k++)
         {
           double result = abs(vn_real[k][ipart][ipT]  +  I * vn_imag[k][ipart][ipT]) / (double)pT_count[ipart][ipT];
-          if(isnan(result)) result = 0.0;
+          if(std::isnan(result)) result = 0.0;
           spectra << "\t" << result;
         }
         spectra << "\n";
@@ -1499,8 +1500,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
-    Stopwatch sw;
-    sw.tic();
+    //Stopwatch sw;
+    //sw.tic();
+
+    struct timeval t1, t2;
+    gettimeofday(&t1, NULL);
 
     //fill arrays with all particle info and freezeout info to pass to function which will perform the integral
 
@@ -1999,6 +2003,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         free(c4);
       }
     }
-    sw.toc();
-    cout << "\ncalculate_spectra() took " << sw.takeTime() << " seconds." << endl;
+    //sw.toc();
+    //cout << "\ncalculate_spectra() took " << sw.takeTime() << " seconds." << endl;
+    cout << "\ncalculate_spectra() took " << t2.tv_sec - t1.tv_sec << " seconds." << endl;
   }
+
+
+
+
+
+
+
