@@ -1258,7 +1258,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
     // loop over all freezeout cells
 
-    //#pragma omp parallel for
+    //#pragma omp parallel for 
     for(long icell = 0; icell < FO_length; icell++)
     {
       double tau = tau_fo[icell];         // freezeout cell coordinates
@@ -1447,7 +1447,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         double sign = Sign[ipart];              // quantum statistics sign
         double baryon = Baryon[ipart];          // baryon number
 
-        dn_list[ipart] = mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, feqmod_breaks_down, laguerre, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, INCLUDE_BARYON, 1);
+        dn_list[ipart] = mean_particle_number(mass, degeneracy, sign, baryon, T, alphaB, dsigma, pimunu, bulkPi, df, feqmod_breaks_down, laguerre, legendre_pts, pbar_root_outflow, pbar_weight_outflow, DF_MODE, INCLUDE_BARYON, 0);
 
         dn_tot += dn_list[ipart];
       }
@@ -1470,7 +1470,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         std::poisson_distribution<int> poisson_hadrons(dN_tot);
 
         // sample events for each FO cell
-        //#pragma omp parallel for
+       
+
+        //#pragma omp parallel for private(N_hadrons)
         for(int ievent = 0; ievent < Nevents; ievent++)
         {
           //#pragma omp critical
@@ -1554,7 +1556,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
             double w_flux = pdsigma_Theta / (pLRF.E * ds_max);   // flux weight
 
-            if(canonical(generator_momentum) < w_flux)
+            //if(canonical(generator_momentum) < w_flux)
+            if(true)
             {
               if(TEST_SAMPLER)
               {
@@ -1571,6 +1574,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 #pragma omp critical
                 particle_event_list[ievent].push_back(new_particle);
               }
+              #pragma omp critical
               particle_yield_list[ievent] += 1;
             }
 
