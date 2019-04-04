@@ -711,7 +711,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double dn_fact = bulkPi / betabulk;
         double J20_fact = T * neq_fact;
         double N10_fact = neq_fact;
-        double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
+        double nmod_fact = T_mod * T_mod * T_mod / two_pi2_hbarC3;
 
         // determine if feqmod breaks down
         bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, detA_min, z, laguerre, DF_MODE);
@@ -719,7 +719,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         if(feqmod_breaks_down)
         {
           breakdown++;
-          cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\t detA_min = " << detA_min << endl;
+          //cout << setw(5) << setprecision(4) << "feqmod breaks down at " << breakdown << " / " << FO_length << " cell at tau = " << tau << " fm/c:" << "\t detA = " << detA << "\t detA_min = " << detA_min << endl;
         }
 
         // uniformly rescale eta space by detA if modified momentum space elements are shrunk
@@ -742,7 +742,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           double chem_mod = baryon * alphaB_mod;  // chemical potential term in feqmod
 
           // modified renormalization factor
-          double renorm = 1.0 / detA;             // default (shear only)
+          double renorm = 1.0;           
 
           if(INCLUDE_BULK_DELTAF)
           {
@@ -765,7 +765,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             }
             else if(DF_MODE == 4)
             {
-              renorm = z / detA;
+              renorm = z;
             }
             
           }
@@ -775,6 +775,12 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
             // skip freezeout cell since jonah feqmod doesn't have a switching linearized df option
             cout << "Error: renormalization factor is " << renorm << endl;
             continue;  
+          }
+
+          if(DIMENSION == 3)
+          {
+            // avoid roundoff errors in 2+1d if detA small
+            renorm /= detA;
           }
 
           for(int ipT = 0; ipT < pT_tab_length; ipT++)
@@ -875,7 +881,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     double pn = mT_over_tau * sinh(y - eta_scale * eta); // p^\eta (GeV^2)
                     double tau2_pn = tau2 * pn;
 
-                    pdotdsigma = eta_weight * eta_scale * (pt * dat  +  px * dax  +  py * day)  +  pn * dan;
+                    pdotdsigma = eta_weight * (pt * dat  +  px * dax  +  py * day)  +  pn * dan;
 
                     if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
 
@@ -1702,8 +1708,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         {
           double bulkPi_over_Peq_max = df_data->bulkPi_over_Peq_max;
 
-          if(bulkPi < - P) bulkPi = - (1.0 - 1.e-5) * P;
-          else if(bulkPi / P > bulkPi_over_Peq_max) bulkPi = P * (bulkPi_over_Peq_max - 1.e-5);
+          if(bulkPi <= - P) bulkPi = - (1.0 - 1.e-5) * P;
+          else if(bulkPi / P >= bulkPi_over_Peq_max) bulkPi = P * (bulkPi_over_Peq_max - 1.e-5);
         }
 
         // set df coefficients
@@ -1823,37 +1829,31 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           }
         }
 
-        // SVD decomposition
-        gsl_matrix_view U = gsl_matrix_view_array(A, 3, 3);
-        gsl_matrix * V = gsl_matrix_alloc(3, 3);
-        gsl_vector * S = gsl_vector_alloc(3);
-        gsl_vector * work = gsl_vector_alloc(3);
 
-        //gsl_linalg_SV_decomp(&U.matrix, V, S, work);
-        gsl_linalg_SV_decomp_jacobi(&U.matrix, V, S);
-
-
-         // prefactors for equilibrium, linear bulk correction and modified densities (Mike's feqmod)
+        // prefactors for equilibrium, linear bulk correction and modified densities (Mike's feqmod)
         double neq_fact = T * T * T / two_pi2_hbarC3;
         double dn_fact = bulkPi / betabulk;
         double J20_fact = T * neq_fact;
         double N10_fact = neq_fact;
-        double nmod_fact = detA * T_mod * T_mod * T_mod / two_pi2_hbarC3;
+        double nmod_fact = T_mod * T_mod * T_mod / two_pi2_hbarC3;
 
         if(feqmod_breaks_down)
         {
           breakdown++;
-          cout << setw(5) << setprecision(4) << "feqmod breaks down for " << breakdown << " / " << FO_length << " cells  (cell = " << icell << ", tau = " << tau << " fm/c, " << ", detA = " << detA << ", detA_min = " << detA_min << ")" << endl;
+          //cout << setw(5) << setprecision(4) << "feqmod breaks down for " << breakdown << " / " << FO_length << " cells  (cell = " << icell << ", tau = " << tau << " fm/c, " << ", detA = " << detA << ", detA_min = " << detA_min << ")" << endl;
         }
 
         // rescale eta by detA if modified momentum space elements are shrunk
         // for integrating modified distribution with narrow (y-eta) distributions
         // note: this only works for boost invariant surfaces, where dsigma is always orthogonal to eta direction (dan = 0)
         double eta_scale = 1.0;
-        if(detA > detA_min && detA < 1.0 && DIMENSION == 2) eta_scale = detA;
+        if(detA > detA_min && DIMENSION == 2)
+        {
+          eta_scale = detA;
+        }
 
         // compute the modified renormalization factor
-        double renorm = 1.0 / detA;             // default (shear only)
+        double renorm = 1.0;     
 
         if(INCLUDE_BULK_DELTAF)
         {
@@ -1876,16 +1876,21 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           }
           else if(DF_MODE == 4)
           {
-            renorm = z / detA;
+            renorm = z;
           }
-          
         }
 
-        if((std::isnan(renorm) || std::isinf(renorm)))
+
+        if((std::isnan(renorm / detA) || std::isinf(renorm / detA)))
         {
-          // skip freezeout cell
           cout << "Error: renormalization factor is " << renorm << endl;
           continue;  
+        }
+
+        if(DIMENSION == 3)
+        {
+          // avoid roundoff errors in 2+1d if detA small
+          renorm /= detA;
         }
 
 
@@ -1933,7 +1938,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                 double pdotdsigma;
 
                 // calculate feqmod
-                if(feqmod_breaks_down)
+                if(feqmod_breaks_down || feqmod_breaks_down_narrow)
                 {
                   double pt = mT * cosh(y - eta);           // p^\tau (GeV)
                   double pn = mT_over_tau * sinh(y - eta);  // p^\eta (GeV^2)
@@ -1992,7 +1997,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double pn = mT_over_tau * sinh(y - eta_scale * eta);  // p^\eta (GeV^2)
                   double tau2_pn = tau2 * pn;
 
-                  pdotdsigma = eta_weight * eta_scale * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
+                  pdotdsigma = eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan); // p.dsigma
 
                   if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
                   // LRF momentum components pi_LRF = - Xi.p
@@ -2003,45 +2008,32 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   double pLRF[3] = {px_LRF, py_LRF, pz_LRF};
                   double pLRF_mod[3];
 
-                  if(true) // LUP method with iterations
+                  // LUP method with iterations
+            
+                  double pLRF_prev[3];
+                  double pLRF_mod_prev[3];
+
+                  double dpLRF[3];
+                  double dpLRF_mod[3];
+
+                  matrix_multiplication(A_inv, pLRF, pLRF_mod, 3, 3);   // evaluate pLRF_mod = A^-1.pLRF at least once
+                
+                  double dp;                                            // |pLRF| error (i.e. dp = pLRF - A.pLRF_mod)
+                  double epsilon = 1.e-16;
+
+                  // iterate the solution p_LRF_mod (sometimes it gets no improvement)
+                  for(int i = 0; i < 5; i++)
                   {
-                    double pLRF_prev[3];
-                    double pLRF_mod_prev[3];
+                    vector_copy(pLRF_mod, pLRF_mod_prev, 3);                        // copy solution for iteration
+                    matrix_multiplication(A_copy, pLRF_mod_prev, pLRF_prev, 3, 3);  // check |pLRF| error
+                    vector_subtraction(pLRF, pLRF_prev, dpLRF, 3);
 
-                    double dpLRF[3];
-                    double dpLRF_mod[3];
+                    dp = sqrt(dpLRF[0] * dpLRF[0]  +  dpLRF[1] * dpLRF[1]  +  dpLRF[2] * dpLRF[2]);
 
-                    matrix_multiplication(A_inv, pLRF, pLRF_mod, 3, 3);   // evaluate pLRF_mod = A^-1.pLRF at least once
-                  
-                    double dp;                                            // |pLRF| error (i.e. dp = pLRF - A.pLRF_mod)
-                    double epsilon = 1.e-16;
-                    int iterations = 2;
+                    if(dp <= epsilon) break;
 
-                    // iterate the solution p_LRF_mod (sometimes it gets no improvement)
-                    for(int i = 0; i < iterations; i++)
-                    {
-                      vector_copy(pLRF_mod, pLRF_mod_prev, 3);                        // copy solution for iteration
-                      matrix_multiplication(A_copy, pLRF_mod_prev, pLRF_prev, 3, 3);  // check |pLRF| error
-                      vector_subtraction(pLRF, pLRF_prev, dpLRF, 3);
-
-                      dp = sqrt(dpLRF[0] * dpLRF[0]  +  dpLRF[1] * dpLRF[1]  +  dpLRF[2] * dpLRF[2]);
-
-                      if(dp <= epsilon) break;
-
-                      matrix_multiplication(A_inv, dpLRF, dpLRF_mod, 3, 3);           // compute correction to pLRF_mod
-                      vector_addition(pLRF_mod_prev, dpLRF_mod, pLRF_mod, 3);         // add correction to pLRF_mod
-                    }
-                  }
-                  else  // SVD method (it did worse than LU and much slower...)
-                  {
-                    gsl_vector_view b = gsl_vector_view_array(pLRF, 3);
-                    gsl_vector * x = gsl_vector_alloc(3);
-                    gsl_linalg_SV_solve(&U.matrix, V, S, &b.vector, x);
-
-                    pLRF_mod[0] = gsl_vector_get(x, 0);
-                    pLRF_mod[1] = gsl_vector_get(x, 1);
-                    pLRF_mod[2] = gsl_vector_get(x, 2);
-                    gsl_vector_free(x);
+                    matrix_multiplication(A_inv, dpLRF, dpLRF_mod, 3, 3);           // compute correction to pLRF_mod
+                    vector_addition(pLRF_mod_prev, dpLRF_mod, pLRF_mod, 3);         // add correction to pLRF_mod
                   }
                   
                   double E_mod = sqrt(mass2  +  pLRF_mod[0] * pLRF_mod[0]  +  pLRF_mod[1] * pLRF_mod[1]  +  pLRF_mod[2] * pLRF_mod[2]);
@@ -2070,9 +2062,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         gsl_matrix_free(A_inverse);
         gsl_permutation_free(p);
 
-        gsl_matrix_free(V);
-        gsl_vector_free(S);
-        gsl_vector_free(work);
 
         // now determine which spacetime bin the freezeout cell lies
 

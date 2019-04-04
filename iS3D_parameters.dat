@@ -23,7 +23,7 @@ dimension  		     	= 2      # this switch determines the dimensionality of the f
 	                	      	 # 2: boost invariant
 	                	      	 # 3: full 3+1D
 
-df_mode		                = 1     # mode for type of delta-f correction
+df_mode		                = 4     # mode for type of delta-f correction
 			              	 # 1: 14-moment approximation viscous hydro
 			              	 # 2: Chapman-Enskog expansion viscous hydro
 			              	 # 3: Modified equilibrium distribution (Mike)
@@ -40,7 +40,7 @@ include_baryondiff_deltaf 	= 0      # switch to include baryon diffusion df corr
 regulate_deltaf           	= 1      # switch to force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
 outflow 			= 1	 # switch to include Theta(p.dsigma) in smooth CFF
 
-deta_min 			= 1.e-6  # minimum value of detA (for feqmod break down, for 3+1d want to increase to 0.01)
+deta_min 			= 1.e-5  # minimum value of detA (for feqmod break down, for 3+1d want to increase to 0.01)
 
 group_particles                 = 0	 # group particles with the similar mass and to speed up calculations
 particle_diff_tolerance         = 0.01   # grouping particle mass tolerance
@@ -51,10 +51,10 @@ mass_pion0			= 0.138  # lightest pion mass (GeV)
 do_resonance_decays	        = 0      #switch for resonance decays after thermal spectra calculation
 lightest_particle 	        = 111    #PDG MC ID of lightest particle for resonance decay feed-down
 
-oversample		        = 0      # run sampler iteratively until mininum number of hadrons sampled
+oversample		        = 1      # run sampler iteratively until mininum number of hadrons sampled
 								 # should be turned off for JETSCAPE
 
-min_num_hadrons		        = 1.4e+6 #across all samples >= min_num_hadrons
+min_num_hadrons		        = 1.4e+8 #across all samples >= min_num_hadrons
 
 sampler_seed		        = 1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
 

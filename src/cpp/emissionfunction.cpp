@@ -1503,7 +1503,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     Stopwatch sw;
     sw.tic();
 
-    double t1 = omp_get_wtime();
+    //double t1 = omp_get_wtime();
 
     //struct timeval t1, t2;
     //gettimeofday(&t1, NULL);
@@ -2007,10 +2007,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     }
     sw.toc();
 
-    double t2 = omp_get_wtime();
+    //double t2 = omp_get_wtime();
     cout << "\ncalculate_spectra() took " << sw.takeTime() << " seconds." << endl;
     //cout << "\ncalculate_spectra() took " << t2.tv_sec - t1.tv_sec << " seconds." << endl;
-    cout << "\ncalculate_spectra() took " << (t2 - t1) << " seconds." << endl;
+    //cout << "\ncalculate_spectra() took " << (t2 - t1) << " seconds." << endl;
   }
 
 
