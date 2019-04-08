@@ -48,6 +48,12 @@ class Deltaf_Data
         int points_T;
         int points_muB;
 
+        double T_min;      
+        double muB_min;
+
+        double dT;
+        double dmuB;
+
         double * T_array;
         double * muB_array;
         //  Coefficients of 14 moment approximation (vhydro)
@@ -113,6 +119,7 @@ class Deltaf_Data
 
         void test_df_coefficients(double bulkPi_over_P);
 
+        void compute_particle_densities(particle_info * particle_data, int Nparticle);
 };
 
 #endif

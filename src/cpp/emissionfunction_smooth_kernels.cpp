@@ -1791,11 +1791,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double Axx = 1.0  +  pixx_LRF * shear_mod  +  bulk_mod;
         double Axy = pixy_LRF * shear_mod;
         double Axz = pixz_LRF * shear_mod;
-        double Ayx = Axy;
         double Ayy = 1.0  +  piyy_LRF * shear_mod  +  bulk_mod;
         double Ayz = piyz_LRF * shear_mod;
-        double Azx = Axz;
-        double Azy = Ayz;
         double Azz = 1.0  +  pizz_LRF * shear_mod  +  bulk_mod;
 
         double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
@@ -1805,12 +1802,12 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         // set Aij matrix
         double A[] = {Axx, Axy, Axz, 
-                      Ayx, Ayy, Ayz, 
-                      Azx, Azy, Azz};           // gsl matrix format
+                      Axy, Ayy, Ayz, 
+                      Axz, Ayz, Azz};           // gsl matrix format
 
         A_copy[0][0] = Axx;  A_copy[0][1] = Axy;  A_copy[0][2] = Axz;
-        A_copy[1][0] = Ayx;  A_copy[1][1] = Ayy;  A_copy[1][2] = Ayz;
-        A_copy[2][0] = Azx;  A_copy[2][1] = Azy;  A_copy[2][2] = Azz;
+        A_copy[1][0] = Axy;  A_copy[1][1] = Ayy;  A_copy[1][2] = Ayz;
+        A_copy[2][0] = Axz;  A_copy[2][1] = Ayz;  A_copy[2][2] = Azz;
 
         // compute Aij^-1 using LUP decomposition
         int s;
@@ -1840,7 +1837,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         if(feqmod_breaks_down)
         {
           breakdown++;
-          //cout << setw(5) << setprecision(4) << "feqmod breaks down for " << breakdown << " / " << FO_length << " cells  (cell = " << icell << ", tau = " << tau << " fm/c, " << ", detA = " << detA << ", detA_min = " << detA_min << ")" << endl;
+          cout << setw(5) << setprecision(4) << "feqmod breaks down for " << breakdown << " / " << FO_length << " cells  (cell = " << icell << ", tau = " << tau << " fm/c, " << ", detA = " << detA << ", detA_min = " << detA_min << ")" << endl;
         }
 
         // rescale eta by detA if modified momentum space elements are shrunk
@@ -1926,6 +1923,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                 bool feqmod_breaks_down_narrow = false;
 
+                /*
                 if(DIMENSION == 3 && !feqmod_breaks_down)
                 {
                   if(detA < 0.01 && fabs(y - eta) < detA) 
@@ -1933,6 +1931,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                     feqmod_breaks_down_narrow = true;
                   }
                 }
+                */
 
                 double f;                                   // feqmod (if breakdown do feq(1+df))
                 double pdotdsigma;

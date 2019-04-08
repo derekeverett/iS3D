@@ -542,6 +542,13 @@ void Deltaf_Data::load_df_coefficient_data()
     } // iT
   } // iB
 
+  T_min = T_array[0];
+  muB_min = muB_array[0];
+
+  // uniform grid
+  dT = fabs(T_array[1] - T_array[0]);
+  dmuB = fabs(muB_array[1] - muB_array[0]);
+
   fclose(c0_file);
   fclose(c1_file);
   fclose(c2_file);
@@ -756,7 +763,6 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
       df.c1 = 0.0;
       df.c2 = gsl_spline_eval(c2_spline, T, accel_T) / T4;
       df.c3 = 0.0;
-      //df.c3 = gsl_spline_eval(c3_spline, T, accel_T) / T4;
       df.c4 = 0.0;
       df.shear14_coeff = 2.0 * T * T * (E + P);
 
@@ -766,14 +772,12 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
     case 3: // Modified (Mike)
     {
       // undo the temperature power scaling of coefficients
-      //double T3 = T * T * T;
       double T4 = T * T * T * T;
 
       df.F = gsl_spline_eval(F_spline, T, accel_T) * T;
       df.G = 0.0;
       df.betabulk = gsl_spline_eval(betabulk_spline, T, accel_T) * T4; 
       df.betaV = 1.0;
-      //df.betaV = gsl_spline_eval(betaV_spline, T, accel_T) * T3;
       df.betapi = gsl_spline_eval(betapi_spline, T, accel_T) * T4;
 
       break;
@@ -815,15 +819,124 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
 
 deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, double E, double P, double bulkPi)
 {
-  // probably easier to bilinear interpolation the coefficients at once
-  // since the data use the same grid
+  // left and right T, muB indices
+  int iTL = (int)floor((T - T_min) / dT);  
+  int iTR = iTL + 1;
+
+  int imuBL = (int)floor((muB - muB_min) / dmuB);  
+  int imuBR = imuBL + 1;
+
+  double TL, TR, muBL, muBR;
+
+  if(!(iTL >= 0 && iTR < points_T) || !(imuBL >= 0 && imuBR < points_muB))
+  {
+    printf("Error: (T,muB) outside (T,muB)-grid. Exiting...\n");
+    exit(-1);
+  }
+  else
+  {
+    TL = T_array[iTL];
+    TR = T_array[iTR];
+    muBL = muB_array[imuBL];
+    muBR = muB_array[imuBR];
+  }
+  
   deltaf_coefficients df;
 
+  switch(df_mode)
+  {
+    case 1:
+    {
+      double T3 = T * T * T;
+      double T4 = T3 * T;
+      double T5 = T4 * T;
 
-  // FILL THIS IN LATER
-  printf("df coefficient interpolation error: bilinear interpolation routine is empty atm\n");
-  exit(-1);
+      double c0_LL = c0_data[iTL][imuBL];
+      double c0_LR = c0_data[iTL][imuBR];
+      double c0_RL = c0_data[iTR][imuBL];
+      double c0_RR = c0_data[iTR][imuBR];
 
+      double c1_LL = c1_data[iTL][imuBL];
+      double c1_LR = c1_data[iTL][imuBR];
+      double c1_RL = c1_data[iTR][imuBL];
+      double c1_RR = c1_data[iTR][imuBR];
+
+      double c2_LL = c2_data[iTL][imuBL];
+      double c2_LR = c2_data[iTL][imuBR];
+      double c2_RL = c2_data[iTR][imuBL];
+      double c2_RR = c2_data[iTR][imuBR];
+
+      double c3_LL = c3_data[iTL][imuBL];
+      double c3_LR = c3_data[iTL][imuBR];
+      double c3_RL = c3_data[iTR][imuBL];
+      double c3_RR = c3_data[iTR][imuBR];
+
+      double c4_LL = c4_data[iTL][imuBL];
+      double c4_LR = c4_data[iTL][imuBR];
+      double c4_RL = c4_data[iTR][imuBL];
+      double c4_RR = c4_data[iTR][imuBR];
+
+      // bilinear interpolated values & undo temperature power scaling 
+      df.c0 = ((c0_LL*(TR-T) + c0_RL*(T-TL)) * (muBR-muB)  +  (c0_LR*(TR-T) + c0_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) / T4;
+      df.c1 = ((c1_LL*(TR-T) + c1_RL*(T-TL)) * (muBR-muB)  +  (c1_LR*(TR-T) + c1_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) / T3;
+      df.c2 = ((c2_LL*(TR-T) + c2_RL*(T-TL)) * (muBR-muB)  +  (c2_LR*(TR-T) + c2_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) / T4;
+      df.c3 = ((c3_LL*(TR-T) + c3_RL*(T-TL)) * (muBR-muB)  +  (c3_LR*(TR-T) + c3_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) / T4;
+      df.c4 = ((c4_LL*(TR-T) + c4_RL*(T-TL)) * (muBR-muB)  +  (c4_LR*(TR-T) + c4_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) / T5;
+      df.shear14_coeff = 2.0 * T * T * (E + P);
+
+      break;
+    }
+    case 2:
+    case 3:
+    {
+      double T3 = T * T * T;
+      double T4 = T3 * T;
+
+      double F_LL = F_data[iTL][imuBL];
+      double F_LR = F_data[iTL][imuBR];
+      double F_RL = F_data[iTR][imuBL];
+      double F_RR = F_data[iTR][imuBR];
+
+      double G_LL = G_data[iTL][imuBL];
+      double G_LR = G_data[iTL][imuBR];
+      double G_RL = G_data[iTR][imuBL];
+      double G_RR = G_data[iTR][imuBR];
+
+      double betabulk_LL = betabulk_data[iTL][imuBL];
+      double betabulk_LR = betabulk_data[iTL][imuBR];
+      double betabulk_RL = betabulk_data[iTR][imuBL];
+      double betabulk_RR = betabulk_data[iTR][imuBR];
+
+      double betaV_LL = betaV_data[iTL][imuBL];
+      double betaV_LR = betaV_data[iTL][imuBR];
+      double betaV_RL = betaV_data[iTR][imuBL];
+      double betaV_RR = betaV_data[iTR][imuBR];
+
+      double betapi_LL = betapi_data[iTL][imuBL];
+      double betapi_LR = betapi_data[iTL][imuBR];
+      double betapi_RL = betapi_data[iTR][imuBL];
+      double betapi_RR = betapi_data[iTR][imuBR];
+
+      // bilinear interpolated values & undo temperature power scaling 
+      df.F = ((F_LL*(TR-T) + F_RL*(T-TL)) * (muBR-muB)  +  (F_LR*(TR-T) + F_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) * T;
+      df.G = ((G_LL*(TR-T) + G_RL*(T-TL)) * (muBR-muB)  +  (G_LR*(TR-T) + G_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB);
+      df.betabulk = ((betabulk_LL*(TR-T) + betabulk_RL*(T-TL)) * (muBR-muB)  +  (betabulk_LR*(TR-T) + betabulk_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) * T4;
+      df.betaV = ((betaV_LL*(TR-T) + betaV_RL*(T-TL)) * (muBR-muB)  +  (betaV_LR*(TR-T) + betaV_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) * T3;
+      df.betapi = ((betapi_LL*(TR-T) + betapi_RL*(T-TL)) * (muBR-muB)  +  (betapi_LR*(TR-T) + betapi_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) * T4;
+
+      break;
+    }
+    case 4:
+    {
+      printf("Bilinear interpolation error: Jonah df doesn't work for nonzero muB. Exiting..\n");
+      exit(-1);
+    }
+    default:
+    {
+      printf("Bilinear interpolation error: choose df_mode = (1,2,3). Exiting..\n");
+      exit(-1);
+    }
+  }
 
   return df;
 }
@@ -840,6 +953,8 @@ deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, 
   }
   else
   {
+    // muB on freezeout surface should be nonzero in general
+    // otherwise you best stick to setting include_baryon = 0
     df = bilinear_interpolation(T, muB, E, P, bulkPi);  // bilinear wrt (T, muB)
   }
 
@@ -875,5 +990,127 @@ void Deltaf_Data::test_df_coefficients(double bulkPi_over_P)
     printf("\n(lambda, z, dlambda, dz, betapi) = (%lf, %lf, %lf, %lf, %lf)\n\n", df.lambda, df.z, df.delta_lambda, df.delta_z, df.betapi);
   }
 }
+
+void Deltaf_Data::compute_particle_densities(particle_info * particle_data, int Nparticle)
+{
+  // get the average temperature, energy density, pressure
+  Plasma QGP;
+  QGP.load_thermodynamic_averages();
+
+  const double T = QGP.temperature;    // GeV
+  const double E = QGP.energy_density; // GeV / fm^3
+  const double P = QGP.pressure;       // GeV / fm^3
+  const double muB = QGP.baryon_chemical_potential;
+  const double nB = QGP.net_baryon_density;
+
+  deltaf_coefficients df = evaluate_df_coefficients(T, muB, E, P, 0.0);
+
+  double alphaB = muB / T;
+  double baryon_enthalpy_ratio = nB / (E + P);
+
+  // gauss laguerre roots and weights
+  Gauss_Laguerre gla;
+  gla.load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
+
+  const int pbar_pts = gla.points;
+
+  double * pbar_root1 = gla.root[1];
+  double * pbar_root2 = gla.root[2];
+  double * pbar_root3 = gla.root[3];
+
+  double * pbar_weight1 = gla.weight[1];
+  double * pbar_weight2 = gla.weight[2];
+  double * pbar_weight3 = gla.weight[3];
+
+
+  // calculate the equilibrium densities and the
+  // bulk / diffusion corrections of each particle
+  for(int i = 0; i < Nparticle; i++)
+  {
+    double mass = particle_data[i].mass;
+    double degeneracy = (double)particle_data[i].gspin;
+    double baryon = (double)particle_data[i].baryon;
+    double sign = (double)particle_data[i].sign;
+    double mbar = mass / T;
+
+    // equilibrium density
+    double neq_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
+    double neq = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+
+    // bulk and diffusion density corrections
+    double dn_bulk = 0.0;
+    double dn_diff = 0.0;
+
+    switch(df_mode)
+    {
+      case 1: // 14 moment (not sure what the status is)
+      {
+        double c0 = df.c0;
+        double c1 = df.c1;
+        double c2 = df.c2;
+        double c3 = df.c3;
+        double c4 = df.c4;
+
+        double J10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
+        double J20_fact = degeneracy * pow(T,4) / two_pi2_hbarC3;
+        double J30_fact = degeneracy * pow(T,5) / two_pi2_hbarC3;
+        double J31_fact = degeneracy * pow(T,5) / two_pi2_hbarC3 / 3.0;
+
+        double J10 =  J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+        double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+        double J30 = J30_fact * GaussThermal(J30_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+        double J31 = J31_fact * GaussThermal(J31_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
+
+        dn_bulk = ((c0 - c2) * mass * mass * J10 +  c1 * baryon * J20  +  (4.0 * c2 - c0) * J30);
+        // these coefficients need to be loaded.
+        // c3 ~ cV / V
+        // c4 ~ 2cW / V
+        dn_diff = baryon * c3 * neq * T  +  c4 * J31;   // not sure if this is right...
+        break;
+      }
+      case 2: // Chapman-Enskog
+      case 3: // Modified (Mike)
+      {
+        double F = df.F;
+        double G = df.G;
+        double betabulk = df.betabulk;
+        double betaV = df.betaV;
+
+        double J10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
+        double J11_fact = degeneracy * pow(T,3) / two_pi2_hbarC3 / 3.0;
+        double J20_fact = degeneracy * pow(T,4) / two_pi2_hbarC3;
+
+        double J10 = J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+        double J11 = J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+        double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+
+        dn_bulk = (neq + (baryon * J10 * G) + (J20 * F / pow(T,2))) / betabulk;
+        dn_diff = (neq * T * baryon_enthalpy_ratio  -  baryon * J11) / betaV;
+
+        break;
+      }
+      case 4:
+      {
+        // bulk/diffusion densities not needed for jonah
+        break;
+      }
+      default:
+      {
+        cout << "Please choose df_mode = (1,2,3,4) in parameters.dat" << endl;
+        exit(-1);
+      }
+    } // df_mode
+
+    particle_data[i].equilibrium_density = neq;
+    particle_data[i].bulk_density = dn_bulk;
+    particle_data[i].diff_density = dn_diff;
+  }
+}
+
+
+
+
+
+
 
 

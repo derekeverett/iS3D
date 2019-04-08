@@ -168,6 +168,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     REGULATE_DELTAF = paraRdr->getVal("regulate_deltaf");
     OUTFLOW = paraRdr->getVal("outflow");
+    USE_MAX_VOLUME = paraRdr->getVal("use_max_volume");
 
     DETA_MIN = paraRdr->getVal("deta_min");
     GROUP_PARTICLES = paraRdr->getVal("group_particles");
@@ -1761,7 +1762,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               if(OVERSAMPLE)
               {
                 // average particle yield
-                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density,Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
+                double Ntotal = calculate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla);
 
                 // number of events to sample
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
@@ -1823,7 +1824,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
             {
               if(OVERSAMPLE)
               {
-                double Ntotal = calculate_total_yield(Mass, Sign, Degeneracy, Baryon, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
+                double Ntotal = calculate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla);
 
                 Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
               }
