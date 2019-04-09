@@ -168,7 +168,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     REGULATE_DELTAF = paraRdr->getVal("regulate_deltaf");
     OUTFLOW = paraRdr->getVal("outflow");
-    USE_MAX_VOLUME = paraRdr->getVal("use_max_volume");
 
     DETA_MIN = paraRdr->getVal("deta_min");
     GROUP_PARTICLES = paraRdr->getVal("group_particles");
@@ -192,7 +191,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     PT_LOWER_CUT = paraRdr->getVal("pT_lower_cut");
     PT_UPPER_CUT = paraRdr->getVal("pT_upper_cut");
     PT_BINS = paraRdr->getVal("pT_bins");
+
     Y_CUT = paraRdr->getVal("y_cut");
+    Y_BINS = paraRdr->getVal("y_bins");
+
+    ETA_CUT = paraRdr->getVal("eta_cut");
+    ETA_BINS = paraRdr->getVal("eta_bins");
 
     // for binning the sampled particles (for sampler tests)
     TAU_MIN = paraRdr->getVal("tau_min");
@@ -1548,7 +1552,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // gauss laguerre roots and weights
     Gauss_Laguerre * gla = new Gauss_Laguerre;
-    gla->load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
+    gla->load_roots_and_weights("tables/gla_roots_weights_20_points.txt");
 
     // gauss legendre roots and weights
     Gauss_Legendre * legendre = new Gauss_Legendre;

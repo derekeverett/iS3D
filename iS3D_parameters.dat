@@ -39,9 +39,6 @@ include_baryondiff_deltaf 	= 0      # switch to include baryon diffusion df corr
 
 regulate_deltaf           	= 1      # switch to force |delta_f| < f_eq for VH, and |delta_f~| < f_a for VAH
 outflow 			= 1	             # switch to include Theta(p.dsigma) in smooth CFF
-use_max_volume		= 1				 # switch to sample additional particles 
-									 # 0: use time volume u.dsigma (keep all sampled particles)
-									 # 1: use max volume |dsigma| (keep particles w/ probability = weight_flux)
 
 deta_min 			= 1.e-5  # minimum value of detA (for feqmod break down, for 3+1d want to increase to 0.01)
 
@@ -57,7 +54,7 @@ lightest_particle 	        = 111    #PDG MC ID of lightest particle for resonanc
 oversample		        = 1      # run sampler iteratively until mininum number of hadrons sampled
 								 # should be turned off for JETSCAPE
 
-min_num_hadrons		        = 1.4e+7 #across all samples >= min_num_hadrons
+min_num_hadrons		        = 1.0e+8 #across all samples >= min_num_hadrons
 
 sampler_seed		        = 1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
 
@@ -67,7 +64,12 @@ test_sampler			= 1		 # perform sampler test only (i.e. write sampled pT spectra 
 pT_lower_cut			= 0.0    # pT lower cut in GeV (for sampler tests)
 pT_upper_cut			= 3.0	 # pT upper cut in GeV (for sampler tests)
 pT_bins				= 100	 	 # number of pT bins (for sampler tests)
-y_cut				= 5.0	 	 # |y| <= y_cut rapidity cut (should be at least two rapidity units smaller than eta_max)
+
+y_cut				= 5.0	 	 # |y| <= y_cut rapidity cut 
+y_bins 			= 50
+
+eta_cut 		= 7.0			 # |eta| <= eta_cut (should be 2 units > y_cut)
+eta_bins        = 70
 
 tau_min			= 0.0    		 # tau min in fm (for sampled dN_dtaudy test)
 tau_max			= 12.0	 		 # tau max in fm (for sampled dN_dtaudy test)

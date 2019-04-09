@@ -817,6 +817,21 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
   return df;
 }
 
+double Deltaf_Data::calculate_bilinear(double ** f_data, double T, double muB, double TL, double TR, double muBL, double muBR, int iTL, int iTR, int imuBL, int imuBR)
+{
+  // bilinear formula f(T,muB)
+  //  f_LR    f_RR
+  //
+  //  f_LL    f_RL
+
+  double f_LL = f_data[iTL][imuBL];
+  double f_LR = f_data[iTL][imuBR];
+  double f_RL = f_data[iTR][imuBL];
+  double f_RR = f_data[iTR][imuBR];
+
+  return ((f_LL*(TR - T) + f_RL*(T - TL)) * (muBR - muB)  +  (f_LR*(TR - T) + f_RR*(T - TL)) * (muB - muBL)) / (dT * dmuB);
+}
+
 deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, double E, double P, double bulkPi)
 {
   // left and right T, muB indices
@@ -830,7 +845,7 @@ deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, do
 
   if(!(iTL >= 0 && iTR < points_T) || !(imuBL >= 0 && imuBR < points_muB))
   {
-    printf("Error: (T,muB) outside (T,muB)-grid. Exiting...\n");
+    printf("Error: (T,muB) outside df coefficient table. Exiting...\n");
     exit(-1);
   }
   else
@@ -851,37 +866,12 @@ deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, do
       double T4 = T3 * T;
       double T5 = T4 * T;
 
-      double c0_LL = c0_data[iTL][imuBL];
-      double c0_LR = c0_data[iTL][imuBR];
-      double c0_RL = c0_data[iTR][imuBL];
-      double c0_RR = c0_data[iTR][imuBR];
-
-      double c1_LL = c1_data[iTL][imuBL];
-      double c1_LR = c1_data[iTL][imuBR];
-      double c1_RL = c1_data[iTR][imuBL];
-      double c1_RR = c1_data[iTR][imuBR];
-
-      double c2_LL = c2_data[iTL][imuBL];
-      double c2_LR = c2_data[iTL][imuBR];
-      double c2_RL = c2_data[iTR][imuBL];
-      double c2_RR = c2_data[iTR][imuBR];
-
-      double c3_LL = c3_data[iTL][imuBL];
-      double c3_LR = c3_data[iTL][imuBR];
-      double c3_RL = c3_data[iTR][imuBL];
-      double c3_RR = c3_data[iTR][imuBR];
-
-      double c4_LL = c4_data[iTL][imuBL];
-      double c4_LR = c4_data[iTL][imuBR];
-      double c4_RL = c4_data[iTR][imuBL];
-      double c4_RR = c4_data[iTR][imuBR];
-
       // bilinear interpolated values & undo temperature power scaling 
-      df.c0 = ((c0_LL*(TR-T) + c0_RL*(T-TL)) * (muBR-muB)  +  (c0_LR*(TR-T) + c0_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) / T4;
-      df.c1 = ((c1_LL*(TR-T) + c1_RL*(T-TL)) * (muBR-muB)  +  (c1_LR*(TR-T) + c1_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) / T3;
-      df.c2 = ((c2_LL*(TR-T) + c2_RL*(T-TL)) * (muBR-muB)  +  (c2_LR*(TR-T) + c2_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) / T4;
-      df.c3 = ((c3_LL*(TR-T) + c3_RL*(T-TL)) * (muBR-muB)  +  (c3_LR*(TR-T) + c3_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) / T4;
-      df.c4 = ((c4_LL*(TR-T) + c4_RL*(T-TL)) * (muBR-muB)  +  (c4_LR*(TR-T) + c4_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) / T5;
+      df.c0 = calculate_bilinear(c0_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) / T4;
+      df.c1 = calculate_bilinear(c1_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) / T3;
+      df.c2 = calculate_bilinear(c2_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) / T4;
+      df.c3 = calculate_bilinear(c3_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) / T4;
+      df.c4 = calculate_bilinear(c4_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) / T5;
       df.shear14_coeff = 2.0 * T * T * (E + P);
 
       break;
@@ -892,37 +882,12 @@ deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, do
       double T3 = T * T * T;
       double T4 = T3 * T;
 
-      double F_LL = F_data[iTL][imuBL];
-      double F_LR = F_data[iTL][imuBR];
-      double F_RL = F_data[iTR][imuBL];
-      double F_RR = F_data[iTR][imuBR];
-
-      double G_LL = G_data[iTL][imuBL];
-      double G_LR = G_data[iTL][imuBR];
-      double G_RL = G_data[iTR][imuBL];
-      double G_RR = G_data[iTR][imuBR];
-
-      double betabulk_LL = betabulk_data[iTL][imuBL];
-      double betabulk_LR = betabulk_data[iTL][imuBR];
-      double betabulk_RL = betabulk_data[iTR][imuBL];
-      double betabulk_RR = betabulk_data[iTR][imuBR];
-
-      double betaV_LL = betaV_data[iTL][imuBL];
-      double betaV_LR = betaV_data[iTL][imuBR];
-      double betaV_RL = betaV_data[iTR][imuBL];
-      double betaV_RR = betaV_data[iTR][imuBR];
-
-      double betapi_LL = betapi_data[iTL][imuBL];
-      double betapi_LR = betapi_data[iTL][imuBR];
-      double betapi_RL = betapi_data[iTR][imuBL];
-      double betapi_RR = betapi_data[iTR][imuBR];
-
       // bilinear interpolated values & undo temperature power scaling 
-      df.F = ((F_LL*(TR-T) + F_RL*(T-TL)) * (muBR-muB)  +  (F_LR*(TR-T) + F_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) * T;
-      df.G = ((G_LL*(TR-T) + G_RL*(T-TL)) * (muBR-muB)  +  (G_LR*(TR-T) + G_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB);
-      df.betabulk = ((betabulk_LL*(TR-T) + betabulk_RL*(T-TL)) * (muBR-muB)  +  (betabulk_LR*(TR-T) + betabulk_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) * T4;
-      df.betaV = ((betaV_LL*(TR-T) + betaV_RL*(T-TL)) * (muBR-muB)  +  (betaV_LR*(TR-T) + betaV_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) * T3;
-      df.betapi = ((betapi_LL*(TR-T) + betapi_RL*(T-TL)) * (muBR-muB)  +  (betapi_LR*(TR-T) + betapi_RR*(T-TL)) * (muB-muBL)) / (dT * dmuB) * T4;
+      df.F = calculate_bilinear(F_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) * T;
+      df.G = calculate_bilinear(G_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR);
+      df.betabulk = calculate_bilinear(betabulk_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR)* T4;
+      df.betaV = calculate_bilinear(betaV_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) * T3;
+      df.betapi = calculate_bilinear(betapi_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) * T4;
 
       break;
     }
@@ -954,7 +919,7 @@ deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, 
   else
   {
     // muB on freezeout surface should be nonzero in general
-    // otherwise you best stick to setting include_baryon = 0
+    // otherwise should set include_baryon = 0
     df = bilinear_interpolation(T, muB, E, P, bulkPi);  // bilinear wrt (T, muB)
   }
 

@@ -163,7 +163,7 @@ void IS3D::run_particlization(int fo_from_file)
   Table y_tab("tables/y_trapezoid_table_21pt.dat"); // y values and weights
   string etaTableFile = "tables/eta/eta_trapezoid_table_241pt.dat"; // for smooth C.F.
   int operation = paraRdr->getVal("operation");
-  if (operation == 2) etaTableFile = "tables/eta/eta_trapezoid_table_57pt.dat";
+  if (operation == 2) etaTableFile = "tables/eta/eta_trapezoid_table_41pt.dat";
   Table eta_tab(etaTableFile); //eta_s values and weights
 
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df_data);

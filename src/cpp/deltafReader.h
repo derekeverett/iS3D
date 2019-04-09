@@ -115,6 +115,8 @@ class Deltaf_Data
 
         deltaf_coefficients cubic_spline(double T, double E, double P, double bulkPi);
 
+        double calculate_bilinear(double ** f_data, double T, double muB, double TL, double TR, double muBL, double muBR, int iTL, int iTR, int imuBL, int imuBR);
+
         deltaf_coefficients bilinear_interpolation(double T, double muB, double E, double P, double bulkPi);
 
         void test_df_coefficients(double bulkPi_over_P);

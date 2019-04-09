@@ -80,7 +80,6 @@ private:
 
   int REGULATE_DELTAF;
   int OUTFLOW;
-  int USE_MAX_VOLUME;
 
   int INCLUDE_BARYON;
   double DETA_MIN;
@@ -106,6 +105,9 @@ private:
   double PT_UPPER_CUT;
   int PT_BINS;
   double Y_CUT;
+  double Y_BINS;
+  double ETA_CUT;
+  double ETA_BINS;
 
   double TAU_MIN;
   double TAU_MAX;
@@ -204,7 +206,7 @@ public:
 
   // add counts for sampled spectra / spacetime distributions (normalization in the write to file function)
   void sample_dN_dpT(Sampled_Particle new_particle);
-  void sample_dN_dy_average(Sampled_Particle new_particle);
+  void sample_dN_dy_average(Sampled_Particle new_particle, double yp);
   void sample_vn(Sampled_Particle new_particle);
   void sample_dN_dX(Sampled_Particle new_particle);
 

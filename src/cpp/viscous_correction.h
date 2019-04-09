@@ -27,19 +27,9 @@ class Shear_Stress
     double piyy_LRF, piyz_LRF;
     double pizz_LRF;
 
-    // diagonalized components of pi_ij
-    double pixx_D;
-    double piyy_D;
-    double pizz_D;
-    double piperp_plus;
-    double piperp_minus;
-    //double pi_magnitude;;
-
     Shear_Stress(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in);
     void boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2);
-    void diagonalize_pimunu_in_lrf();
     void test_pimunu_orthogonality_and_tracelessness(double ut, double ux, double uy, double un, double tau2);
-    //void compute_pi_magnitude()
 };
 
 
