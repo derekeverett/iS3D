@@ -27,22 +27,18 @@
 
 using namespace std;
 
-void EmissionFunctionArray::sample_dN_dy_average(Sampled_Particle new_particle, double yp)
+void EmissionFunctionArray::sample_dN_dy_average(Sampled_Particle new_particle)
 {
   // construct the dN/dy distribution averaged over rapidity window = 2.Y_CUT by adding counts from all events
 
-  //double E = new_particle.E;
-  //double pz = new_particle.pz;
-  //double yp = 0.5 * log((E + pz) / (E - pz));
+  double E = new_particle.E;
+  double pz = new_particle.pz;
+  double yp = 0.5 * log((E + pz) / (E - pz));
 
   if(fabs(yp) <= Y_CUT)
   {
     int ipart = new_particle.chosen_index;
     dN_dy_count[ipart] += 1.0;              // add counts within rapidity cut
-  }
-  else
-  {
-    printf("Error: rapidity is outside cut\n");
   }
 }
 
@@ -212,7 +208,7 @@ double estimate_mean_particle_number(double equilibrium_density, double bulk_den
       {
         particle_number = ds_time * (1.0 + delta_z) * equilibrium_density;
       }
-          
+
       break;
     }
     default:
@@ -245,7 +241,7 @@ double max_particle_number(double mbar, double degeneracy, double sign, double b
       double equilibrium_density = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar, alphaB, baryon, sign);
 
       particle_density = 2.0 * equilibrium_density;
- 
+
       break;
     }
     case 3: // modified (Mike)
@@ -281,7 +277,7 @@ double max_particle_number(double mbar, double degeneracy, double sign, double b
     case 4: // modified (Jonah)
     {
       if(feqmod_breaks_down) goto linear_df;
-      
+
       double z = df.z;
 
       if(z < 0.0) printf("Error: z is negative\n");
@@ -293,7 +289,7 @@ double max_particle_number(double mbar, double degeneracy, double sign, double b
       double equilibrium_density = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar, 0.0, 0.0, sign);
 
       particle_density = z * equilibrium_density;
-              
+
       break;
     }
     default:
@@ -419,7 +415,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
   {
     printf("Error: bosons have chemical potential. Exiting...\n");
     exit(-1);
-  }  
+  }
 
   bool rejected = true;
 
@@ -451,11 +447,11 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       double l1_plus_l2 = l1 + l2;
 
       pbar = - (l1 + l2 + l3);
-      Ebar = sqrt(pbar * pbar  +  mbar_squared);   
+      Ebar = sqrt(pbar * pbar  +  mbar_squared);
 
       phi_over_2pi = l1_plus_l2 * l1_plus_l2 / (pbar * pbar);
-      costheta = (l1 - l2) / l1_plus_l2;  
-      
+      costheta = (l1 - l2) / l1_plus_l2;
+
       double weight = 1.0 / (exp(Ebar) + sign) / weq_max / (r1 * r2 * r3);
 
       // check if 0 <= weight <= 1
@@ -536,7 +532,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
       Ebar = kbar + mbar;                        // energy / T
       pbar = sqrt(Ebar * Ebar  -  mbar_squared); // momentum magnitude / T
-  
+
       double exponent = exp(Ebar - chem);
 
       double weight = pbar/Ebar * exponent / (exponent + sign);
@@ -562,7 +558,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
   pLRF.E = E;
   pLRF.px = p * sintheta * cos(phi);
   pLRF.py = p * sintheta * sin(phi);
-  pLRF.pz = p * costheta;   
+  pLRF.pz = p * costheta;
 
   return pLRF;
 
@@ -741,7 +737,7 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
       // surface element class
       Surface_Element_Vector dsigma(dat, dax, day, dan);
       dsigma.boost_dsigma_to_lrf(basis_vectors, ut, ux, uy, un);
-      
+
       double ds_time = dsigma.dsigmat_LRF;
       double ds_space = dsigma.dsigma_space;
 
@@ -783,10 +779,10 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
       // sum over hadrons
       for(int ipart = 0; ipart < npart; ipart++)
       {
-        double equilibrium_density = Equilibrium_Density[ipart]; 
+        double equilibrium_density = Equilibrium_Density[ipart];
         double bulk_density = Bulk_Density[ipart];
         double diffusion_density = Diffusion_Density[ipart];
-        
+
         dn_tot += estimate_mean_particle_number(equilibrium_density, bulk_density, diffusion_density, ds_time, ds_space, bulkPi, Vdsigma, z, delta_z, feqmod_breaks_down, DF_MODE);
       }
 
@@ -1013,7 +1009,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       // determine if feqmod breaks down
       bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE);
 
-      // discrete number fraction of each species 
+      // discrete number fraction of each species
       std::vector<double> dn_list;
       dn_list.resize(npart);
 
@@ -1038,7 +1034,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       dn_tot *= (2.0 * y_max * ds_max);
 
-      if(dn_tot <= 0.0) continue;   
+      if(dn_tot <= 0.0) continue;
 
       // construct discrete probability distribution for particle types (weight[ipart] ~ dn_list[ipart] / dn_tot)
       std::discrete_distribution<int> particle_type(dn_list.begin(), dn_list.end());
@@ -1061,7 +1057,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           double baryon = Baryon[chosen_index];               // baryon number
           int mcid = MCID[chosen_index];                      // mc_id
 
-          LRF_Momentum pLRF;                                  // local rest frame momentum 
+          LRF_Momentum pLRF;                                  // local rest frame momentum
           double w_visc = 1.0;                                // viscous weight
 
           // sample the local rest frame momentum
@@ -1109,32 +1105,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           // flux weight
           double w_flux = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz) / (pLRF.E * ds_max);
 
-          double yp;
-
-          // if boost-invariant: sample the rapidity uniformly
-          // and compute corresponding eta position
-          if(DIMENSION == 2)
-          {
-            double E_LRF = pLRF.E;
-            double pz_LRF = pLRF.pz;
-
-            double yp_LRF = 0.5 * log((E_LRF + pz_LRF) / (E_LRF - pz_LRF));
-            yp = rapidity_distribution(generator_rapidity);
-
-            //eta = yp - yp_LRF;
-
-            double tanhyp = tanh(yp);
-
-            double ptau = pLab.ptau;
-            double tau_pn = tau * pLab.pn;
-
-            eta = atanh((tau_pn - ptau*tanhyp) / (tau_pn*tanhyp - ptau));
-
-            sinheta = sinh(eta);
-            cosheta = sqrt(1.0 + sinheta * sinheta);
-          }
-
-          
           // new sampled particle info
           Sampled_Particle new_particle;
 
@@ -1143,16 +1113,47 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           new_particle.tau = tau;
           new_particle.x = x;
           new_particle.y = y;
-          new_particle.eta = eta;
-
-          new_particle.t = tau * cosheta;
-          new_particle.z = tau * sinheta;
-
           new_particle.mass = mass;
           new_particle.px = pLab.px;
           new_particle.py = pLab.py;
 
-          double pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
+          double E, pz;
+
+          // if boost-invariant: sample the rapidity uniformly
+          // and compute corresponding (pz, eta)
+          if(DIMENSION == 2)
+          {
+            double yp = rapidity_distribution(generator_rapidity);
+
+            double sinhy = sinh(yp);
+            double coshy = sqrt(1.0 + sinhy * sinhy);
+            double tanhy = sinhy / coshy;
+
+            double ptau = pLab.ptau;
+            double tau_pn = tau * pLab.pn;
+
+            eta = atanh((tau_pn - ptau*tanhy) / (tau_pn*tanhy - ptau));
+            sinheta = sinh(eta);
+            cosheta = sqrt(1.0 + sinheta * sinheta);
+
+            double mT = sqrt(mass_squared  + pLab.px * pLab.px  +  pLab.py * pLab.py);
+
+            pz = mT * sinhy;
+            //E = mT * coshy;
+          }
+          else
+          {
+            pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
+            //E = sqrt(mass_squared +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
+          }
+
+          E = sqrt(mass_squared +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
+
+          new_particle.eta = eta;
+          new_particle.t = tau * cosheta;
+          new_particle.z = tau * sinheta;
+          new_particle.E = E;
+          new_particle.pz = pz;
 
           //cout << pz << "\t" << sqrt(mass_squared  + pLab.px * pLab.px  +  pLab.py * pLab.py) * sinh(yp) << endl;
           // if(DIMENSION == 2)
@@ -1160,16 +1161,14 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           //   double mT = sqrt(mass_squared  + pLab.px * pLab.px  +  pLab.py * pLab.py);
           //   pz = mT * sinh(yp);
           // }
-          new_particle.pz = pz;
-          new_particle.E = sqrt(mass_squared +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
 
           // add particle
           if((canonical(generator_keep) < (w_flux * w_visc)))
-          {       
+          {
             if(TEST_SAMPLER)
             {
               // bin the distributions (avoids memory bottleneck)
-              sample_dN_dy_average(new_particle, yp);
+              sample_dN_dy_average(new_particle);
               sample_dN_dpT(new_particle);
               sample_vn(new_particle);
               sample_dN_dX(new_particle);

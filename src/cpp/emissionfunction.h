@@ -206,7 +206,7 @@ public:
 
   // add counts for sampled spectra / spacetime distributions (normalization in the write to file function)
   void sample_dN_dpT(Sampled_Particle new_particle);
-  void sample_dN_dy_average(Sampled_Particle new_particle, double yp);
+  void sample_dN_dy_average(Sampled_Particle new_particle);
   void sample_vn(Sampled_Particle new_particle);
   void sample_dN_dX(Sampled_Particle new_particle);
 

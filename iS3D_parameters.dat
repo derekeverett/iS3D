@@ -54,7 +54,7 @@ lightest_particle 	        = 111    #PDG MC ID of lightest particle for resonanc
 oversample		        = 1      # run sampler iteratively until mininum number of hadrons sampled
 								 # should be turned off for JETSCAPE
 
-min_num_hadrons		        = 1.0e+8 #across all samples >= min_num_hadrons
+min_num_hadrons		        = 2.0e+8 #across all samples >= min_num_hadrons
 
 sampler_seed		        = 1      # sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
 
@@ -65,7 +65,7 @@ pT_lower_cut			= 0.0    # pT lower cut in GeV (for sampler tests)
 pT_upper_cut			= 3.0	 # pT upper cut in GeV (for sampler tests)
 pT_bins				= 100	 	 # number of pT bins (for sampler tests)
 
-y_cut				= 5.0	 	 # |y| <= y_cut rapidity cut 
+y_cut				= 5.0	 	 # |y| <= y_cut rapidity cut
 y_bins 			= 50
 
 eta_cut 		= 7.0			 # |eta| <= eta_cut (should be 2 units > y_cut)

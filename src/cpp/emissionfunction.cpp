@@ -11,9 +11,9 @@
 #include <complex>
 #include <array>
 #include <sys/time.h>
-//#ifdef _OMP
+#ifdef _OMP
 #include <omp.h>
-//#endif
+#endif
 #include "iS3D.h"
 #include "readindata.h"
 #include "emissionfunction.h"
@@ -1552,7 +1552,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // gauss laguerre roots and weights
     Gauss_Laguerre * gla = new Gauss_Laguerre;
-    gla->load_roots_and_weights("tables/gla_roots_weights_20_points.txt");
+    gla->load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
 
     // gauss legendre roots and weights
     Gauss_Legendre * legendre = new Gauss_Legendre;
