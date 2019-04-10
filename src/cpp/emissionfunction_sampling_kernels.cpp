@@ -27,13 +27,36 @@
 
 using namespace std;
 
-void EmissionFunctionArray::sample_dN_dy_average(Sampled_Particle new_particle, double yp)
+
+void EmissionFunctionArray::sample_dN_dy(Sampled_Particle new_particle, double yp)
 {
   // construct the dN/dy distribution averaged over rapidity window = 2.Y_CUT by adding counts from all events
-  if(fabs(yp) <= Y_CUT)
+  double yp_binwidth = 2.0*Y_CUT / (double)Y_BINS;
+
+  int iyp = (int)floor((yp + Y_CUT) / yp_binwidth);  // rapidity bin index
+
+  if(iyp >= 0 && iyp < Y_BINS)
   {
     int ipart = new_particle.chosen_index;
-    dN_dy_count[ipart] += 1.0;              // add counts within rapidity cut
+    dN_dy_count[ipart][iyp] += 1.0;                  // add counts
+  }
+  else if(DIMENSION == 2)
+  {
+    printf("Error: boost-invariant particle not within rapidity cut\n");
+  }
+}
+
+void EmissionFunctionArray::sample_dN_deta(Sampled_Particle new_particle, double eta)
+{
+  // construct event-average dN/deta distribution 
+  double eta_binwidth = 2.0*ETA_CUT / (double)ETA_BINS;
+
+  int ieta = (int)floor((eta + ETA_CUT) / eta_binwidth);  // eta bin index
+
+  if(ieta >= 0 && ieta < ETA_BINS)
+  {
+    int ipart = new_particle.chosen_index;
+    dN_deta_count[ipart][ieta] += 1.0;                    // add counts
   }
 }
 
@@ -135,6 +158,17 @@ double canonical(default_random_engine & generator)
 }
 
 
+double uniform_rapidity_distribution(default_random_engine & generator, double y_max)
+{
+  double random_number = generate_canonical<double, numeric_limits<double>::digits>(generator);
+
+  // return a uniform rapidity yp = [-5,5)
+  // open bound doesn't really matter
+
+  return y_max * (2.0 * random_number - 1.0);
+}
+
+
 double pion_thermal_weight_max(double x, double chem)
 {
   // rescale the pion thermal weight w_eq by the max value if m/T < 0.8554 (the max is local)
@@ -202,8 +236,49 @@ double estimate_mean_particle_number(double equilibrium_density, double bulk_den
 }
 
 
+double fast_max_particle_number(double equilibrium_density, double bulk_density, double bulkPi, double z, bool feqmod_breaks_down, int df_mode)
+{
+  double particle_density = 0.0;
 
-double max_particle_number(double mbar, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, deltaf_coefficients df, bool feqmod_breaks_down, Gauss_Laguerre * laguerre, int df_mode, int include_baryon, double neq_fact)
+  switch(df_mode)
+  {
+    case 1: // 14 moment
+    case 2: // Chapman Enskog
+    {
+      linear_df:
+
+      particle_density = 2.0 * equilibrium_density;
+      break;
+    }
+    case 3: // Mike
+    {
+      if(feqmod_breaks_down) goto linear_df;
+      
+      particle_density = equilibrium_density  +  bulkPi * bulk_density;
+      break;
+    }
+    case 4: // Jonah
+    {
+      if(feqmod_breaks_down) goto linear_df;
+
+      particle_density = z * equilibrium_density;
+
+      break;
+    }
+    default:
+    {
+      printf("\nFast max particle number error: please set df_mode = (1,2,3,4)\n");
+      exit(-1);
+    }
+  } // df_mode
+
+  if(particle_density < 0.0) printf("Error: particle number is negative\n");
+
+  return particle_density;
+}
+
+
+double max_particle_number(double mbar, double degeneracy, double sign, double baryon, double T, double alphaB, double bulkPi, deltaf_coefficients df, bool feqmod_breaks_down, Gauss_Laguerre * laguerre, int df_mode, int include_baryon, double neq_fact, double J20_fact)
 {
   double particle_density = 0.0;
 
@@ -239,8 +314,6 @@ double max_particle_number(double mbar, double degeneracy, double sign, double b
       double * pbar_weight1 = laguerre->weight[1];
       double * pbar_weight2 = laguerre->weight[2];
 
-      double J20_fact = T * neq_fact;
-
       double equilibrium_density = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, laguerre_pts, mbar, alphaB, baryon, sign);
       double J10 = 0.0;
       if(include_baryon)
@@ -260,8 +333,6 @@ double max_particle_number(double mbar, double degeneracy, double sign, double b
 
       double z = df.z;
 
-      if(z < 0.0) printf("Error: z is negative\n");
-
       const int laguerre_pts = laguerre->points;
       double * pbar_root1 = laguerre->root[1];
       double * pbar_weight1 = laguerre->weight[1];
@@ -274,7 +345,7 @@ double max_particle_number(double mbar, double degeneracy, double sign, double b
     }
     default:
     {
-      printf("\nParticle density outflow error: please set df_mode = (1,2,3,4)\n");
+      printf("\nMax particle number error: please set df_mode = (1,2,3,4)\n");
       exit(-1);
     }
   } // df_mode
@@ -777,28 +848,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     default_random_engine generator_rapidity(seed + 40000);
 
     // uniform rapidity distribution (for 2+1d)
-    uniform_real_distribution<double> rapidity_distribution(-y_max, nextafter(y_max, numeric_limits<double>::max()));
+    //uniform_real_distribution<double> rapidity_distribution(-y_max, nextafter(y_max, numeric_limits<double>::max()));
     //:::::::::::::::::::::::::::
-
-    // set up extension in eta
-    // int eta_pts = 1;
-    // if(DIMENSION == 2) eta_pts = eta_tab_length;
-    // double etaValues[eta_pts];
-    // double etaWeights[eta_pts];
-
-    // if(DIMENSION == 2)
-    // {
-    //   for(int ieta = 0; ieta < eta_pts; ieta++)
-    //   {
-    //     etaValues[ieta] = eta_tab->get(1, ieta + 1);
-    //     etaWeights[ieta] = eta_tab->get(2, ieta + 1);
-    //   }
-    // }
-    // else if(DIMENSION == 3)
-    // {
-    //   etaValues[0] = 0.0; // below, will load eta_fo
-    //   etaWeights[0] = 1.0; // 1.0 for 3+1d
-    // }
 
     // for benchmarking momentum sampling efficiency
     long acceptances = 0;
@@ -812,7 +863,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double x = x_fo[icell];
       double y = y_fo[icell];
       double eta = eta_fo[icell];
-      //if(DIMENSION == 3) etaValues[0] = eta_fo[icell];
+  
       double sinheta = sinh(eta);
       double cosheta = sqrt(1.0  +  sinheta * sinheta);
 
@@ -971,26 +1022,40 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       std::vector<double> dn_list;
       dn_list.resize(npart);
 
-      double neq_fact = T * T * T / two_pi2_hbarC3;
-
       // total mean number of hadrons emitted from freezeout
       // cell of max volume (volume also scaled by 2.y_max)
       double dn_tot = 0.0;
 
-      for(int ipart = 0; ipart < npart; ipart++)
+      if(FAST)
       {
-        double mass = Mass[ipart];              // mass (GeV)
-        double mbar = mass / T;                 // m / T
-        double degeneracy = Degeneracy[ipart];  // spin degeneracy
-        double sign = Sign[ipart];              // quantum statistics sign
-        double baryon = Baryon[ipart];          // baryon number
+        for(int ipart = 0; ipart < npart; ipart++)
+        {
+          double equilibrium_density = Equilibrium_Density[ipart];
+          double bulk_density = Bulk_Density[ipart];
 
-        dn_list[ipart] = max_particle_number(mbar, degeneracy, sign, baryon, T, alphaB, bulkPi, df, feqmod_breaks_down, laguerre, DF_MODE, INCLUDE_BARYON, neq_fact);
+          dn_list[ipart] = fast_max_particle_number(equilibrium_density, bulk_density, bulkPi, z, feqmod_breaks_down, DF_MODE);
+          dn_tot += dn_list[ipart];
+        }
+      }
+      else
+      {
+        double neq_fact = T * T * T / two_pi2_hbarC3;
+        double J20_fact = T * neq_fact;
 
-        dn_tot += dn_list[ipart];
+        for(int ipart = 0; ipart < npart; ipart++)
+        {
+          double mass = Mass[ipart];              
+          double mbar = mass / T;                
+          double degeneracy = Degeneracy[ipart]; 
+          double sign = Sign[ipart];             
+          double baryon = Baryon[ipart];          
+
+          dn_list[ipart] = max_particle_number(mbar, degeneracy, sign, baryon, T, alphaB, bulkPi, df, feqmod_breaks_down, laguerre, DF_MODE, INCLUDE_BARYON, neq_fact, J20_fact);
+          dn_tot += dn_list[ipart];
+        }
       }
 
-      dn_tot *= (2.0 * y_max * ds_max);
+      dn_tot *= (2.0 * y_max * ds_max);                      // multiply by the volume
 
       if(dn_tot <= 0.0) continue;
 
@@ -1063,6 +1128,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           // flux weight
           double w_flux = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz) / (pLRF.E * ds_max);
 
+          bool add_particle = (canonical(generator_keep) < (w_flux * w_visc));
+
           // new sampled particle info
           Sampled_Particle new_particle;
 
@@ -1079,25 +1146,24 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
           // if boost-invariant: sample the rapidity uniformly
           // and compute corresponding (pz, eta)
-          if(DIMENSION == 2)
+          if(DIMENSION == 2 && add_particle)
           {
-            yp = rapidity_distribution(generator_rapidity);
+            yp = uniform_rapidity_distribution(generator_rapidity, y_max);
 
             double sinhy = sinh(yp);
             double coshy = sqrt(1.0 + sinhy * sinhy);
-            double tanhy = sinhy / coshy;
 
             double ptau = pLab.ptau;
             double tau_pn = tau * pLab.pn;
-
-            eta = atanh((tau_pn - ptau*tanhy) / (tau_pn*tanhy - ptau));
-            sinheta = sinh(eta);
-            cosheta = sqrt(1.0 + sinheta * sinheta);
-
             double mT = sqrt(mass_squared  + pLab.px * pLab.px  +  pLab.py * pLab.py);
+            
+            sinheta = (ptau*sinhy - tau_pn*coshy) / mT;
+            eta = asinh(sinheta);
+            cosheta = sqrt(1.0 + sinheta * sinheta);
 
             pz = mT * sinhy;
             E = mT * coshy;
+            //cout << pz << "\t" << tau_pn * cosheta  +  ptau * sinheta << endl;
           }
           else
           {
@@ -1112,20 +1178,14 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           new_particle.E = E;
           new_particle.pz = pz;
 
-          //cout << pz << "\t" << sqrt(mass_squared  + pLab.px * pLab.px  +  pLab.py * pLab.py) * sinh(yp) << endl;
-          // if(DIMENSION == 2)
-          // {
-          //   double mT = sqrt(mass_squared  + pLab.px * pLab.px  +  pLab.py * pLab.py);
-          //   pz = mT * sinh(yp);
-          // }
-
           // add particle
-          if((canonical(generator_keep) < (w_flux * w_visc)))
+          if(add_particle)
           {
             if(TEST_SAMPLER)
             {
               // bin the distributions (avoids memory bottleneck)
-              sample_dN_dy_average(new_particle, yp);
+              sample_dN_dy(new_particle, yp);
+              sample_dN_deta(new_particle, eta);
               sample_dN_dpT(new_particle, yp);
               sample_vn(new_particle, yp);
               sample_dN_dX(new_particle, yp);

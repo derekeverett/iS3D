@@ -92,6 +92,7 @@ private:
   int DO_RESONANCE_DECAYS; // smooth resonance decays option
 
   int OVERSAMPLE; // whether or not to iteratively oversample surface
+  int FAST;                 // switch to compute mean hadron number quickly using an averaged (T,muB)
   long int MIN_NUM_HADRONS; //min number of particles summed over all samples
   long int SAMPLER_SEED; //the seed for the particle sampler. If chosen < 0, seed set with clocktime
 
@@ -105,9 +106,9 @@ private:
   double PT_UPPER_CUT;
   int PT_BINS;
   double Y_CUT;
-  double Y_BINS;
+  int Y_BINS;
   double ETA_CUT;
-  double ETA_BINS;
+  int ETA_BINS;
 
   double TAU_MIN;
   double TAU_MAX;
@@ -118,7 +119,8 @@ private:
   int R_BINS;
 
   // for sampler test (2+1d)
-  double *dN_dy_count;        // holds total count within rapidity cut for each species (for sampling boost inv. dN_dy)
+  double **dN_dy_count;       // holds event-averaged sampled dN/dy for each species 
+  double **dN_deta_count;       // holds event-averaged sampled dN/deta for each species 
 
   double **sampled_pT_PDF;    // holds event-averaged sampled (1/N) dN/dpT for each species
   double *total_count;        // tracks total count within rapidity cut for each species
@@ -206,11 +208,13 @@ public:
 
   // add counts for sampled spectra / spacetime distributions (normalization in the write to file function)
   void sample_dN_dpT(Sampled_Particle new_particle, double yp);
-  void sample_dN_dy_average(Sampled_Particle new_particle, double yp);
+  void sample_dN_dy(Sampled_Particle new_particle, double yp);
+  void sample_dN_deta(Sampled_Particle new_particle, double eta);
   void sample_vn(Sampled_Particle new_particle, double yp);
   void sample_dN_dX(Sampled_Particle new_particle, double yp);
 
-  void write_sampled_dN_dy_average_to_file_test(int * MCID);
+  void write_sampled_dN_dy_to_file_test(int * MCID);
+  void write_sampled_dN_deta_to_file_test(int * MCID);
   void write_sampled_pT_PDF_to_file_test(int * MCID);
   void write_sampled_vn_to_file_test(int * MCID);
   void write_sampled_dN_dX_to_file_test(int * MCID);

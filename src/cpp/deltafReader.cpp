@@ -958,7 +958,7 @@ void Deltaf_Data::test_df_coefficients(double bulkPi_over_P)
 
 void Deltaf_Data::compute_particle_densities(particle_info * particle_data, int Nparticle)
 {
-  // get the average temperature, energy density, pressure
+  // get the average temperature, energy density, pressure, etc.
   Plasma QGP;
   QGP.load_thermodynamic_averages();
 

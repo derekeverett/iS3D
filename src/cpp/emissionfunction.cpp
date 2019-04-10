@@ -179,6 +179,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
 
     OVERSAMPLE = paraRdr->getVal("oversample");
+    FAST = paraRdr->getVal("fast");
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
     SAMPLER_SEED = paraRdr->getVal("sampler_seed");
     if (OPERATION == 2) printf("Sampler seed set to %d \n", SAMPLER_SEED);
@@ -216,7 +217,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
 
     // allocate memory for sampled distributions / spectra (for sampler testing)
-    dN_dy_count = (double *)calloc(number_of_chosen_particles, sizeof(double));
+    dN_dy_count = (double **)calloc(number_of_chosen_particles, sizeof(double));
+    dN_deta_count = (double **)calloc(number_of_chosen_particles, sizeof(double));
 
     total_count = (double *)calloc(number_of_chosen_particles, sizeof(double));
     sampled_pT_PDF = (double **)calloc(number_of_chosen_particles, sizeof(double));
@@ -230,9 +232,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
-      pT_count_vn[ipart] = (double *)calloc(PT_BINS, sizeof(double));
-
+      dN_dy_count[ipart] = (double *)calloc(Y_BINS, sizeof(double));
+      dN_deta_count[ipart] = (double *)calloc(ETA_BINS, sizeof(double));
+     
       sampled_pT_PDF[ipart] = (double *)calloc(PT_BINS, sizeof(double));
+      pT_count_vn[ipart] = (double *)calloc(PT_BINS, sizeof(double));
 
       sampled_dN_taudtaudy[ipart] = (double *)calloc(TAU_BINS, sizeof(double));
       sampled_dN_twopirdrdy[ipart] = (double *)calloc(R_BINS, sizeof(double));
@@ -878,29 +882,78 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     } // ievent
   }
 
-  void EmissionFunctionArray::write_sampled_dN_dy_average_to_file_test(int * MCID)
+  void EmissionFunctionArray::write_sampled_dN_dy_to_file_test(int * MCID)
   {
-    printf("Writing event-averaged (1/N) * dN/dy of each species to file...\n");
+    printf("Writing event-averaged dN/dy of each species to file...\n");
 
-    const int npart = number_of_chosen_particles;
+    // set up the yp grid (midpoints of each bin)
+    const double yp_binwidth = 2.0*Y_CUT / (double)Y_BINS;
 
-    // write (1/N)dN/dy distribution each species
-    for(int ipart = 0; ipart < npart; ipart++)
+    double yp_mid[Y_BINS];
+    for(int iyp = 0; iyp < Y_BINS; iyp++)
+    {
+      yp_mid[iyp] = -Y_CUT +  yp_binwidth * ((double)iyp + 0.5);
+    }
+
+    // write dN/dy distribution each species
+    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
       char filename[255] = "";
+      char filename2[255] = "";
+
       int mcid = MCID[ipart]; // we can just use this in place
       sprintf(filename, "results/dN_dy/dN_dy_%d_test.dat", mcid);
+      sprintf(filename2, "results/dN_dy/dN_dy_%d_average_test.dat", mcid);
       ofstream spectra(filename, ios_base::out);
+      ofstream spectra2(filename2, ios_base::out);
 
-      // dN/dy averaged over rapidity window (assumes boost invariance in this window)
-      spectra << dN_dy_count[ipart] / (Nevents * 2.0 * Y_CUT) << endl;
+      double dN_dy_avg = 0.0;
+
+      for(int iyp = 0; iyp < Y_BINS; iyp++)
+      {
+        dN_dy_avg += dN_dy_count[ipart][iyp];
+
+        spectra << setprecision(6) << yp_mid[iyp] << "\t" << dN_dy_count[ipart][iyp] / (yp_binwidth * Nevents) << endl;
+      }
+
+      spectra2 << setprecision(6) << dN_dy_avg / (2.0 * Y_CUT * Nevents) << endl;
 
       spectra.close();
+      spectra2.close();
 
     } // ipart
 
     // free memory
-    free(dN_dy_count);
+    free_2D(dN_dy_count, number_of_chosen_particles);
+  }
+
+    void EmissionFunctionArray::write_sampled_dN_deta_to_file_test(int * MCID)
+  {
+    printf("Writing event-averaged dN/deta of each species to file...\n");
+
+    // set up the eta grid (midpoints of each bin)
+    const double eta_binwidth = 2.0*ETA_CUT / (double)ETA_BINS;
+
+    double eta_mid[ETA_BINS];
+    for(int ieta = 0; ieta < ETA_BINS; ieta++)
+    {
+      eta_mid[ieta] = -ETA_CUT +  eta_binwidth * ((double)ieta + 0.5);
+    }
+
+    // write dN/deta distribution each species
+    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    {
+      char filename[255] = "";
+      sprintf(filename, "results/dN_deta/dN_deta_%d_test.dat", MCID[ipart]);
+      ofstream spectra(filename, ios_base::out);
+
+      for(int ieta = 0; ieta < ETA_BINS; ieta++)
+      {
+        spectra << setprecision(6) << eta_mid[ieta] << "\t" << dN_deta_count[ipart][ieta] / (eta_binwidth * Nevents) << endl;
+      }
+      spectra.close();
+    } // ipart
+    free_2D(dN_deta_count, number_of_chosen_particles);
   }
 
 
@@ -1784,12 +1837,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               if(TEST_SAMPLER) // only for testing the sampler
               {
-                write_sampled_dN_dy_average_to_file_test(MCID);
-                //write_sampled_pT_pdf_toFile(MCID);
+                write_sampled_dN_dy_to_file_test(MCID);
+                write_sampled_dN_deta_to_file_test(MCID);
                 write_sampled_pT_PDF_to_file_test(MCID);
-                //write_sampled_vn_toFile(MCID);
                 write_sampled_vn_to_file_test(MCID);
-                //write_sampled_dN_dX_toFile(MCID);
                 write_sampled_dN_dX_to_file_test(MCID);
                 write_yield_list_toFile();
               }
@@ -1846,12 +1897,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
               if(TEST_SAMPLER) // only for testing the sampler
               {
-                write_sampled_dN_dy_average_to_file_test(MCID);
-                //write_sampled_pT_pdf_toFile(MCID);
+                write_sampled_dN_dy_to_file_test(MCID);
+                write_sampled_dN_deta_to_file_test(MCID);
                 write_sampled_pT_PDF_to_file_test(MCID);
-                //write_sampled_vn_toFile(MCID);
                 write_sampled_vn_to_file_test(MCID);
-                //write_sampled_dN_dX_toFile(MCID);
                 write_sampled_dN_dX_to_file_test(MCID);
                 write_yield_list_toFile();
               }
