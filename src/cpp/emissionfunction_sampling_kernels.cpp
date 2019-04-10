@@ -27,14 +27,9 @@
 
 using namespace std;
 
-void EmissionFunctionArray::sample_dN_dy_average(Sampled_Particle new_particle)
+void EmissionFunctionArray::sample_dN_dy_average(Sampled_Particle new_particle, double yp)
 {
   // construct the dN/dy distribution averaged over rapidity window = 2.Y_CUT by adding counts from all events
-
-  double E = new_particle.E;
-  double pz = new_particle.pz;
-  double yp = 0.5 * log((E + pz) / (E - pz));
-
   if(fabs(yp) <= Y_CUT)
   {
     int ipart = new_particle.chosen_index;
@@ -42,14 +37,9 @@ void EmissionFunctionArray::sample_dN_dy_average(Sampled_Particle new_particle)
   }
 }
 
-void EmissionFunctionArray::sample_dN_dpT(Sampled_Particle new_particle)
+void EmissionFunctionArray::sample_dN_dpT(Sampled_Particle new_particle, double yp)
 {
   // construct the dN/dpT distribution by adding counts from all events
-
-  double E = new_particle.E;
-  double pz = new_particle.pz;
-  double yp = 0.5 * log((E + pz) / (E - pz));
-
   if(fabs(yp) <= Y_CUT)
   {
     int ipart = new_particle.chosen_index;
@@ -71,14 +61,9 @@ void EmissionFunctionArray::sample_dN_dpT(Sampled_Particle new_particle)
   }
 }
 
-void EmissionFunctionArray::sample_vn(Sampled_Particle new_particle)
+void EmissionFunctionArray::sample_vn(Sampled_Particle new_particle, double yp)
 {
   // construct the vn's by adding counts from all events
-
-  double E = new_particle.E;
-  double pz = new_particle.pz;
-  double yp = 0.5 * log((E + pz) / (E - pz));
-
   if(fabs(yp) <= Y_CUT)
   {
     int ipart = new_particle.chosen_index;
@@ -113,14 +98,9 @@ void EmissionFunctionArray::sample_vn(Sampled_Particle new_particle)
   }
 }
 
-void EmissionFunctionArray::sample_dN_dX(Sampled_Particle new_particle)
+void EmissionFunctionArray::sample_dN_dX(Sampled_Particle new_particle, double yp)
 {
   // construct spacetime distributions by adding counts from all events
-
-  double E = new_particle.E;
-  double pz = new_particle.pz;
-  double yp = 0.5 * log((E + pz) / (E - pz));
-
   if(fabs(yp) <= Y_CUT)
   {
     int ipart = new_particle.chosen_index;
@@ -602,26 +582,9 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
   {
     // estimate the total mean particle yield from the freezeout surface
     // to determine the number of events you want to sample
-
-    printf("Total particle yield = ");
+    printf("Total particle yield: ");
 
     int npart = number_of_chosen_particles;
-
-    double detA_min = DETA_MIN; // default value
-
-    int eta_pts = 1;
-    if(DIMENSION == 2) eta_pts = eta_tab_length;
-    double etaWeights[eta_pts];
-    etaWeights[0] = 1.0;  // default for 3+1d
-
-    if(DIMENSION == 2)
-    {
-      for(int ieta = 0; ieta < eta_pts; ieta++)
-      {
-        etaWeights[ieta] = eta_tab->get(2, ieta + 1);
-        //cout << ieta << "\t" << etaWeights[ieta] << endl;
-      }
-    }
 
     double Ntot = 0.0;                    // total particle yield
 
@@ -771,10 +734,7 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
       double detA = compute_detA(pimunu, shear_mod, bulk_mod);
 
       // determine if feqmod breaks down
-      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, detA_min, z, laguerre, DF_MODE);
-
-      // total number of hadrons / eta_weight in FO_cell
-      double dn_tot = 0.0;
+      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE);
 
       // sum over hadrons
       for(int ipart = 0; ipart < npart; ipart++)
@@ -783,19 +743,17 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
         double bulk_density = Bulk_Density[ipart];
         double diffusion_density = Diffusion_Density[ipart];
 
-        dn_tot += estimate_mean_particle_number(equilibrium_density, bulk_density, diffusion_density, ds_time, ds_space, bulkPi, Vdsigma, z, delta_z, feqmod_breaks_down, DF_MODE);
+        Ntot += estimate_mean_particle_number(equilibrium_density, bulk_density, diffusion_density, ds_time, ds_space, bulkPi, Vdsigma, z, delta_z, feqmod_breaks_down, DF_MODE);
       }
-
-      // add mean number of hadrons in FO cell to total yield
-      for(int ieta = 0; ieta < eta_pts; ieta++)
-      {
-        Ntot += dn_tot * etaWeights[ieta];
-      }
-
     } // freezeout cells (icell)
 
+    if(DIMENSION == 2)
+    {
+      printf("dN_dy ~ %lf\n\n", Ntot);
+      Ntot *= (2.0 * Y_CUT);
+    }
+
     mean_yield = Ntot;
-    printf("dN_dy ~ %lf\n\n", Ntot/14.0); // dN/deta (for the eta_trapezoid_table_57pt.dat)
 
     return Ntot;
   }
@@ -1117,13 +1075,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           new_particle.px = pLab.px;
           new_particle.py = pLab.py;
 
-          double E, pz;
+          double E, pz, yp;
 
           // if boost-invariant: sample the rapidity uniformly
           // and compute corresponding (pz, eta)
           if(DIMENSION == 2)
           {
-            double yp = rapidity_distribution(generator_rapidity);
+            yp = rapidity_distribution(generator_rapidity);
 
             double sinhy = sinh(yp);
             double coshy = sqrt(1.0 + sinhy * sinhy);
@@ -1139,15 +1097,14 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             double mT = sqrt(mass_squared  + pLab.px * pLab.px  +  pLab.py * pLab.py);
 
             pz = mT * sinhy;
-            //E = mT * coshy;
+            E = mT * coshy;
           }
           else
           {
             pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
-            //E = sqrt(mass_squared +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
+            E = sqrt(mass_squared +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
+            yp = 0.5 * log((E + pz) / (E - pz));
           }
-
-          E = sqrt(mass_squared +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
 
           new_particle.eta = eta;
           new_particle.t = tau * cosheta;
@@ -1168,10 +1125,10 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             if(TEST_SAMPLER)
             {
               // bin the distributions (avoids memory bottleneck)
-              sample_dN_dy_average(new_particle);
-              sample_dN_dpT(new_particle);
-              sample_vn(new_particle);
-              sample_dN_dX(new_particle);
+              sample_dN_dy_average(new_particle, yp);
+              sample_dN_dpT(new_particle, yp);
+              sample_vn(new_particle, yp);
+              sample_dN_dX(new_particle, yp);
             }
             else
             {

@@ -1552,7 +1552,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // gauss laguerre roots and weights
     Gauss_Laguerre * gla = new Gauss_Laguerre;
-    gla->load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
+    gla->load_roots_and_weights("tables/gla_roots_weights_20_points.txt");
 
     // gauss legendre roots and weights
     Gauss_Legendre * legendre = new Gauss_Legendre;
