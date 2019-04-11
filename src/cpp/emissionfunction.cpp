@@ -106,8 +106,10 @@ bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pio
   return false;
 }
 
-bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi, double betabulk, double detA, double detA_min, double z, Gauss_Laguerre * laguerre, int df_mode)
+bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi, double betabulk, double detA, double detA_min, double z, Gauss_Laguerre * laguerre, int df_mode, int fast, double Tavg)
 {
+  if(fast) T = Tavg;  // use the average temperature
+
   if(df_mode == 3)
   {
     const int laguerre_pts = laguerre->points;
@@ -1605,7 +1607,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     // gauss laguerre roots and weights
     Gauss_Laguerre * gla = new Gauss_Laguerre;
-    gla->load_roots_and_weights("tables/gla_roots_weights_20_points.txt");
+    gla->load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
 
     // gauss legendre roots and weights
     Gauss_Legendre * legendre = new Gauss_Legendre;

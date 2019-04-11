@@ -272,7 +272,7 @@ double fast_max_particle_number(double equilibrium_density, double bulk_density,
     }
   } // df_mode
 
-  if(particle_density < 0.0) printf("Error: particle number is negative\n");
+  if(particle_density < 0.0) printf("Fast max particle error: particle number is negative\n");
 
   return particle_density;
 }
@@ -805,7 +805,7 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
       double detA = compute_detA(pimunu, shear_mod, bulk_mod);
 
       // determine if feqmod breaks down
-      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE);
+      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE, 0, T);
 
       // sum over hadrons
       for(int ipart = 0; ipart < npart; ipart++)
@@ -847,9 +847,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     default_random_engine generator_keep(seed + 30000);
     default_random_engine generator_rapidity(seed + 40000);
 
-    // uniform rapidity distribution (for 2+1d)
-    //uniform_real_distribution<double> rapidity_distribution(-y_max, nextafter(y_max, numeric_limits<double>::max()));
-    //:::::::::::::::::::::::::::
+    // get average temperature (for fast mode)
+    Plasma QGP;
+    QGP.load_thermodynamic_averages();
+    const double Tavg = QGP.temperature;
+    const double muBavg = QGP.baryon_chemical_potential;
+
+    if(FAST) printf("Using fast mode: (Tavg, muBavg) = (%lf, %lf)\n", Tavg, muBavg);
 
     // for benchmarking momentum sampling efficiency
     long acceptances = 0;
@@ -1016,7 +1020,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double detA = compute_detA(pimunu, shear_mod, bulk_mod);
 
       // determine if feqmod breaks down
-      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE);
+      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE, FAST, Tavg);
 
       // discrete number fraction of each species
       std::vector<double> dn_list;
