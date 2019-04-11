@@ -1,6 +1,7 @@
 #include "viscous_correction.h"
 #include <math.h>
 #include <iostream>
+#include <iomanip> 
 #include <stdlib.h>
 using namespace std;
 
@@ -84,11 +85,6 @@ void Surface_Element_Vector::compute_dsigma_magnitude()
     dsigma_magnitude = fabs(dsigmat_LRF) + dsigma_space;
 }
 
-void Surface_Element_Vector::compute_dsigma_lrf_polar_angle()
-{
-    costheta_LRF = dsigmaz_LRF / dsigma_space;
-}
-
 
 Shear_Stress::Shear_Stress(double pitt_in, double pitx_in, double pity_in, double pitn_in, double pixx_in, double pixy_in, double pixn_in, double piyy_in, double piyn_in, double pinn_in)
 {
@@ -143,11 +139,6 @@ void Shear_Stress::boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2)
     piyz_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
 
     pizz_LRF = - (pixx_LRF + piyy_LRF);
-}
-
-void Shear_Stress::compute_pi_magnitude()
-{
-    pi_magnitude = sqrt(pixx_LRF * pixx_LRF  +  piyy_LRF * piyy_LRF  +  pizz_LRF * pizz_LRF  +  2.0 * (pixy_LRF * pixy_LRF + pixz_LRF * pixz_LRF + piyz_LRF * piyz_LRF));
 }
 
 Baryon_Diffusion::Baryon_Diffusion(double Vt_in, double Vx_in, double Vy_in, double Vn_in)
