@@ -12,30 +12,13 @@
 
 using namespace std;
 
-/*
-class Deltaf_Reader
-{
-    private:
-        ParameterReader * paraRdr;
-
-        int mode; //type of freezeout surface, VH or VAH
-        int df_mode; // type of delta-f correction (e.g. 14-moment, CE, or modified distribution)
-        int include_baryon;
-
-    public:
-        Deltaf_Reader(ParameterReader * paraRdr_in);
-        ~Deltaf_Reader();
-
-        deltaf_coefficients load_coefficients(FO_surf *surface, long FO_length_in);
-};
-*/
 
 class Deltaf_Data
 {
     private:
         ParameterReader * paraRdr;
 
-        int hrg_eos; // type of pdg file for hadron resonance gas EoS 
+        int hrg_eos; // type of pdg file for hadron resonance gas EoS
         int mode; //type of freezeout surface, VH or VAH
         int df_mode; // type of delta-f correction (e.g. 14-moment, CE, or modified distribution)
         int include_baryon;
@@ -48,7 +31,7 @@ class Deltaf_Data
         int points_T;
         int points_muB;
 
-        double T_min;      
+        double T_min;
         double muB_min;
 
         double dT;
@@ -90,7 +73,7 @@ class Deltaf_Data
         const double lambda_min = -1.0;     // lambda min / max values
         const double lambda_max = 2.0;
         const double delta_lambda = (lambda_max - lambda_min) / ((double)jonah_points - 1.0);
-        
+
         double * lambda_squared_array;      // squared isotropic momentum scale
         double * z_array;                   // renormalization factor (apart from detLambda)
         double * bulkPi_over_Peq_array;     // bulk pressure output
@@ -108,8 +91,6 @@ class Deltaf_Data
 
         // I skip the photon because I think it breaks down for lambda = -1
         void compute_jonah_coefficients(particle_info * particle_data, int Nparticle);
-
-        void compute_jonah_coefficients(double *Degeneracy, double *Mass, double *Sign, int number_of_chosen_particles);
 
         deltaf_coefficients evaluate_df_coefficients(double T, double muB, double E, double P, double bulkPi);
 

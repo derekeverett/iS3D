@@ -48,7 +48,7 @@ void EmissionFunctionArray::sample_dN_dy(Sampled_Particle new_particle, double y
 
 void EmissionFunctionArray::sample_dN_deta(Sampled_Particle new_particle, double eta)
 {
-  // construct event-average dN/deta distribution 
+  // construct event-average dN/deta distribution
   double eta_binwidth = 2.0*ETA_CUT / (double)ETA_BINS;
 
   int ieta = (int)floor((eta + ETA_CUT) / eta_binwidth);  // eta bin index
@@ -60,14 +60,14 @@ void EmissionFunctionArray::sample_dN_deta(Sampled_Particle new_particle, double
   }
 }
 
-void EmissionFunctionArray::sample_dN_dpT(Sampled_Particle new_particle, double yp)
+void EmissionFunctionArray::sample_dN_2pipTdpTdy(Sampled_Particle new_particle, double yp)
 {
-  // construct the dN/dpT distribution by adding counts from all events
+  // construct the dN/2pipTdpTdy distribution by adding counts from all events
   if(fabs(yp) <= Y_CUT)
   {
     int ipart = new_particle.chosen_index;
 
-    total_count[ipart] += 1.0;              // add counts within rapidity cut
+    //total_count[ipart] += 1.0;              // add counts within rapidity cut
 
     double px = new_particle.px;
     double py = new_particle.py;
@@ -79,7 +79,7 @@ void EmissionFunctionArray::sample_dN_dpT(Sampled_Particle new_particle, double 
 
     if(ipT >= 0 && ipT < PT_BINS)
     {
-      sampled_pT_PDF[ipart][ipT] += 1.0;    // add counts to each pT bin
+      dN_2pipTdpTdy_count[ipart][ipT] += 1.0;    // add counts to each pT bin
     }
   }
 }
@@ -176,7 +176,7 @@ double pion_thermal_weight_max(double x, double chem)
 
   if(chem != 0.0) printf("Error: pion has chemical potential\n");
 
-  // x = mass / T;  // x < 0.8554
+  // x = mass / T < 0.8554
   double x2 = x * x;
   double x3 = x2 * x;
   double x4 = x3 * x;
@@ -253,7 +253,7 @@ double fast_max_particle_number(double equilibrium_density, double bulk_density,
     case 3: // Mike
     {
       if(feqmod_breaks_down) goto linear_df;
-      
+
       particle_density = equilibrium_density  +  bulkPi * bulk_density;
       break;
     }
@@ -805,7 +805,7 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
       double detA = compute_detA(pimunu, shear_mod, bulk_mod);
 
       // determine if feqmod breaks down
-      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE, 0, T);
+      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE, 0, T, F, betabulk);
 
       // sum over hadrons
       for(int ipart = 0; ipart < npart; ipart++)
@@ -853,7 +853,18 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     const double Tavg = QGP.temperature;
     const double muBavg = QGP.baryon_chemical_potential;
 
-    if(FAST) printf("Using fast mode: (Tavg, muBavg) = (%lf, %lf)\n", Tavg, muBavg);
+    double F_avg, betabulk_avg; // for feqmod breakdown (compute Tavg pion density)
+
+    if(FAST)
+    {
+      printf("Using fast mode: (Tavg, muBavg) = (%lf, %lf)\n", Tavg, muBavg);
+      if(DF_MODE == 3)
+      {
+        deltaf_coefficients df_avg = df_data->evaluate_df_coefficients(Tavg, muBavg, 0.0, 0.0, 0.0);
+        F_avg = df_avg.F;
+        betabulk_avg = df_avg.betabulk;
+      }
+    }
 
     // for benchmarking momentum sampling efficiency
     long acceptances = 0;
@@ -867,7 +878,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double x = x_fo[icell];
       double y = y_fo[icell];
       double eta = eta_fo[icell];
-  
+
       double sinheta = sinh(eta);
       double cosheta = sqrt(1.0  +  sinheta * sinheta);
 
@@ -1020,7 +1031,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double detA = compute_detA(pimunu, shear_mod, bulk_mod);
 
       // determine if feqmod breaks down
-      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE, FAST, Tavg);
+      bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE, FAST, Tavg, F_avg, betabulk_avg);
 
       // discrete number fraction of each species
       std::vector<double> dn_list;
@@ -1048,11 +1059,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
         for(int ipart = 0; ipart < npart; ipart++)
         {
-          double mass = Mass[ipart];              
-          double mbar = mass / T;                
-          double degeneracy = Degeneracy[ipart]; 
-          double sign = Sign[ipart];             
-          double baryon = Baryon[ipart];          
+          double mass = Mass[ipart];
+          double mbar = mass / T;
+          double degeneracy = Degeneracy[ipart];
+          double sign = Sign[ipart];
+          double baryon = Baryon[ipart];
 
           dn_list[ipart] = max_particle_number(mbar, degeneracy, sign, baryon, T, alphaB, bulkPi, df, feqmod_breaks_down, laguerre, DF_MODE, INCLUDE_BARYON, neq_fact, J20_fact);
           dn_tot += dn_list[ipart];
@@ -1160,7 +1171,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             double ptau = pLab.ptau;
             double tau_pn = tau * pLab.pn;
             double mT = sqrt(mass_squared  + pLab.px * pLab.px  +  pLab.py * pLab.py);
-            
+
             sinheta = (ptau*sinhy - tau_pn*coshy) / mT;
             eta = asinh(sinheta);
             cosheta = sqrt(1.0 + sinheta * sinheta);
@@ -1190,7 +1201,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               // bin the distributions (avoids memory bottleneck)
               sample_dN_dy(new_particle, yp);
               sample_dN_deta(new_particle, eta);
-              sample_dN_dpT(new_particle, yp);
+              sample_dN_2pipTdpTdy(new_particle, yp);
               sample_vn(new_particle, yp);
               sample_dN_dX(new_particle, yp);
             }

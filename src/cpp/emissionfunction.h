@@ -60,7 +60,7 @@ typedef struct
 double compute_detA(Shear_Stress pimunu, double betapi, double bulk_mod);
 
 bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pion0, double bulkPi, double F, double betabulk);
-bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi, double betabulk, double detA, double detA_min, double z, Gauss_Laguerre * laguerre, int df_mode, int fast, double Tavg);
+bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi, double betabulk, double detA, double detA_min, double z, Gauss_Laguerre * laguerre, int df_mode, int fast, double Tavg, double F_avg, double betabulk_avg);
 
 // thermal particle density with outflow only (needed if enforce p.dsigma > 0)
 //double equilibrium_density_outflow(double mbar_squared, double sign, double chem, double dsigmaTime_over_dsigmaSpace, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
@@ -119,11 +119,9 @@ private:
   int R_BINS;
 
   // for sampler test (2+1d)
-  double **dN_dy_count;       // holds event-averaged sampled dN/dy for each species 
-  double **dN_deta_count;       // holds event-averaged sampled dN/deta for each species 
-
-  double **sampled_pT_PDF;    // holds event-averaged sampled (1/N) dN/dpT for each species
-  double *total_count;        // tracks total count within rapidity cut for each species
+  double **dN_dy_count;         // holds event-averaged sampled dN/dy for each species
+  double **dN_deta_count;       // holds event-averaged sampled dN/deta for each species
+  double **dN_2pipTdpTdy_count; // holds event-averaged sampled (1/N) dN/dpT for each species
 
   double ***sampled_vn_real;  // holds event-averaged sampled Re(Vn) for each species
   double ***sampled_vn_imag;  // holds event-averaged sampled Im(Vn) for each species
@@ -207,17 +205,12 @@ public:
 
 
   // add counts for sampled spectra / spacetime distributions (normalization in the write to file function)
-  void sample_dN_dpT(Sampled_Particle new_particle, double yp);
+  void sample_dN_2pipTdpTdy(Sampled_Particle new_particle, double yp);
   void sample_dN_dy(Sampled_Particle new_particle, double yp);
   void sample_dN_deta(Sampled_Particle new_particle, double eta);
   void sample_vn(Sampled_Particle new_particle, double yp);
   void sample_dN_dX(Sampled_Particle new_particle, double yp);
 
-  void write_sampled_dN_dy_to_file_test(int * MCID);
-  void write_sampled_dN_deta_to_file_test(int * MCID);
-  void write_sampled_pT_PDF_to_file_test(int * MCID);
-  void write_sampled_vn_to_file_test(int * MCID);
-  void write_sampled_dN_dX_to_file_test(int * MCID);
 
 
   void sample_dN_pTdpTdphidy_VAH_PL(double *, double *, double *,
@@ -252,9 +245,14 @@ public:
   void write_particle_list_toFile();              // write sampled particle list
   void write_particle_list_OSC();                 // write sampled particle list in OSCAR format for UrQMD/SMASH
   void write_yield_list_toFile();                 // write mean yield and sampled yield list to files
-  void write_sampled_pT_pdf_toFile(int * MCID);   // sampled boost-invariant dNdpT / N distributions
-  void write_sampled_vn_toFile(int * MCID);       // sampled boost-invariant vn(pT)
-  void write_sampled_dN_dX_toFile(int * MCID);  // sampled boost-invariant spacetime distributions dN_dXdy (dX = dtau, dr or (dtaudr)) (y = rapidity)
+
+  // for sampler test
+  void write_sampled_dN_dy_to_file_test(int * MCID);
+  void write_sampled_dN_deta_to_file_test(int * MCID);
+  void write_sampled_dN_2pipTdpTdy_to_file_test(int * MCID);
+  void write_sampled_vn_to_file_test(int * MCID);
+  void write_sampled_dN_dX_to_file_test(int * MCID);
+
 
 
   //:::::::::::::::::::::::::::::::::::::::::::::::::
