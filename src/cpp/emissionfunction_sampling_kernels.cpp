@@ -840,6 +840,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     unsigned seed;
     if (SAMPLER_SEED < 0) seed = chrono::system_clock::now().time_since_epoch().count();
     else seed = SAMPLER_SEED;
+    cout << "iS3D Sampling Seed : " << seed << endl;
 
     default_random_engine generator_poisson(seed);
     default_random_engine generator_type(seed + 10000);
