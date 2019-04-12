@@ -23,7 +23,7 @@ dimension  		     	= 2      # this switch determines the dimensionality of the f
 	                	      	 # 2: boost invariant
 	                	      	 # 3: full 3+1D
 
-df_mode		                = 4     # mode for type of delta-f correction
+df_mode		                = 3     # mode for type of delta-f correction
 			              	 # 1: 14-moment approximation viscous hydro
 			              	 # 2: Chapman-Enskog expansion viscous hydro
 			              	 # 3: Modified equilibrium distribution (Mike)
@@ -73,7 +73,7 @@ pT_bins				= 100	 	 # number of pT bins (for sampler tests)
 y_cut				= 5.0	 	 # |y| <= y_cut rapidity cut
 y_bins 			= 50
 
-eta_cut 		= 7			 	 # |eta| <= eta_cut (should be 2 units > y_cut)
+eta_cut 		= 7.0			 # |eta| <= eta_cut (should be 2 units > y_cut)
 eta_bins        = 70
 
 tau_min			= 0.0    		 # tau min in fm (for sampled dN_dtaudy test)
