@@ -28,126 +28,78 @@
 using namespace std;
 
 
-void EmissionFunctionArray::sample_dN_dy(Sampled_Particle new_particle, double yp)
+void EmissionFunctionArray::sample_dN_dy(int chosen_index, double y)
 {
-  // construct the dN/dy distribution averaged over rapidity window = 2.Y_CUT by adding counts from all events
-  double yp_binwidth = 2.0*Y_CUT / (double)Y_BINS;
+  // bin sampled dN/dy
 
-  int iyp = (int)floor((yp + Y_CUT) / yp_binwidth);  // rapidity bin index
+  // bin index
+  int iy = (int)floor((y + Y_CUT) / Y_WIDTH);
 
-  if(iyp >= 0 && iyp < Y_BINS)
-  {
-    int ipart = new_particle.chosen_index;
-    dN_dy_count[ipart][iyp] += 1.0;                  // add counts
-  }
-  else if(DIMENSION == 2)
-  {
-    printf("Error: boost-invariant particle not within rapidity cut\n");
-  }
+  // add counts
+  if(iy >= 0 && iy < Y_BINS) dN_dy_count[chosen_index][iy] += 1.0;
 }
 
-void EmissionFunctionArray::sample_dN_deta(Sampled_Particle new_particle, double eta)
+void EmissionFunctionArray::sample_dN_deta(int chosen_index, double eta)
 {
-  // construct event-average dN/deta distribution
-  double eta_binwidth = 2.0*ETA_CUT / (double)ETA_BINS;
+  // bin sampled dN/deta
 
-  int ieta = (int)floor((eta + ETA_CUT) / eta_binwidth);  // eta bin index
+  // bin index
+  int ieta = (int)floor((eta + ETA_CUT) / ETA_WIDTH);
 
-  if(ieta >= 0 && ieta < ETA_BINS)
-  {
-    int ipart = new_particle.chosen_index;
-    dN_deta_count[ipart][ieta] += 1.0;                    // add counts
-  }
+  if(ieta >= 0 && ieta < ETA_BINS) dN_deta_count[chosen_index][ieta] += 1.0;
 }
 
-void EmissionFunctionArray::sample_dN_2pipTdpTdy(Sampled_Particle new_particle, double yp)
+void EmissionFunctionArray::sample_dN_2pipTdpTdy(int chosen_index, double px, double py)
 {
-  // construct the dN/2pipTdpTdy distribution by adding counts from all events
-  if(fabs(yp) <= Y_CUT)
-  {
-    int ipart = new_particle.chosen_index;
+  // bin sampled dN/2pipTdpTdy
 
-    //total_count[ipart] += 1.0;              // add counts within rapidity cut
+  double pT = sqrt(px*px + py*py);
 
-    double px = new_particle.px;
-    double py = new_particle.py;
-    double pT = sqrt(px * px  +  py * py);
+  // bin index
+  int ipT = (int)floor((pT - PT_MIN) / PT_WIDTH);
 
-    double pTbinwidth = (PT_UPPER_CUT - PT_LOWER_CUT) / (double)PT_BINS;
-
-    int ipT = (int)floor((pT - PT_LOWER_CUT) / pTbinwidth);  // pT bin index
-
-    if(ipT >= 0 && ipT < PT_BINS)
-    {
-      dN_2pipTdpTdy_count[ipart][ipT] += 1.0;    // add counts to each pT bin
-    }
-  }
+  if(ipT >= 0 && ipT < PT_BINS) dN_2pipTdpTdy_count[chosen_index][ipT] += 1.0;
 }
 
-void EmissionFunctionArray::sample_vn(Sampled_Particle new_particle, double yp)
+void EmissionFunctionArray::sample_vn(int chosen_index, double px, double py)
 {
-  // construct the vn's by adding counts from all events
-  if(fabs(yp) <= Y_CUT)
+  // bin vn(pT)
+
+  double pT = sqrt(px*px + py*py);
+  double phi = atan2(py, px);
+  if(phi < 0.0) phi += two_pi;
+
+  // pT bin index
+  int ipT = (int)floor((pT - PT_MIN) / PT_WIDTH);
+
+  if(ipT >= 0 && ipT < PT_BINS)
   {
-    int ipart = new_particle.chosen_index;
+    // pT count
+    pT_count[chosen_index][ipT] += 1.0;
 
-    double px = new_particle.px;
-    double py = new_particle.py;
-    double pz = new_particle.pz;
-
-    double phi = atan2(py, px);
-    if(phi < 0.0)
+    for(int k = 0; k < K_MAX; k++)
     {
-      phi += 2.0 * M_PI;
-    }
-    double pT = sqrt(px * px  +  py * py);
-
-    double pTbinwidth = (PT_UPPER_CUT - PT_LOWER_CUT) / (double)PT_BINS;
-
-    int ipT = (int)floor((pT - PT_LOWER_CUT) / pTbinwidth);  // pT bin index
-
-    if(ipT >= 0 && ipT < PT_BINS)
-    {
-      // add counts to each pT bin
-      pT_count_vn[ipart][ipT] += 1.0;
-
-      for(int k = 0; k < K_MAX; k++)
-      {
-        // add complex exponential weights to each bin
-        sampled_vn_real[k][ipart][ipT] += cos(((double)k + 1.0) * phi);
-        sampled_vn_imag[k][ipart][ipT] += sin(((double)k + 1.0) * phi);
-      }
+      // Vn count
+      vn_real_count[k][chosen_index][ipT] += cos(((double)k + 1.0) * phi);
+      vn_imag_count[k][chosen_index][ipT] += sin(((double)k + 1.0) * phi);
     }
   }
 }
 
-void EmissionFunctionArray::sample_dN_dX(Sampled_Particle new_particle, double yp)
+void EmissionFunctionArray::sample_dN_dX(int chosen_index, double tau, double x, double y)
 {
-  // construct spacetime distributions by adding counts from all events
-  if(fabs(yp) <= Y_CUT)
-  {
-    int ipart = new_particle.chosen_index;
+  // construct spacetime distributions
+  // assume dN/deta = dN/dy (boost-invariance)
 
-    double taubinwidth = (TAU_MAX - TAU_MIN) / (double)TAU_BINS;
-    double rbinwidth = (R_MAX - R_MIN) / (double)R_BINS;
+  double r = sqrt(x*x + y*y);
 
-    double tau = new_particle.tau;
-    double x = new_particle.x;
-    double y = new_particle.y;
-    double r = sqrt(x * x  +  y * y);
+  // bin indices
+  int itau = (int)floor((tau - TAU_MIN) / TAU_WIDTH);
+  int ir = (int)floor((r - R_MIN) / R_WIDTH);
 
-    int itau = (int)floor((tau - TAU_MIN) / taubinwidth); // tau bin index
-    int ir = (int)floor((r - R_MIN) / rbinwidth);         // r bin index
+  if(itau >= 0 && itau < TAU_BINS) dN_taudtaudy_count[chosen_index][itau] += 1.0;
 
-    if(itau >= 0 && itau < TAU_BINS)
-    {
-      sampled_dN_taudtaudy[ipart][itau] += 1.0; // add count to tau bin
-    }
-    if(ir >= 0 && ir < R_BINS)
-    {
-      sampled_dN_twopirdrdy[ipart][ir] += 1.0;  // add count to rbin
-    }
-  }
+  if(ir >= 0 && ir < R_BINS) dN_twopirdrdy_count[chosen_index][ir] += 1.0;
 }
 
 
@@ -160,10 +112,8 @@ double canonical(default_random_engine & generator)
 
 double uniform_rapidity_distribution(default_random_engine & generator, double y_max)
 {
+  // uniformly sample the rapidity E [-y_max, y_max); open bound doesn't matter
   double random_number = generate_canonical<double, numeric_limits<double>::digits>(generator);
-
-  // return a uniform rapidity yp = [-5,5)
-  // open bound doesn't really matter
 
   return y_max * (2.0 * random_number - 1.0);
 }
@@ -824,8 +774,6 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
       Ntot *= (2.0 * Y_CUT);
     }
 
-    mean_yield = Ntot;
-
     return Ntot;
   }
 
@@ -1157,15 +1105,15 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           new_particle.px = pLab.px;
           new_particle.py = pLab.py;
 
-          double E, pz, yp;
+          double E, pz, rapidity;
 
           // if boost-invariant: sample the rapidity uniformly
           // and compute corresponding (pz, eta)
           if(DIMENSION == 2 && add_particle)
           {
-            yp = uniform_rapidity_distribution(generator_rapidity, y_max);
+            rapidity = uniform_rapidity_distribution(generator_rapidity, y_max);
 
-            double sinhy = sinh(yp);
+            double sinhy = sinh(rapidity);
             double coshy = sqrt(1.0 + sinhy * sinhy);
 
             double ptau = pLab.ptau;
@@ -1184,7 +1132,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           {
             pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
             E = sqrt(mass_squared +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
-            yp = 0.5 * log((E + pz) / (E - pz));
+            rapidity = 0.5 * log((E + pz) / (E - pz));
           }
 
           new_particle.eta = eta;
@@ -1199,11 +1147,11 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             if(TEST_SAMPLER)
             {
               // bin the distributions (avoids memory bottleneck)
-              sample_dN_dy(new_particle, yp);
-              sample_dN_deta(new_particle, eta);
-              sample_dN_2pipTdpTdy(new_particle, yp);
-              sample_vn(new_particle, yp);
-              sample_dN_dX(new_particle, yp);
+              sample_dN_dy(chosen_index, rapidity);
+              sample_dN_deta(chosen_index, eta);
+              sample_dN_2pipTdpTdy(chosen_index, pLab.px, pLab.py);
+              sample_vn(chosen_index, pLab.px, pLab.py);
+              sample_dN_dX(chosen_index, tau, x, y);
             }
             else
             {
@@ -1212,7 +1160,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               #pragma omp critical
               particle_event_list[ievent].push_back(new_particle);
             }
-            particle_yield_list[ievent] += 1;
           } // add sampled particle to event list
         } // sampled hadrons (n)
       } // sampled events (ievent)

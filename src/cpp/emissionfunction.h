@@ -41,8 +41,6 @@ class Lab_Momentum
     void boost_pLRF_to_lab_frame(Milne_Basis basis_vectors, double ut, double ux, double uy, double un);
 };
 
-// three distributions to sample heavy hadrons
-//typedef enum {heavy, moderate, light} heavy_distribution;
 
 typedef struct
 {
@@ -62,8 +60,6 @@ double compute_detA(Shear_Stress pimunu, double betapi, double bulk_mod);
 bool is_linear_pion0_density_negative(double T, double neq_pion0, double J20_pion0, double bulkPi, double F, double betabulk);
 bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi, double betabulk, double detA, double detA_min, double z, Gauss_Laguerre * laguerre, int df_mode, int fast, double Tavg, double F_avg, double betabulk_avg);
 
-// thermal particle density with outflow only (needed if enforce p.dsigma > 0)
-//double equilibrium_density_outflow(double mbar_squared, double sign, double chem, double dsigmaTime_over_dsigmaSpace, double * pbar_root1, double * pbar_exp_weight1, const int pbar_pts);
 
 class EmissionFunctionArray
 {
@@ -98,38 +94,44 @@ private:
 
   int TEST_SAMPLER;
 
-  int Nevents;              // number of sampled events
-  double mean_yield;        // mean number of particles emitted from freezeout surface (includes backflow)
+  int Nevents = 1;                  // default number of sampled events
 
   // for binning sampled particles (for sampler tests)
-  double PT_LOWER_CUT;
-  double PT_UPPER_CUT;
+  double PT_MIN;
+  double PT_MAX;
   int PT_BINS;
+  double PT_WIDTH;
+
   double Y_CUT;
   int Y_BINS;
+  double Y_WIDTH;
+
   double ETA_CUT;
   int ETA_BINS;
+  double ETA_WIDTH;
 
   double TAU_MIN;
   double TAU_MAX;
   int TAU_BINS;
+  double TAU_WIDTH;
 
   double R_MIN;
   double R_MAX;
   int R_BINS;
+  double R_WIDTH;
 
   // for sampler test (2+1d)
   double **dN_dy_count;         // holds event-averaged sampled dN/dy for each species
   double **dN_deta_count;       // holds event-averaged sampled dN/deta for each species
   double **dN_2pipTdpTdy_count; // holds event-averaged sampled (1/N) dN/dpT for each species
 
-  double ***sampled_vn_real;  // holds event-averaged sampled Re(Vn) for each species
-  double ***sampled_vn_imag;  // holds event-averaged sampled Im(Vn) for each species
-  const int K_MAX = 7;        // {v_1, ..., v7}
-  double **pT_count_vn;       // tracks count in each pT bin for each species (for vn calculation)
+  double ***vn_real_count;  // holds event-averaged sampled Re(Vn) for each species
+  double ***vn_imag_count;  // holds event-averaged sampled Im(Vn) for each species
+  const int K_MAX = 7;      // {v1, ..., v7}
+  double **pT_count;        // tracks count in each pT bin for each species (for vn calculation)
 
-  double **sampled_dN_taudtaudy;
-  double **sampled_dN_twopirdrdy;
+  double **dN_taudtaudy_count;
+  double **dN_twopirdrdy_count;
 
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
@@ -141,12 +143,8 @@ private:
   double *St, *Sx, *Sy, *Sn; //to hold the polarization vector of all species
   double *Snorm; //the normalization of the polarization vector of all species
 
-
-
-
   std::vector<Sampled_Particle> particle_list;                        // to hold sampled particle list (inactive)
   std::vector< std::vector<Sampled_Particle> > particle_event_list;   // holds sampled particle list of all events
-  std::vector<int> particle_yield_list;                               // particle yield for all events (includes p.dsigma particles)
 
   int *chosen_particles_01_table;       // has length Nparticle, 0 means miss, 1 means include
   int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table
@@ -204,12 +202,12 @@ public:
   void sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Deltaf_Data *df_data, Gauss_Laguerre * laguerre, Gauss_Legendre * legendre);
 
 
-  // add counts for sampled spectra / spacetime distributions (normalization in the write to file function)
-  void sample_dN_2pipTdpTdy(Sampled_Particle new_particle, double yp);
-  void sample_dN_dy(Sampled_Particle new_particle, double yp);
-  void sample_dN_deta(Sampled_Particle new_particle, double eta);
-  void sample_vn(Sampled_Particle new_particle, double yp);
-  void sample_dN_dX(Sampled_Particle new_particle, double yp);
+  // add counts for sampled distributions
+  void sample_dN_dy(int chosen_index, double y);
+  void sample_dN_deta(int chosen_index, double eta);
+  void sample_dN_2pipTdpTdy(int chosen_index, double px, double py);
+  void sample_vn(int chosen_index, double px, double py);
+  void sample_dN_dX(int chosen_index, double tau, double x, double y);
 
 
 
@@ -244,7 +242,6 @@ public:
   void write_dN_dpTdphidy_with_resonance_decays_toFile();   // write 3D spectra to file in experimental bins (w/ resonance decay effects)
   void write_particle_list_toFile();              // write sampled particle list
   void write_particle_list_OSC();                 // write sampled particle list in OSCAR format for UrQMD/SMASH
-  void write_yield_list_toFile();                 // write mean yield and sampled yield list to files
 
   // for sampler test
   void write_sampled_dN_dy_to_file_test(int * MCID);
