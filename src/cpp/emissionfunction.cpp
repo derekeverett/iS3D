@@ -138,7 +138,7 @@ bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi,
   }
   else if(df_mode == 4)
   {
-    if(z < 0.0) printf("Error: z should be positive");
+    //if(z < 0.0) printf("Error: z should be positive");
 
     if(detA <= detA_min || z < 0.0) return true;
   }
