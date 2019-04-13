@@ -16,10 +16,11 @@ using namespace std;
 // local rest frame momentum
 typedef struct
 {
-  double E;    // u.p
-  double px;   // -X.p
-  double py;   // -Y.p
-  double pz;   // -Z.p
+  double E;     // u.p
+  double px;    // -X.p
+  double py;    // -Y.p
+  double pz;    // -Z.p
+  double feq; // thermal distribution
 } LRF_Momentum;
 
 // lab frame momentum
