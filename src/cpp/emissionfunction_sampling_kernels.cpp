@@ -306,7 +306,7 @@ double max_particle_number(double mbar, double degeneracy, double sign, double b
 }
 
 
-
+/*
 double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, double baryon, double T, double alphaB, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, deltaf_coefficients df, double baryon_enthalpy_ratio, int df_mode)
 {
   // pLRF components
@@ -400,15 +400,14 @@ double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, do
 
   return (1.0 + df_tot) / 2.0;
 }
+*/
 
-
-LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double baryon, double T, double alphaB)
+LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double T, double chem)
 {
   // sample the local rest frame momentum from a thermal distribution
 
   double mbar = mass / T;
   double mbar_squared = mbar * mbar;
-  double chem = baryon * alphaB;
 
   // currently the momentum sampler does not work for photons and bosons with nonzero chemical potential
   // so non-equilibrium or electric / strange charge chemical potentials are not considered
@@ -422,12 +421,12 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
   double pbar, Ebar, phi_over_2pi, costheta;
 
-  if(mass == 0.0)
-  {
-    printf("Error: cannot sample photons with this method. Exiting...\n");
-    exit(-1);
-  }
-  else if(mbar < 1.008)
+  // if(mass == 0.0)
+  // {
+  //   printf("Error: cannot sample photons with this method. Exiting...\n");
+  //   exit(-1);
+  // }
+  if(mbar < 1.008)
   {
     double weq_max = 1.0; // default value if don't need to rescale weq = exp(p/T) / (exp(E/T) + sign)
 
@@ -445,21 +444,21 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       double l2 = log(r2);
       double l3 = log(r3);
 
-      double l1_plus_l2 = l1 + l2;
-
       pbar = - (l1 + l2 + l3);
       Ebar = sqrt(pbar * pbar  +  mbar_squared);
-
-      phi_over_2pi = l1_plus_l2 * l1_plus_l2 / (pbar * pbar);
-      costheta = (l1 - l2) / l1_plus_l2;
 
       double weight = 1.0 / (exp(Ebar) + sign) / weq_max / (r1 * r2 * r3);
 
       // check if 0 <= weight <= 1
-      if(fabs(weight - 0.5) > 0.5) printf("Sample momentum error: weight = %lf out of bounds\n", weight);
+      //if(fabs(weight - 0.5) > 0.5) printf("Sample momentum error: weight = %lf out of bounds\n", weight);
 
       // check pLRF acceptance
-      if(canonical(generator) < weight) break;
+      if(canonical(generator) < weight) 
+      {
+        phi_over_2pi = (l1 + l2) * (l1 + l2) / (pbar * pbar);
+        costheta = (l1 - l2) / (l1 + l2);
+        break;
+      }
 
     } // rejection loop
 
@@ -518,11 +517,9 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
         double l2 = log(1.0 - canonical(generator));
         double l3 = log(1.0 - canonical(generator));
 
-        double l1_plus_l2 = l1 + l2;
-
         kbar = - (l1 + l2 + l3);
-        phi_over_2pi = l1_plus_l2 * l1_plus_l2 / (kbar * kbar);
-        costheta = (l1 - l2) / l1_plus_l2;
+        phi_over_2pi = (l1 + l2) * (l1 + l2) / (kbar * kbar);
+        costheta = (l1 - l2) / (l1 + l2);
 
       } // distribution 3 (light)
       else
@@ -538,7 +535,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
       double weight = pbar/Ebar * exponent / (exponent + sign);
 
-      if(fabs(weight - 0.5) > 0.5) printf("Sample momemtum error: weight = %f out of bounds\n", weight);
+      //if(fabs(weight - 0.5) > 0.5) printf("Sample momemtum error: weight = %f out of bounds\n", weight);
 
       // check pLRF acceptance
       if(canonical(generator) < weight) break;
@@ -919,14 +916,35 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
 
-      // modified coefficients (Mike / Jonah)
+      // df coefficients
+      double c0 = df.c0;
+      double c1 = df.c1;
+      double c2 = df.c2;
+      double c3 = df.c3;
+      double c4 = df.c4;
+      double shear14_coeff = df.shear14_coeff;
+      
       double F = df.F;
       double G = df.G;
       double betabulk = df.betabulk;
       double betaV = df.betaV;
       double betapi = df.betapi;
+
       double lambda = df.lambda;
       double z = df.z;
+      double delta_lambda = df.delta_lambda;
+      double delta_z = df.delta_z;
+
+      // useful expressions
+      double c0_minus_c2 = c0 - c2;
+      double fourc2_minus_c0 = 4.0*c2 - c0;
+
+      double two_betapi_T = 2.0 * betapi * T;
+      double three_T = 3.0 * T;
+      double F_over_T2 = F / (T * T);
+      double bulkPi_over_betabulk = bulkPi / betabulk;
+
+      double delta_z_minus_three_delta_lambda = delta_z - 3.0 * delta_lambda;
 
       // milne basis class
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
@@ -949,10 +967,21 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       pimunu.test_pimunu_orthogonality_and_tracelessness(ut, ux, uy, un, tau2);
       pimunu.boost_pimunu_to_lrf(basis_vectors, tau2);
 
+      double pixx_LRF = pimunu.pixx_LRF;
+      double pixy_LRF = pimunu.pixy_LRF;
+      double pixz_LRF = pimunu.pixz_LRF;
+      double piyy_LRF = pimunu.piyy_LRF;
+      double piyz_LRF = pimunu.piyz_LRF;
+      double pizz_LRF = pimunu.pizz_LRF;
+
       // baryon diffusion class
       Baryon_Diffusion Vmu(Vt, Vx, Vy, Vn);
       Vmu.test_Vmu_orthogonality(ut, ux, uy, un, tau2);
       Vmu.boost_Vmu_to_lrf(basis_vectors, tau2);
+
+      double Vx_LRF = Vmu.Vx_LRF;
+      double Vy_LRF = Vmu.Vy_LRF;
+      double Vz_LRF = Vmu.Vz_LRF;
 
       // modified temperature / chemical potential and rescaling coefficients
       double T_mod = T;
@@ -1041,39 +1070,96 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           double mass_squared = mass * mass;
           double sign = Sign[chosen_index];                   // quantum statistics sign
           double baryon = Baryon[chosen_index];               // baryon number
+          double chem = baryon * alphaB;
+          double chem_mod = baryon * alphaB_mod;
           int mcid = MCID[chosen_index];                      // mc_id
 
           LRF_Momentum pLRF;                                  // local rest frame momentum
           double w_visc = 1.0;                                // viscous weight
 
           // sample the local rest frame momentum
+          // and compute viscous weight
           switch(DF_MODE)
           {
             case 1: // 14 moment
+            {
+              pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, T, chem);
+
+              double E = pLRF.E;
+              double px = pLRF.px;
+              double py = pLRF.py;
+              double pz = pLRF.pz;
+
+              double feqbar = 1.0 - sign / (exp(E/T - chem) + sign);
+              double pimunu_pmu_pnu = px*px*pixx_LRF + py*py*piyy_LRF + pz*pz*pizz_LRF + 2.*(px*py*pixy_LRF + px*pz*pixz_LRF + py*pz*piyz_LRF);
+              double Vmu_pmu = - (px*Vx_LRF + py*Vy_LRF + pz*Vz_LRF);            
+
+              double df_shear = pimunu_pmu_pnu / shear14_coeff;
+              double df_bulk = (c0_minus_c2 * mass_squared  +  (baryon * c1  +  fourc2_minus_c0 * E) * E) * bulkPi;
+              double df_diff = (baryon * c3  +  c4 * E) * Vmu_pmu;
+
+              double df_reg = max(-1.0, min(1.0, feqbar * (df_shear + df_bulk + df_diff)));
+
+              w_visc = (1.0 + df_reg) / 2.0;
+            }
             case 2: // Chapman Enskog
             {
-              switch_to_linear_df:
+              chapman_enskog:
 
-              pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, baryon, T, alphaB);
-              w_visc = compute_df_weight(pLRF, mass_squared, sign, baryon, T, alphaB, pimunu, bulkPi, Vmu, df, baryon_enthalpy_ratio, DF_MODE);
+              pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, T, chem);
+            
+              double E = pLRF.E;
+              double px = pLRF.px;
+              double py = pLRF.py;
+              double pz = pLRF.pz;
+
+              double feqbar = 1.0 - sign / (exp(E/T - chem) + sign);
+              double pimunu_pmu_pnu = px*px*pixx_LRF + py*py*piyy_LRF + pz*pz*pizz_LRF + 2.*(px*py*pixy_LRF + px*pz*pixz_LRF + py*pz*piyz_LRF);
+              double Vmu_pmu = - (px*Vx_LRF + py*Vy_LRF + pz*Vz_LRF); 
+
+              double df_shear = pimunu_pmu_pnu / (two_betapi_T * E);
+              double df_bulk = (baryon * G  +  F_over_T2 * E  +  (E - mass_squared / E) / three_T) * bulkPi_over_betabulk;
+              double df_diff = (baryon_enthalpy_ratio  -  baryon / E) * Vmu_pmu / betaV;
+
+              double df_reg = max(-1.0, min(1.0, feqbar * (df_shear + df_bulk + df_diff)));
+
+              w_visc = (1.0 + df_reg) / 2.0;
 
               break;
             }
             case 3: // Modified (Mike)
             {
-              if(feqmod_breaks_down) goto switch_to_linear_df;
+              if(feqmod_breaks_down) goto chapman_enskog;
 
-              pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, baryon, T_mod, alphaB_mod);
+              pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, T_mod, chem_mod);
               pLRF = rescale_momentum(pLRF, mass_squared, baryon, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
 
               break;
             }
             case 4: // Modified (Jonah)
             {
-              if(feqmod_breaks_down) goto switch_to_linear_df;
+              pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, T, 0.0);
 
-              pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, 0.0, T, 0.0);
-              pLRF = rescale_momentum(pLRF, mass_squared, 0.0, pimunu, Vmu, shear_mod, bulk_mod, 0.0, 0.0);
+              if(!feqmod_breaks_down)
+              {
+                pLRF = rescale_momentum(pLRF, mass_squared, 0.0, pimunu, Vmu, shear_mod, bulk_mod, 0.0, 0.0);
+              }
+              else
+              {
+                double E = pLRF.E;
+                double px = pLRF.px;
+                double py = pLRF.py;
+                double pz = pLRF.pz;
+
+                double feqbar = 1.0 - sign / (exp(E/T) + sign);
+                double pimunu_pmu_pnu = px*px*pixx_LRF + py*py*piyy_LRF + pz*pz*pizz_LRF + 2.*(px*py*pixy_LRF + px*pz*pixz_LRF + py*pz*piyz_LRF);
+
+                double df_shear = feqbar * pimunu_pmu_pnu / (two_betapi_T * E);
+                double df_bulk = delta_z_minus_three_delta_lambda  +  feqbar * delta_lambda * (E  -  mass_squared / E) / T;
+
+                double df_reg = max(-1.0, min(1.0, df_shear + df_bulk));
+                w_visc = (1.0 + df_reg) / 2.0;
+              }
 
               break;
             }
@@ -1089,61 +1175,56 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           pLab.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
 
           // flux weight
-          double w_flux = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz) / (pLRF.E * ds_max);
-
-          bool add_particle = (canonical(generator_keep) < (w_flux * w_visc));
-
-          // new sampled particle info
-          Sampled_Particle new_particle;
-
-          new_particle.chosen_index = chosen_index;
-          new_particle.mcID = mcid;
-          new_particle.tau = tau;
-          new_particle.x = x;
-          new_particle.y = y;
-          new_particle.mass = mass;
-          new_particle.px = pLab.px;
-          new_particle.py = pLab.py;
-
-          double E, pz, rapidity;
-
-          // if boost-invariant: sample the rapidity uniformly
-          // and compute corresponding (pz, eta)
-          if(DIMENSION == 2 && add_particle)
-          {
-            rapidity = uniform_rapidity_distribution(generator_rapidity, y_max);
-
-            double sinhy = sinh(rapidity);
-            double coshy = sqrt(1.0 + sinhy * sinhy);
-
-            double ptau = pLab.ptau;
-            double tau_pn = tau * pLab.pn;
-            double mT = sqrt(mass_squared  + pLab.px * pLab.px  +  pLab.py * pLab.py);
-
-            sinheta = (ptau*sinhy - tau_pn*coshy) / mT;
-            eta = asinh(sinheta);
-            cosheta = sqrt(1.0 + sinheta * sinheta);
-
-            pz = mT * sinhy;
-            E = mT * coshy;
-            //cout << pz << "\t" << tau_pn * cosheta  +  ptau * sinheta << endl;
-          }
-          else
-          {
-            pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
-            E = sqrt(mass_squared +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
-            rapidity = 0.5 * log((E + pz) / (E - pz));
-          }
-
-          new_particle.eta = eta;
-          new_particle.t = tau * cosheta;
-          new_particle.z = tau * sinheta;
-          new_particle.E = E;
-          new_particle.pz = pz;
+          double w_flux = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz) / (pLRF.E * ds_max);          
 
           // add particle
-          if(add_particle)
+          if(canonical(generator_keep) < (w_flux * w_visc))
           {
+            // new sampled particle info
+            Sampled_Particle new_particle;
+
+            new_particle.chosen_index = chosen_index;
+            new_particle.mcID = mcid;
+            new_particle.tau = tau;
+            new_particle.x = x;
+            new_particle.y = y;
+            new_particle.mass = mass;
+            new_particle.px = pLab.px;
+            new_particle.py = pLab.py;
+
+            double E, pz, rapidity;
+
+            if(DIMENSION == 2)
+            {
+              rapidity = uniform_rapidity_distribution(generator_rapidity, y_max);
+
+              double sinhy = sinh(rapidity);
+              double coshy = sqrt(1.0 + sinhy * sinhy);
+
+              double ptau = pLab.ptau;
+              double tau_pn = tau * pLab.pn;
+              double mT = sqrt(mass_squared  + pLab.px * pLab.px  +  pLab.py * pLab.py);
+
+              sinheta = (ptau*sinhy - tau_pn*coshy) / mT;
+              eta = asinh(sinheta);
+              cosheta = sqrt(1.0 + sinheta * sinheta);
+
+              pz = mT * sinhy;
+              E = mT * coshy;
+            }
+            else
+            {
+              pz = tau * pLab.pn * cosheta  +  pLab.ptau * sinheta;
+              E = sqrt(mass_squared +  pLab.px * pLab.px  +  pLab.py * pLab.py  +  pz * pz);
+              rapidity = 0.5 * log((E + pz) / (E - pz));
+            }
+
+            new_particle.eta = eta;
+            new_particle.t = tau * cosheta;
+            new_particle.z = tau * sinheta;
+            new_particle.E = E;
+            new_particle.pz = pz;
+
             if(TEST_SAMPLER)
             {
               // bin the distributions (avoids memory bottleneck)
