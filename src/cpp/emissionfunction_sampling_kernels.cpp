@@ -950,6 +950,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       double bulkPi_over_betabulk = bulkPi / betabulk;
 
       double delta_z_minus_three_delta_lambda = delta_z - 3.0 * delta_lambda;
+      double delta_lambda_over_T = delta_lambda / T;
 
       // milne basis class
       Milne_Basis basis_vectors(ut, ux, uy, un, uperp, utperp, tau);
@@ -1110,6 +1111,9 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
               w_visc = (1.0 + df_reg) / 2.0;
 
+
+              // I could also compute the flux weight
+
               break;
             }
             case 2: // Chapman Enskog
@@ -1167,7 +1171,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
                 double pimunu_pmu_pnu = px*px*pixx_LRF + py*py*piyy_LRF + pz*pz*pizz_LRF + 2.*(px*py*pixy_LRF + px*pz*pixz_LRF + py*pz*piyz_LRF);
 
                 double df_shear = feqbar * pimunu_pmu_pnu / (two_betapi_T * E);
-                double df_bulk = delta_z_minus_three_delta_lambda  +  feqbar * delta_lambda * (E  -  mass_squared / E) / T;
+                double df_bulk = delta_z_minus_three_delta_lambda  +  feqbar * delta_lambda_over_T * (E  -  mass_squared / E);
 
                 double df_reg = max(-1.0, min(1.0, df_shear + df_bulk));
                 w_visc = (1.0 + df_reg) / 2.0;
