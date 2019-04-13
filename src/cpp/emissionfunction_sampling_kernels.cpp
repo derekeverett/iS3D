@@ -49,6 +49,20 @@ void EmissionFunctionArray::sample_dN_deta(int chosen_index, double eta)
   if(ieta >= 0 && ieta < ETA_BINS) dN_deta_count[chosen_index][ieta] += 1.0;
 }
 
+void EmissionFunctionArray::sample_dN_dphipdy(int chosen_index, double px, double py)
+{
+  // bin sampled dN/dphipdy
+
+  double phip = atan2(py, px);
+  if(phip < 0.0) phip += two_pi;
+
+  // bin index
+  int iphip = (int)floor(phip / PHIP_WIDTH);
+
+  // add counts
+  if(iphip >= 0 && iphip < PHIP_BINS) dN_dphipdy_count[chosen_index][iphip] += 1.0;
+}
+
 void EmissionFunctionArray::sample_dN_2pipTdpTdy(int chosen_index, double px, double py)
 {
   // bin sampled dN/2pipTdpTdy
@@ -417,8 +431,6 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
   //   exit(-1);
   // }
 
-  bool rejected = true;
-
   double pbar, Ebar, phi_over_2pi, costheta, feq;
 
   LRF_Momentum pLRF;
@@ -434,7 +446,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
     if(mbar < 0.8554 && sign == -1.0) weq_max = pion_thermal_weight_max(mbar, chem);
 
-    while(rejected)
+    while(true)
     {
       *samples = (*samples) + 1;
       // draw (p,phi,costheta) from p^2.exp(-p/T).dp.dphi.dcostheta by sampling (r1,r2,r3)
@@ -486,7 +498,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
     double kbar;  // kinetic energy / T
 
-    while(rejected)
+    while(true)
     {
       *samples = (*samples) + 1;
 
@@ -567,34 +579,22 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
 }
 
-LRF_Momentum rescale_momentum(LRF_Momentum pLRF_mod, double mass_squared, double baryon, Shear_Stress pimunu, Baryon_Diffusion Vmu, double shear_mod, double bulk_mod, double diff_mod, double baryon_enthalpy_ratio)
+LRF_Momentum rescale_momentum(LRF_Momentum pLRF_mod, double mass_squared, double baryon, double pixx, double pixy, double pixz, double piyy, double piyz, double pizz, double Vx, double Vy, double Vz, double shear_mod, double isotropic_scale, double diff_mod, double baryon_enthalpy_ratio)
 {
-    double E_mod = pLRF_mod.E;
-    double px_mod = pLRF_mod.px;
-    double py_mod = pLRF_mod.py;
-    double pz_mod = pLRF_mod.pz;
+    double E = pLRF_mod.E;
+    double px = pLRF_mod.px;
+    double py = pLRF_mod.py;
+    double pz = pLRF_mod.pz;
 
-    // LRF shear stress components
-    double pixx = pimunu.pixx_LRF;
-    double pixy = pimunu.pixy_LRF;
-    double pixz = pimunu.pixz_LRF;
-    double piyy = pimunu.piyy_LRF;
-    double piyz = pimunu.piyz_LRF;
-    double pizz = pimunu.pizz_LRF;
-
-    // LRF baryon diffusion components
-    double Vx = Vmu.Vx_LRF;
-    double Vy = Vmu.Vy_LRF;
-    double Vz = Vmu.Vz_LRF;
-    diff_mod *= (E_mod * baryon_enthalpy_ratio  +  baryon);
+    diff_mod *= (E * baryon_enthalpy_ratio  +  baryon);
 
     LRF_Momentum pLRF;
 
     // local momentum transformation
     // p_i = A_ij * p_mod_j  +  E_mod * q_i  +  b * T * a_i
-    pLRF.px = (1.0 + bulk_mod) * px_mod  +  shear_mod * (pixx * px_mod  +  pixy * py_mod  +  pixz * pz_mod)  +  diff_mod * Vx;
-    pLRF.py = (1.0 + bulk_mod) * py_mod  +  shear_mod * (pixy * px_mod  +  piyy * py_mod  +  piyz * pz_mod)  +  diff_mod * Vy;
-    pLRF.pz = (1.0 + bulk_mod) * pz_mod  +  shear_mod * (pixz * px_mod  +  piyz * py_mod  +  pizz * pz_mod)  +  diff_mod * Vz;
+    pLRF.px = isotropic_scale * px  +  shear_mod * (pixx * px  +  pixy * py  +  pixz * pz)  +  diff_mod * Vx;
+    pLRF.py = isotropic_scale * py  +  shear_mod * (pixy * px  +  piyy * py  +  piyz * pz)  +  diff_mod * Vy;
+    pLRF.pz = isotropic_scale * pz  +  shear_mod * (pixz * px  +  piyz * py  +  pizz * pz)  +  diff_mod * Vz;
     pLRF.E = sqrt(mass_squared  +  pLRF.px * pLRF.px  +  pLRF.py * pLRF.py  +  pLRF.pz * pLRF.pz);
 
     return pLRF;
@@ -1010,6 +1010,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         bulk_mod = lambda;
         diff_mod = 0.0;
       }
+      double isotropic_scale = 1.0 + bulk_mod;
 
       double detA = compute_detA(pimunu, shear_mod, bulk_mod);
 
@@ -1058,7 +1059,6 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       dn_tot *= (2.0 * y_max * ds_max);                      // multiply by the volume
 
 
-
       // construct discrete probability distribution for particle types (weight[ipart] ~ dn_list[ipart] / dn_tot)
       std::discrete_distribution<int> particle_type(dn_list.begin(), dn_list.end());
 
@@ -1084,6 +1084,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
           LRF_Momentum pLRF;                                  // local rest frame momentum
           double w_visc = 1.0;                                // viscous weight
+          double w_flux;                                      // flux weight
 
           // sample the local rest frame momentum
           // and compute viscous weight
@@ -1110,9 +1111,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               double df_reg = max(-1.0, min(1.0, feqbar * (df_shear + df_bulk + df_diff)));
 
               w_visc = (1.0 + df_reg) / 2.0;
-
-
-              // I could also compute the flux weight
+              w_flux = max(0.0, E * dst  -  px * dsx  -  py * dsy  -  pz * dsz) / (E * ds_max);
 
               break;
             }
@@ -1139,6 +1138,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               double df_reg = max(-1.0, min(1.0, feqbar * (df_shear + df_bulk + df_diff)));
 
               w_visc = (1.0 + df_reg) / 2.0;
+              w_flux = max(0.0, E * dst  -  px * dsx  -  py * dsy  -  pz * dsz) / (E * ds_max);
 
               break;
             }
@@ -1147,7 +1147,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               if(feqmod_breaks_down) goto chapman_enskog;
 
               pLRF = sample_momentum(generator_momentum, &acceptances, &samples, mass, sign, T_mod, chem_mod);
-              pLRF = rescale_momentum(pLRF, mass_squared, baryon, pimunu, Vmu, shear_mod, bulk_mod, diff_mod, baryon_enthalpy_ratio);
+              pLRF = rescale_momentum(pLRF, mass_squared, baryon, pixx_LRF, pixy_LRF, pixz_LRF, piyy_LRF, piyz_LRF, pizz_LRF, Vx_LRF, Vy_LRF, Vz_LRF, shear_mod, isotropic_scale, diff_mod, baryon_enthalpy_ratio);
+
+              double E = pLRF.E;
+              double px = pLRF.px;
+              double py = pLRF.py;
+              double pz = pLRF.pz;
+              w_flux = max(0.0, E * dst  -  px * dsx  -  py * dsy  -  pz * dsz) / (E * ds_max);
 
               break;
             }
@@ -1157,7 +1163,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
               if(!feqmod_breaks_down)
               {
-                pLRF = rescale_momentum(pLRF, mass_squared, 0.0, pimunu, Vmu, shear_mod, bulk_mod, 0.0, 0.0);
+                pLRF = rescale_momentum(pLRF, mass_squared, 0.0, pixx_LRF, pixy_LRF, pixz_LRF, piyy_LRF, piyz_LRF, pizz_LRF, 0.0, 0.0, 0.0, shear_mod, isotropic_scale, 0.0, 0.0);
+
+                double E = pLRF.E;
+                double px = pLRF.px;
+                double py = pLRF.py;
+                double pz = pLRF.pz;
+                w_flux = max(0.0, E * dst  -  px * dsx  -  py * dsy  -  pz * dsz) / (E * ds_max);
               }
               else
               {
@@ -1175,6 +1187,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
                 double df_reg = max(-1.0, min(1.0, df_shear + df_bulk));
                 w_visc = (1.0 + df_reg) / 2.0;
+                w_flux = max(0.0, E * dst  -  px * dsx  -  py * dsy  -  pz * dsz) / (E * ds_max);
               }
 
               break;
@@ -1186,16 +1199,13 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             }
           }
 
-          // lab frame momentum
-          Lab_Momentum pLab(pLRF);
-          pLab.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
-
-          // flux weight
-          double w_flux = max(0.0, pLRF.E * dst  -  pLRF.px * dsx  -  pLRF.py * dsy  -  pLRF.pz * dsz) / (pLRF.E * ds_max);
-
           // add particle
           if(canonical(generator_keep) < (w_flux * w_visc))
           {
+            // lab frame momentum
+            Lab_Momentum pLab(pLRF);
+            pLab.boost_pLRF_to_lab_frame(basis_vectors, ut, ux, uy, un);
+
             // new sampled particle info
             Sampled_Particle new_particle;
 
@@ -1219,7 +1229,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
               double ptau = pLab.ptau;
               double tau_pn = tau * pLab.pn;
-              double mT = sqrt(mass_squared  +  pLab.px * pLab.px  +  pLab.py * pLab.py);
+              double mT = sqrt(ptau*ptau - tau_pn*tau_pn);
 
               sinheta = (ptau*sinhy - tau_pn*coshy) / mT;
               eta = asinh(sinheta);
@@ -1247,6 +1257,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
               sample_dN_dy(chosen_index, rapidity);
               sample_dN_deta(chosen_index, eta);
               sample_dN_2pipTdpTdy(chosen_index, pLab.px, pLab.py);
+              sample_dN_dphipdy(chosen_index, pLab.px, pLab.py);
               sample_vn(chosen_index, pLab.px, pLab.py);
               sample_dN_dX(chosen_index, tau, x, y);
             }

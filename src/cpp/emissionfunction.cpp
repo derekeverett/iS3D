@@ -204,6 +204,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     Y_BINS = paraRdr->getVal("y_bins");
     Y_WIDTH = 2.0 * Y_CUT / (double)Y_BINS;
 
+    PHIP_BINS = paraRdr->getVal("phip_bins");
+    PHIP_WIDTH = two_pi / (double)PHIP_BINS;
+
     ETA_CUT = paraRdr->getVal("eta_cut");
     ETA_BINS = paraRdr->getVal("eta_bins");
     ETA_WIDTH = 2.0 * ETA_CUT / (double)ETA_BINS;
@@ -229,7 +232,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     // allocate memory for sampled distributions / spectra (for sampler testing)
     dN_dy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
     dN_deta_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
-
+    dN_dphipdy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
     dN_2pipTdpTdy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
 
     pT_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
@@ -243,7 +246,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     {
       dN_dy_count[ipart] = (double*)calloc(Y_BINS, sizeof(double));
       dN_deta_count[ipart] = (double*)calloc(ETA_BINS, sizeof(double));
-
+      dN_dphipdy_count[ipart] = (double*)calloc(PHIP_BINS, sizeof(double));
       dN_2pipTdpTdy_count[ipart] = (double*)calloc(PT_BINS, sizeof(double));
       pT_count[ipart] = (double*)calloc(PT_BINS, sizeof(double));
 
@@ -377,6 +380,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
 
+    /*
     sprintf(filename, "results/dN_pTdpTdphidy.dat");
     ofstream spectraFile(filename, ios_base::app);
     for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
@@ -403,6 +407,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       } //iy
     }//ipart
     spectraFile.close();
+    */
 
     //now write a separate file for each species
     for (int ipart  = 0; ipart < npart; ipart++)
@@ -482,6 +487,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     char filename[255] = "";
     int y_pts = y_tab_length;     // default 3+1d pts
     if (DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
+
+    /*
     sprintf(filename, "results/dN_dpTdphidy.dat");
     ofstream spectraFile(filename, ios_base::app);
     //write the header
@@ -508,24 +515,25 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       } //iy
     }//ipart
     spectraFile.close();
+    */
 
     //now write a separate file for each species
-    for (int ipart  = 0; ipart < npart; ipart++)
+    for(int ipart  = 0; ipart < npart; ipart++)
     {
-      int mcid = MCID[ipart];
-      sprintf(filename, "results/dN_dpTdphidy_%d.dat", mcid);
-      ofstream spectraFile(filename, ios_base::app);
-      //write the header
+      sprintf(filename, "results/continuous/dN_dpTdphidy_%d.dat", MCID[ipart]);
+      ofstream spectraFile(filename, ios_base::out);
+
+      // header
       spectraFile << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_dpTdphidy" << "\n";
-      for (int iy = 0; iy < y_pts; iy++)
+      for(int iy = 0; iy < y_pts; iy++)
       {
         double y;
         if (DIMENSION == 2) y = 0.0;
         else y = y_tab->get(1,iy + 1);
-        for (int iphip = 0; iphip < phi_tab_length; iphip++)
+        for(int iphip = 0; iphip < phi_tab_length; iphip++)
         {
           double phip = phi_tab->get(1,iphip + 1);
-          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          for(int ipT = 0; ipT < pT_tab_length; ipT++)
           {
             double pT = pT_tab->get(1,ipT + 1);
             long long int iS3D = (long long int)ipart + (long long int)npart * ((long long int)ipT + (long long int)pT_tab_length * ((long long int)iphip + (long long int)phi_tab_length * (long long int)iy));
@@ -535,6 +543,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
           spectraFile << "\n";
         } //iphip
       } //iy
+      spectraFile.close();
     } //ipart
   }
 
@@ -726,7 +735,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ipart  = 0; ipart < npart; ipart++)
     {
       int mcid = MCID[ipart];
-      sprintf(filename, "results/dN_dy_%d.dat", mcid);
+      sprintf(filename, "results/continuous/dN_dy_%d.dat", mcid);
       ofstream spectraFile(filename, ios_base::app);
       for(int iy = 0; iy < y_pts; iy++)
       {
@@ -895,8 +904,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       char file[255] = "";
       char file2[255] = "";
 
-      sprintf(file, "results/dN_dy/dN_dy_%d_test.dat", MCID[ipart]);
-      sprintf(file2, "results/dN_dy/dN_dy_%d_average_test.dat", MCID[ipart]);
+      sprintf(file, "results/sampled/dN_dy/dN_dy_%d_test.dat", MCID[ipart]);
+      sprintf(file2, "results/sampled/dN_dy/dN_dy_%d_average_test.dat", MCID[ipart]);
       ofstream dN_dy(file, ios_base::out);
       ofstream dN_dy_avg(file2, ios_base::out);
 
@@ -932,7 +941,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
       char file[255] = "";
-      sprintf(file, "results/dN_deta/dN_deta_%d_test.dat", MCID[ipart]);
+      sprintf(file, "results/sampled/dN_deta/dN_deta_%d_test.dat", MCID[ipart]);
       ofstream dN_deta(file, ios_base::out);
 
       for(int ieta = 0; ieta < ETA_BINS; ieta++)
@@ -948,7 +957,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
 
 
-   void EmissionFunctionArray::write_sampled_dN_2pipTdpTdy_to_file_test(int * MCID)
+  void EmissionFunctionArray::write_sampled_dN_2pipTdpTdy_to_file_test(int * MCID)
   {
     printf("Writing event-averaged dN/2pipTdpTdy of each species to file...\n");
 
@@ -959,7 +968,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
       char file[255] = "";
-      sprintf(file, "results/momentum_distribution/dN_2pipTdpTdy_%d_test.dat", MCID[ipart]);
+      sprintf(file, "results/sampled/dN_2pipTdpTdy/dN_2pipTdpTdy_%d_test.dat", MCID[ipart]);
       ofstream dN_2pipTdpTdy(file, ios_base::out);
 
       for(int ipT = 0; ipT < PT_BINS; ipT++)
@@ -971,6 +980,32 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     } // ipart
 
     free_2D(dN_2pipTdpTdy_count, number_of_chosen_particles);
+  }
+
+
+   void EmissionFunctionArray::write_sampled_dN_dphipdy_to_file_test(int * MCID)
+  {
+    printf("Writing event-averaged dN/dphipdy of each species to file...\n");
+
+    double phip_mid[PHIP_BINS];
+    for(int iphip = 0; iphip < PHIP_BINS; iphip++) phip_mid[iphip] = PHIP_WIDTH * ((double)iphip + 0.5);
+
+    // write dN/2pipTdpTdy for each species
+    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    {
+      char file[255] = "";
+      sprintf(file, "results/sampled/dN_dphipdy/dN_dphipdy_%d_test.dat", MCID[ipart]);
+      ofstream dN_dphipdy(file, ios_base::out);
+
+      for(int iphip = 0; iphip < PHIP_BINS; iphip++)
+      {
+        dN_dphipdy << setprecision(6) << scientific << phip_mid[iphip] << "\t" << dN_dphipdy_count[ipart][iphip] / (2.0 * Y_CUT * PHIP_WIDTH * (double)Nevents) << "\n";
+      }
+      dN_dphipdy.close();
+
+    } // ipart
+
+    free_2D(dN_dphipdy_count, number_of_chosen_particles);
   }
 
 
@@ -993,7 +1028,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ipart  = 0; ipart < npart; ipart++)
     {
       int mcid = MCID[ipart];
-      sprintf(filename, "results/vn_continuous/vn_%d.dat", mcid);
+      sprintf(filename, "results/continuous/vn_%d.dat", mcid);
       ofstream vn_File(filename, ios_base::app);
 
       for(int iy = 0; iy < y_pts; iy++)
@@ -1072,7 +1107,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
       char file[255] = "";
-      sprintf(file, "results/vn/vn_%d_test.dat", MCID[ipart]);
+      sprintf(file, "results/sampled/vn/vn_%d_test.dat", MCID[ipart]);
       ofstream vn(file, ios_base::out);
 
       for(int ipT = 0; ipT < PT_BINS; ipT++)
@@ -1117,8 +1152,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       char file_time[255] = "";
       char file_radial[255] = "";
 
-      sprintf(file_time, "results/spacetime/dN_taudtaudy_sampled_%d_test.dat", MCID[ipart]);
-      sprintf(file_radial, "results/spacetime/dN_twopirdrdy_sampled_%d_test.dat", MCID[ipart]);
+      sprintf(file_time, "results/sampled/dN_taudtaudy/dN_taudtaudy_%d_test.dat", MCID[ipart]);
+      sprintf(file_radial, "results/sampled/dN_taudtaudy/dN_twopirdrdy_%d_test.dat", MCID[ipart]);
 
       ofstream dN_taudtaudy(file_time, ios_base::out);
       ofstream dN_twopirdrdy(file_radial, ios_base::out);
@@ -1428,6 +1463,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 write_sampled_dN_dy_to_file_test(MCID);
                 write_sampled_dN_deta_to_file_test(MCID);
                 write_sampled_dN_2pipTdpTdy_to_file_test(MCID);
+                write_sampled_dN_dphipdy_to_file_test(MCID);
                 write_sampled_vn_to_file_test(MCID);
                 write_sampled_dN_dX_to_file_test(MCID);
               }
@@ -1486,6 +1522,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 write_sampled_dN_dy_to_file_test(MCID);
                 write_sampled_dN_deta_to_file_test(MCID);
                 write_sampled_dN_2pipTdpTdy_to_file_test(MCID);
+                write_sampled_dN_dphipdy_to_file_test(MCID);
                 write_sampled_vn_to_file_test(MCID);
                 write_sampled_dN_dX_to_file_test(MCID);
               }

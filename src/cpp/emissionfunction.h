@@ -107,6 +107,9 @@ private:
   int Y_BINS;
   double Y_WIDTH;
 
+  int PHIP_BINS;
+  double PHIP_WIDTH;
+
   double ETA_CUT;
   int ETA_BINS;
   double ETA_WIDTH;
@@ -125,6 +128,7 @@ private:
   double **dN_dy_count;         // holds event-averaged sampled dN/dy for each species
   double **dN_deta_count;       // holds event-averaged sampled dN/deta for each species
   double **dN_2pipTdpTdy_count; // holds event-averaged sampled (1/N) dN/dpT for each species
+  double **dN_dphipdy_count;     // holds event-averaged sampled dN/dphip for each species
 
   double ***vn_real_count;  // holds event-averaged sampled Re(Vn) for each species
   double ***vn_imag_count;  // holds event-averaged sampled Im(Vn) for each species
@@ -206,6 +210,7 @@ public:
   // add counts for sampled distributions
   void sample_dN_dy(int chosen_index, double y);
   void sample_dN_deta(int chosen_index, double eta);
+  void sample_dN_dphipdy(int chosen_index, double px, double py);
   void sample_dN_2pipTdpTdy(int chosen_index, double px, double py);
   void sample_vn(int chosen_index, double px, double py);
   void sample_dN_dX(int chosen_index, double tau, double x, double y);
@@ -248,6 +253,7 @@ public:
   void write_sampled_dN_dy_to_file_test(int * MCID);
   void write_sampled_dN_deta_to_file_test(int * MCID);
   void write_sampled_dN_2pipTdpTdy_to_file_test(int * MCID);
+  void write_sampled_dN_dphipdy_to_file_test(int * MCID);
   void write_sampled_vn_to_file_test(int * MCID);
   void write_sampled_dN_dX_to_file_test(int * MCID);
 
