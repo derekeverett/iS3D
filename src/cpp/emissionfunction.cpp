@@ -1504,7 +1504,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               {
                 double Ntotal = calculate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla);
 
-                Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
+                Nevents = (long)ceil(MIN_NUM_HADRONS / Ntotal);
               }
 
               printf("Sampling %d event(s)\n", Nevents);
