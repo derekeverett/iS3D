@@ -95,7 +95,7 @@ private:
 
   int TEST_SAMPLER;
 
-  int Nevents = 1;                  // default number of sampled events
+  long Nevents = 1;                  // default number of sampled events
 
   // for binning sampled particles (for sampler tests)
   double PT_MIN;

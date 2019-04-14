@@ -1066,7 +1066,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
       std::poisson_distribution<int> poisson_hadrons(dn_tot);
 
       // sample events for each FO cell
-      for(int ievent = 0; ievent < Nevents; ievent++)
+      for(long ievent = 0; ievent < Nevents; ievent++)
       {
         int N_hadrons = poisson_hadrons(generator_poisson);   // sample total number of hadrons in FO cell
 

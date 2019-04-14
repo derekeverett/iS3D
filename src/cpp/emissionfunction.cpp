@@ -1153,7 +1153,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       char file_radial[255] = "";
 
       sprintf(file_time, "results/sampled/dN_taudtaudy/dN_taudtaudy_%d_test.dat", MCID[ipart]);
-      sprintf(file_radial, "results/sampled/dN_taudtaudy/dN_twopirdrdy_%d_test.dat", MCID[ipart]);
+      sprintf(file_radial, "results/sampled/dN_2pirdrdy/dN_2pirdrdy_%d_test.dat", MCID[ipart]);
 
       ofstream dN_taudtaudy(file_time, ios_base::out);
       ofstream dN_twopirdrdy(file_radial, ios_base::out);
@@ -1446,7 +1446,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 double Ntotal = calculate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla);
 
                 // number of events to sample
-                Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
+                Nevents = (long)ceil(MIN_NUM_HADRONS / Ntotal);
               }
 
               printf("Sampling %d event(s)\n", Nevents);
