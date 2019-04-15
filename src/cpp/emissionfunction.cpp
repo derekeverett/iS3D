@@ -870,9 +870,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
       int num_particles = particle_event_list[ievent].size();
 
+      //this matches format read by afterburner here : https://github.com/jbernhard/urqmd-afterburner/tree/f532416d241c23c2c3199ee21ce3c262843fdc90
       //write the header
-      //spectraFile << "#" << " " << num_particles << "\n";
-      spectraFile << "n pid px py pz E m x y z t" << "\n";
+      spectraFile << "# " << num_particles << "\n";
+      //spectraFile << "n pid px py pz E m x y z t" << "\n";
       for (int ipart = 0; ipart < num_particles; ipart++)
       {
         int mcid = particle_event_list[ievent][ipart].mcID;
@@ -886,7 +887,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         double px = particle_event_list[ievent][ipart].px;
         double py = particle_event_list[ievent][ipart].py;
         double pz = particle_event_list[ievent][ipart].pz;
-        spectraFile << ipart << " " << mcid << " " << scientific <<  setw(5) << setprecision(16) << px << " " << py << " " << pz << " " << E << " " << m << " " << x << " " << y << " " << z << " " << t << "\n";
+        spectraFile << mcid << " " << scientific <<  setw(5) << setprecision(16) << t << " " << x << " " << y << " " << z << " " << E << " " << px << " " << py << " " << pz << "\n";
       }//ipart
       spectraFile.close();
     } // ievent
