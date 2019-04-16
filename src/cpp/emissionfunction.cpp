@@ -189,6 +189,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
 
     OVERSAMPLE = paraRdr->getVal("oversample");
+    MAX_NUM_SAMPLES = paraRdr->getVal("max_number_samples");
     FAST = paraRdr->getVal("fast");
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
     SAMPLER_SEED = paraRdr->getVal("sampler_seed");
@@ -1518,7 +1519,8 @@ void EmissionFunctionArray::calculate_spectra(std::vector< std::vector <Sampled_
                 double Ntotal = calculate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla);
 
                 // number of events to sample
-                Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
+                //Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
+		Nevents = min( (int)ceil(MIN_NUM_HADRONS / Ntotal) , MAX_NUM_SAMPLES );
               }
 
               printf("Sampling %d event(s)\n", Nevents);
@@ -1579,7 +1581,8 @@ void EmissionFunctionArray::calculate_spectra(std::vector< std::vector <Sampled_
               {
                 double Ntotal = calculate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla);
 
-                Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
+                //Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
+		Nevents = min( (int)ceil(MIN_NUM_HADRONS / Ntotal) , MAX_NUM_SAMPLES );
               }
 
               printf("Sampling %d event(s)\n", Nevents);

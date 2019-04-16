@@ -54,7 +54,7 @@ lightest_particle 	        = 111   #PDG MC ID of lightest particle for resonance
 oversample		        = 0     # run sampler iteratively until mininum number of hadrons sampled
 				        # should be turned off for JETSCAPE
 min_num_hadrons		        = 1.0e+8 #across all samples >= min_num_hadrons
-
+max_num_samples			= 500   #oversampling will finish after this number of samples
 fast				= 1	# switch to run sampler in fast mode (when oversample = 0)
 					# compute thermal density for (T_avg, muB_avg) rather than (T, muB) for each cell
 					# assumes (T,muB) throughout surface are very close to (T_avg, muB_avg)
