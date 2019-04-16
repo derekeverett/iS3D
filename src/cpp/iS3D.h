@@ -57,7 +57,8 @@ public:
   std::vector<double> Pi; //bulk pressure
 
   //vector to store final particle list for all events
-  std::vector<Sampled_Particle> final_particles_;
+  //std::vector<Sampled_Particle> final_particles_;
+  std::vector< std::vector < Sampled_Particle > > final_particles_;
 
   //this calls the particlization routine
   //depending on parameters, will either do smooth cooper

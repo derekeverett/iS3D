@@ -164,7 +164,8 @@ public:
   ~EmissionFunctionArray();
 
   // main function
-  void calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in);
+  //void calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in);
+  void calculate_spectra(std::vector< std::vector<Sampled_Particle> > &particle_event_list_in);
 
 
   // continuous spectra routines:

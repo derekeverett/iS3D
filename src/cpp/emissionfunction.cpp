@@ -1251,7 +1251,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
   //*********************************************************************************************
-  void EmissionFunctionArray::calculate_spectra(std::vector<Sampled_Particle> &particle_event_list_in)
+void EmissionFunctionArray::calculate_spectra(std::vector< std::vector <Sampled_Particle> > &particle_event_list_in)
   {
     cout << "calculate_spectra() has started:\n\n";
     Stopwatch sw;
@@ -1546,7 +1546,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 write_particle_list_OSC();
               }
 
-              particle_event_list_in = particle_event_list[0];  // only one event per core
+              //particle_event_list_in = particle_event_list[0];  // only one event per core
+	      particle_event_list_in = particle_event_list;  // only one event per core
               break;
             }
             default:
@@ -1607,7 +1608,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 write_particle_list_OSC();
               }
 
-              particle_event_list_in = particle_event_list[0];
+              //particle_event_list_in = particle_event_list[0];
+	      particle_event_list_in = particle_event_list;
 
               break;
             }

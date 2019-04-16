@@ -168,14 +168,18 @@ void IS3D::run_particlization(int fo_from_file)
 
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df_data);
 
-  std::vector<Sampled_Particle> particle_event_list_in;
+  // old version for jetscape 
+  //std::vector<Sampled_Particle> particle_event_list_in;
+
+  //for oversampling in jetscape
+  std::vector< std::vector< Sampled_Particle > >  particle_event_list_in;
   efa.calculate_spectra(particle_event_list_in);
 
   //copy final particle list to memory to pass to JETSCAPE module
   if (operation == 2)
   {
-    cout << "Copying final particle list to memory" << endl;
-    cout << "Particle list contains " << particle_event_list_in.size() << " particles" << endl;
+    cout << "Copying final event particle lists to memory" << endl;
+    cout << "Event particle list contains " << particle_event_list_in.size() << " events" << endl;
     final_particles_ = particle_event_list_in;
   }
 
