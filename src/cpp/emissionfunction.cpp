@@ -1602,10 +1602,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     //write the results to file
     if (OPERATION == 1)
     {
-      write_dN_pTdpTdphidy_toFile(MCID);
+      //write_dN_pTdpTdphidy_toFile(MCID);
       //write_dN_dpTdphidy_toFile(MCID);
       write_continuous_vn_toFile(MCID);
-      //write_dN_twopipTdpTdy_toFile(MCID);
+      write_dN_twopipTdpTdy_toFile(MCID);
       //write_dN_twopidpTdy_toFile(MCID);
       //write_dN_dphidy_toFile(MCID);
       //write_dN_dy_toFile(MCID);
