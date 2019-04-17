@@ -676,7 +676,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double Azz = 1.0  +  pizz_LRF * shear_mod  +  bulk_mod;
 
         double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
-
+        double detA_bulk_two_thirds = pow(1.0 + bulk_mod, 2);
+        
         // set Mij matrix
         double A[] = {Axx, Axy, Axz,
                       Ayx, Ayy, Ayz,
@@ -726,7 +727,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         // this rescales the dsigma components orthogonal to the eta direction (only works for 2+1d, y = 0)
         // for integrating modified distribution with narrow (y-eta) distributions
         double eta_scale = 1.0;
-        if(detA > detA_min && detA < 1.0 && DIMENSION == 2) eta_scale = detA;
+        if(detA > detA_min && DIMENSION == 2)
+        {
+          eta_scale = detA / detA_bulk_two_thirds;
+        }
 
         // loop over hadrons
         for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
@@ -770,17 +774,19 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
           }
 
-          if((std::isnan(renorm) || std::isinf(renorm)))
+          if(DIMENSION == 2)
           {
-            // skip freezeout cell since jonah feqmod doesn't have a switching linearized df option
-            cout << "Error: renormalization factor is " << renorm << endl;
-            continue;
+            renorm /= detA_bulk_two_thirds;
+          }
+          else if(DIMENSION == 3)
+          {
+            renorm /= detA;
           }
 
-          if(DIMENSION == 3)
+          if((std::isnan(renorm) || std::isinf(renorm)))
           {
-            // avoid roundoff errors in 2+1d if detA small
-            renorm /= detA;
+            cout << "Error: renormalization factor is " << renorm << endl;
+            continue;
           }
 
           for(int ipT = 0; ipT < pT_tab_length; ipT++)
