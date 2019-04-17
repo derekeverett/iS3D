@@ -125,18 +125,19 @@ private:
   double R_WIDTH;
 
   // for sampler test (2+1d)
-  double **dN_dy_count;         // holds event-averaged sampled dN/dy for each species
-  double **dN_deta_count;       // holds event-averaged sampled dN/deta for each species
-  double **dN_2pipTdpTdy_count; // holds event-averaged sampled (1/N) dN/dpT for each species
-  double **dN_dphipdy_count;     // holds event-averaged sampled dN/dphip for each species
+  double **dN_dy_count;          // event-averaged momentum distributions
+  double **dN_2pipTdpTdy_count;
+  double **dN_dphipdy_count;     
 
-  double ***vn_real_count;  // holds event-averaged sampled Re(Vn) for each species
-  double ***vn_imag_count;  // holds event-averaged sampled Im(Vn) for each species
-  const int K_MAX = 7;      // {v1, ..., v7}
-  double **pT_count;        // tracks count in each pT bin for each species (for vn calculation)
+  double ***vn_real_count;      // event-averaged Vn's
+  double ***vn_imag_count;      
+  const int K_MAX = 7;          // {v1, ..., v7}
+  double **pT_count;            // count in each pT bin 
 
-  double **dN_taudtaudy_count;
+  double **dN_deta_count;       // event-averaged spacetime distribution
+  double **dN_taudtaudy_count; 
   double **dN_twopirdrdy_count;
+  double **dN_dphisdy_count;
 
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;

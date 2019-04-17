@@ -1070,30 +1070,25 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       }
     }
 
-    // tau grid (bin midpoints)
+    // (tau,r,phi) grid (bin midpoints)
     const int taubins = TAU_BINS;
-    const double taubinwidth = (TAU_MAX - TAU_MIN) / (double)TAU_BINS;
-    double tau_midpoint[taubins];
-    for(int itau = 0; itau < taubins; itau++)
-    {
-      tau_midpoint[itau] = TAU_MIN + taubinwidth * ((double)itau + 0.5);
-    }
-
-    // r grid (bin midpoints)
     const int rbins = R_BINS;
-    const double rbinwidth = (R_MAX - R_MIN) / (double)R_BINS;
+    const int phibins = PHIP_BINS;
+
+    double tau_midpoint[taubins];
     double r_midpoint[rbins];
-    for(int ir = 0; ir < rbins; ir++)
-    {
-      r_midpoint[ir] = R_MIN + rbinwidth * ((double)ir + 0.5);
-    }
+    double phi_midpoint[phibins];
+    for(int itau = 0; itau < taubins; itau++)  tau_midpoint[itau] = TAU_MIN + TAU_WIDTH * ((double)itau + 0.5);
+    for(int ir = 0; ir < rbins; ir++) r_midpoint[ir] = R_MIN + R_WIDTH * ((double)ir + 0.5);
+    for(int iphi = 0; iphi < phibins; iphi++) phi_midpoint[iphi] = PHIP_WIDTH * ((double)iphi + 0.5);
 
 
     const int npart = number_of_chosen_particles;
 
-    double dN_taudtaudy[taubins];                // dN_tau.dtau.dy distribution
-    double dN_twopirdrdy[rbins];                 // dN_2.pi.r.dr.dy distribution
-    double dN_twopitaurdtaudrdy[taubins][rbins]; // dN_2.pi.tau.r.tau.dr.dy distribution
+    double dN_taudtaudy[taubins];               
+    double dN_twopirdrdy[rbins];       
+    double dN_dphidy[phibins];        
+ 
 
     double * dN_dy = (double*)calloc(npart, sizeof(double));
 
@@ -1111,19 +1106,19 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
       char file_time[255] = "";
       char file_radial[255] = "";
-      char file_timeradial[255] = "";
+      char file_azimuthal[255] = "";
 
-      sprintf(file_time, "results/spacetime_distribution/dN_taudtaudy_%d.dat", mcid);
-      sprintf(file_radial, "results/spacetime_distribution/dN_twopirdrdy_%d.dat", mcid);
-      sprintf(file_timeradial, "results/spacetime_distribution/dN_twopitaurdtaudrdy_%d.dat", mcid);
+      sprintf(file_time, "results/continuous/dN_taudtaudy_%d.dat", mcid);
+      sprintf(file_radial, "results/continuous/dN_twopirdrdy_%d.dat", mcid);
+      sprintf(file_azimuthal, "results/continuous/dN_dphidy_%d.dat", mcid);
 
       ofstream time_distribution(file_time, ios_base::out);
       ofstream radial_distribution(file_radial, ios_base::out);
-      ofstream timeradial_distribution(file_timeradial, ios_base::out);
+      ofstream azimuthal_distribution(file_azimuthal, ios_base::out);
 
       // rapidity distribution
       char file_rapidity[255] = "";
-      sprintf(file_rapidity, "results/spacetime_distribution/dN_dydeta_%d_%dpt.dat", mcid, eta_pts);
+      sprintf(file_rapidity, "results/continuous/dN_dydeta_%d_%dpt.dat", mcid, eta_pts);
       ofstream rapidity_distribution(file_rapidity, ios_base::out);
 
       // set particle properties
@@ -1134,12 +1129,9 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       double baryon = Baryon[ipart];          // baryon number
 
       // reset spacetime distributions to zero
-      for(int itau = 0; itau < taubins; itau++)
-      {
-        dN_taudtaudy[itau] = 0.0;
-        for(int ir = 0; ir < rbins; ir++) dN_twopitaurdtaudrdy[itau][ir] = 0.0;
-      }
+      for(int itau = 0; itau < taubins; itau++) dN_taudtaudy[itau] = 0.0;
       for(int ir = 0; ir < rbins; ir++) dN_twopirdrdy[ir] = 0.0;
+      for(int iphi = 0; iphi < phibins; iphi++) dN_dphidy[iphi] = 0.0;
 
 
       for(long icell = 0; icell < FO_length; icell++)  // cell index inside each chunk
@@ -1380,22 +1372,20 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         // now determine which spacetime bin the freezeout cell lies
 
         double r = sqrt(x_pos * x_pos  +  y_pos * y_pos);
+        double phi = atan2(y_pos, x_pos);
+        if(phi < 0.0) phi += two_pi;
 
-        int itau = (int)floor((tau - TAU_MIN) / taubinwidth);
-        int ir = (int)floor((r - R_MIN) / rbinwidth);
-
-        if(itau < 0) printf("Error: tau bin index is negative. Adjust the tau_min parameter\n");
-        if(ir < 0) printf("Error: r bin index is negative. Adjust the r_min parameter\n");
+        // bin index
+        int itau = (int)floor((tau - TAU_MIN) / TAU_WIDTH);
+        int ir = (int)floor((r - R_MIN) / R_WIDTH);
+        int iphi = (int)floor(phi / PHIP_WIDTH);
 
         // add dNdy to the corresponding bin(s)
-        if(itau >= 0 && itau < taubins)
-        {
-          dN_taudtaudy[itau] += dN_dy_cell;
-
-          if(ir >= 0 && ir < rbins) dN_twopitaurdtaudrdy[itau][ir] += dN_dy_cell;
-        }
-
+        if(itau >= 0 && itau < taubins) dN_taudtaudy[itau] += dN_dy_cell;
+        
         if(ir >= 0 && ir < rbins) dN_twopirdrdy[ir] += dN_dy_cell;
+
+        if(iphi >= 0 && iphi < phibins) dN_dphidy[iphi] += dN_dy_cell;
 
       } // freezeout cells (icell)
 
@@ -1404,27 +1394,27 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       {
         double r_mid = r_midpoint[ir];
 
-        radial_distribution << setprecision(6) << scientific << r_mid << "\t" << dN_twopirdrdy[ir] / (2.0 * M_PI * r_mid * rbinwidth)  << "\n";
-
-        for(int itau = 0; itau < taubins; itau++)
-        {
-          double tau_mid = tau_midpoint[itau];
-
-          timeradial_distribution << setprecision(6) << scientific << tau_mid << "\t" << r_mid << "\t" << dN_twopitaurdtaudrdy[itau][ir] / (2.0 * M_PI * tau_mid * r_mid * taubinwidth * rbinwidth) << "\n";
-        }
+        radial_distribution << setprecision(6) << scientific << r_mid << "\t" << dN_twopirdrdy[ir] / (two_pi * r_mid * R_WIDTH)  << "\n";
       }
 
       for(int itau = 0; itau < taubins; itau++)
       {
         double tau_mid = tau_midpoint[itau];
 
-        time_distribution << setprecision(6) << scientific << tau_mid << "\t" << dN_taudtaudy[itau] / (tau_mid * taubinwidth) << "\n";
+        time_distribution << setprecision(6) << scientific << tau_mid << "\t" << dN_taudtaudy[itau] / (tau_mid * TAU_WIDTH) << "\n";
+      }
+
+      for(int iphi = 0; iphi < phibins; iphi++)
+      {
+        double phi_mid = phi_midpoint[iphi];
+
+        azimuthal_distribution << setprecision(6) << scientific << phi_mid << "\t" << dN_dphidy[iphi] / PHIP_WIDTH << "\n";
       }
 
       // close files
       time_distribution.close();
       radial_distribution.close();
-      timeradial_distribution.close();
+      azimuthal_distribution.close();
 
       // write rapidity distribution to file
       for(int ieta = 0; ieta < eta_pts; ieta++)
@@ -1582,19 +1572,16 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
       char file_time[255] = "";
       char file_radial[255] = "";
-      char file_timeradial[255] = "";
 
-      sprintf(file_time, "results/spacetime_distribution/dN_taudtaudy_%d.dat", mcid);
-      sprintf(file_radial, "results/spacetime_distribution/dN_twopirdrdy_%d.dat", mcid);
-      sprintf(file_timeradial, "results/spacetime_distribution/dN_twopitaurdtaudrdy_%d.dat", mcid);
-
+      sprintf(file_time, "results/continuous/dN_taudtaudy_%d.dat", mcid);
+      sprintf(file_radial, "results/continuous/dN_twopirdrdy_%d.dat", mcid);
+     
       ofstream time_distribution(file_time, ios_base::out);
       ofstream radial_distribution(file_radial, ios_base::out);
-      ofstream timeradial_distribution(file_timeradial, ios_base::out);
 
       // rapidity distribution
       char file_rapidity[255] = "";
-      sprintf(file_rapidity, "results/spacetime_distribution/dN_dydeta_%d_%dpt.dat", mcid, eta_pts);
+      sprintf(file_rapidity, "results/continuous/dN_dydeta_%d_%dpt.dat", mcid, eta_pts);
       ofstream rapidity_distribution(file_rapidity, ios_base::out);
 
       // set particle properties
@@ -1796,6 +1783,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double Azz = 1.0  +  pizz_LRF * shear_mod  +  bulk_mod;
 
         double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
+        double detA_bulk_two_thirds = pow(1.0 + bulk_mod, 2);
 
         // determine if feqmod breaks down
         bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, detA_min, z, laguerre, DF_MODE, 0, T, F, betabulk);
@@ -1846,7 +1834,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         double eta_scale = 1.0;
         if(detA > detA_min && DIMENSION == 2)
         {
-          eta_scale = detA;
+          eta_scale = detA / detA_bulk_two_thirds;
         }
 
         // compute the modified renormalization factor
@@ -1877,19 +1865,20 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
           }
         }
 
+        if(DIMENSION == 2)
+        {
+          renorm /= detA_bulk_two_thirds;
+        }
+        else if(DIMENSION == 3)
+        {
+          renorm /= detA;
+        }
 
-        if((std::isnan(renorm / detA) || std::isinf(renorm / detA)))
+        if((std::isnan(renorm) || std::isinf(renorm)))
         {
           cout << "Error: renormalization factor is " << renorm << endl;
           continue;
         }
-
-        if(DIMENSION == 3)
-        {
-          // avoid roundoff errors in 2+1d if detA small
-          renorm /= detA;
-        }
-
 
         // compute the dNdy of each freezeout cell (integrating over pT,phi)
         double dN_dy_cell = 0.0;
@@ -2073,12 +2062,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         if(ir < 0) printf("Error: r bin index is negative. Adjust the r_min parameter\n");
 
         // add dNdy to the corresponding bin(s)
-        if(itau >= 0 && itau < taubins)
-        {
-          dN_taudtaudy[itau] += dN_dy_cell;
-
-          if(ir >= 0 && ir < rbins) dN_twopitaurdtaudrdy[itau][ir] += dN_dy_cell;
-        }
+        if(itau >= 0 && itau < taubins) dN_taudtaudy[itau] += dN_dy_cell;
 
         if(ir >= 0 && ir < rbins) dN_twopirdrdy[ir] += dN_dy_cell;
 
@@ -2091,12 +2075,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
         radial_distribution << setprecision(6) << scientific << r_mid << "\t" << dN_twopirdrdy[ir] / (2.0 * M_PI * r_mid * rbinwidth)  << "\n";
 
-        for(int itau = 0; itau < taubins; itau++)
-        {
-          double tau_mid = tau_midpoint[itau];
-
-          timeradial_distribution << setprecision(6) << scientific << tau_mid << "\t" << r_mid << "\t" << dN_twopitaurdtaudrdy[itau][ir] / (2.0 * M_PI * tau_mid * r_mid * taubinwidth * rbinwidth) << "\n";
-        }
       }
 
       for(int itau = 0; itau < taubins; itau++)
@@ -2109,7 +2087,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
       // close files
       time_distribution.close();
       radial_distribution.close();
-      timeradial_distribution.close();
 
 
       // write rapidity distribution to file

@@ -1,4 +1,4 @@
-operation = 2					# operation
+operation = 1					# operation
 								# 0 : performs smooth cooper frye resulting in spacetime distribution dN/dXdy
 								# 1 : performs smooth cooper frye resulting in momentum distribution dN/pTdpTdphidy
 								# 2 : performs sampling of particle distribution resulting in particle list
@@ -47,14 +47,14 @@ mass_pion0 = 0.138				# lightest pion mass (GeV)
 oversample	= 1					# run sampler iteratively until mininum number of hadrons sampled
 								# should be turned off for JETSCAPE
 
-fast = 1						# switch to run sampler in fast mode (when oversample = 0)
+fast = 0						# switch to run sampler in fast mode (when oversample = 0)
 								# compute thermal density for (T_avg, muB_avg) rather than (T, muB) for each cell
 								# assumes (T,muB) throughout surface are very close to (T_avg, muB_avg)
 								# turn off if you have corona cells
 
 y_cut = 5.0						# rapidity cut: |y| <= y_cut
 
-min_num_hadrons = 1.0e+8		# across all samples >= min_num_hadrons
+min_num_hadrons = 1.0e+7		# across all samples >= min_num_hadrons
 
 sampler_seed = 1 				# sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
 

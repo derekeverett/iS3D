@@ -241,6 +241,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     dN_taudtaudy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
     dN_twopirdrdy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
+    dN_dphisdy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
 
     for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
@@ -252,6 +253,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
       dN_taudtaudy_count[ipart] = (double*)calloc(TAU_BINS, sizeof(double));
       dN_twopirdrdy_count[ipart] = (double*)calloc(R_BINS, sizeof(double));
+      dN_dphisdy_count[ipart] = (double*)calloc(PHIP_BINS, sizeof(double));
     }
 
     for(int k = 0; k < K_MAX; k++)
@@ -692,7 +694,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ipart  = 0; ipart < npart; ipart++)
     {
       int mcid = MCID[ipart];
-      sprintf(filename, "results/dN_twopidpTdy_%d.dat", mcid);
+      sprintf(filename, "results/continuous/dN_twopidpTdy_%d.dat", mcid);
       ofstream spectraFile(filename, ios_base::app);
       for (int iy = 0; iy < y_pts; iy++)
       {
@@ -1134,7 +1136,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
 
-  void EmissionFunctionArray::write_sampled_dN_dX_to_file_test(int * MCID)
+ void EmissionFunctionArray::write_sampled_dN_dX_to_file_test(int * MCID)
   {
     printf("Writing event-averaged boost invariant spacetime distributions dN_dX of each species to file...\n");
 
@@ -1146,17 +1148,23 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     double r_mid[R_BINS];
     for(int ir = 0; ir < R_BINS; ir++) r_mid[ir] = R_MIN + R_WIDTH * ((double)ir + 0.5);
 
+    double phi_mid[PHIP_BINS];
+    for(int iphi = 0; iphi < PHIP_BINS; iphi++) phi_mid[iphi] = PHIP_WIDTH * ((double)iphi + 0.5);
+
     // now event-average dN_dXdy and normalize to dNdy and write them to file
     for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
     {
       char file_time[255] = "";
       char file_radial[255] = "";
+      char file_azimuthal[255] = "";
 
       sprintf(file_time, "results/sampled/dN_taudtaudy/dN_taudtaudy_%d_test.dat", MCID[ipart]);
       sprintf(file_radial, "results/sampled/dN_2pirdrdy/dN_2pirdrdy_%d_test.dat", MCID[ipart]);
+      sprintf(file_azimuthal, "results/sampled/dN_dphisdy/dN_dphisdy_%d_test.dat", MCID[ipart]);
 
       ofstream dN_taudtaudy(file_time, ios_base::out);
       ofstream dN_twopirdrdy(file_radial, ios_base::out);
+      ofstream dN_dphisdy(file_azimuthal, ios_base::out);
 
       // normalize spacetime distributions by the binwidth, jacobian factor, events and rapidity cut range
       for(int ir = 0; ir < R_BINS; ir++)
@@ -1169,12 +1177,20 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         dN_taudtaudy << setprecision(6) << scientific << tau_mid[itau] << "\t" << dN_taudtaudy_count[ipart][itau] / (tau_mid[itau] * TAU_WIDTH * (double)Nevents * 2.0 * Y_CUT) << "\n";
       }
 
+      for(int iphi = 0; iphi < PHIP_BINS; iphi++)
+      {
+        dN_dphisdy << setprecision(6) << scientific << phi_mid[iphi] << "\t" << dN_dphisdy_count[ipart][iphi] / (PHIP_WIDTH * (double)Nevents * 2.0 * Y_CUT) << "\n";
+      }
+
+
       dN_taudtaudy.close();
       dN_twopirdrdy.close();
+      dN_dphisdy.close();
     } // ipart
 
     free_2D(dN_taudtaudy_count, number_of_chosen_particles);
     free_2D(dN_twopirdrdy_count, number_of_chosen_particles);
+    free_2D(dN_dphisdy_count, number_of_chosen_particles);
   }
 
 
@@ -1592,7 +1608,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       //write_dN_twopipTdpTdy_toFile(MCID);
       //write_dN_twopidpTdy_toFile(MCID);
       //write_dN_dphidy_toFile(MCID);
-      write_dN_dy_toFile(MCID);
+      //write_dN_dy_toFile(MCID);
 
       // option to do resonance decays option
       if(DO_RESONANCE_DECAYS)

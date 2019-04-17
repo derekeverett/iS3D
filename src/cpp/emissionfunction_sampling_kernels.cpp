@@ -106,14 +106,19 @@ void EmissionFunctionArray::sample_dN_dX(int chosen_index, double tau, double x,
   // assume dN/deta = dN/dy (boost-invariance)
 
   double r = sqrt(x*x + y*y);
+  double phi = atan2(y, x);
+  if(phi < 0.0) phi += two_pi;
 
   // bin indices
   int itau = (int)floor((tau - TAU_MIN) / TAU_WIDTH);
   int ir = (int)floor((r - R_MIN) / R_WIDTH);
+  int iphi = (int)floor(phi / PHIP_WIDTH);
 
   if(itau >= 0 && itau < TAU_BINS) dN_taudtaudy_count[chosen_index][itau] += 1.0;
 
   if(ir >= 0 && ir < R_BINS) dN_twopirdrdy_count[chosen_index][ir] += 1.0;
+
+  if(iphi >= 0 && iphi < PHIP_BINS) dN_dphisdy_count[chosen_index][iphi] += 1.0;
 }
 
 
