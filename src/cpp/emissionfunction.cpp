@@ -189,7 +189,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
 
     OVERSAMPLE = paraRdr->getVal("oversample");
-    MAX_NUM_SAMPLES = paraRdr->getVal("max_number_samples");
+    MAX_NUM_SAMPLES = paraRdr->getVal("max_num_samples");
     FAST = paraRdr->getVal("fast");
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
     SAMPLER_SEED = paraRdr->getVal("sampler_seed");
