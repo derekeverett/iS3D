@@ -1,4 +1,4 @@
-operation = 1					# operation
+operation = 2					# operation
 								# 0 : performs smooth cooper frye resulting in spacetime distribution dN/dXdy
 								# 1 : performs smooth cooper frye resulting in momentum distribution dN/pTdpTdphidy
 								# 2 : performs sampling of particle distribution resulting in particle list
@@ -44,21 +44,22 @@ deta_min = 1.e-5  				# minimum value of detA (for feqmod break down, for 3+1d w
 mass_pion0 = 0.138				# lightest pion mass (GeV)
 								# for feqmod breakdown criteria (pion0 most susceptible negative density)
 
-oversample	= 1					# run sampler iteratively until mininum number of hadrons sampled
-								# should be turned off for JETSCAPE
+oversample	= 1					# run sampler iteratively until mininum number of hadrons 
+								# or max number of events sampled
 
-fast = 0						# switch to run sampler in fast mode (when oversample = 0)
+fast = 0						# switch to run sampler in fast mode
 								# compute thermal density for (T_avg, muB_avg) rather than (T, muB) for each cell
 								# assumes (T,muB) throughout surface are very close to (T_avg, muB_avg)
 								# turn off if you have corona cells
 
-y_cut = 5.0						# rapidity cut: |y| <= y_cut
+y_cut = 3.0						# rapidity cut: |y| <= y_cut
 
-min_num_hadrons = 1.0e+7		# across all samples >= min_num_hadrons
+min_num_hadrons = 1.0e+11		# across all samples >= min_num_hadrons
+max_num_samples	= 1.0e+2   		# oversampling will finish after this number of samples
 
 sampler_seed = 1 				# sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
 
-test_sampler = 1				# perform sampler test only (i.. write sampled pT spectra and vn to file only)
+test_sampler = 0				# perform sampler test only (i.. write sampled pT spectra and vn to file only)
 								# set to zero for actual runs
 
 pT_min = 0.0					# pT min in GeV (for sampler tests)

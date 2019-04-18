@@ -90,7 +90,8 @@ private:
 
   int OVERSAMPLE; // whether or not to iteratively oversample surface
   int FAST;                 // switch to compute mean hadron number quickly using an averaged (T,muB)
-  long int MIN_NUM_HADRONS; //min number of particles summed over all samples
+  double MIN_NUM_HADRONS; //min number of particles summed over all samples
+  double MAX_NUM_SAMPLES; // max number of events sampled
   long int SAMPLER_SEED; //the seed for the particle sampler. If chosen < 0, seed set with clocktime
 
   int TEST_SAMPLER;

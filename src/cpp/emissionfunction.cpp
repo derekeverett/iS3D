@@ -188,6 +188,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     OVERSAMPLE = paraRdr->getVal("oversample");
     FAST = paraRdr->getVal("fast");
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
+    MAX_NUM_SAMPLES = paraRdr->getVal("max_num_samples");
     SAMPLER_SEED = paraRdr->getVal("sampler_seed");
     if(OPERATION == 2) printf("Sampler seed set to %d \n", SAMPLER_SEED);
 
@@ -1462,7 +1463,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 double Ntotal = calculate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla);
 
                 // number of events to sample
-                Nevents = (long)ceil(MIN_NUM_HADRONS / Ntotal);
+                Nevents = (long)min(ceil(MIN_NUM_HADRONS / Ntotal), MAX_NUM_SAMPLES);
               }
 
               printf("Sampling %d event(s)\n", Nevents);
@@ -1520,7 +1521,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               {
                 double Ntotal = calculate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla);
 
-                Nevents = (long)ceil(MIN_NUM_HADRONS / Ntotal);
+                Nevents = (long)min(ceil(MIN_NUM_HADRONS / Ntotal), MAX_NUM_SAMPLES);
               }
 
               printf("Sampling %d event(s)\n", Nevents);
