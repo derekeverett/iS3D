@@ -650,7 +650,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ipart  = 0; ipart < npart; ipart++)
     {
       int mcid = MCID[ipart];
-      sprintf(filename, "results/dN_twopipTdpTdy_%d.dat", mcid);
+      sprintf(filename, "results/continuous/dN_twopipTdpTdy_%d.dat", mcid);
       ofstream spectraFile(filename, ios_base::app);
       for (int iy = 0; iy < y_pts; iy++)
       {

@@ -85,12 +85,6 @@ void IS3D::run_particlization(int fo_from_file)
 
   string pathToInput = "input";
 
-  // for(int i = 0; i < 201; i++)
-  // {
-  //   cout << 0.015*i << endl;
-  // }
-  //exit(-1);
-
   // load freeze out information
   long FO_length = 0;
   FO_data_reader freeze_out_data(paraRdr, pathToInput);
