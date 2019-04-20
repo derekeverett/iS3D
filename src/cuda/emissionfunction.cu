@@ -12,7 +12,7 @@
 #include "Stopwatch.cuh"
 #include "arsenal.cuh"
 #include "ParameterReader.cuh"
-#include "deltafReader.cuh"
+//#include "deltafReader.cuh"
 #include <cuda.h>
 #include <cuda_runtime.h>
 
@@ -314,23 +314,23 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, long number_of_chosen_
             double pn = mT_over_tau * sinh(y - eta);  // p^eta
             double tau2_pn = tau2 * pn;
 
-            double pdotdsigma = eta_weight * (pt * dat  +  px * dax  +  py * day  +  pn * dan);
+            double pdotdsigma = eta_weight * (ptau * dat  +  px * dax  +  py * day  +  pn * dan);
 
             if(true && pdotdsigma <= 0.0)          // enforce outflow (temporary)
             {
               continue;
             }
           
-            double pdotu = pt * ut  -  px * ux  -  py * uy  -  tau2_pn * un;  // u.p
+            double pdotu = ptau * ut  -  px * ux  -  py * uy  -  tau2_pn * un;  // u.p
             double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
             double feqbar = 1.0  -  sign * feq;
 
             // pi^munu.p_mu.p_nu
-            double pimunu_pmu_pnu = pitt * pt * pt  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
-            + 2.0 * (-(pitx * px  +  pity * py) * pt  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * pt));
+            double pimunu_pmu_pnu = pitt * ptau * ptau  +  pixx * px * px  +  piyy * py * py  +  pinn * tau2_pn * tau2_pn
+            + 2.0 * (-(pitx * px  +  pity * py) * ptau  +  pixy * px * py  +  tau2_pn * (pixn * px  +  piyn * py  -  pitn * ptau));
 
             // V^mu.p_mu
-            double Vmu_pmu = Vt * pt  -  Vx * px  -  Vy * py  -  Vn * tau2_pn;
+            double Vmu_pmu = Vt * ptau  -  Vx * px  -  Vy * py  -  Vn * tau2_pn;
 
 
             double df;
@@ -364,7 +364,7 @@ __global__ void calculate_dN_pTdpTdphidy( long FO_length, long number_of_chosen_
               }
               default:
               {
-                printf("Error: set df_mode = (1,2) in parameters.dat\n"); exit(-1);
+                printf("Error: set df_mode = (1,2) in parameters.dat\n"); //exit(-1);
               }
             } // DF_MODE
 

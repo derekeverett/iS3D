@@ -6,7 +6,7 @@
 #include "Table.cuh"
 #include "main.cuh"
 #include "ParameterReader.cuh"
-#include "deltafReader.cuh"
+//#include "deltafReader.cuh"
 using namespace std;
 
 class EmissionFunctionArray

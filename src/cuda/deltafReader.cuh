@@ -5,9 +5,6 @@
 #include "ParameterReader.cuh"
 #include "readindata.cuh"
 #include <fstream>
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_spline.h>
-#include <gsl/gsl_interp.h>
 
 using namespace std;
 
@@ -54,19 +51,6 @@ class Deltaf_Data
         double ** betaV_data;
         double ** betapi_data;
 
-        // cubic splines of the coefficients as function of temperature only (neglect muB, nB, Vmu)
-        // (c1, G = 0) for muB = 0 and (c3, c4, betaV) aren't needed since they couple to baryon diffusion
-        // so in the cubic spline evaluation: just set (G, c1, c3, c4) = 0 and betaV = 1 (betaV is in denominator)
-
-        gsl_spline * c0_spline;
-        gsl_spline * c2_spline;
-        gsl_spline * c3_spline;
-
-        gsl_spline * F_spline;
-        gsl_spline * betabulk_spline;
-        gsl_spline * betaV_spline;
-        gsl_spline * betapi_spline;
-
         // Jonah coefficients
         const int jonah_points = 301;       // # lambda interpolation points
         const double lambda_min = -1.0;     // lambda min / max values
@@ -78,22 +62,19 @@ class Deltaf_Data
         double * bulkPi_over_Peq_array;     // bulk pressure output
         double bulkPi_over_Peq_max;         // the maximum bulk pressure in the array
 
-        gsl_spline * lambda_squared_spline; // cubic splines for lambda^2(bulkPi/Peq) and z(bulkPi/Peq)
-        gsl_spline * z_spline;
-
         Deltaf_Data(ParameterReader * paraRdr_in);
         ~Deltaf_Data();
 
         void load_df_coefficient_data();    // read the data files in /deltaf_coefficients/vh
-
-        void construct_cubic_splines();
 
         // I skip the photon because I think it breaks down for lambda = -1
         void compute_jonah_coefficients(particle_info * particle_data, int Nparticle);
 
         deltaf_coefficients evaluate_df_coefficients(double T, double muB, double E, double P, double bulkPi);
 
-        deltaf_coefficients cubic_spline(double T, double E, double P, double bulkPi);
+        deltaf_coefficients linear_interpolation(double T, double E, double P, double bulkPi);
+
+        double calculate_linear_temperature(double ** f_data, double T, double TL, double TR, int iTL, int iTR);
 
         double calculate_bilinear(double ** f_data, double T, double muB, double TL, double TR, double muBL, double muBR, int iTL, int iTR, int imuBL, int imuBR);
 

@@ -6,13 +6,11 @@
 #include<cmath>
 #include<iomanip>
 #include<stdlib.h>
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_spline.h>
-#include <gsl/gsl_interp.h>
 
 #include "main.cuh"
 #include "deltafReader.cuh"
 #include "ParameterReader.cuh"
+#include "gaussThermal.cuh"
 #include "readindata.cuh"
 
 using namespace std;
@@ -49,17 +47,6 @@ Deltaf_Data::Deltaf_Data(ParameterReader * paraRdr_in)
 Deltaf_Data::~Deltaf_Data()
 {
   // is there any harm in deallocating memory, while it's being used?
-  gsl_spline_free(c0_spline);
-  gsl_spline_free(c2_spline);
-  gsl_spline_free(c3_spline);
-
-  gsl_spline_free(F_spline);
-  gsl_spline_free(betabulk_spline);
-  gsl_spline_free(betaV_spline);
-  gsl_spline_free(betapi_spline);
-
-  gsl_spline_free(lambda_squared_spline);
-  gsl_spline_free(z_spline);
 }
 
 void Deltaf_Data::load_df_coefficient_data()
@@ -284,50 +271,44 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     z_array[i] = z;
     bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
     bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
-
-    //cout << lambda_squared_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
   }
 
-  // now construct cubic splines for lambda(bulkPi/Peq) and z(bulkPi/Peq)
-  lambda_squared_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
-  z_spline = gsl_spline_alloc(gsl_interp_cspline, jonah_points);
-
-  gsl_spline_init(lambda_squared_spline, bulkPi_over_Peq_array, lambda_squared_array, jonah_points);
-  gsl_spline_init(z_spline, bulkPi_over_Peq_array, z_array, jonah_points);
+  cout << "Finished jonah coefficients" << endl;
 }
 
-
-void Deltaf_Data::construct_cubic_splines()
+double Deltaf_Data::calculate_linear_temperature(double ** f_data, double T, double TL, double TR, int iTL, int iTR)
 {
-  // Allocate memory for cubic splines
-  c0_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
-  c2_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
-  c3_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
+  // linear interpolation formula f(T)
+  //  f_L    f_R
 
-  F_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
-  betabulk_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
-  betapi_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
-  betaV_spline = gsl_spline_alloc(gsl_interp_cspline, points_T);
+  double f_L = f_data[iTL][0];
+  double f_R = f_data[iTR][0];
 
-  // Initialize the cubic splines
-  gsl_spline_init(c0_spline, T_array, c0_data[0], points_T);
-  gsl_spline_init(c2_spline, T_array, c2_data[0], points_T);
-  gsl_spline_init(c3_spline, T_array, c3_data[0], points_T);
-
-  gsl_spline_init(F_spline, T_array, F_data[0], points_T);
-  gsl_spline_init(betabulk_spline, T_array, betabulk_data[0], points_T);
-  gsl_spline_init(betaV_spline, T_array, betaV_data[0], points_T);
-  gsl_spline_init(betapi_spline, T_array, betapi_data[0], points_T);
-
+  return (f_L * (TR - T)  +  f_R * (T - TL)) / dT;
 }
 
-
-deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, double bulkPi)
+deltaf_coefficients Deltaf_Data::linear_interpolation(double T, double E, double P, double bulkPi)
 {
+  // left and right T, muB indices
+  int iTL = (int)floor((T - T_min) / dT);
+  int iTR = iTL + 1;
+
+  double TL, TR;
+
+  if(!(iTL >= 0 && iTR < points_T))
+  {
+    printf("Error: temperature is outside df coefficient table. Exiting...\n");
+    exit(-1);
+  }
+  else
+  {
+    TL = T_array[iTL];
+    TR = T_array[iTR];
+  }
+
   deltaf_coefficients df;
 
-  gsl_interp_accel * accel_T = gsl_interp_accel_alloc();    // for temperature dependent functions
-  gsl_interp_accel * accel_bulk = gsl_interp_accel_alloc(); // for bulkPi/Peq dependent functions
+
 
   switch(df_mode)
   {
@@ -336,9 +317,9 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
       // undo the temperature power scaling of coefficients
       double T4 = T * T * T * T;
 
-      df.c0 = gsl_spline_eval(c0_spline, T, accel_T) / T4;
+      df.c0 = calculate_linear_temperature(c0_data, T, TL, TR, iTL, iTR) / T4;
       df.c1 = 0.0;
-      df.c2 = gsl_spline_eval(c2_spline, T, accel_T) / T4;
+      df.c2 = calculate_linear_temperature(c2_data, T, TL, TR, iTL, iTR) / T4;
       df.c3 = 0.0;
       df.c4 = 0.0;
       df.shear14_coeff = 2.0 * T * T * (E + P);
@@ -351,33 +332,33 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
       // undo the temperature power scaling of coefficients
       double T4 = T * T * T * T;
 
-      df.F = gsl_spline_eval(F_spline, T, accel_T) * T;
+      df.F = calculate_linear_temperature(F_data, T, TL, TR, iTL, iTR) * T;
       df.G = 0.0;
-      df.betabulk = gsl_spline_eval(betabulk_spline, T, accel_T) * T4;
+      df.betabulk = calculate_linear_temperature(betabulk_data, T, TL, TR, iTL, iTR) * T4;
       df.betaV = 1.0;
-      df.betapi = gsl_spline_eval(betapi_spline, T, accel_T) * T4;
+      df.betapi = calculate_linear_temperature(betapi_data, T, TL, TR, iTL, iTR) * T4;
 
       break;
     }
     case 4: // Modified (Jonah)
     {
       // undo the temperature power scaling of betapi
-      double T4 = T * T * T * T;
+      // double T4 = T * T * T * T;
 
-      double lambda_squared = gsl_spline_eval(lambda_squared_spline, (bulkPi / P), accel_bulk);
-      if(bulkPi < 0.0)
-      {
-        df.lambda = - sqrt(lambda_squared);
-      }
-      else if(bulkPi > 0.0)
-      {
-        df.lambda = sqrt(lambda_squared);
-      }
-      df.z = gsl_spline_eval(z_spline, (bulkPi / P), accel_bulk);
-      df.betapi = gsl_spline_eval(betapi_spline, T, accel_T) * T4;
-      // linearized correction to lambda, z
-      df.delta_lambda = bulkPi / (5.0 * df.betapi -  3.0 * P * (E + P) / E);
-      df.delta_z = - 3.0 * df.delta_lambda * P / E;
+      // double lambda_squared = gsl_spline_eval(lambda_squared_spline, (bulkPi / P), accel_bulk);
+      // if(bulkPi < 0.0)
+      // {
+      //   df.lambda = - sqrt(lambda_squared);
+      // }
+      // else if(bulkPi > 0.0)
+      // {
+      //   df.lambda = sqrt(lambda_squared);
+      // }
+      // df.z = gsl_spline_eval(z_spline, (bulkPi / P), accel_bulk);
+      // df.betapi = gsl_spline_eval(betapi_spline, T, accel_T) * T4;
+      // // linearized correction to lambda, z
+      // df.delta_lambda = bulkPi / (5.0 * df.betapi -  3.0 * P * (E + P) / E);
+      // df.delta_z = - 3.0 * df.delta_lambda * P / E;
 
       break;
     }
@@ -388,11 +369,12 @@ deltaf_coefficients Deltaf_Data::cubic_spline(double T, double E, double P, doub
     }
   }
 
-  gsl_interp_accel_free(accel_T);
-  gsl_interp_accel_free(accel_bulk);
+
 
   return df;
 }
+
+
 
 double Deltaf_Data::calculate_bilinear(double ** f_data, double T, double muB, double TL, double TR, double muBL, double muBR, int iTL, int iTR, int imuBL, int imuBR)
 {
@@ -491,7 +473,7 @@ deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, 
 
   if(!include_baryon)
   {
-    df = cubic_spline(T, E, P, bulkPi);   // cubic spline interpolation wrt T (at muB = 0)
+    df = linear_interpolation(T, E, P, bulkPi);         // linear interpolation wrt T (at muB = 0)
   }
   else
   {

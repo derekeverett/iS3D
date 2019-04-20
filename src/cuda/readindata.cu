@@ -1426,7 +1426,10 @@ void read_mcid::does_particle_have_distinct_antiparticle()
 PDG_Data::PDG_Data(ParameterReader * paraRdr_in)
 {
   paraRdr = paraRdr_in;
-  hrg_eos = paraRdr->getVal("hrg_eos");
+  hrg_eos = paraRdr->getVal("hrg_eos"); 
+  urqmd = "PDG/pdg-urqmd_v3.3+.dat"; // list of available pdg files
+  smash = "PDG/pdg_smash.dat";
+  smash_box = "PDG/pdg_box.dat";
 }
 
 

@@ -30,8 +30,8 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS3D_GPU.e
 endif
 
-SRC   = main.cu arsenal.cu emissionfunction.cu Table.cu readindata.cu ParameterReader.cu deltafReader.cu
-INC   = main.cuh arsenal.cuh emissionfunction.cuh Table.cuh readindata.cuh Stopwatch.cuh ParameterReader.cuh deltafReader.cuh 
+SRC   = main.cu arsenal.cu emissionfunction.cu Table.cu readindata.cu ParameterReader.cu gaussThermal.cu
+INC   = main.cuh arsenal.cuh emissionfunction.cuh Table.cuh readindata.cuh Stopwatch.cuh ParameterReader.cuh gaussThermal.cuh
 
 # -------------------------------------------------
 
@@ -83,3 +83,6 @@ install:	$(TARGET)
 ./Table.cu: Table.cuh arsenal.cuh
 ./readindata.cu: main.cuh readindata.cuh arsenal.cuh Table.cuh ParameterReader.cuh
 ./ParameterReader.cu: arsenal.cuh ParameterReader.cuh
+#./deltafReader.cu: main.cuh deltafReader.cuh ParameterReader.cuh readindata.cuh gaussThermal.cuh
+./gaussThermal.cu: gaussThermal.cuh
+

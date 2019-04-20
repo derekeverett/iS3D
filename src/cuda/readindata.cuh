@@ -210,13 +210,17 @@ class FO_data_reader
 
 
 class PDG_Data
-{
+{ 
   private:
     ParameterReader * paraRdr;
     int hrg_eos;
-    string urqmd = "PDG/pdg-urqmd_v3.3+.dat"; // list of available pdg files
-    string smash = "PDG/pdg_smash.dat";
-    string smash_box = "PDG/pdg_box.dat";
+    string urqmd; 
+    string smash;
+    string smash_box;
+
+    //string urqmd = "PDG/pdg-urqmd_v3.3+.dat"; // list of available pdg files
+    //string smash = "PDG/pdg_smash.dat";
+    //string smash_box = "PDG/pdg_box.dat";
   public:
     // read resonances from pdg file
     PDG_Data(ParameterReader * paraRdr_in);
