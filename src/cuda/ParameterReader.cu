@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <fstream>
 #include "stdlib.h"
@@ -152,16 +151,4 @@ double ParameterReader::getVal(string name)
     cout << "ParameterReader::getVal error: parameter with name " << name << " not found." << endl;
     exit(-1);
   }
-}
-
-
-//----------------------------------------------------------------------
-void ParameterReader::echo()
-/*
-  Print out all stored parameters to screen.
-*/
-{
-  if (names->size()==0) return;
-  for (long ii=0; ii<names->size(); ii++) cout << (*names)[ii] << "=" << (*values)[ii] << "  ";
-  cout << endl;
 }

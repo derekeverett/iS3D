@@ -147,7 +147,7 @@ void IS3D::run_particlization(int fo_from_file)
   df_data->compute_jonah_coefficients(particle_data, Nparticle);
   df_data->compute_particle_densities(particle_data, Nparticle);
   df_data->test_df_coefficients(-0.1);
-  
+
 
 
   //FOR THIS READ IN TO WORK PROPERLY, chosen_particles.dat MUST HAVE AN EMPTY ROW AT THE END!
@@ -162,7 +162,7 @@ void IS3D::run_particlization(int fo_from_file)
   Table phi_tab("tables/phi_gauss_legendre_table.dat");                 // phip value and weight table
   Table y_tab("tables/y_trapezoid_table_21pt.dat");                     // y values and weights
   Table eta_tab("tables/eta/eta_gauss_table_48pt_range_|6.70095|.dat"); // eta_s values and weights for smooth CFF
-  
+
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df_data);
 
   std::vector<Sampled_Particle> particle_event_list_in;
