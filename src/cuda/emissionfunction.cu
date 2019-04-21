@@ -12,7 +12,7 @@
 #include "Stopwatch.cuh"
 #include "arsenal.cuh"
 #include "ParameterReader.cuh"
-//#include "deltafReader.cuh"
+#include "deltafReader.cuh"
 #include <cuda.h>
 #include <cuda_runtime.h>
 
@@ -27,107 +27,85 @@ using namespace std;
 EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in,
                                               particle_info* particles_in, int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in, deltaf_coefficients df_in)
 {
-  paraRdr = paraRdr_in;
-  pT_tab = pT_tab_in;
-  pT_tab_length = pT_tab->getNumberOfRows();
-  phi_tab = phi_tab_in;
-  phi_tab_length = phi_tab->getNumberOfRows();
-  y_tab = y_tab_in;
-  y_tab_length = y_tab->getNumberOfRows();
-  eta_tab = eta_tab_in;
-  eta_tab_length = eta_tab->getNumberOfRows();
+  // control parameters
+  MODE = paraRdr_in->getVal("mode");
+  DF_MODE = paraRdr_in->getVal("df_mode");
+  DIMENSION = paraRdr_in->getVal("dimension");
+  INCLUDE_BARYON = paraRdr_in->getVal("include_baryon");
+  INCLUDE_SHEAR_DELTAF = paraRdr_in->getVal("include_shear_deltaf");
+  INCLUDE_BULK_DELTAF = paraRdr_in->getVal("include_bulk_deltaf");
+  INCLUDE_BARYONDIFF_DELTAF = paraRdr_in->getVal("include_baryondiff_deltaf");
+  OUTFLOW = paraRdr_in->getVal("outflow");
+  REGULATE_DELTAF = paraRdr_in->getVal("regulate_deltaf");
 
-  // get control parameters
-  MODE = paraRdr->getVal("mode");
-  DF_MODE = paraRdr->getVal("df_mode");
-  DIMENSION = paraRdr->getVal("dimension");
-  INCLUDE_BARYON = paraRdr->getVal("include_baryon");
-  INCLUDE_BULK_DELTAF = paraRdr->getVal("include_bulk_deltaf");
-  INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
-  INCLUDE_BARYONDIFF_DELTAF = paraRdr->getVal("include_baryondiff_deltaf");
-  REGULATE_DELTAF = paraRdr->getVal("regulate_deltaf");
-  GROUP_PARTICLES = paraRdr->getVal("group_particles");
-  PARTICLE_DIFF_TOLERANCE = paraRdr->getVal("particle_diff_tolerance");
 
-  particles = particles_in;
-  Nparticles = Nparticles_in;
+  // freezeout surface
   surf_ptr = surf_ptr_in;
   FO_length = FO_length_in;
+
+
+  // momentum tables
+  pT_tab = pT_tab_in;       
+  phi_tab = phi_tab_in;     
+  y_tab = y_tab_in;         
+  eta_tab = eta_tab_in;     
+  pT_tab_length = pT_tab->getNumberOfRows();
+  phi_tab_length = phi_tab->getNumberOfRows();
+  y_tab_length = y_tab->getNumberOfRows();
+  eta_tab_length = 1;
+
+  if(DIMENSION == 2)
+  {
+    y_tab_length = 1;  
+    eta_tab_length = eta_tab->getNumberOfRows();      
+  }
+
+  
+  // particle info
+  particles = particles_in;
+  Nparticles = Nparticles_in;
+  npart = chosen_particles_in->getNumberOfRows();
+  chosen_particles_table = new int[npart];
+
+  for(int ipart = 0; ipart < npart; ipart++)
+  {
+    int mc_id = chosen_particles_in->get(1, ipart + 1);
+    bool found_match = false;
+
+    // search for match in PDG file
+    for(int iPDG = 0; iPDG < Nparticles; iPDG++)
+    {
+      if(particles[iPDG].mc_id == mc_id)
+      {
+        chosen_particles_table[ipart] = iPDG;
+        found_match = true;
+        break;
+      }
+    }
+    if(!found_match)
+    {
+      printf("Chosen particles table error: %d not found in pdg.dat\n", mc_id);
+      exit(-1);
+    }
+  }
+
+
+  // df coefficients
   df = df_in;
-  number_of_chosen_particles = chosen_particles_in->getNumberOfRows();
 
-  chosen_particles_01_table = new int[Nparticles];
-  //a class member to hold 3D spectra for all chosen particles
 
-  int y_pts = y_tab_length;
-  if (DIMENSION == 2) y_pts = 1;
-  dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_pts];
-  //zero the array
-  for (long iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_pts; iSpectra++)
-  {
-    dN_pTdpTdphidy[iSpectra] = 0.0;
-  }
-
-  for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
-
-  //only grab chosen particles from the table
-  for (int m = 0; m < number_of_chosen_particles; m++)
-  { //loop over all chosen particles
-    int mc_id = chosen_particles_in->get(1, m + 1);
-
-    for (int n = 0; n < Nparticles; n++)
-    {
-      if (particles[n].mc_id == mc_id)
-      {
-        chosen_particles_01_table[n] = 1;
-        break;
-      }
-    }
-  }
-
-  // next, for sampling processes
-  chosen_particles_sampling_table = new int[number_of_chosen_particles];
-  // first copy the chosen_particles table, but now using indices instead of mc_id
-  int current_idx = 0;
-  for (int m = 0; m < number_of_chosen_particles; m++)
-  {
-    int mc_id = chosen_particles_in->get(1, m + 1);
-    for (int n = 0; n < Nparticles; n++)
-    {
-      if (particles[n].mc_id == mc_id)
-      {
-        chosen_particles_sampling_table[current_idx] = n;
-        current_idx ++;
-        break;
-      }
-    }
-  }
-
-  // next re-order them so that particles with similar mass are adjacent
-  if (GROUP_PARTICLES == 1) // sort particles according to their mass; bubble-sorting
-  {
-    for (int m = 0; m < number_of_chosen_particles; m++)
-    {
-      for (int n = 0; n < number_of_chosen_particles - m - 1; n++)
-      {
-        if (particles[chosen_particles_sampling_table[n]].mass > particles[chosen_particles_sampling_table[n + 1]].mass)
-        {
-          // swap them
-          int particle_idx = chosen_particles_sampling_table[n + 1];
-          chosen_particles_sampling_table[n + 1] = chosen_particles_sampling_table[n];
-          chosen_particles_sampling_table[n] = particle_idx;
-        }
-      }
-    }
-  }
+  // particle spectra of chosen particle species
+  spectra_length = npart * pT_tab_length * phi_tab_length * y_tab_length;
+  dN_pTdpTdphidy = new double[spectra_length];
+  for(long iSpectra = 0; iSpectra < spectra_length; iSpectra++) dN_pTdpTdphidy[iSpectra] = 0.0;
+ 
 }
 
 
 EmissionFunctionArray::~EmissionFunctionArray()
 {
-  delete[] chosen_particles_01_table;
-  delete[] chosen_particles_sampling_table;
-  delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
+  delete[] chosen_particles_table;
+  delete[] dN_pTdpTdphidy;
 }
 
 __global__ void calculate_dN_pTdpTdphidy( long FO_length, long number_of_chosen_particles, long pT_tab_length, long phi_tab_length, long y_pts, long eta_pts,
@@ -674,7 +652,7 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
 
 void EmissionFunctionArray::calculate_spectra()
 {
-  cudaDeviceSynchronize();    // synchronize the kernel at beginning
+  cudaDeviceSynchronize();    // synchronize device at beginning
   cudaError_t err;            // error handling
 
   cout << "calculate_spectra() has started... " << endl;
@@ -682,115 +660,106 @@ void EmissionFunctionArray::calculate_spectra()
   sw.tic();
 
   err = cudaGetLastError();
-  if (err != cudaSuccess)
+  if(err != cudaSuccess)
   {
     printf("Error at very beginning: %s\n", cudaGetErrorString(err));
     err = cudaSuccess;
-    // why not exit?
   }
 
-  // here we want to set up the tables to pass to device
-  // rather than constructing them locally
-  long y_pts = y_tab_length;    // defaults pts for 3+1d
-  long eta_pts = 1;
+  double prefactor = pow(2.0 * M_PI * hbarC, -3); 
 
-  if(DIMENSION == 2)
-  {
-    y_pts = 1;
-    eta_pts = eta_tab_length;
-  }
+  long blocks_ker1 = (FO_chunk + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the first kernel (thread reduction)
+  long spectrum_size = blocks_ker1 * spectra_length; //the size of the spectrum which has been intrablock reduced, but not interblock reduced
+  long final_spectrum_size = spectra_length; //size of final array for all particles , as a function of particle, pT and phi and y
+  long blocks_ker2 = (final_spectrum_size + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the second kernel (block reduction)
 
-  // number of blocks in kernels for reduction and ...
+  cout << "________________________|______________" << endl;
+  cout << "pT_tab_length           |\t" << pT_tab_length << endl;
+  cout << "phi_tab_length          |\t" << phi_tab_length << endl;
+  cout << "y_tab_length            |\t" << y_tab_length << endl;
+  cout << "eta_tab_length          |\t" << eta_tab_length << endl;
+  cout << "unreduced spectrum size |\t" << spectrum_size << endl;
+  cout << "reduced spectrum size   |\t" << final_spectrum_size << endl;
+  cout << "blocks in first kernel  |\t" << blocks_ker1 << endl;
+  cout << "blocks in second kernel |\t" << blocks_ker2 << endl;
+  cout << "threads per block       |\t" << threadsPerBlock << endl;
 
 
-  //int  blocks_ker1 = (FO_length + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the first kernel (thread reduction)
-  long  blocks_ker1 = (FO_chunk + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the first kernel (thread reduction)
-  long spectrum_size = blocks_ker1 * number_of_chosen_particles * pT_tab_length * phi_tab_length * y_pts; //the size of the spectrum which has been intrablock reduced, but not interblock reduced
-  long  final_spectrum_size = number_of_chosen_particles * pT_tab_length * phi_tab_length * y_pts; //size of final array for all particles , as a function of particle, pT and phi and y
-  long  blocks_ker2 = (final_spectrum_size + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in the second kernel (block reduction)
-
-  cout << "# of chosen particles   = " << number_of_chosen_particles << endl;
-  cout << "FO_length               = " << FO_length            << endl;
-  cout << "pT_tab_length           = " << pT_tab_length        << endl;
-  cout << "phi_tab_length          = " << phi_tab_length       << endl;
-  cout << "y_pts                   = " << y_pts                << endl;
-  cout << "unreduced spectrum size = " << spectrum_size        << endl;
-  cout << "reduced spectrum size   = " << final_spectrum_size  << endl;
-  cout << "threads per block       = " << threadsPerBlock      << endl;
-  cout << "blocks in first kernel  = " << blocks_ker1          << endl;
-  cout << "blocks in second kernel = " << blocks_ker2          << endl;
-
-  //Declare and fill arrays on host
   cout << "Declaring and filling host arrays with particle and freezeout surface info" << endl;
-  //particle info
-  particle_info *particle;
-  double *Mass, *Sign, *Degen, *Baryon;
-  Mass   = (double*)calloc(number_of_chosen_particles, sizeof(double));
-  Sign   = (double*)calloc(number_of_chosen_particles, sizeof(double));
-  Degen  = (double*)calloc(number_of_chosen_particles, sizeof(double));
-  Baryon = (double*)calloc(number_of_chosen_particles, sizeof(double));
 
-  for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+  // particle info
+  particle_info *particle;
+  double *Mass = (double*)calloc(npart, sizeof(double));
+  double *Sign = (double*)calloc(npart, sizeof(double));
+  double *Degen = (double*)calloc(npart, sizeof(double));
+  double *Baryon = (double*)calloc(npart, sizeof(double));
+
+  for(int ipart = 0; ipart < npart; ipart++)
   {
-    int particle_idx = chosen_particles_sampling_table[ipart];
-    particle = &particles[particle_idx];
-    Mass[ipart]   = particle->mass;
-    Sign[ipart]   = particle->sign;
-    Degen[ipart]  = particle->gspin;
+    int pdg_index = chosen_particles_table[ipart];
+    particle = &particles[pdg_index];
+
+    Mass[ipart] = particle->mass;
+    Sign[ipart] = particle->sign;
+    Degen[ipart] = particle->gspin;
     Baryon[ipart] = particle->baryon;
   }
 
-  //freezeout surface info
-  FO_surf *surf = &surf_ptr[0];
-  double *T, *P, *E, *tau, *eta, *ut, *ux, *uy, *un;
-  double *dat, *dax, *day, *dan;
-  double *pitt, *pitx, *pity, *pitn, *pixx, *pixy, *pixn, *piyy, *piyn, *pinn, *bulkPi;
-  double *muB, *nB, *Vt, *Vx, *Vy, *Vn;
-  //temperature, pressure, energy density, tau, eta
-  T   = (double*)calloc(FO_length, sizeof(double));
-  P   = (double*)calloc(FO_length, sizeof(double));
-  E   = (double*)calloc(FO_length, sizeof(double));
+
+  // freezeout surface info
+  FO_surf *surf;
+  double *T, *P, *E, *alphaB, *nB;            // thermodynamic properties
+  double *tau, *eta;                          // position
+  double *ux, *uy, *un;                       // u^mu             
+  double *dat, *dax, *day, *dan;              // dsigma_mu
+  double *pixx, *pixy, *pixn, *piyy, *piyn;   // pi^munu
+  double *bulkPi;                             // bulk pressure
+  double *Vx, *Vy, *Vn;                       // V^mu
+
+  // callocate memory
+  T = (double*)calloc(FO_length, sizeof(double));
+  P = (double*)calloc(FO_length, sizeof(double)); // replace with df coefficients
+  E = (double*)calloc(FO_length, sizeof(double));
   tau = (double*)calloc(FO_length, sizeof(double));
-  eta = (double*)calloc(FO_length, sizeof(double));
-  //contravariant flow velocity
-  ut  = (double*)calloc(FO_length, sizeof(double));
-  ux  = (double*)calloc(FO_length, sizeof(double));
-  uy  = (double*)calloc(FO_length, sizeof(double));
-  un  = (double*)calloc(FO_length, sizeof(double));
-  //contravariant surface normal vector
+
+  if(DIMENSION == 3)
+  {
+    eta = (double*)calloc(FO_length, sizeof(double));
+  }
+  
+  ux = (double*)calloc(FO_length, sizeof(double));
+  uy = (double*)calloc(FO_length, sizeof(double));
+  un = (double*)calloc(FO_length, sizeof(double));
+
   dat = (double*)calloc(FO_length, sizeof(double));
   dax = (double*)calloc(FO_length, sizeof(double));
   day = (double*)calloc(FO_length, sizeof(double));
   dan = (double*)calloc(FO_length, sizeof(double));
-  //ten contravariant shear stress components
-  pitt = (double*)calloc(FO_length, sizeof(double));
-  pitx = (double*)calloc(FO_length, sizeof(double));
-  pity = (double*)calloc(FO_length, sizeof(double));
-  pitn = (double*)calloc(FO_length, sizeof(double));
-  pixx = (double*)calloc(FO_length, sizeof(double));
-  pixy = (double*)calloc(FO_length, sizeof(double));
-  pixn = (double*)calloc(FO_length, sizeof(double));
-  piyy = (double*)calloc(FO_length, sizeof(double));
-  piyn = (double*)calloc(FO_length, sizeof(double));
-  pinn = (double*)calloc(FO_length, sizeof(double));
-  //bulk pressure
-  bulkPi = (double*)calloc(FO_length, sizeof(double));
 
-  if (INCLUDE_BARYON)
+  if(INCLUDE_SHEAR_DELTAF)
   {
-    //baryon chemical potential
-    muB = (double*)calloc(FO_length, sizeof(double));
-
-    if (INCLUDE_BARYONDIFF_DELTAF)
-    {
-      nB = (double*)calloc(FO_length, sizeof(double));
-      Vt = (double*)calloc(FO_length, sizeof(double));
-      Vx = (double*)calloc(FO_length, sizeof(double));
-      Vy = (double*)calloc(FO_length, sizeof(double));
-      Vn = (double*)calloc(FO_length, sizeof(double));
-    }
+    pixx = (double*)calloc(FO_length, sizeof(double));
+    pixy = (double*)calloc(FO_length, sizeof(double));
+    pixn = (double*)calloc(FO_length, sizeof(double));
+    piyy = (double*)calloc(FO_length, sizeof(double));
+    piyn = (double*)calloc(FO_length, sizeof(double));
+  }
+  
+  if(INCLUDE_BULK_DELTAF)
+  {
+    bulkPi = (double*)calloc(FO_length, sizeof(double));
   }
 
+  if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+  {
+    alphaB = (double*)calloc(FO_length, sizeof(double));  // muB / T
+    nB = (double*)calloc(FO_length, sizeof(double));
+    Vx = (double*)calloc(FO_length, sizeof(double));
+    Vy = (double*)calloc(FO_length, sizeof(double));
+    Vn = (double*)calloc(FO_length, sizeof(double));
+  }
+
+  /*
   // freezeout surface info exclusive for VAH_PL
   double *PL, *Wx, *Wy;
   double *Lambda, *aL;
@@ -818,18 +787,24 @@ void EmissionFunctionArray::calculate_spectra()
       c4 = (double*)calloc(FO_length, sizeof(double));
     }
   }
+  */
 
-  for (long icell = 0; icell < FO_length; icell++)
+  // Reading freezeout surface info
+  for(long icell = 0; icell < FO_length; icell++)
   {
-    //reading info from surface
     surf = &surf_ptr[icell];
-    T[icell]   = surf->T;
-    P[icell]   = surf->P;
-    E[icell]   = surf->E;
-    tau[icell] = surf->tau;
-    eta[icell] = surf->eta;
 
-    ut[icell] = surf->ut;
+    T[icell] = surf->T;
+    P[icell] = surf->P;
+    E[icell] = surf->E;
+
+    tau[icell] = surf->tau;
+
+    if(DIMENSION == 3)
+    {
+      eta[icell] = surf->eta;
+    }
+    
     ux[icell] = surf->ux;
     uy[icell] = surf->uy;
     un[icell] = surf->un;
@@ -839,157 +814,179 @@ void EmissionFunctionArray::calculate_spectra()
     day[icell] = surf->day;
     dan[icell] = surf->dan;
 
-    pitt[icell] = surf->pitt;
-    pitx[icell] = surf->pitx;
-    pity[icell] = surf->pity;
-    pitn[icell] = surf->pitn;
-    pixx[icell] = surf->pixx;
-    pixy[icell] = surf->pixy;
-    pixn[icell] = surf->pixn;
-    piyy[icell] = surf->piyy;
-    piyn[icell] = surf->piyn;
-    pinn[icell] = surf->pinn;
-
-    bulkPi[icell] = surf->bulkPi;
-
-    if (INCLUDE_BARYON)
+    if(INCLUDE_SHEAR_DELTAF)
     {
-      muB[icell] = surf->muB;
-      if (INCLUDE_BARYONDIFF_DELTAF)
-      {
-        nB[icell] = surf->nB;
-        Vt[icell] = surf->Vt;
-        Vx[icell] = surf->Vx;
-        Vy[icell] = surf->Vy;
-        Vn[icell] = surf->Vn;
-      }
+      pixx[icell] = surf->pixx;
+      pixy[icell] = surf->pixy;
+      pixn[icell] = surf->pixn;
+      piyy[icell] = surf->piyy;
+      piyn[icell] = surf->piyn;
+    }
+    
+    if(INCLUDE_BULK_DELTAF)
+    {
+      bulkPi[icell] = surf->bulkPi;
     }
 
+    if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+    {
+      alphaB[icell] = (surf->muB) / (surf->T);
+      nB[icell] = surf->nB;
+      Vx[icell] = surf->Vx;
+      Vy[icell] = surf->Vy;
+      Vn[icell] = surf->Vn;
+    }
+
+    /*
     if(MODE == 2)
+    {
+      PL[icell] = surf->PL;
+      //Wt[icell] = surf->Wt;
+      Wx[icell] = surf->Wx;
+      Wy[icell] = surf->Wy;
+      //Wn[icell] = surf->Wn;
+
+      Lambda[icell] = surf->Lambda;
+      aL[icell] = surf->aL;
+
+      if (DF_MODE == 4)
       {
-        PL[icell] = surf->PL;
-        //Wt[icell] = surf->Wt;
-        Wx[icell] = surf->Wx;
-        Wy[icell] = surf->Wy;
-        //Wn[icell] = surf->Wn;
-
-        Lambda[icell] = surf->Lambda;
-        aL[icell] = surf->aL;
-
-        if (DF_MODE == 4)
-        {
-          c0[icell] = surf->c0;
-          c1[icell] = surf->c1;
-          c2[icell] = surf->c2;
-          c3[icell] = surf->c3;
-          c4[icell] = surf->c4;
-        }
+        c0[icell] = surf->c0;
+        c1[icell] = surf->c1;
+        c2[icell] = surf->c2;
+        c3[icell] = surf->c3;
+        c4[icell] = surf->c4;
       }
+    }
+    */
+  } // icell
+
+
+  // set up momentum tables to pass to GPU
+  double *pT = (double*)calloc(pT_tab_length, sizeof(double));
+  double *trig = (double*)calloc(2 * phi_tab_length, sizeof(double));
+  double yValues[y_tab_length];
+  double etaValues[eta_tab_length];
+  double etaWeights[eta_tab_length];  
+
+  for(int i = 0; i < pT_tab_length; i++) 
+  {
+    pT[i] = pT_tab->get(1, i+1);
   }
-  // fill arrays with values points in y and eta
 
+  for(int i = 0; i < phi_tab_length; i++)
+  {
+    double phip = phi_tab->get(1, i+1);
 
-  double yValues[y_pts];
-  double etaValues[eta_pts];
-  double etaDeltaWeights[eta_pts];    // eta_weight * delta_eta
-
-  double delta_eta = (eta_tab->get(1,2)) - (eta_tab->get(1,1));  // assume uniform grid
+    trig[i] = sin(phip);
+    trig[i + phi_tab_length] = cos(phip);
+  }
+   
 
   if(DIMENSION == 2)
   {
     yValues[0] = 0.0;
-    for(int ieta = 0; ieta < eta_pts; ieta++)
+    for(int ieta = 0; ieta < eta_tab_length; ieta++)
     {
       etaValues[ieta] = eta_tab->get(1, ieta + 1);
-      etaDeltaWeights[ieta] = (eta_tab->get(2, ieta + 1)) * delta_eta;
-      //cout << etaValues[ieta] << "\t" << etaWeights[ieta] << endl;
+      etaWeights[ieta] = eta_tab->get(2, ieta + 1);
     }
   }
   else if(DIMENSION == 3)
   {
-    etaValues[0] = 0.0;       // below, will load eta_fo
-    etaDeltaWeights[0] = 1.0; // 1.0 for 3+1d
-    for (int iy = 0; iy < y_pts; iy++) yValues[iy] = y_tab->get(1, iy + 1);
-  }
-
-  double *pT, *trig;
-  pT   = (double*)calloc(pT_tab_length,      sizeof(double));
-  trig = (double*)calloc(2 * phi_tab_length, sizeof(double));
-
-  for (int i = 0; i < pT_tab_length; i++) pT[i] = pT_tab->get(1, i+1);
-  for (int i = 0; i < phi_tab_length; i++)
-  {
-    trig[i] = sin( phi_tab->get(1, i+1) );
-    trig[i + phi_tab_length] = cos( phi_tab->get(1, i+1) );
-  }
-
-  cout << "Declaring and Allocating device arrays " << endl;
-  double *Mass_d, *Sign_d, *Degen_d, *Baryon_d;
-  double *pT_d, *trig_d, *y_d, *eta_values_d, *etaDeltaWeights_d;
-  double *T_d, *P_d, *E_d, *tau_d, *eta_d, *ut_d, *ux_d, *uy_d, *un_d;
-  double *dat_d, *dax_d, *day_d, *dan_d;
-  double *pitt_d, *pitx_d, *pity_d, *pitn_d, *pixx_d, *pixy_d, *pixn_d, *piyy_d, *piyn_d, *pinn_d, *bulkPi_d;
-  double *muB_d, *nB_d, *Vt_d, *Vx_d, *Vy_d, *Vn_d;
-
-  //vah quantities
-  double *PL_d, *Wx_d, *Wy_d, *Lambda_d, *aL_d;
-  double *c0_d, *c1_d, *c2_d, *c3_d, *c4_d;
-
-  double *dN_pTdpTdphidy_d;
-
-  //Allocate memory on device
-  cudaMalloc( (void**) &Mass_d,   number_of_chosen_particles * sizeof(double) );
-  cudaMalloc( (void**) &Sign_d,   number_of_chosen_particles * sizeof(double) );
-  cudaMalloc( (void**) &Degen_d,  number_of_chosen_particles * sizeof(double) );
-  cudaMalloc( (void**) &Baryon_d, number_of_chosen_particles * sizeof(double) );
-
-  cudaMalloc( (void**) &pT_d,     pT_tab_length * sizeof(double)              );
-  cudaMalloc( (void**) &trig_d,   2 * phi_tab_length * sizeof(double)         );
-  cudaMalloc( (void**) &y_d,      y_pts        * sizeof(double)               );
-  cudaMalloc( (void**) &eta_values_d,  eta_pts * sizeof(double)               );
-  cudaMalloc( (void**) &etaDeltaWeights_d,  eta_pts * sizeof(double)          );
-
-  cudaMalloc( (void**) &T_d,      FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &P_d,      FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &E_d,      FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &tau_d,    FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &eta_d,    FO_length * sizeof(double)                  );
-
-  cudaMalloc( (void**) &ut_d,     FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &ux_d,     FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &uy_d,     FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &un_d,     FO_length * sizeof(double)                  );
-
-  cudaMalloc( (void**) &dat_d,    FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &dax_d,    FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &day_d,    FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &dan_d,    FO_length * sizeof(double)                  );
-
-  cudaMalloc( (void**) &pitt_d,   FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &pitx_d,   FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &pity_d,   FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &pitn_d,   FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &pixx_d,   FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &pixy_d,   FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &pixn_d,   FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &piyy_d,   FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &piyn_d,   FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &pinn_d,   FO_length * sizeof(double)                  );
-  cudaMalloc( (void**) &bulkPi_d, FO_length * sizeof(double)                  );
-
-  if (INCLUDE_BARYON)
-  {
-    cudaMalloc( (void**) &muB_d,  FO_length * sizeof(double) );
-    if (INCLUDE_BARYONDIFF_DELTAF)
+    etaValues[0] = 0.0;       
+    etaDeltaWeights[0] = 1.0; 
+    for(int iy = 0; iy < y_pts; iy++) 
     {
-      cudaMalloc( (void**) &nB_d, FO_length * sizeof(double) );
-      cudaMalloc( (void**) &Vt_d, FO_length * sizeof(double) );
-      cudaMalloc( (void**) &Vx_d, FO_length * sizeof(double) );
-      cudaMalloc( (void**) &Vy_d, FO_length * sizeof(double) );
-      cudaMalloc( (void**) &Vn_d, FO_length * sizeof(double) );
+      yValues[iy] = y_tab->get(1, iy + 1);
     }
   }
 
+  
+
+  cout << "Declaring and allocating device arrays " << endl;
+
+  double *Mass_d, *Sign_d, *Degen_d, *Baryon_d;
+
+  double *T_d, *P_d, *E_d, *alphaB_d, *nB_d;
+  double *tau_d, *eta_d;
+  double *ux_d, *uy_d, *un_d;
+  double *dat_d, *dax_d, *day_d, *dan_d;
+  double *pixx_d, *pixy_d, *pixn_d, *piyy_d, *piyn_d;
+  double *bulkPi_d;
+  double *Vx_d, *Vy_d, *Vn_d;
+
+  double *pT_d, *trig_d, *y_d, *etaValues_d, *etaWeights_d;
+
+  double *dN_pTdpTdphidy_d;
+
+  //vah quantities
+  //double *PL_d, *Wx_d, *Wy_d, *Lambda_d, *aL_d;
+  //double *c0_d, *c1_d, *c2_d, *c3_d, *c4_d;
+
+
+  // allocate memory on device
+  cudaMalloc((void**) &Mass_d,   npart * sizeof(double));
+  cudaMalloc((void**) &Sign_d,   npart * sizeof(double));
+  cudaMalloc((void**) &Degen_d,  npart * sizeof(double));
+  cudaMalloc((void**) &Baryon_d, npart * sizeof(double));
+
+  cudaMalloc((void**) &pT_d,   pT_tab_length * sizeof(double));
+  cudaMalloc((void**) &trig_d, 2 * phi_tab_length * sizeof(double));
+
+  if(DIMENSION == 2)
+  {
+    cudaMalloc((void**) &etaValues_d,  eta_tab_length * sizeof(double));
+    cudaMalloc((void**) &etaWeights_d, eta_tab_length * sizeof(double));
+  }
+  else if(DIMENSION == 3)
+  {
+    cudaMalloc((void**) &y_d, y_tab_length * sizeof(double));
+  }
+  
+  cudaMalloc((void**) &T_d, FO_length * sizeof(double));
+  cudaMalloc((void**) &P_d, FO_length * sizeof(double));
+  cudaMalloc((void**) &E_d, FO_length * sizeof(double));
+
+  cudaMalloc((void**)   &tau_d, FO_length * sizeof(double));
+  if(DIMENSION == 3)
+  {
+    cudaMalloc((void**) &eta_d, FO_length * sizeof(double));
+  }
+
+  cudaMalloc((void**) &ux_d,  FO_length * sizeof(double));
+  cudaMalloc((void**) &uy_d,  FO_length * sizeof(double));
+  cudaMalloc((void**) &un_d,  FO_length * sizeof(double));
+
+  cudaMalloc((void**) &dat_d, FO_length * sizeof(double));
+  cudaMalloc((void**) &dax_d, FO_length * sizeof(double));
+  cudaMalloc((void**) &day_d, FO_length * sizeof(double));
+  cudaMalloc((void**) &dan_d, FO_length * sizeof(double));
+
+  if(INCLUDE_SHEAR_DELTAF)
+  {
+    cudaMalloc((void**) &pixx_d, FO_length * sizeof(double));
+    cudaMalloc((void**) &pixy_d, FO_length * sizeof(double));
+    cudaMalloc((void**) &pixn_d, FO_length * sizeof(double));
+    cudaMalloc((void**) &piyy_d, FO_length * sizeof(double));
+    cudaMalloc((void**) &piyn_d, FO_length * sizeof(double));
+  }
+  
+  if(INCLUDE_BULK_DELTAF)
+  {
+    cudaMalloc((void**) &bulkPi_d, FO_length * sizeof(double));
+  }
+  
+  if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+  {
+    cudaMalloc((void**) &alphaB_d, FO_length * sizeof(double));
+    cudaMalloc((void**) &nB_d,     FO_length * sizeof(double));
+    cudaMalloc((void**) &Vx_d,     FO_length * sizeof(double));
+    cudaMalloc((void**) &Vy_d,     FO_length * sizeof(double));
+    cudaMalloc((void**) &Vn_d,     FO_length * sizeof(double));
+  }
+
+  /*
   if (MODE == 2)
   {
     cudaMalloc( (void**) &PL_d,     FO_length * sizeof(double) );
@@ -1006,73 +1003,85 @@ void EmissionFunctionArray::calculate_spectra()
       cudaMalloc( (void**) &c4_d, FO_length * sizeof(double) );
     }
   }
-  cudaMalloc( (void**) &dN_pTdpTdphidy_d, spectrum_size * sizeof(double) );
+  */
+
+  cudaMalloc((void**) &dN_pTdpTdphidy_d, spectrum_size * sizeof(double));
 
 
-  // check if any errors in device memory allocation  
+
   err = cudaGetLastError();
-  if (err != cudaSuccess)
+  if(err != cudaSuccess)
   {
     printf("Error in device memory allocation: %s\n", cudaGetErrorString(err));
-    err = cudaSuccess;  // reset to success by default?
+    err = cudaSuccess;  
   }
 
-  //copy info from host to device
-  cout << "Copying Freezeout and Particle data from host to device" << endl;
+  
 
-  cudaMemcpy( Mass_d,   	Mass,   number_of_chosen_particles * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( Sign_d,   	Sign,   number_of_chosen_particles * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( Degen_d,   	Degen,  number_of_chosen_particles * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( Baryon_d,   Baryon, number_of_chosen_particles * sizeof(double),      cudaMemcpyHostToDevice );
+  cout << "Copying particle, momentum and freezeout data from host to device" << endl;
 
-  cudaMemcpy( pT_d,   	pT,   pT_tab_length * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( trig_d, trig,   2 * phi_tab_length * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( y_d,   	   yValues,   y_pts  * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( eta_values_d,   	   etaValues,   eta_pts * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( etaDeltaWeights_d,   	   etaDeltaWeights,   eta_pts * sizeof(double),   cudaMemcpyHostToDevice );
+  cudaMemcpy(Mass_d,   Mass,   npart * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(Sign_d,   Sign,   npart * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(Degen_d,  Degen,  npart * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(Baryon_d, Baryon, npart * sizeof(double), cudaMemcpyHostToDevice);
 
-  cudaMemcpy( T_d,     T, FO_length * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( P_d,     P, FO_length * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( E_d,     E, FO_length * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( tau_d, tau, FO_length * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( eta_d, eta, FO_length * sizeof(double),   cudaMemcpyHostToDevice );
+  cudaMemcpy(pT_d,   pT,   pT_tab_length * sizeof(double),      cudaMemcpyHostToDevice);
+  cudaMemcpy(trig_d, trig, 2 * phi_tab_length * sizeof(double), cudaMemcpyHostToDevice);
 
-  cudaMemcpy( ut_d,   ut, FO_length * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( ux_d,   ux, FO_length * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( uy_d,   uy, FO_length * sizeof(double),   cudaMemcpyHostToDevice );
-  cudaMemcpy( un_d,   un, FO_length * sizeof(double),   cudaMemcpyHostToDevice );
-
-  cudaMemcpy( dat_d,  dat, FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( dax_d,  dax, FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( day_d,  day, FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( dan_d,  dan, FO_length * sizeof(double), cudaMemcpyHostToDevice );
-
-  cudaMemcpy( pitt_d, pitt,FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( pitx_d, pitx,FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( pity_d, pity,FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( pitn_d, pitn,FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( pixx_d, pixx,FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( pixy_d, pixy,FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( pixn_d, pixn,FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( piyy_d, piyy,FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( piyn_d, piyn,FO_length * sizeof(double), cudaMemcpyHostToDevice );
-  cudaMemcpy( pinn_d, pinn,FO_length * sizeof(double), cudaMemcpyHostToDevice );
-
-  cudaMemcpy( bulkPi_d,bulkPi, FO_length * sizeof(double), cudaMemcpyHostToDevice );
-
-  if (INCLUDE_BARYON)
+  if(DIMENSION == 2)
   {
-    cudaMemcpy( muB_d,    muB,  FO_length * sizeof(double),   cudaMemcpyHostToDevice );
-    if (INCLUDE_BARYONDIFF_DELTAF)
-    {
-      cudaMemcpy( nB_d, nB, FO_length * sizeof(double), cudaMemcpyHostToDevice );
-      cudaMemcpy( Vt_d, Vt, FO_length * sizeof(double), cudaMemcpyHostToDevice );
-      cudaMemcpy( Vx_d, Vx, FO_length * sizeof(double), cudaMemcpyHostToDevice );
-      cudaMemcpy( Vy_d, Vy, FO_length * sizeof(double), cudaMemcpyHostToDevice );
-      cudaMemcpy( Vn_d, Vn, FO_length * sizeof(double), cudaMemcpyHostToDevice );
-    }
+    cudaMemcpy(etaValues_d,  etaValues,  eta_tab_length * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(etaWeights_d, etaWeights, eta_tab_length * sizeof(double), cudaMemcpyHostToDevice);
+  }
+  else if(DIMENSION == 3)
+  {
+    cudaMemcpy(y_d, yValues, y_tab_length * sizeof(double), cudaMemcpyHostToDevice);
+  }
+  
+  
+  cudaMemcpy(T_d,   T,   FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(P_d,   P,   FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(E_d,   E,   FO_length * sizeof(double), cudaMemcpyHostToDevice);
+
+  cudaMemcpy(tau_d,   tau, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  if(DIMENSION == 3)
+  {
+    cudaMemcpy(eta_d, eta, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  }
+ 
+  cudaMemcpy(ux_d,  ux,  FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(uy_d,  uy,  FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(un_d,  un,  FO_length * sizeof(double), cudaMemcpyHostToDevice);
+
+  cudaMemcpy(dat_d, dat, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(dax_d, dax, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(day_d, day, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(dan_d, dan, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+
+  if(INCLUDE_SHEAR_DELTAF)
+  {
+    cudaMemcpy(pixx_d, pixx, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(pixy_d, pixy, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(pixn_d, pixn, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(piyy_d, piyy, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(piyn_d, piyn, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  }
+  
+  if(INCLUDE_BULK_DELTAF)
+  {
+    cudaMemcpy(bulkPi_d, bulkPi, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+  }
+  
+  if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+  {
+    cudaMemcpy(alphaB_d, alphaB, FO_length * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(nB_d,     nB,     FO_length * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(Vx_d,     Vx,     FO_length * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(Vy_d,     Vy,     FO_length * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(Vn_d,     Vn,     FO_length * sizeof(double), cudaMemcpyHostToDevice);
   }
 
+  /*
   if (MODE == 2)
   {
     cudaMemcpy( PL_d, PL, FO_length * sizeof(double), cudaMemcpyHostToDevice );
@@ -1089,62 +1098,58 @@ void EmissionFunctionArray::calculate_spectra()
       cudaMemcpy( c4_d, c4, FO_length * sizeof(double), cudaMemcpyHostToDevice );
     }
   }
+  */
 
   //cudaMemcpy( dN_pTdpTdphidy_d, dN_pTdpTdphidy, spectrum_size * sizeof(double), cudaMemcpyHostToDevice ); //this is an empty array, we shouldn't need to memcpy it?
+
   cudaMemset(dN_pTdpTdphidy_d, 0.0, spectrum_size * sizeof(double));
 
-  // df_coeff array:
-  //  - holds {c0,c1,c2,c3,c4}              (14-moment vhydro)
-  //      or  {F,G,betabulk,betaV,betapi}   (CE vhydro, modified vhydro)
+
+  // but dN_pTdpTdphidy_d and dN_pTdpTdphidy don't have same dimensions... 
 
   double df_coeff[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
-  // 14-moment vhydro
-  if(DF_MODE == 1)
-  {
-    df_coeff[0] = df.c0;
-    df_coeff[1] = df.c1;
-    df_coeff[2] = df.c2;
-    df_coeff[3] = df.c3;
-    df_coeff[4] = df.c4;
-
-    // print coefficients
-    cout << "c0 = " << df_coeff[0] << "\tc1 = " << df_coeff[1] << "\tc2 = " << df_coeff[2] << "\tc3 = " << df_coeff[3] << "\tc4 = " << df_coeff[4] << endl;
-  }
-
-  //copy delta_f coefficients to the device array
+  // copy df coefficients to the device array
   double *df_coeff_d;
-  cudaMalloc( (void**) &df_coeff_d, 5 * sizeof(double) );
-  cudaMemcpy( df_coeff_d, df_coeff, 5 * sizeof(double), cudaMemcpyHostToDevice );
+  cudaMalloc((void**) &df_coeff_d, 5 * sizeof(double));
+  cudaMemcpy(df_coeff_d, df_coeff, 5 * sizeof(double), cudaMemcpyHostToDevice);
 
 
 
   // check if memory copy error
   err = cudaGetLastError();
-  if (err != cudaSuccess)
+  if(err != cudaSuccess)
   {
     printf("Error in a cudaMemcpy: %s\n", cudaGetErrorString(err));
     err = cudaSuccess;
   }
 
   //Perform kernels, first calculation of integrand and reduction across threads, then a reduction across blocks
-  double prefactor = 1.0 / (8.0 * (M_PI * M_PI * M_PI)) / hbarC / hbarC / hbarC;
-  if(debug) cout << "Starting First Kernel : thread reduction" << endl;
+  
+  if(debug) cout << "Starting first Kernel: thread reduction" << endl;
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
   cudaEventRecord(start);
   cudaDeviceSynchronize();
 
-  if (MODE == 1) calculate_dN_pTdpTdphidy<<<blocks_ker1, threadsPerBlock>>>(FO_length, number_of_chosen_particles, pT_tab_length, phi_tab_length, y_pts, eta_pts,
-                                                              dN_pTdpTdphidy_d, pT_d, trig_d, y_d, eta_values_d, etaDeltaWeights_d,
+
+  if(MODE == 1) calculate_dN_pTdpTdphidy<<<blocks_ker1, threadsPerBlock>>>(FO_length, npart, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length,
+                                                              dN_pTdpTdphidy_d, pT_d, trig_d, y_d, etaValues_d, etaWeights_d,
                                                               Mass_d, Sign_d, Degen_d, Baryon_d,
-                                                              T_d, P_d, E_d, tau_d, eta_d, ut_d, ux_d, uy_d, un_d,
+                                                              T_d, P_d, E_d, 
+                                                              tau_d, eta_d, 
+                                                              ux_d, uy_d, un_d,
                                                               dat_d, dax_d, day_d, dan_d,
-                                                              pitt_d, pitx_d, pity_d, pitn_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, pinn_d, bulkPi_d,
-                                                              muB_d, nB_d, Vt_d, Vx_d, Vy_d, Vn_d, prefactor, df_coeff_d,
+                                                              pixx_d, pixy_d, pixn_d, piyy_d, piyn_d,
+                                                              bulkPi_d,
+                                                              muB_d, nB_d,
+                                                              Vx_d, Vy_d, Vn_d, 
+                                                              prefactor, 
+                                                              df_coeff_d,
                                                               INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION);
 
+  /*
   else if (MODE == 2) calculate_dN_pTdpTdphidy_VAH_PL<<<blocks_ker1, threadsPerBlock>>>(FO_length, number_of_chosen_particles, pT_tab_length, phi_tab_length, y_pts, eta_pts,
                                                                                         dN_pTdpTdphidy_d, pT_d, trig_d, y_d, eta_values_d, etaDeltaWeights_d,
                                                                                         Mass_d, Sign_d, Degen_d, Baryon_d,
@@ -1153,12 +1158,13 @@ void EmissionFunctionArray::calculate_spectra()
                                                                                         pitt_d, pitx_d, pity_d, pitn_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, pinn_d, bulkPi_d,
                                                                                         Wx_d, Wy_d, Lambda_d, aL_d, c0_d, c1_d, c2_d, c3_d, c4_d, prefactor,
                                                                                         REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, DIMENSION);
+  */
 
 
   // synchonize kernels after calculation finished
   cudaDeviceSynchronize();
   err = cudaGetLastError();
-  if (err != cudaSuccess)
+  if(err != cudaSuccess)
   {
     printf("Error in first kernel: %s\n", cudaGetErrorString(err));
     err = cudaSuccess;
@@ -1166,7 +1172,7 @@ void EmissionFunctionArray::calculate_spectra()
 
 
   // not sure what's going on here
-  cout << "Starting Second kernel : block reduction" << endl;
+  cout << "Starting second kernel: block reduction" << endl;
   cudaDeviceSynchronize();
   blockReduction<<<blocks_ker2, threadsPerBlock>>>(dN_pTdpTdphidy_d, final_spectrum_size, blocks_ker1);
   cudaDeviceSynchronize();
@@ -1185,10 +1191,11 @@ void EmissionFunctionArray::calculate_spectra()
   }
 
 
-  //Copy final spectra for all particles from device to host
+  // Copy final spectra for all particles from device to host
   cout << "Copying spectra from device to host" << endl;
-  //cudaMemcpy( dN_pTdpTdphidy, dN_pTdpTdphidy_d, final_spectrum_size * sizeof(double), cudaMemcpyDeviceToHost );
-  cudaMemcpy( dN_pTdpTdphidy, dN_pTdpTdphidy_d, final_spectrum_size * sizeof(double), cudaMemcpyDeviceToHost );
+  //cudaMemcpy( dN_pTdpTdphidy, dN_pTdpTdphidy_d, final_spectrum_size * sizeof(double), cudaMemcpyDeviceToHost);
+
+  cudaMemcpy(dN_pTdpTdphidy, dN_pTdpTdphidy_d, final_spectrum_size * sizeof(double), cudaMemcpyDeviceToHost);
 
   //write the results to disk
   write_dN_pTdpTdphidy_toFile();
@@ -1204,10 +1211,13 @@ void EmissionFunctionArray::calculate_spectra()
   free(T);
   free(P);
   free(E);
-  free(tau);
-  free(eta);
 
-  free(ut);
+  free(tau);
+  if(DIMENSION == 3)
+  {
+    free(eta);
+  }
+
   free(ux);
   free(uy);
   free(un);
@@ -1217,32 +1227,31 @@ void EmissionFunctionArray::calculate_spectra()
   free(day);
   free(dan);
 
-  free(pitt);
-  free(pitx);
-  free(pity);
-  free(pitn);
-  free(pixx);
-  free(pixy);
-  free(pixn);
-  free(piyy);
-  free(piyn);
-  free(pinn);
-
-  free(bulkPi);
-
-  if (INCLUDE_BARYON)
+  if(INCLUDE_SHEAR_DELTAF)
   {
-    free(muB);
-    if (INCLUDE_BARYONDIFF_DELTAF)
-    {
-      free(nB);
-      free(Vt);
-      free(Vx);
-      free(Vy);
-      free(Vn);
-    }
+    free(pixx);
+    free(pixy);
+    free(pixn);
+    free(piyy);
+    free(piyn);
+  }
+  
+  if(INCLUDE_BULK_DELTAF)
+  {
+    free(bulkPi);
+  }
+  
+
+  if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+  {
+    free(alphaB);
+    free(nB);
+    free(Vx);
+    free(Vy);
+    free(Vn);
   }
 
+  /*
   if (MODE == 2)
   {
     free(PL);
@@ -1259,9 +1268,9 @@ void EmissionFunctionArray::calculate_spectra()
       free(c4);
     }
   }
+  */
 
   // cudaFree = deallocate memory on device
-
   cudaFree(Mass_d);
   cudaFree(Sign_d);
   cudaFree(Degen_d);
@@ -1270,10 +1279,13 @@ void EmissionFunctionArray::calculate_spectra()
   cudaFree(T_d);
   cudaFree(P_d);
   cudaFree(E_d);
-  cudaFree(tau_d);
-  cudaFree(eta_d);
 
-  cudaFree(ut_d);
+  cudaFree(tau_d);
+  if(DIMENSION == 3)
+  {
+    cudaFree(eta_d);
+  }
+  
   cudaFree(ux_d);
   cudaFree(uy_d);
   cudaFree(un_d);
@@ -1283,34 +1295,32 @@ void EmissionFunctionArray::calculate_spectra()
   cudaFree(day_d);
   cudaFree(dan_d);
 
-  cudaFree(pitt_d);
-  cudaFree(pitx_d);
-  cudaFree(pity_d);
-  cudaFree(pitn_d);
-  cudaFree(pixx_d);
-  cudaFree(pixy_d);
-  cudaFree(pixn_d);
-  cudaFree(piyy_d);
-  cudaFree(piyn_d);
-  cudaFree(pinn_d);
-
-  cudaFree(bulkPi_d);
-
-  cudaFree( dN_pTdpTdphidy_d );
-
-  if (INCLUDE_BARYON)
+  if(INCLUDE_SHEAR_DELTAF)
+  {
+    cudaFree(pixx_d);
+    cudaFree(pixy_d);
+    cudaFree(pixn_d);
+    cudaFree(piyy_d);
+    cudaFree(piyn_d);
+  }
+  
+  if(INCLUDE_BULK_DELTAF)
+  {
+    cudaFree(bulkPi_d);
+  }
+  
+  if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
   {
     cudaFree(muB_d);
-    if (INCLUDE_BARYONDIFF_DELTAF)
-    {
-      cudaFree(nB_d);
-      cudaFree(Vt_d);
-      cudaFree(Vx_d);
-      cudaFree(Vy_d);
-      cudaFree(Vn_d);
-    }
+    cudaFree(nB_d);
+    cudaFree(Vx_d);
+    cudaFree(Vy_d);
+    cudaFree(Vn_d);
   }
 
+  cudaFree(dN_pTdpTdphidy_d);
+
+  /*
   if (MODE == 2)
   {
     cudaFree(PL);
@@ -1327,4 +1337,5 @@ void EmissionFunctionArray::calculate_spectra()
       cudaFree(c4);
     }
   }
+  */
 }

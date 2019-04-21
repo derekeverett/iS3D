@@ -14,7 +14,7 @@
 #include "emissionfunction.cuh"
 #include "arsenal.cuh"
 #include "ParameterReader.cuh"
-//#include "deltafReader.cuh"
+#include "deltafReader.cuh"
 
 using namespace std;
 
@@ -25,7 +25,7 @@ int main()
   cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu\n" << endl;
 
   // Read in parameters:
-  cout << "Reading in parameters:\n" << endl;
+  printf("Reading in parameters:\n\n");
   ParameterReader *paraRdr = new ParameterReader;
   paraRdr->readFromFile("iS3D_parameters.dat");
   paraRdr->echo();
@@ -43,41 +43,40 @@ int main()
   particle_info *particle_data = new particle_info[Maxparticle];
   PDG_Data pdg(paraRdr);
   int Nparticle = pdg.read_resonances(particle_data);
+  Table chosen_particles("PDG/chosen_particles.dat"); // skip others except for these particles
 
 
-
-  // df coefficient data
-  /*
+  // Load df coefficient data
   Deltaf_Data *df_data = new Deltaf_Data(paraRdr);
   df_data->load_df_coefficient_data();
   df_data->compute_jonah_coefficients(particle_data, Nparticle);
   df_data->test_df_coefficients(-0.1);
-  */
-
-  // load delta-f coefficients:
-  deltaf_coefficients df;
-  //string pathTodeltaf = "deltaf_coefficients";
-  //DeltafReader deltaf(paraRdr, pathTodeltaf);
-  //df = deltaf.load_coefficients(surf_ptr, FO_length);
-
-
   
-  Table chosen_particles("PDG/chosen_particles.dat"); // skip others except for these particles
 
-  cout << "Total number of freezeout cells: " <<  FO_length << endl;
-  cout << "Number of chosen particles : " << chosen_particles.getNumberOfRows() << endl;
+  deltaf_coefficients df;
 
-  Table pT_tab("tables/pT_gauss_table.dat"); // pT value and weight table
-  Table phi_tab("tables/phi_gauss_table.dat"); // phi value and weight table
-  Table y_tab("tables/y_trapezoid_table_21pt.dat"); //y values and weights, here just a riemann sum!
-  Table eta_tab("tables/eta/eta_gauss_table_48pt_range_|6.70095|.dat"); //eta values and weights, hardcoded assuming trapezoid rule 
+
+  // Load momentum tables
+  Table pT_tab("tables/pT_gauss_table.dat"); 
+  Table phi_tab("tables/phi_gauss_table.dat");
+  Table y_tab("tables/y_trapezoid_table_21pt.dat");
+  Table eta_tab("tables/eta/eta_trapezoid_table_41pt.dat"); 
+
+
+  printf("Total number of freezeout cells: %ld\n", FO_length);
+  printf("Number of chosen particles: %d\n\n", chosen_particles.getNumberOfRows());
+
+
+  // Calculate spectra
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
-
   efa.calculate_spectra();
 
-  delete [] surf_ptr;
   delete paraRdr;
+  delete [] surf_ptr;
+  delete [] particle_data;
+  delete df_data;
+  
 
-  cout << "Done Calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
+  cout << "Finished calculating particle spectra. Output stored in results folder. Goodbye!" << endl;
 
 }

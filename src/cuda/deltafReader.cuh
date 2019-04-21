@@ -82,7 +82,7 @@ class Deltaf_Data
 
         void test_df_coefficients(double bulkPi_over_P);
 
-        void compute_particle_densities(particle_info * particle_data, int Nparticle);
+   
 };
 
 #endif

@@ -30,8 +30,8 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS3D_GPU.e
 endif
 
-SRC   = main.cu arsenal.cu emissionfunction.cu Table.cu readindata.cu ParameterReader.cu gaussThermal.cu
-INC   = main.cuh arsenal.cuh emissionfunction.cuh Table.cuh readindata.cuh Stopwatch.cuh ParameterReader.cuh gaussThermal.cuh
+SRC   = main.cu arsenal.cu emissionfunction.cu Table.cu readindata.cu ParameterReader.cu deltafReader.cu gaussThermal.cu
+INC   = main.cuh arsenal.cuh emissionfunction.cuh Table.cuh readindata.cuh Stopwatch.cuh ParameterReader.cuh deltafReader.cuh gaussThermal.cuh
 
 # -------------------------------------------------
 
@@ -79,10 +79,10 @@ install:	$(TARGET)
 # --------------- Dependencies -------------------
 ./main.cu: main.cuh Table.cuh readindata.cuh emissionfunction.cuh arsenal.cuh ParameterReader.cuh
 ./arsenal.cu: arsenal.cuh
-./emissionfunction.cu: main.cuh readindata.cuh emissionfunction.cuh Stopwatch.cuh arsenal.cuh Table.cuh
+./emissionfunction.cu: main.cuh readindata.cuh emissionfunction.cuh Stopwatch.cuh arsenal.cuh Table.cuh deltafReader.cuh
 ./Table.cu: Table.cuh arsenal.cuh
 ./readindata.cu: main.cuh readindata.cuh arsenal.cuh Table.cuh ParameterReader.cuh
 ./ParameterReader.cu: arsenal.cuh ParameterReader.cuh
-#./deltafReader.cu: main.cuh deltafReader.cuh ParameterReader.cuh readindata.cuh gaussThermal.cuh
+./deltafReader.cu: main.cuh deltafReader.cuh ParameterReader.cuh readindata.cuh gaussThermal.cuh
 ./gaussThermal.cu: gaussThermal.cuh
 

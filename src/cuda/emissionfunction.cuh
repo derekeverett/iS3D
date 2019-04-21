@@ -6,35 +6,57 @@
 #include "Table.cuh"
 #include "main.cuh"
 #include "ParameterReader.cuh"
-//#include "deltafReader.cuh"
+#include "deltafReader.cuh"
 using namespace std;
 
 class EmissionFunctionArray
 {
 private:
-  ParameterReader* paraRdr;
 
-  int MODE; //vh or vah , ...
-  int DF_MODE;  // delta-f type
-  int DIMENSION; // hydro d+1 dimensions (2+1 or 3+1)
-  int INCLUDE_BULK_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
-  int REGULATE_DELTAF;
+  // control parameters
+  int MODE;      
+  int DF_MODE;   
+  int DIMENSION; 
   int INCLUDE_BARYON;
-  int GROUP_PARTICLES;
-  double PARTICLE_DIFF_TOLERANCE;
+  int INCLUDE_SHEAR_DELTAF;
+  int INCLUDE_BULK_DELTAF;
+  int INCLUDE_BARYONDIFF_DELTAF;
+  int OUTFLOW;
+  int REGULATE_DELTAF;
+  
 
-  Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
-  int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
+  // freezeout surface
+  FO_surf *surf_ptr;
   long FO_length;
-  double *dN_pTdpTdphidy; //to hold 3D spectra of all species
-  int *chosen_particles_01_table; // has length Nparticle, 0 means miss, 1 means include
-  int *chosen_particles_sampling_table; // store particle index; the sampling process follows the order specified by this table
-  int Nparticles;
-  int number_of_chosen_particles;
-  particle_info* particles;
-  FO_surf* surf_ptr;
+
+
+  // momentum tables
+  Table *pT_tab;
+  Table *phi_tab;
+  Table *y_tab;
+  Table *eta_tab;
+
+  int pT_tab_length;
+  int phi_tab_length;
+  int y_tab_length;
+  int eta_tab_length;
+
+
+  // particle info
+  particle_info* particles;  
+  int Nparticles;              // number of pdg particles
+  int npart;                   // number of chosen particles
+  int *chosen_particles_table; // stores the pdg index of the chosen particle (to access chosen particle properties)
+  
+  
+  // df coefficients
   deltaf_coefficients df;
-  bool particles_are_the_same(int, int);
+
+
+  // particle spectra of chosen particle species
+  long spectra_length;
+  double *dN_pTdpTdphidy;      
+
 
 public:
   EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in,
@@ -53,7 +75,7 @@ public:
   double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
   double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
-  void write_dN_pTdpTdphidy_toFile(); //write 3D spectra to file
+  void write_dN_pTdpTdphidy_toFile(); // write 3D spectra to file
   void calculate_spectra();
 
 };

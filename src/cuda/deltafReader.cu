@@ -273,7 +273,6 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
   }
 
-  cout << "Finished jonah coefficients" << endl;
 }
 
 double Deltaf_Data::calculate_linear_temperature(double ** f_data, double T, double TL, double TR, int iTL, int iTR)
@@ -281,8 +280,8 @@ double Deltaf_Data::calculate_linear_temperature(double ** f_data, double T, dou
   // linear interpolation formula f(T)
   //  f_L    f_R
 
-  double f_L = f_data[iTL][0];
-  double f_R = f_data[iTR][0];
+  double f_L = f_data[0][iTL];
+  double f_R = f_data[0][iTR];
 
   return (f_L * (TR - T)  +  f_R * (T - TL)) / dT;
 }
@@ -379,14 +378,18 @@ deltaf_coefficients Deltaf_Data::linear_interpolation(double T, double E, double
 double Deltaf_Data::calculate_bilinear(double ** f_data, double T, double muB, double TL, double TR, double muBL, double muBR, int iTL, int iTR, int imuBL, int imuBR)
 {
   // bilinear formula f(T,muB)
+  // T = x-axis (cols)
+  // muB = y-axis (rows)
   //  f_LR    f_RR
   //
   //  f_LL    f_RL
 
-  double f_LL = f_data[iTL][imuBL];
-  double f_LR = f_data[iTL][imuBR];
-  double f_RL = f_data[iTR][imuBL];
-  double f_RR = f_data[iTR][imuBR];
+  double f_LL = f_data[imuBL][iTL];
+  double f_LR = f_data[imuBR][iTL];
+  double f_RL = f_data[imuBL][iTR];
+  double f_RR = f_data[imuBR][iTR];
+
+
 
   return ((f_LL*(TR - T) + f_RL*(T - TL)) * (muBR - muB)  +  (f_LR*(TR - T) + f_RR*(T - TL)) * (muB - muBL)) / (dT * dmuB);
 }
@@ -515,121 +518,7 @@ void Deltaf_Data::test_df_coefficients(double bulkPi_over_P)
   }
 }
 
-void Deltaf_Data::compute_particle_densities(particle_info * particle_data, int Nparticle)
-{
-  // get the average temperature, energy density, pressure, etc.
-  Plasma QGP;
-  QGP.load_thermodynamic_averages();
 
-  const double T = QGP.temperature;    // GeV
-  const double E = QGP.energy_density; // GeV / fm^3
-  const double P = QGP.pressure;       // GeV / fm^3
-  const double muB = QGP.baryon_chemical_potential;
-  const double nB = QGP.net_baryon_density;
-
-  deltaf_coefficients df = evaluate_df_coefficients(T, muB, E, P, 0.0);
-
-  double alphaB = muB / T;
-  double baryon_enthalpy_ratio = nB / (E + P);
-
-  // gauss laguerre roots and weights
-  Gauss_Laguerre gla;
-  gla.load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
-
-  const int pbar_pts = gla.points;
-
-  double * pbar_root1 = gla.root[1];
-  double * pbar_root2 = gla.root[2];
-  double * pbar_root3 = gla.root[3];
-
-  double * pbar_weight1 = gla.weight[1];
-  double * pbar_weight2 = gla.weight[2];
-  double * pbar_weight3 = gla.weight[3];
-
-
-  // calculate the equilibrium densities and the
-  // bulk / diffusion corrections of each particle
-  for(int i = 0; i < Nparticle; i++)
-  {
-    double mass = particle_data[i].mass;
-    double degeneracy = (double)particle_data[i].gspin;
-    double baryon = (double)particle_data[i].baryon;
-    double sign = (double)particle_data[i].sign;
-    double mbar = mass / T;
-
-    // equilibrium density
-    double neq_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
-    double neq = neq_fact * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-
-    // bulk and diffusion density corrections
-    double dn_bulk = 0.0;
-    double dn_diff = 0.0;
-
-    switch(df_mode)
-    {
-      case 1: // 14 moment (not sure what the status is)
-      {
-        double c0 = df.c0;
-        double c1 = df.c1;
-        double c2 = df.c2;
-        double c3 = df.c3;
-        double c4 = df.c4;
-
-        double J10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
-        double J20_fact = degeneracy * pow(T,4) / two_pi2_hbarC3;
-        double J30_fact = degeneracy * pow(T,5) / two_pi2_hbarC3;
-        double J31_fact = degeneracy * pow(T,5) / two_pi2_hbarC3 / 3.0;
-
-        double J10 =  J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-        double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
-        double J30 = J30_fact * GaussThermal(J30_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
-        double J31 = J31_fact * GaussThermal(J31_int, pbar_root3, pbar_weight3, pbar_pts, mbar, alphaB, baryon, sign);
-
-        dn_bulk = ((c0 - c2) * mass * mass * J10 +  c1 * baryon * J20  +  (4.0 * c2 - c0) * J30);
-        // these coefficients need to be loaded.
-        // c3 ~ cV / V
-        // c4 ~ 2cW / V
-        dn_diff = baryon * c3 * neq * T  +  c4 * J31;   // not sure if this is right...
-        break;
-      }
-      case 2: // Chapman-Enskog
-      case 3: // Modified (Mike)
-      {
-        double F = df.F;
-        double G = df.G;
-        double betabulk = df.betabulk;
-        double betaV = df.betaV;
-
-        double J10_fact = degeneracy * pow(T,3) / two_pi2_hbarC3;
-        double J11_fact = degeneracy * pow(T,3) / two_pi2_hbarC3 / 3.0;
-        double J20_fact = degeneracy * pow(T,4) / two_pi2_hbarC3;
-
-        double J10 = J10_fact * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-        double J11 = J11_fact * GaussThermal(J11_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
-        double J20 = J20_fact * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
-
-        dn_bulk = (neq + (baryon * J10 * G) + (J20 * F / pow(T,2))) / betabulk;
-        dn_diff = (neq * T * baryon_enthalpy_ratio  -  baryon * J11) / betaV;
-
-        break;
-      }
-      case 4:
-      {
-        // bulk/diffusion densities not needed for jonah
-        break;
-      }
-      default:
-      {
-        cout << "Please choose df_mode = (1,2,3,4) in parameters.dat" << endl;
-        exit(-1);
-      }
-    } // df_mode
-
-    particle_data[i].equilibrium_density = neq;
-    particle_data[i].bulk_density = dn_bulk;
-    particle_data[i].diff_density = dn_diff;
-  }
-}
 
 
 
