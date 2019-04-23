@@ -862,13 +862,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   {
     printf("Writing sampled particles list to OSCAR File...\n");
 
+    char filename[255] = "";
+    sprintf(filename, "results/particle_list_osc.dat");
+    ofstream spectraFile(filename, ios_base::out);
+
     for(int ievent = 0; ievent < Nevents; ievent++)
     {
-      char filename[255] = "";
-      sprintf(filename, "results/particle_list_osc_%d.dat", ievent + 1);
-
-      ofstream spectraFile(filename, ios_base::out);
-
       int num_particles = particle_event_list[ievent].size();
 
       //this matches format read by afterburner here : https://github.com/jbernhard/urqmd-afterburner/tree/f532416d241c23c2c3199ee21ce3c262843fdc90
@@ -890,8 +889,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         double pz = particle_event_list[ievent][ipart].pz;
         spectraFile << mcid << " " << scientific <<  setw(5) << setprecision(16) << t << " " << x << " " << y << " " << z << " " << E << " " << px << " " << py << " " << pz << "\n";
       }//ipart
-      spectraFile.close();
     } // ievent
+    spectraFile.close();
   }
 
   void EmissionFunctionArray::write_sampled_dN_dy_to_file_test(int * MCID)
@@ -1769,10 +1768,3 @@ void EmissionFunctionArray::calculate_spectra(std::vector< std::vector <Sampled_
     //cout << "\ncalculate_spectra() took " << t2.tv_sec - t1.tv_sec << " seconds." << endl;
     //cout << "\ncalculate_spectra() took " << (t2 - t1) << " seconds." << endl;
   }
-
-
-
-
-
-
-
