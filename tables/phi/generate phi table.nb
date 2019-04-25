@@ -1,0 +1,160 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 11.2' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      5349,        152]
+NotebookOptionsPosition[      4816,        134]
+NotebookOutlinePosition[      5175,        150]
+CellTagsIndexPosition[      5132,        147]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[{
+ RowBox[{"ClearAll", "[", "\"\<Global`*\>\"", "]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"wd", "=", 
+    RowBox[{"SetDirectory", "@", 
+     RowBox[{"NotebookDirectory", "[", "]"}]}]}], ";"}], 
+  "\[IndentingNewLine]", "\[IndentingNewLine]", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+    RowBox[{"Open", " ", "Gauss"}], "-", 
+    RowBox[{"Legendre", " ", "Roots", " ", "and", " ", "Weights"}]}], "*)"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"points", "=", "\"\<48\>\""}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"root", "=", 
+   RowBox[{
+    RowBox[{"Import", "[", 
+     RowBox[{
+     "wd", "<>", "\"\</legendre/gauss_legendre_\>\"", "<>", "points", "<>", 
+      "\"\<pts.dat\>\""}], "]"}], "[", 
+    RowBox[{"[", 
+     RowBox[{
+      RowBox[{"2", ";;", "All"}], ",", "1"}], "]"}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"weight", "=", 
+    RowBox[{
+     RowBox[{"Import", "[", 
+      RowBox[{
+      "wd", "<>", "\"\</legendre/gauss_legendre_\>\"", "<>", "points", "<>", 
+       "\"\<pts.dat\>\""}], "]"}], "[", 
+     RowBox[{"[", 
+      RowBox[{
+       RowBox[{"2", ";;", "All"}], ",", "2"}], "]"}], "]"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"\[Phi]root", "[", "x_", "]"}], ":=", 
+   RowBox[{"Pi", "*", 
+    RowBox[{"(", 
+     RowBox[{"1.0", " ", "+", " ", "x"}], ")"}]}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"\[Phi]weight", "[", "w_", "]"}], ":=", 
+    RowBox[{"Pi", "*", "w"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Phi]Table", "=", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"CForm", "[", 
+        RowBox[{"\[Phi]root", "[", 
+         RowBox[{"root", "[", 
+          RowBox[{"[", "i", "]"}], "]"}], "]"}], "]"}], ",", 
+       RowBox[{"CForm", "[", 
+        RowBox[{"\[Phi]weight", "[", 
+         RowBox[{"weight", "[", 
+          RowBox[{"[", "i", "]"}], "]"}], "]"}], "]"}]}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"i", ",", "1", ",", 
+       RowBox[{"Length", "[", "root", "]"}]}], "}"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"\[Phi]Table", "=", 
+    RowBox[{"AppendTo", "[", 
+     RowBox[{"\[Phi]Table", ",", "\"\<\>\""}], "]"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{"Export", "[", 
+  RowBox[{
+   RowBox[{
+   "\"\<phi_gauss_table_\>\"", "<>", "points", "<>", "\"\<pt.dat\>\""}], ",", 
+   "\[Phi]Table"}], "]"}], "\[IndentingNewLine]"}], "Input",
+ CellChangeTimes->{{3.752850393027515*^9, 3.752850652525195*^9}, {
+   3.752850710852356*^9, 3.752850731948071*^9}, {3.752850797492577*^9, 
+   3.752850800769755*^9}, {3.752850924576392*^9, 3.752850924878941*^9}, {
+   3.752851188787342*^9, 3.752851221104657*^9}, {3.752851349552648*^9, 
+   3.752851457891026*^9}, {3.752851577619273*^9, 3.752851588209198*^9}, {
+   3.752851634473312*^9, 3.752851755356419*^9}, 3.764946991290391*^9, {
+   3.764947141119294*^9, 
+   3.764947822292405*^9}},ExpressionUUID->"e94dc1d2-26b0-4600-acb8-\
+a50ab9873926"],
+
+Cell[BoxData["\<\"phi_gauss_table_48pt.dat\"\>"], "Output",
+ CellChangeTimes->{{3.752850406895175*^9, 3.7528504370425463`*^9}, {
+   3.752850550313973*^9, 3.752850570409992*^9}, {3.752850607830578*^9, 
+   3.752850652978623*^9}, {3.752850716464526*^9, 3.752850732278158*^9}, {
+   3.752850797956532*^9, 3.752850801058683*^9}, {3.752851192204566*^9, 
+   3.752851221444889*^9}, {3.752851355750025*^9, 3.752851359686193*^9}, 
+   3.752851458376878*^9, {3.752851578053911*^9, 3.752851588762436*^9}, {
+   3.752851635381503*^9, 3.752851755731738*^9}, 3.75960576394173*^9, {
+   3.764947248696443*^9, 3.7649473292219553`*^9}, 3.764947446322505*^9, {
+   3.76494752619042*^9, 3.76494764156196*^9}, {3.764947683133532*^9, 
+   3.764947789144215*^9}},ExpressionUUID->"8a5b4df1-97ab-40db-9302-\
+0e6bd17346c6"]
+}, Open  ]],
+
+Cell[BoxData[
+ RowBox[{"\[IndentingNewLine]", "\[IndentingNewLine]"}]], "Input",
+ CellChangeTimes->{{3.759605795342966*^9, 
+  3.75960644770091*^9}},ExpressionUUID->"858c1fa0-6aad-44a9-b95c-\
+f35928a71503"]
+},
+WindowSize->{1082, 856},
+WindowMargins->{{Automatic, 22}, {Automatic, 0}},
+FrontEndVersion->"11.2 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
+10, 2017)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 3218, 90, 388, "Input",ExpressionUUID->"e94dc1d2-26b0-4600-acb8-a50ab9873926"],
+Cell[3801, 114, 791, 11, 34, "Output",ExpressionUUID->"8a5b4df1-97ab-40db-9302-0e6bd17346c6"]
+}, Open  ]],
+Cell[4607, 128, 205, 4, 73, "Input",ExpressionUUID->"858c1fa0-6aad-44a9-b95c-f35928a71503"]
+}
+]
+*)
+

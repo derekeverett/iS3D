@@ -36,17 +36,17 @@ private:
   Table *y_tab;
   Table *eta_tab;
 
-  int pT_tab_length;
-  int phi_tab_length;
-  int y_tab_length;
-  int eta_tab_length;
+  long pT_tab_length;
+  long phi_tab_length;
+  long y_tab_length;
+  long eta_tab_length;
 
 
   // particle info
   particle_info* particles;  
-  int Nparticles;              // number of pdg particles
-  int npart;                   // number of chosen particles
-  int *chosen_particles_table; // stores the pdg index of the chosen particle (to access chosen particle properties)
+  long Nparticles;              // number of pdg particles
+  long npart;                   // number of chosen particles
+  long *chosen_particles_table; // stores the pdg index of the chosen particle (to access chosen particle properties)
   
   
   // df coefficients
@@ -54,8 +54,10 @@ private:
 
 
   // particle spectra of chosen particle species
+  long momentum_length;
   long spectra_length;
-  double *dN_pTdpTdphidy;      
+  double *dN_pTdpTdphidy_momentum;    
+  double *dN_pTdpTdphidy_spectra;    
 
 
 public:
@@ -63,18 +65,19 @@ public:
                         particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients df_in);
   ~EmissionFunctionArray();
 
-  void calculate_dN_ptdptdphidy(double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *, double *, double *, double *,
-    double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
-    double *, double *, double *, double *, double *, double*, double*);
+  // void calculate_dN_ptdptdphidy(double *, double *, double *, double *,
+  //   double *, double *, double *, double *, double *, double *, double *, double *, double *,
+  //   double *, double *, double *, double *,
+  //   double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
+  //   double *, double *, double *, double *, double *, double*, double*);
 
-  void calculate_dN_ptdptdphidy_VAH_PL(double *, double *, double *,
-  double *, double *, double *, double *, double *,
-  double *, double *, double *, double *, double *,
-  double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
-  double *, double *, double *, double *, double *, double *, double *, double *, double *);
+  // void calculate_dN_ptdptdphidy_VAH_PL(double *, double *, double *,
+  // double *, double *, double *, double *, double *,
+  // double *, double *, double *, double *, double *,
+  // double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *,
+  // double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
+  void write_dN_2pipTdpTdy_toFile(long *MCID);
   void write_dN_pTdpTdphidy_toFile(); // write 3D spectra to file
   void calculate_spectra();
 

@@ -10,6 +10,7 @@ cd ../../
 
 rm -r results
 mkdir results
+mkdir results/continuous
 
 make iS3D_GPU.e
 
