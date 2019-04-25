@@ -63,7 +63,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   particles = particles_in;
   Nparticles = Nparticles_in;
   npart = chosen_particles_in->getNumberOfRows();
-  chosen_particles_table = (long*)calloc(npart, sizeof(long)); 
+  chosen_particles_table = (long*)calloc(npart, sizeof(long));
 
   for(long ipart = 0; ipart < npart; ipart++)
   {
@@ -106,198 +106,195 @@ EmissionFunctionArray::~EmissionFunctionArray()
 }
 
 __global__ void calculate_dN_pTdpTdphidy(double* dN_pTdpTdphidy_d_blocks, long endFO, long momentum_length, long pT_tab_length, long phi_tab_length, long y_tab_length, long eta_tab_length, double* pT_d, double* trig_d, double* y_d, double* etaValues_d, double* etaWeights_d, double mass_squared, double sign, double prefactor, double baryon, double *T_d, double *P_d, double *E_d, double *tau_d, double *eta_d, double *ux_d, double *uy_d, double *un_d, double *dat_d, double *dax_d, double *day_d, double *dan_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *bulkPi_d, double *alphaB_d, double *nB_d, double *Vx_d, double *Vy_d, double *Vn_d, int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DIMENSION, int OUTFLOW, int DF_MODE)
+{
+
+  // contribution of dN_pTdpTdphidy from each thread
+  __shared__ double dN_pTdpTdphidy_thread[THREADS_PER_BLOCK];
+
+  long icell = (long)threadIdx.x +  (long)blockDim.x * (long)blockIdx.x;  // thread index in kernel
+  int ithread = threadIdx.x;                                              // thread index in block
+
+  dN_pTdpTdphidy_thread[ithread] = 0.0;                                   // initialize thread contribution to zero
+
+  __syncthreads();                                                        // sync threads for each block
+
+  if(icell < endFO)
   {
+    double tau = tau_d[icell];        // longitudinal proper time
+    double tau2 = tau * tau;
 
-    // contribution of dN_pTdpTdphidy from each thread
-    __shared__ double dN_pTdpTdphidy_thread[THREADS_PER_BLOCK];
-
-    long icell = (long)threadIdx.x +  (long)blockDim.x * (long)blockIdx.x;  // thread index in kernel
-    int ithread = threadIdx.x;                                              // thread index in block
-
-    dN_pTdpTdphidy_thread[ithread] = 0.0;                                   // initialize thread contribution to zero
-
-    __syncthreads();                                                        // sync threads for each block
-
-    if(icell < endFO)
+    if(DIMENSION == 3)
     {
-      double tau = tau_d[icell];        // longitudinal proper time
-      double tau2 = tau * tau;
+      etaValues_d[0] = eta_d[icell];  // spacetime rapidity from surface
+    }
+    double dat = dat_d[icell];        // dsigma_mu
+    double dax = dax_d[icell];
+    double day = day_d[icell];
+    double dan = dan_d[icell];
 
-      if(DIMENSION == 3)
+    double ux = ux_d[icell];          // u^mu
+    double uy = uy_d[icell];          // enforce u.u = 1
+    double un = un_d[icell];
+    double ux2 = ux * ux;             // useful expressions
+    double uy2 = uy * uy;
+    double utperp = sqrt(1.0  +  ux * ux  +  uy * uy);
+    double tau2_un = tau2 * un;
+    double ut = sqrt(utperp * utperp  +  tau2_un * un);
+    double ut2 = ut * ut;
+
+    bool positive_time_volume = (ut * dat  +  ux * dax  +  uy * day  +  un * dan > 0.0);
+
+    double T = T_d[icell];            // temperature
+    double E = E_d[icell];            // energy density
+    double P = P_d[icell];            // pressure
+
+    double pitt = 0.0;                // pi^munu
+    double pitx = 0.0;                // enforce pi.u = 0, Tr(pi) = 0
+    double pity = 0.0;
+    double pitn = 0.0;
+    double pixx = 0.0;
+    double pixy = 0.0;
+    double pixn = 0.0;
+    double piyy = 0.0;
+    double piyn = 0.0;
+    double pinn = 0.0;
+
+    if(INCLUDE_SHEAR_DELTAF)
+    {
+      pixx = pixx_d[icell];
+      pixy = pixy_d[icell];
+      pixn = pixn_d[icell];
+      piyy = piyy_d[icell];
+      piyn = piyn_d[icell];
+      pinn = (pixx * (ux2 - ut2)  +  piyy * (uy2 - ut2)  +  2.0 * (pixy * ux * uy  +  tau2_un * (pixn * ux  +  piyn * uy))) / (tau2 * utperp * utperp);
+      pitn = (pixn * ux  +  piyn * uy  +  tau2_un * pinn) / ut;
+      pity = (pixy * ux  +  piyy * uy  +  tau2_un * piyn) / ut;
+      pitx = (pixx * ux  +  pixy * uy  +  tau2_un * pixn) / ut;
+      pitt = (pitx * ux  +  pity * uy  +  tau2_un * pitn) / ut;
+    }
+
+    double bulkPi = 0.0;              // bulk pressure
+
+    if(INCLUDE_BULK_DELTAF)
+    {
+      bulkPi = bulkPi_d[icell];
+    }
+
+    double alphaB = 0.0;              // muB / T
+    double nB = 0.0;                  // net baryon density
+    double Vt = 0.0;                  // V^mu
+    double Vx = 0.0;                  // enforce orthogonality V.u = 0
+    double Vy = 0.0;
+    double Vn = 0.0;
+    double chem = 0.0;
+    double baryon_enthalpy_ratio = 0.0;
+
+    if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+    {
+      alphaB = alphaB_d[icell];
+      chem = baryon * alphaB;
+      nB = nB_d[icell];
+      Vx = Vx_d[icell];
+      Vy = Vy_d[icell];
+      Vn = Vn_d[icell];
+      Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
+      baryon_enthalpy_ratio = nB / (E + P);
+    }
+
+    double shear_coeff = 0.0;
+
+    // loop over momentum
+    for(long ipT = 0; ipT < pT_tab_length; ipT++)
+    {
+      double pT = pT_d[ipT];
+
+      double mT = sqrt(mass_squared  +  pT * pT);
+      double mT_over_tau = mT / tau;
+
+      for(long iphip = 0; iphip < phi_tab_length; iphip++)
       {
-        etaValues_d[0] = eta_d[icell];  // spacetime rapidity from surface
-      }
-      double dat = dat_d[icell];        // dsigma_mu
-      double dax = dax_d[icell];
-      double day = day_d[icell];
-      double dan = dan_d[icell];
+        double px = pT * trig_d[iphip];
+        double py = pT * trig_d[iphip + phi_tab_length];
 
-      double ux = ux_d[icell];          // u^mu
-      double uy = uy_d[icell];          // enforce u.u = 1
-      double un = un_d[icell];
-      double ux2 = ux * ux;             // useful expressions    
-      double uy2 = uy * uy;
-      double utperp = sqrt(1.0  +  ux * ux  +  uy * uy);
-      double tau2_un = tau2 * un;
-      double ut = sqrt(utperp * utperp  +  tau2_un * un);
-      double ut2 = ut * ut;
+        double px_dax = px * dax;
+        double py_day = py * day;
+        double px_ux = px * ux;
+        double py_uy = py * uy;
 
-      bool positive_time_volume = (ut * dat  +  ux * dax  +  uy * day  +  un * dan > 0.0); 
-
-      double T = T_d[icell];            // temperature
-      double E = E_d[icell];            // energy density
-      double P = P_d[icell];            // pressure
-
-      double pitt = 0.0;                // pi^munu
-      double pitx = 0.0;                // enforce pi.u = 0, Tr(pi) = 0
-      double pity = 0.0;
-      double pitn = 0.0;
-      double pixx = 0.0;
-      double pixy = 0.0;
-      double pixn = 0.0;
-      double piyy = 0.0;
-      double piyn = 0.0;
-      double pinn = 0.0;
-
-      if(INCLUDE_SHEAR_DELTAF)
-      {
-        pixx = pixx_d[icell];
-        pixy = pixy_d[icell];
-        pixn = pixn_d[icell];
-        piyy = piyy_d[icell];
-        piyn = piyn_d[icell];
-        pinn = (pixx * (ux2 - ut2)  +  piyy * (uy2 - ut2)  +  2.0 * (pixy * ux * uy  +  tau2_un * (pixn * ux  +  piyn * uy))) / (tau2 * utperp * utperp);
-        pitn = (pixn * ux  +  piyn * uy  +  tau2_un * pinn) / ut;
-        pity = (pixy * ux  +  piyy * uy  +  tau2_un * piyn) / ut;
-        pitx = (pixx * ux  +  pixy * uy  +  tau2_un * pixn) / ut;
-        pitt = (pitx * ux  +  pity * uy  +  tau2_un * pitn) / ut;
-      }
-
-      double bulkPi = 0.0;              // bulk pressure
-
-      if(INCLUDE_BULK_DELTAF)
-      {
-        bulkPi = bulkPi_d[icell];
-      }
-
-      double muB = 0.0;                 // baryon chemical potential
-      double nB = 0.0;                  // net baryon density
-      double Vt = 0.0;                  // V^mu
-      double Vx = 0.0;                  // enforce orthogonality V.u = 0
-      double Vy = 0.0;
-      double Vn = 0.0;
-      double alphaB = 0.0;
-      double chem = 0.0;
-      double baryon_enthalpy_ratio = 0.0;
-
-      if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
-      {
-        alphaB = alphaB_d[icell];
-        chem = baryon * alphaB;
-        nB = nB_d[icell];
-        Vx = Vx_d[icell];
-        Vy = Vy_d[icell];
-        Vn = Vn_d[icell];
-        Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
-
-        alphaB = muB / T;
-        baryon_enthalpy_ratio = nB / (E + P);
-      }
-
-      double shear_coeff = 0.0;
-
-      // loop over momentum
-      for(long ipT = 0; ipT < pT_tab_length; ipT++)
-      {
-        double pT = pT_d[ipT];
-
-        double mT = sqrt(mass_squared  +  pT * pT);
-        double mT_over_tau = mT / tau;
-
-        for(long iphip = 0; iphip < phi_tab_length; iphip++)
+        for(long iy = 0; iy < y_tab_length; iy++)
         {
-          double px = pT * trig_d[iphip];
-          double py = pT * trig_d[iphip + phi_tab_length];
+          double y = y_d[iy];
 
-          double px_dax = px * dax;
-          double py_day = py * day;
-          double px_ux = px * ux;
-          double py_uy = py * uy;
+          // momentum_length index
+          long iP = ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy);
 
-          for(long iy = 0; iy < y_tab_length; iy++)
+          if(positive_time_volume)
           {
-            double y = y_d[iy];
+            double eta_integral = 0.0;
 
-            // momentum_length index
-            long iP = ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy);  
-
-            if(positive_time_volume)
+            // sum over eta
+            for(long ieta = 0; ieta < eta_tab_length; ieta++)
             {
-              double eta_integral = 0.0; 
+              double eta = etaValues_d[ieta];
+              double eta_weight = etaWeights_d[ieta];
 
-              // sum over eta
-              for(long ieta = 0; ieta < eta_tab_length; ieta++)
-              {
-                double eta = etaValues_d[ieta];
-                double eta_weight = etaWeights_d[ieta];
+              double sinhyeta = sinh(y - eta);
+              double coshyeta = sqrt(1.0  +  sinhyeta * sinhyeta);
 
-                double sinhyeta = sinh(y - eta);
-                double coshyeta = sqrt(1.0  +  sinhyeta * sinhyeta);
+              double ptau = mT * coshyeta;           // p^tau
+              double pn = mT_over_tau * sinhyeta;    // p^eta
+              double tau2_pn = tau2 * pn;
 
-                double ptau = mT * coshyeta;           // p^tau
-                double pn = mT_over_tau * sinhyeta;    // p^eta
-                double tau2_pn = tau2 * pn;
+              double pdotdsigma = ptau * dat  +  px_dax  +  py_day  +  pn * dan;
 
-                double pdotdsigma = ptau * dat  +  px_dax  +  py_day  +  pn * dan;
+              if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
 
-                if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
+              double pdotu = ptau * ut  -  px_ux  -  py_uy  -  tau2_pn * un;  // u.p
+              double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
 
-                double pdotu = ptau * ut  -  px_ux  -  py_uy  -  tau2_pn * un;  // u.p
-                double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);    
+              eta_integral += eta_weight * pdotdsigma * feq;
 
-                eta_integral += eta_weight * pdotdsigma * feq;
+            } // ieta
 
-              } // ieta
+            dN_pTdpTdphidy_thread[ithread] = prefactor * eta_integral;
+          }
+          else
+          {
+            dN_pTdpTdphidy_thread[ithread] = 0.0;
+          }
 
-              dN_pTdpTdphidy_thread[ithread] = prefactor * eta_integral;
-            }
-            else
+          // perform reduction over threads in each block:
+          int N = blockDim.x;  // number of threads in block (must be power of 2)
+          __syncthreads();     // prepare threads for reduction
+
+          while(N != 1)
+          {
+            N /= 2;
+
+            if(ithread < N) // reduce thread pairs
             {
-              dN_pTdpTdphidy_thread[ithread] = 0.0;
+              dN_pTdpTdphidy_thread[ithread] += dN_pTdpTdphidy_thread[ithread + N];
             }
+            __syncthreads();
+          }
 
-            // perform reduction over threads in each block:
-            int N = blockDim.x;  // number of threads in block (must be power of 2)
-            __syncthreads();     // prepare threads for reduction
+          // store block's contribution to the spectra
+          if(ithread == 0)
+          {
+            long iP_block = iP  +  blockIdx.x * momentum_length;
 
-            while(N != 1)
-            {
-              N /= 2;
+            dN_pTdpTdphidy_d_blocks[iP_block] += dN_pTdpTdphidy_thread[0];
+          }
 
-              if(ithread < N) // reduce thread pairs
-              {
-                dN_pTdpTdphidy_thread[ithread] += dN_pTdpTdphidy_thread[ithread + N];
-              }
-              __syncthreads();  
-            }
-            
-            // store block's contribution to the spectra
-            if(ithread == 0)
-            {
-              long iP_block = iP  +  blockIdx.x * momentum_length;
+        } // iy
 
-              dN_pTdpTdphidy_d_blocks[iP_block] += dN_pTdpTdphidy_thread[0];
-            }
+      } // iphip
 
-          } // iy
+    } // ipT
 
-        } // iphip
+  } // icell < endFO
 
-      } // ipT
-
-    } // icell < endFO
-
-  } // end function
+} // end function
 
 
 // does a block reduction, where the previous kernel did a thread reduction.
@@ -307,13 +304,13 @@ __global__ void blockReduction(double* dN_pTdpTdphidy_d_blocks, long spectra_len
 
   // each thread is assigned a momentum / particle coordinate
   if(ithread < spectra_length)
-  { 
+  {
     // sum spectra contributions of the blocks from first kernel
     for(long iblock_ker1 = 1; iblock_ker1 < blocks_ker1; iblock_ker1++)
     {
       dN_pTdpTdphidy_d_blocks[ithread] += dN_pTdpTdphidy_d_blocks[ithread  +  iblock_ker1 * spectra_length];
     }
-    if(isnan(dN_pTdpTdphidy_d_blocks[ithread])) 
+    if(isnan(dN_pTdpTdphidy_d_blocks[ithread]))
     {
       printf("found dN_pTdpTdphidy_d nan \n");
     }
@@ -322,48 +319,48 @@ __global__ void blockReduction(double* dN_pTdpTdphidy_d_blocks, long spectra_len
 
 
 
-  void EmissionFunctionArray::write_dN_2pipTdpTdy_toFile(long *MCID)
+void EmissionFunctionArray::write_dN_2pipTdpTdy_toFile(long *MCID)
+{
+  char filename[255] = "";
+  printf("Writing thermal dN_2pipTdpTdy to file...\n");
+
+  for(long ipart = 0; ipart < npart; ipart++)
   {
-    char filename[255] = "";
-    printf("Writing thermal dN_2pipTdpTdy to file...\n");
+    sprintf(filename, "results/continuous/dN_2pipTdpTdy_%d.dat", MCID[ipart]);
+    ofstream spectra(filename, ios_base::out);
 
-    for(long ipart = 0; ipart < npart; ipart++)
+    for(long iy = 0; iy < y_tab_length; iy++)
     {
-      sprintf(filename, "results/continuous/dN_2pipTdpTdy_%d.dat", MCID[ipart]);
-      ofstream spectra(filename, ios_base::out);
+      double y;
+      if(DIMENSION == 2) y = 0.0;
+      else y = y_tab->get(1, iy + 1);
 
-      for(long iy = 0; iy < y_tab_length; iy++)
+      for(long ipT = 0; ipT < pT_tab_length; ipT++)
       {
-        double y;
-        if(DIMENSION == 2) y = 0.0;
-        else y = y_tab->get(1, iy + 1);
-      
-        for(long ipT = 0; ipT < pT_tab_length; ipT++)
+        double pT =  pT_tab->get(1, ipT + 1);
+
+        double dN_2pipTdpTdy = 0.0;
+
+        for(long iphip = 0; iphip < phi_tab_length; iphip++)
         {
-          double pT =  pT_tab->get(1, ipT + 1);
+          double phip = phi_tab->get(1, iphip + 1);
+          double phip_weight = phi_tab->get(2, iphip + 1);
 
-          double dN_2pipTdpTdy = 0.0;
+          long iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
 
-          for(long iphip = 0; iphip < phi_tab_length; iphip++)
-          {
-            double phip = phi_tab->get(1, iphip + 1);
-            double phip_weight = phi_tab->get(2, iphip + 1);
+          dN_2pipTdpTdy += phip_weight * dN_pTdpTdphidy_spectra[iS3D] / two_pi;
 
-            long iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+        } //iphip
 
-            dN_2pipTdpTdy += phip_weight * dN_pTdpTdphidy_spectra[iS3D] / two_pi;
+        spectra << scientific <<  setw(5) << setprecision(8) << y << "\t" << pT << "\t" << dN_2pipTdpTdy << "\n";
+      } //ipT
 
-          } //iphip
+      if(iy < y_tab_length - 1) spectra << "\n";
+    } //iy
 
-          spectra << scientific <<  setw(5) << setprecision(8) << y << "\t" << pT << "\t" << dN_2pipTdpTdy << "\n";
-        } //ipT
-
-        if(iy < y_tab_length - 1) spectra << "\n";
-      } //iy
-
-      spectra.close();
-    }
+    spectra.close();
   }
+}
 
 
 void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
@@ -450,7 +447,7 @@ void EmissionFunctionArray::calculate_spectra()
 
   long chunks = (FO_length + FO_chunk - 1) / FO_chunk;
   long partial = FO_length % FO_chunk;
-  
+
   //long block_spectra_length = blocks_ker1 * spectra_length;
   long block_momentum_length = blocks_ker1 * momentum_length;
 
@@ -550,11 +547,11 @@ void EmissionFunctionArray::calculate_spectra()
 
 
   // set up momentum tables to pass to GPU
-  double *pT = (double*)calloc(pT_tab_length, sizeof(double)); 
+  double *pT = (double*)calloc(pT_tab_length, sizeof(double));
   double *trig = (double*)calloc(2 * phi_tab_length, sizeof(double));  // {cos(phip), sin(phip)}
-  double *yp = (double*)calloc(y_tab_length, sizeof(double)); 
-  double *etaValues = (double*)calloc(eta_tab_length, sizeof(double)); 
-  double *etaWeights = (double*)calloc(eta_tab_length, sizeof(double)); 
+  double *yp = (double*)calloc(y_tab_length, sizeof(double));
+  double *etaValues = (double*)calloc(eta_tab_length, sizeof(double));
+  double *etaWeights = (double*)calloc(eta_tab_length, sizeof(double));
 
   for(long ipT = 0; ipT < pT_tab_length; ipT++)
   {
@@ -652,7 +649,7 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMalloc((void**) &yp_d, y_tab_length * sizeof(double));
   cudaMalloc((void**) &etaValues_d, eta_tab_length * sizeof(double));
   cudaMalloc((void**) &etaWeights_d, eta_tab_length * sizeof(double));
-  
+
   cudaMalloc((void**) &dN_pTdpTdphidy_d_blocks, block_momentum_length * sizeof(double));
 
   err = cudaGetLastError();
@@ -687,7 +684,7 @@ void EmissionFunctionArray::calculate_spectra()
     long endFO = FO_chunk;
 
     if((n == chunks - 1) && partial > 0) endFO = partial;
-   
+
     // get freezeout surface info for the chunk
     for(long icell = 0; icell < endFO; icell++)
     {
@@ -793,7 +790,7 @@ void EmissionFunctionArray::calculate_spectra()
     // loop over particles
     for(int ipart = 0; ipart < npart; ipart++)
     {
-      // reset momentum spectra of particle to zero 
+      // reset momentum spectra of particle to zero
       cudaMemset(dN_pTdpTdphidy_d_blocks, 0.0, block_momentum_length * sizeof(double));
 
       double mass = Mass[ipart];
@@ -861,13 +858,11 @@ void EmissionFunctionArray::calculate_spectra()
   cout << "\nKernel launches took " << sw.takeTime() << " seconds.\n" << endl;
 
 
-  // Write the results to disk
-  //write_dN_pTdpTdphidy_toFile();
+  // write the results to disk
   write_dN_2pipTdpTdy_toFile(MCID);
 
-  // Clean up on host and device
-  cout << "Deallocating host and device memory" << endl;
 
+  cout << "Deallocating host and device memory" << endl;
 
   free(dN_pTdpTdphidy_spectra);
   free(dN_pTdpTdphidy_momentum);
@@ -885,7 +880,7 @@ void EmissionFunctionArray::calculate_spectra()
 
   free(tau);
   if(DIMENSION == 3) free(eta);
-  
+
   free(ux);
   free(uy);
   free(un);
@@ -969,6 +964,6 @@ void EmissionFunctionArray::calculate_spectra()
   cudaFree(etaWeights_d);
   cudaFree(dN_pTdpTdphidy_d_blocks);
 
-  
-
 }
+
+
