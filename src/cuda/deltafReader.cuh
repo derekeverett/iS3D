@@ -20,9 +20,7 @@ class Deltaf_Data
         int include_baryon;
 
         string hrg_eos_path;
-        string urqmd = "deltaf_coefficients/vh/urqmd/"; // directories of df coefficient tables
-        string smash = "deltaf_coefficients/vh/smash/";
-        string smash_box = "deltaf_coefficients/vh/smash_box/";
+        
     public:
         int points_T;
         int points_muB;
@@ -52,10 +50,10 @@ class Deltaf_Data
         double ** betapi_data;
 
         // Jonah coefficients
-        const int jonah_points = 301;       // # lambda interpolation points
-        const double lambda_min = -1.0;     // lambda min / max values
-        const double lambda_max = 2.0;
-        const double delta_lambda = (lambda_max - lambda_min) / ((double)jonah_points - 1.0);
+        int jonah_points;       // # lambda interpolation points
+        double lambda_min;      // lambda min / max values
+        double lambda_max;
+        double delta_lambda;
 
         double * lambda_squared_array;      // squared isotropic momentum scale
         double * z_array;                   // renormalization factor (apart from detLambda)
@@ -67,22 +65,21 @@ class Deltaf_Data
 
         void load_df_coefficient_data();    // read the data files in /deltaf_coefficients/vh
 
-        // I skip the photon because I think it breaks down for lambda = -1
         void compute_jonah_coefficients(particle_info * particle_data, int Nparticle);
 
-        deltaf_coefficients evaluate_df_coefficients(double T, double muB, double E, double P, double bulkPi);
+        double calculate_linear_temperature(double ** f_data, double T, double TL, double TR, int iTL, int iTR);
+        double calculate_linear_bulkPi(double *f_data, double bulkPi, double bulkL, double bulkR, int ibulkL, int ibulkR, double dbulk);
 
         deltaf_coefficients linear_interpolation(double T, double E, double P, double bulkPi);
-
-        double calculate_linear_temperature(double ** f_data, double T, double TL, double TR, int iTL, int iTR);
 
         double calculate_bilinear(double ** f_data, double T, double muB, double TL, double TR, double muBL, double muBR, int iTL, int iTR, int imuBL, int imuBR);
 
         deltaf_coefficients bilinear_interpolation(double T, double muB, double E, double P, double bulkPi);
 
+        deltaf_coefficients evaluate_df_coefficients(double T, double muB, double E, double P, double bulkPi);
+
         void test_df_coefficients(double bulkPi_over_P);
 
-   
 };
 
 #endif

@@ -17,13 +17,13 @@
 #include <cuda_runtime.h>
 
 #define AMOUNT_OF_OUTPUT 0    // smaller value means less outputs
-#define THREADS_PER_BLOCK 64 // try optimizing this, also we can define two different threads/block for the separate kernels
-#define FO_CHUNK 30720
+#define THREADS_PER_BLOCK 128  // try optimizing this, also we can define two different threads/block for the separate kernels
+#define FO_CHUNK 12800
 
 using namespace std;
 
 // Class EmissionFunctionArray ------------------------------------------
-EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in, deltaf_coefficients df_in)
+EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in, Deltaf_Data * df_data_in)
 {
   // control parameters
   MODE = paraRdr_in->getVal("mode");
@@ -89,7 +89,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
 
   // df coefficients
-  df = df_in;
+  df_data = df_data_in;
 
 
   // particle spectra of chosen particle species
@@ -105,7 +105,7 @@ EmissionFunctionArray::~EmissionFunctionArray()
 
 }
 
-__global__ void calculate_dN_pTdpTdphidy(double* dN_pTdpTdphidy_d_blocks, long endFO, long momentum_length, long pT_tab_length, long phi_tab_length, long y_tab_length, long eta_tab_length, double* pT_d, double* trig_d, double* y_d, double* etaValues_d, double* etaWeights_d, double mass_squared, double sign, double prefactor, double baryon, double *T_d, double *P_d, double *E_d, double *tau_d, double *eta_d, double *ux_d, double *uy_d, double *un_d, double *dat_d, double *dax_d, double *day_d, double *dan_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *bulkPi_d, double *alphaB_d, double *nB_d, double *Vx_d, double *Vy_d, double *Vn_d, int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DIMENSION, int OUTFLOW, int DF_MODE)
+__global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_d_blocks, long endFO, long momentum_length, long pT_tab_length, long phi_tab_length, long y_tab_length, long eta_tab_length, double* pT_d, double* trig_d, double* y_d, double* etaValues_d, double* etaWeights_d, double mass_squared, double sign, double prefactor, double baryon, double *T_d, double *P_d, double *E_d, double *tau_d, double *eta_d, double *ux_d, double *uy_d, double *un_d, double *dat_d, double *dax_d, double *day_d, double *dan_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *bulkPi_d, double *alphaB_d, double *nB_d, double *Vx_d, double *Vy_d, double *Vn_d, deltaf_coefficients *df_coeff_d, int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DIMENSION, int OUTFLOW, int DF_MODE)
 {
 
   // contribution of dN_pTdpTdphidy from each thread
@@ -137,7 +137,7 @@ __global__ void calculate_dN_pTdpTdphidy(double* dN_pTdpTdphidy_d_blocks, long e
     double un = un_d[icell];
     double ux2 = ux * ux;             // useful expressions
     double uy2 = uy * uy;
-    double utperp = sqrt(1.0  +  ux * ux  +  uy * uy);
+    double utperp = sqrt(1.0 + ux2 + uy2);
     double tau2_un = tau2 * un;
     double ut = sqrt(utperp * utperp  +  tau2_un * un);
     double ut2 = ut * ut;
@@ -173,6 +173,7 @@ __global__ void calculate_dN_pTdpTdphidy(double* dN_pTdpTdphidy_d_blocks, long e
       pitt = (pitx * ux  +  pity * uy  +  tau2_un * pitn) / ut;
     }
 
+
     double bulkPi = 0.0;              // bulk pressure
 
     if(INCLUDE_BULK_DELTAF)
@@ -197,11 +198,66 @@ __global__ void calculate_dN_pTdpTdphidy(double* dN_pTdpTdphidy_d_blocks, long e
       Vx = Vx_d[icell];
       Vy = Vy_d[icell];
       Vn = Vn_d[icell];
-      Vt = (Vx * ux  +  Vy * uy  +  tau2 * Vn * un) / ut;
+      Vt = (Vx * ux  +  Vy * uy  +  Vn * tau2_un) / ut;
       baryon_enthalpy_ratio = nB / (E + P);
     }
 
+    double tau2_pitn = tau2 * pitn;   // useful expressions
+    double tau2_pixn = tau2 * pixn;
+    double tau2_piyn = tau2 * piyn;
+    double tau4_pinn = tau2 * tau2 * pinn;
+    double tau2_Vn = tau2 * Vn;
+
+    // get df coefficients
+    double c0 = df_coeff_d->c0;       // 14 moment coefficients
+    double c1 = df_coeff_d->c1;
+    double c2 = df_coeff_d->c2;
+    double c3 = df_coeff_d->c3;
+    double c4 = df_coeff_d->c4;
+    double shear14_coeff = df_coeff_d->shear14_coeff;
+
+    double F = df_coeff_d->F;         // Chapman Enskog
+    double G = df_coeff_d->G;
+    double betabulk = df_coeff_d->betabulk;
+    double betaV = df_coeff_d->betaV;
+    double betapi = df_coeff_d->betapi;
+
+    // shear and bulk coefficients
     double shear_coeff = 0.0;
+    double bulk0_coeff = 0.0;
+    double bulk1_coeff = 0.0;
+    double bulk2_coeff = 0.0;
+    double diff0_coeff = 0.0;
+    double diff1_coeff = 0.0;
+
+    switch(DF_MODE)
+    {
+      case 1: // 14 moment
+      {
+        shear_coeff = 1.0 / shear14_coeff;
+        bulk0_coeff = (c0 - c2) * mass_squared * bulkPi;
+        bulk1_coeff = c1 * baryon * bulkPi;
+        bulk2_coeff = (4.*c2 - c0) * bulkPi;
+        diff0_coeff = c3 * baryon;
+        diff1_coeff = c4;
+        break;
+      }
+      case 2: // Chapman enskog
+      {
+        shear_coeff = 0.5 / (betapi * T);
+        bulk0_coeff = F / (T * T * betabulk) * bulkPi;
+        bulk1_coeff = G / betabulk * baryon * bulkPi;
+        bulk2_coeff = bulkPi / (3.0 * T * betabulk);
+        diff0_coeff = baryon_enthalpy_ratio / betaV;
+        diff1_coeff = baryon / betaV;
+        break;
+      }
+      default:
+      {
+        printf("Error: set df_mode = (1,2) in parameters.dat\n");
+      }
+    }
+
 
     // loop over momentum
     for(long ipT = 0; ipT < pT_tab_length; ipT++)
@@ -216,10 +272,22 @@ __global__ void calculate_dN_pTdpTdphidy(double* dN_pTdpTdphidy_d_blocks, long e
         double px = pT * trig_d[iphip];
         double py = pT * trig_d[iphip + phi_tab_length];
 
-        double px_dax = px * dax;
+        double px_dax = px * dax;   // useful expressions
         double py_day = py * day;
+
         double px_ux = px * ux;
         double py_uy = py * uy;
+
+        double pixx_px_px = pixx * px * px;
+        double piyy_py_py = piyy * py * py;
+        double pitx_px = pitx * px;
+        double pity_py = pity * py;
+        double pixy_px_py = pixy * px * py;
+        double tau2_pixn_px = tau2_pixn * px;
+        double tau2_piyn_py = tau2_piyn * py;
+
+        double Vx_px = Vx * px;
+        double Vy_py = Vy * py;
 
         for(long iy = 0; iy < y_tab_length; iy++)
         {
@@ -241,18 +309,57 @@ __global__ void calculate_dN_pTdpTdphidy(double* dN_pTdpTdphidy_d_blocks, long e
               double sinhyeta = sinh(y - eta);
               double coshyeta = sqrt(1.0  +  sinhyeta * sinhyeta);
 
-              double ptau = mT * coshyeta;           // p^tau
-              double pn = mT_over_tau * sinhyeta;    // p^eta
-              double tau2_pn = tau2 * pn;
+              double pt = mT * coshyeta;           // p^tau
+              double pn = mT_over_tau * sinhyeta;  // p^eta
 
-              double pdotdsigma = ptau * dat  +  px_dax  +  py_day  +  pn * dan;
+              double pdotdsigma = pt * dat  +  px_dax  +  py_day  +  pn * dan;
 
               if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
 
-              double pdotu = ptau * ut  -  px_ux  -  py_uy  -  tau2_pn * un;  // u.p
-              double feq = 1.0 / (exp(pdotu / T  -  chem) + sign);
+              double E = pt * ut  -  px_ux  -  py_uy  -  pn * tau2_un;  // u.p
+              double feq = 1.0 / (exp(E/T  -  chem) + sign);
+              double feqbar = 1.0  -  sign * feq;
 
-              eta_integral += eta_weight * pdotdsigma * feq;
+              // pi^munu.p_mu.p_nu
+              double pimunu_pmu_pnu = pitt * pt * pt  +  pixx_px_px  +  piyy_py_py  +  tau4_pinn * pn * pn
+                  + 2.0 * (-(pitx_px + pity_py) * pt  +  pixy_px_py  +  pn * (tau2_pixn_px  +  tau2_piyn_py  -  tau2_pitn * pt));
+
+              // V^mu.p_mu
+              double Vmu_pmu = Vt * pt  -  Vx_px  -  Vy_py  -  tau2_Vn * pn;
+
+              double df;
+
+              switch(DF_MODE)
+              {
+                case 1: // 14 moment
+                {
+                  double df_shear = shear_coeff * pimunu_pmu_pnu;
+                  double df_bulk = bulk0_coeff  +  (bulk1_coeff  +  bulk2_coeff * E) * E;
+                  double df_diff = (diff0_coeff  +  diff1_coeff * E) * Vmu_pmu;
+
+                  df = feqbar * (df_shear + df_bulk + df_diff);
+                  break;
+                }
+                case 2: // Chapman enskog
+                {
+                  double df_shear = shear_coeff * pimunu_pmu_pnu / E;
+                  double df_bulk = bulk0_coeff * E  +  bulk1_coeff  +  bulk2_coeff * (E  -  mass_squared / E);
+                  double df_diff = (diff0_coeff  -  diff1_coeff / E) * Vmu_pmu;
+
+                  df = feqbar * (df_shear + df_bulk + df_diff);
+                  break;
+                }
+                default:
+                {
+                  printf("Error: set df_mode = (1,2) in parameters.dat\n");
+                }
+              } // DF_MODE
+
+              if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0));
+
+              double f = feq * (1.0 + df);
+
+              eta_integral += eta_weight * pdotdsigma * f;
 
             } // ieta
 
@@ -298,7 +405,7 @@ __global__ void calculate_dN_pTdpTdphidy(double* dN_pTdpTdphidy_d_blocks, long e
 
 
 // does a block reduction, where the previous kernel did a thread reduction.
-__global__ void blockReduction(double* dN_pTdpTdphidy_d_blocks, long spectra_length, long blocks_ker1)
+__global__ void calculate_dN_pTdpTdphidy_blockReduction(double* dN_pTdpTdphidy_d_blocks, long spectra_length, long blocks_ker1)
 {
   long ithread = threadIdx.x  +  blockDim.x * blockIdx.x;
 
@@ -408,17 +515,13 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
 
 void EmissionFunctionArray::calculate_spectra()
 {
-
-  cudaDeviceSynchronize();    // synchronize device at beginning
-  cudaError_t err;            // error handling
-
   cout << "calculate_spectra() has started... " << endl;
 
-  err = cudaGetLastError();
-  if(err != cudaSuccess)
+  cudaDeviceSynchronize();    // test synchronize device
+  
+  if(cudaGetLastError() != cudaSuccess)
   {
-    printf("Error at very beginning: %s\n", cudaGetErrorString(err));
-    err = cudaSuccess;
+    printf("Error at very beginning: %s\n", cudaGetErrorString(cudaGetLastError()));
   }
 
   int nDevices;
@@ -448,7 +551,6 @@ void EmissionFunctionArray::calculate_spectra()
   long chunks = (FO_length + FO_chunk - 1) / FO_chunk;
   long partial = FO_length % FO_chunk;
 
-  //long block_spectra_length = blocks_ker1 * spectra_length;
   long block_momentum_length = blocks_ker1 * momentum_length;
 
   cout << "________________________|______________" << endl;
@@ -468,8 +570,8 @@ void EmissionFunctionArray::calculate_spectra()
   cout << "blocks in second kernel |\t" << blocks_ker2 << endl;
   cout << "threads per block       |\t" << threadsPerBlock << endl;
 
-  cout << "Declaring and filling host arrays with particle and freezeout surface info" << endl;
 
+  cout << "Declaring and filling host arrays with particle and freezeout surface info" << endl;
 
   // particle info
   particle_info *particle;
@@ -501,6 +603,8 @@ void EmissionFunctionArray::calculate_spectra()
   double *pixx, *pixy, *pixn, *piyy, *piyn;   // pi^munu
   double *bulkPi;                             // bulk pressure
   double *Vx, *Vy, *Vn;                       // V^mu
+
+  deltaf_coefficients *df_coeff;
 
   // callocate memory
   T = (double*)calloc(FO_chunk, sizeof(double));
@@ -545,6 +649,7 @@ void EmissionFunctionArray::calculate_spectra()
     Vn = (double*)calloc(FO_chunk, sizeof(double));
   }
 
+  df_coeff = (deltaf_coefficients*)calloc(FO_chunk, sizeof(deltaf_coefficients));
 
   // set up momentum tables to pass to GPU
   double *pT = (double*)calloc(pT_tab_length, sizeof(double));
@@ -596,6 +701,8 @@ void EmissionFunctionArray::calculate_spectra()
   double *bulkPi_d;
   double *Vx_d, *Vy_d, *Vn_d;
 
+  deltaf_coefficients *df_coeff_d;
+
   double *pT_d, *trig_d, *yp_d, *etaValues_d, *etaWeights_d;
 
   double *dN_pTdpTdphidy_d_blocks;
@@ -644,6 +751,8 @@ void EmissionFunctionArray::calculate_spectra()
     cudaMalloc((void**) &Vn_d, FO_chunk * sizeof(double));
   }
 
+  cudaMalloc((void**) &df_coeff_d, FO_chunk * sizeof(deltaf_coefficients));
+
   cudaMalloc((void**) &pT_d,  pT_tab_length * sizeof(double));
   cudaMalloc((void**) &trig_d, 2 * phi_tab_length * sizeof(double));
   cudaMalloc((void**) &yp_d, y_tab_length * sizeof(double));
@@ -652,11 +761,9 @@ void EmissionFunctionArray::calculate_spectra()
 
   cudaMalloc((void**) &dN_pTdpTdphidy_d_blocks, block_momentum_length * sizeof(double));
 
-  err = cudaGetLastError();
-  if(err != cudaSuccess)
+  if(cudaGetLastError() != cudaSuccess)
   {
-    printf("Error in device memory allocation: %s\n", cudaGetErrorString(err));
-    err = cudaSuccess;
+    printf("Error in device memory allocation: %s\n", cudaGetErrorString(cudaGetLastError()));
   }
 
   printf("Copying momentum tables from host to device...\n");
@@ -667,11 +774,9 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMemcpy(etaWeights_d, etaWeights, eta_tab_length * sizeof(double), cudaMemcpyHostToDevice);
 
 
-  err = cudaGetLastError();
-  if(err != cudaSuccess)
+  if(cudaGetLastError() != cudaSuccess)
   {
-    printf("Error in a cudaMemcpy: %s\n", cudaGetErrorString(err));
-    err = cudaSuccess;
+    printf("Error in memory copy from host to device: %s\n", cudaGetErrorString(cudaGetLastError()));
   }
 
 
@@ -697,7 +802,10 @@ void EmissionFunctionArray::calculate_spectra()
       E[icell] = surf->E;
 
       tau[icell] = surf->tau;
-      if(DIMENSION == 3) eta[icell] = surf->eta;
+      if(DIMENSION == 3) 
+      {
+        eta[icell] = surf->eta;
+      }
 
       ux[icell] = surf->ux;
       uy[icell] = surf->uy;
@@ -730,12 +838,28 @@ void EmissionFunctionArray::calculate_spectra()
         Vy[icell] = surf->Vy;
         Vn[icell] = surf->Vn;
       }
+
+      // evaluate the df coefficients
+      double T1 = T[icell];
+      double E1 = E[icell];
+      double P1 = P[icell];
+      double muB1 = 0.0;
+      if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+      {
+        muB1 = T1 * alphaB[icell];
+      }
+      double bulkPi1 = 0.0;
+      if(INCLUDE_BULK_DELTAF)
+      {
+        bulkPi1 = bulkPi[icell];
+      }
+
+      df_coeff[icell] = df_data->evaluate_df_coefficients(T1, muB1, E1, P1, bulkPi1);
+
     } // icell
 
-    // copy memory from host to device
-    printf("Launching freezeout surface chunk %ld", n + 1);
-    printf("\n");
 
+    // copy memory from host to device
     cudaMemcpy(T_d, T, FO_chunk * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(P_d, P, FO_chunk * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(E_d, E, FO_chunk * sizeof(double), cudaMemcpyHostToDevice);
@@ -778,14 +902,12 @@ void EmissionFunctionArray::calculate_spectra()
       cudaMemcpy(Vn_d, Vn, FO_chunk * sizeof(double), cudaMemcpyHostToDevice);
     }
 
-    // check if memory copy error
-    err = cudaGetLastError();
-    if(err != cudaSuccess)
-    {
-      printf("Error in memory copy from host to device: %s\n", cudaGetErrorString(err));
-      err = cudaSuccess;
-    }
+    cudaMemcpy(df_coeff_d, df_coeff, FO_chunk * sizeof(deltaf_coefficients), cudaMemcpyHostToDevice);
 
+    if(cudaGetLastError() != cudaSuccess)
+    {
+      printf("Error in memory copy from host to device: %s\n", cudaGetErrorString(cudaGetLastError()));
+    }
 
     // loop over particles
     for(int ipart = 0; ipart < npart; ipart++)
@@ -801,40 +923,35 @@ void EmissionFunctionArray::calculate_spectra()
       double mass_squared = mass * mass;
       double prefactor = degen / h3;
 
+      // launch thread reduction kernel
       cudaDeviceSynchronize();
-      calculate_dN_pTdpTdphidy<<<blocks_ker1, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
+      calculate_dN_pTdpTdphidy_threadReduction<<<blocks_ker1, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
       cudaDeviceSynchronize();
 
-      err = cudaGetLastError();
-      if(err != cudaSuccess)
+      if(cudaGetLastError() != cudaSuccess)
       {
-        printf("Error in first kernel: %s\n", cudaGetErrorString(err));
-        err = cudaSuccess;
+        printf("Error in thread reduction kernel: %s\n", cudaGetErrorString(cudaGetLastError()));
       }
 
-
+      // launch block reduction kernel
       cudaDeviceSynchronize();
-      blockReduction<<<blocks_ker2, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, momentum_length, blocks_ker1);
+      calculate_dN_pTdpTdphidy_blockReduction<<<blocks_ker2, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, momentum_length, blocks_ker1);
       cudaDeviceSynchronize();
 
-      err = cudaGetLastError();
-      if(err != cudaSuccess)
+      if(cudaGetLastError() != cudaSuccess)
       {
-        printf("Error in second kernel: %s\n", cudaGetErrorString(err));
-        err = cudaSuccess;
+        printf("Error in block reduction kernel: %s\n", cudaGetErrorString(cudaGetLastError()));
       }
 
-      // copy memory from device to host
+      // copy chunk contribution to particle's spectra from device to host
       cudaMemcpy(dN_pTdpTdphidy_momentum, dN_pTdpTdphidy_d_blocks, momentum_length * sizeof(double), cudaMemcpyDeviceToHost);
 
-      err = cudaGetLastError();
-      if(err != cudaSuccess)
+      if(cudaGetLastError() != cudaSuccess)
       {
-        printf("Error in memory copy from device to host: %s\n", cudaGetErrorString(err));
-        err = cudaSuccess;
+        printf("Error in memory copy from device to host: %s\n", cudaGetErrorString(cudaGetLastError()));
       }
 
-      // amend particle spectra
+      // amend particle spectra to the total
       for(int ipT = 0; ipT < pT_tab_length; ipT++)
       {
         for(int iphip = 0; iphip < phi_tab_length; iphip++)
@@ -851,6 +968,9 @@ void EmissionFunctionArray::calculate_spectra()
       } // iP
 
     } // ipart
+
+    printf("Progress: finished chunk %ld of %ld", n + 1, chunks);
+    printf("\n");
 
   } // loop over chunks
 
@@ -914,6 +1034,8 @@ void EmissionFunctionArray::calculate_spectra()
     free(Vn);
   }
 
+  free(df_coeff);
+
   // cudaFree = deallocate memory on device
   cudaFree(T_d);
   cudaFree(P_d);
@@ -956,6 +1078,8 @@ void EmissionFunctionArray::calculate_spectra()
     cudaFree(Vy_d);
     cudaFree(Vn_d);
   }
+
+  cudaFree(df_coeff_d);
 
   cudaFree(pT_d);
   cudaFree(trig_d);

@@ -53,18 +53,15 @@ int main()
   df_data->test_df_coefficients(-0.1);
   
 
-  deltaf_coefficients df;
-
-
   // Load momentum tables
-  Table pT_tab("tables/pT_gauss_table.dat"); 
-  Table phi_tab("tables/phi/phi_gauss_table_48pt.dat");
+  Table pT_tab("tables/pT_uniform_table.dat"); 
+  Table phi_tab("tables/phi_gauss_legendre_table.dat");
   Table y_tab("tables/y_trapezoid_table_21pt.dat");
   Table eta_tab("tables/eta/eta_gauss_table_48pt.dat"); 
 
 
   // Calculate spectra
-  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df);
+  EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df_data);
   efa.calculate_spectra();
 
   delete paraRdr;

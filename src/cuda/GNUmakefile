@@ -77,7 +77,7 @@ install:	$(TARGET)
 		cp $(TARGET) $(INSTPATH)
 
 # --------------- Dependencies -------------------
-./main.cu: main.cuh Table.cuh readindata.cuh emissionfunction.cuh arsenal.cuh ParameterReader.cuh
+./main.cu: main.cuh Table.cuh readindata.cuh emissionfunction.cuh arsenal.cuh ParameterReader.cuh deltafReader.cuh
 ./arsenal.cu: arsenal.cuh
 ./emissionfunction.cu: main.cuh readindata.cuh emissionfunction.cuh Stopwatch.cuh arsenal.cuh Table.cuh deltafReader.cuh
 ./Table.cu: Table.cuh arsenal.cuh

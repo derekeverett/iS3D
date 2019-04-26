@@ -27,21 +27,26 @@ Deltaf_Data::Deltaf_Data(ParameterReader * paraRdr_in)
 
   if(hrg_eos == 1)
   {
-    hrg_eos_path = urqmd;
+    hrg_eos_path = "deltaf_coefficients/vh/urqmd/";
   }
   else if(hrg_eos == 2)
   {
-    hrg_eos_path = smash;
+    hrg_eos_path = "deltaf_coefficients/vh/smash/";
   }
   else if(hrg_eos == 3)
   {
-    hrg_eos_path = smash_box;
+    hrg_eos_path = "deltaf_coefficients/vh/smash_box/";
   }
   else
   {
     printf("Error: please choose hrg_eos = (1,2,3)\n");
     exit(-1);
   }
+
+  jonah_points = 3001;       
+  lambda_min = -1.0;       
+  lambda_max = 2.0;
+  delta_lambda = (lambda_max - lambda_min) / ((double)jonah_points - 1.0);
 }
 
 Deltaf_Data::~Deltaf_Data()
@@ -186,7 +191,7 @@ void Deltaf_Data::load_df_coefficient_data()
   T_min = T_array[0];
   muB_min = muB_array[0];
 
-  // uniform grid
+  // assume uniform grid
   dT = fabs(T_array[1] - T_array[0]);
   dmuB = fabs(muB_array[1] - muB_array[0]);
 
@@ -271,6 +276,8 @@ void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int 
     z_array[i] = z;
     bulkPi_over_Peq_array[i] = bulkPi_over_Peq;
     bulkPi_over_Peq_max = max(bulkPi_over_Peq_max, bulkPi_over_Peq);
+
+    //cout << lambda_squared_array[i] << "\t" << z_array[i] << "\t" << bulkPi_over_Peq_array[i] << endl;
   }
 
 }
@@ -286,8 +293,18 @@ double Deltaf_Data::calculate_linear_temperature(double ** f_data, double T, dou
   return (f_L * (TR - T)  +  f_R * (T - TL)) / dT;
 }
 
+double Deltaf_Data::calculate_linear_bulkPi(double *f_data, double bulkPi, double bulkL, double bulkR, int ibulkL, int ibulkR, double dbulk)
+{
+  double f_L = f_data[ibulkL];
+  double f_R = f_data[ibulkR];
+
+  return (f_L * (bulkR - bulkPi)  +  f_R * (bulkPi - bulkL)) / dbulk;
+}
+
 deltaf_coefficients Deltaf_Data::linear_interpolation(double T, double E, double P, double bulkPi)
 {
+  double T4 = T * T * T * T;
+
   // left and right T, muB indices
   int iTL = (int)floor((T - T_min) / dT);
   int iTR = iTL + 1;
@@ -308,14 +325,11 @@ deltaf_coefficients Deltaf_Data::linear_interpolation(double T, double E, double
   deltaf_coefficients df;
 
 
-
   switch(df_mode)
   {
     case 1: // 14 moment
     {
       // undo the temperature power scaling of coefficients
-      double T4 = T * T * T * T;
-
       df.c0 = calculate_linear_temperature(c0_data, T, TL, TR, iTL, iTR) / T4;
       df.c1 = 0.0;
       df.c2 = calculate_linear_temperature(c2_data, T, TL, TR, iTL, iTR) / T4;
@@ -329,8 +343,6 @@ deltaf_coefficients Deltaf_Data::linear_interpolation(double T, double E, double
     case 3: // Modified (Mike)
     {
       // undo the temperature power scaling of coefficients
-      double T4 = T * T * T * T;
-
       df.F = calculate_linear_temperature(F_data, T, TL, TR, iTL, iTR) * T;
       df.G = 0.0;
       df.betabulk = calculate_linear_temperature(betabulk_data, T, TL, TR, iTL, iTR) * T4;
@@ -341,23 +353,67 @@ deltaf_coefficients Deltaf_Data::linear_interpolation(double T, double E, double
     }
     case 4: // Modified (Jonah)
     {
-      // undo the temperature power scaling of betapi
-      // double T4 = T * T * T * T;
+      // first regulate the bulk pressure if out of bounds
+      if(bulkPi < - P)
+      { 
+        bulkPi = - (1.0 - 1.e-5) * P;
+      }
+      else if(bulkPi / P > bulkPi_over_Peq_max) 
+      {
+        bulkPi = P * (bulkPi_over_Peq_max - 1.e-5);
+      }
+      
+      int ibulkL;
+      int ibulkR;
 
-      // double lambda_squared = gsl_spline_eval(lambda_squared_spline, (bulkPi / P), accel_bulk);
-      // if(bulkPi < 0.0)
-      // {
-      //   df.lambda = - sqrt(lambda_squared);
-      // }
-      // else if(bulkPi > 0.0)
-      // {
-      //   df.lambda = sqrt(lambda_squared);
-      // }
-      // df.z = gsl_spline_eval(z_spline, (bulkPi / P), accel_bulk);
-      // df.betapi = gsl_spline_eval(betapi_spline, T, accel_T) * T4;
+      double bulkL;
+      double bulkR;
+      double dbulk; 
+
+      double bulkPi_over_Peq = bulkPi / P;
+
+      // search interpolation points by hand
+      // since bulkPi_over_Peq_array is not uniform
+      bool found_interpolation_points = false;
+      for(int i = 0; i < jonah_points; i++)
+      {
+        if(bulkPi_over_Peq < bulkPi_over_Peq_array[i])
+        {
+          ibulkL = i - 1;
+          ibulkR = i;
+
+          bulkL = bulkPi_over_Peq_array[ibulkL];
+          bulkR = bulkPi_over_Peq_array[ibulkR];
+          dbulk = fabs(bulkR - bulkL);
+          found_interpolation_points = true;
+
+          // cout << ibulkL << "\t" << ibulkR << endl;
+          // cout << bulkL << "\t" << bulkR << endl;
+          // cout << dbulk << endl;
+          break;
+        }
+      }
+      if(!found_interpolation_points)
+      {
+        printf("Jonah interpolation error: couldn't find interpolation points\n");
+      }
+
+      double lambda_squared = calculate_linear_bulkPi(lambda_squared_array, bulkPi_over_Peq, bulkL, bulkR, ibulkL, ibulkR, dbulk);
+    
+      if(bulkPi < 0.0)
+      {
+        df.lambda = - sqrt(lambda_squared);
+      }
+      else if(bulkPi > 0.0)
+      {
+        df.lambda = sqrt(lambda_squared);
+      }
+      df.z = calculate_linear_bulkPi(z_array, bulkPi_over_Peq, bulkL, bulkR, ibulkL, ibulkR, dbulk);
+      df.betapi = calculate_linear_temperature(betapi_data, T, TL, TR, iTL, iTR) * T4;
+
       // // linearized correction to lambda, z
-      // df.delta_lambda = bulkPi / (5.0 * df.betapi -  3.0 * P * (E + P) / E);
-      // df.delta_z = - 3.0 * df.delta_lambda * P / E;
+      df.delta_lambda = bulkPi / (5.0 * df.betapi -  3.0 * P * (E + P) / E);
+      df.delta_z = - 3.0 * df.delta_lambda * P / E;
 
       break;
     }
@@ -367,8 +423,6 @@ deltaf_coefficients Deltaf_Data::linear_interpolation(double T, double E, double
       exit(-1);
     }
   }
-
-
 
   return df;
 }

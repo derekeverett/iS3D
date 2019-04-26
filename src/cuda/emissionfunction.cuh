@@ -50,7 +50,7 @@ private:
   
   
   // df coefficients
-  deltaf_coefficients df;
+  Deltaf_Data *df_data;
 
 
   // particle spectra of chosen particle species
@@ -62,7 +62,7 @@ private:
 
 public:
   EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particle, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in,
-                        particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, deltaf_coefficients df_in);
+                        particle_info* particles_in, int Nparticles, FO_surf* FOsurf_ptr_in, long FO_length_in, Deltaf_Data *df_data_in);
   ~EmissionFunctionArray();
 
   // void calculate_dN_ptdptdphidy(double *, double *, double *, double *,
