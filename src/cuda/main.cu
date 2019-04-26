@@ -55,7 +55,7 @@ int main()
 
   // Load momentum tables
   Table pT_tab("tables/pT_uniform_table.dat"); 
-  Table phi_tab("tables/phi_gauss_legendre_table.dat");
+  Table phi_tab("tables/phi/phi_gauss_table_48pt.dat");
   Table y_tab("tables/y_trapezoid_table_21pt.dat");
   Table eta_tab("tables/eta/eta_gauss_table_48pt.dat"); 
 

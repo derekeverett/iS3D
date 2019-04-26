@@ -1205,7 +1205,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           }
 
           // add particle
-          if(canonical(generator_keep) < (w_flux * w_visc))
+          //if(canonical(generator_keep) < (w_flux * w_visc))
+          if(canonical(generator_momentum) < (w_flux * w_visc))
           {
             // lab frame momentum
             Lab_Momentum pLab(pLRF);

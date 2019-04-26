@@ -552,7 +552,7 @@ void Deltaf_Data::compute_particle_densities(particle_info * particle_data, int 
 
   // gauss laguerre roots and weights
   Gauss_Laguerre gla;
-  gla.load_roots_and_weights("tables/gla_roots_weights_32_points.txt");
+  gla.load_roots_and_weights("tables/gla_roots_weights_64_points.txt");
 
   const int pbar_pts = gla.points;
 
