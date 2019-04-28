@@ -56,8 +56,8 @@ private:
   // particle spectra of chosen particle species
   long momentum_length;
   long spectra_length;
-  double *dN_pTdpTdphidy_momentum;    
-  double *dN_pTdpTdphidy_spectra;    
+  //double *dN_pTdpTdphidy_momentum;    
+  double *dN_pTdpTdphidy;    
 
 
 public:

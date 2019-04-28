@@ -95,8 +95,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   // particle spectra of chosen particle species
   momentum_length = pT_tab_length * phi_tab_length * y_tab_length;
   spectra_length = npart * pT_tab_length * phi_tab_length * y_tab_length;
-  dN_pTdpTdphidy_momentum = (double*)calloc(momentum_length, sizeof(double));
-  dN_pTdpTdphidy_spectra = (double*)calloc(spectra_length, sizeof(double));
+  //dN_pTdpTdphidy_momentum = (double*)calloc(momentum_length, sizeof(double));
+  dN_pTdpTdphidy = (double*)calloc(spectra_length, sizeof(double));
 }
 
 
@@ -391,7 +391,7 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
           {
             long iP_block = iP  +  blockIdx.x * momentum_length;
 
-            dN_pTdpTdphidy_d_blocks[iP_block] += dN_pTdpTdphidy_thread[0];
+            dN_pTdpTdphidy_d_blocks[iP_block] = dN_pTdpTdphidy_thread[0];
           }
 
         } // iy
@@ -406,6 +406,7 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
 
 
 // does a block reduction, where the previous kernel did a thread reduction.
+/*
 __global__ void calculate_dN_pTdpTdphidy_blockReduction(double* dN_pTdpTdphidy_d_blocks, long momentum_length, long blocks_ker1)
 {
   long ithread = (long)threadIdx.x  +  (long)blockDim.x * (long)blockIdx.x;
@@ -424,6 +425,25 @@ __global__ void calculate_dN_pTdpTdphidy_blockReduction(double* dN_pTdpTdphidy_d
     }
   }
 }
+*/
+
+__global__ void calculate_dN_pTdpTdphidy_blockReduction(double *dN_pTdpTdphidy_d, double* dN_pTdpTdphidy_d_blocks, long momentum_length, long blocks_ker1, long ipart, long npart)
+{
+  long ithread = (long)threadIdx.x  +  (long)blockDim.x * (long)blockIdx.x;
+
+  // each thread is assigned a momentum coordinate
+  if(ithread < momentum_length)
+  {
+    long iS3D = ipart + npart * ithread;
+
+    // sum spectra contributions of the blocks from first kernel
+    for(long iblock_ker1 = 0; iblock_ker1 < blocks_ker1; iblock_ker1++)
+    {
+      dN_pTdpTdphidy_d[iS3D] += dN_pTdpTdphidy_d_blocks[ithread  +  iblock_ker1 * momentum_length];
+    }
+  }
+}
+
 
 
 
@@ -456,7 +476,7 @@ void EmissionFunctionArray::write_dN_2pipTdpTdy_toFile(long *MCID)
 
           long iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
 
-          dN_2pipTdpTdy += phip_weight * dN_pTdpTdphidy_spectra[iS3D] / two_pi;
+          dN_2pipTdpTdy += phip_weight * dN_pTdpTdphidy[iS3D] / two_pi;
 
         } //iphip
 
@@ -504,7 +524,7 @@ void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
           long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
           //if (dN_pTdpTdphidy[is] < 1.0e-40) spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << 0.0 << "\n";
           //else spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
-          spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy_spectra[iS3D] << "\n";
+          spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[iS3D] << "\n";
         } //ipT
         spectraFile << "\n";
       } //iphip
@@ -519,10 +539,13 @@ void EmissionFunctionArray::calculate_spectra()
   cout << "calculate_spectra() has started... " << endl;
 
   cudaDeviceSynchronize();    // test synchronize device
-  
-  if(cudaGetLastError() != cudaSuccess)
+  cudaError_t err;            // errors
+
+  err = cudaGetLastError();
+  if(err != cudaSuccess)
   {
-    printf("Error at very beginning: %s\n", cudaGetErrorString(cudaGetLastError()));
+    printf("Error at very beginning: %s\n", cudaGetErrorString(err));
+    err = cudaSuccess;
   }
 
   int nDevices;
@@ -706,6 +729,7 @@ void EmissionFunctionArray::calculate_spectra()
 
   double *pT_d, *trig_d, *yp_d, *etaValues_d, *etaWeights_d;
 
+  double *dN_pTdpTdphidy_d;
   double *dN_pTdpTdphidy_d_blocks;
 
 
@@ -760,11 +784,14 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMalloc((void**) &etaValues_d, eta_tab_length * sizeof(double));
   cudaMalloc((void**) &etaWeights_d, eta_tab_length * sizeof(double));
 
+  cudaMalloc((void**) &dN_pTdpTdphidy_d, spectra_length * sizeof(double));
   cudaMalloc((void**) &dN_pTdpTdphidy_d_blocks, block_momentum_length * sizeof(double));
 
-  if(cudaGetLastError() != cudaSuccess)
+  err = cudaGetLastError();
+  if(err != cudaSuccess)
   {
-    printf("Error in device memory allocation: %s\n", cudaGetErrorString(cudaGetLastError()));
+    printf("Error in device memory allocation: %s\n", cudaGetErrorString(err));
+    err = cudaSuccess;
   }
 
   printf("Copying momentum tables from host to device...\n");
@@ -774,10 +801,20 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMemcpy(etaValues_d, etaValues, eta_tab_length * sizeof(double), cudaMemcpyHostToDevice);
   cudaMemcpy(etaWeights_d, etaWeights, eta_tab_length * sizeof(double), cudaMemcpyHostToDevice);
 
-
-  if(cudaGetLastError() != cudaSuccess)
+  err = cudaGetLastError();
+  if(err != cudaSuccess)
   {
-    printf("Error in memory copy from host to device: %s\n", cudaGetErrorString(cudaGetLastError()));
+    printf("Error in memory copy from host to device: %s\n", cudaGetErrorString(err));
+    err = cudaSuccess;
+  }
+
+  cudaMemset(dN_pTdpTdphidy_d, 0.0, spectra_length * sizeof(double));
+
+  err = cudaGetLastError();
+  if(err != cudaSuccess)
+  {
+    printf("Error in device memory set: %s\n", cudaGetErrorString(err));
+    err = cudaSuccess;
   }
 
 
@@ -905,15 +942,17 @@ void EmissionFunctionArray::calculate_spectra()
 
     cudaMemcpy(df_coeff_d, df_coeff, FO_chunk * sizeof(deltaf_coefficients), cudaMemcpyHostToDevice);
 
-    if(cudaGetLastError() != cudaSuccess)
+    err = cudaGetLastError();
+    if(err != cudaSuccess)
     {
-      printf("Error in memory copy from host to device: %s\n", cudaGetErrorString(cudaGetLastError()));
+      printf("Error in memory copy from host to device: %s\n", cudaGetErrorString(err));
+      err = cudaSuccess;
     }
 
     // loop over particles
     for(int ipart = 0; ipart < npart; ipart++)
-    {
-      // reset momentum spectra of particle to zero
+    { 
+      // reset block spectra to zero
       cudaMemset(dN_pTdpTdphidy_d_blocks, 0.0, block_momentum_length * sizeof(double));
 
       double mass = Mass[ipart];
@@ -929,44 +968,48 @@ void EmissionFunctionArray::calculate_spectra()
       calculate_dN_pTdpTdphidy_threadReduction<<<blocks_ker1, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
       cudaDeviceSynchronize();
 
-      if(cudaGetLastError() != cudaSuccess)
+      err = cudaGetLastError();
+      if(err != cudaSuccess)
       {
-        printf("Error in thread reduction kernel: %s\n", cudaGetErrorString(cudaGetLastError()));
+        printf("Error in thread reduction kernel: %s\n", cudaGetErrorString(err));
+        err = cudaSuccess;
       }
 
       // launch block reduction kernel
       cudaDeviceSynchronize();
-      calculate_dN_pTdpTdphidy_blockReduction<<<blocks_ker2, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, momentum_length, blocks_ker1);
+      calculate_dN_pTdpTdphidy_blockReduction<<<blocks_ker2, threadsPerBlock>>>(dN_pTdpTdphidy_d, dN_pTdpTdphidy_d_blocks, momentum_length, blocks_ker1, ipart, npart);
       cudaDeviceSynchronize();
 
-      if(cudaGetLastError() != cudaSuccess)
+      err = cudaGetLastError();
+      if(err != cudaSuccess)
       {
-        printf("Error in block reduction kernel: %s\n", cudaGetErrorString(cudaGetLastError()));
+        printf("Error in block reduction kernel: %s\n", cudaGetErrorString(err));
+        err = cudaSuccess;
       }
 
       // copy chunk contribution to particle's spectra from device to host
-      cudaMemcpy(dN_pTdpTdphidy_momentum, dN_pTdpTdphidy_d_blocks, momentum_length * sizeof(double), cudaMemcpyDeviceToHost);
+      //cudaMemcpy(dN_pTdpTdphidy_momentum, dN_pTdpTdphidy_d_blocks, momentum_length * sizeof(double), cudaMemcpyDeviceToHost);
 
-      if(cudaGetLastError() != cudaSuccess)
-      {
-        printf("Error in memory copy from device to host: %s\n", cudaGetErrorString(cudaGetLastError()));
-      }
+      // if(cudaGetLastError() != cudaSuccess)
+      // {
+      //   printf("Error in memory copy from device to host: %s\n", cudaGetErrorString(cudaGetLastError()));
+      // }
 
-      // amend particle spectra to the total
-      for(int ipT = 0; ipT < pT_tab_length; ipT++)
-      {
-        for(int iphip = 0; iphip < phi_tab_length; iphip++)
-        {
-          for(int iy = 0; iy < y_tab_length; iy++)
-          {
-            long iP = ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy);
+      // // amend particle spectra to the total
+      // for(int ipT = 0; ipT < pT_tab_length; ipT++)
+      // {
+      //   for(int iphip = 0; iphip < phi_tab_length; iphip++)
+      //   {
+      //     for(int iy = 0; iy < y_tab_length; iy++)
+      //     {
+      //       long iP = ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy);
 
-            long iS3D = ipart  +  npart * iP;
+      //       long iS3D = ipart  +  npart * iP;
 
-            dN_pTdpTdphidy_spectra[iS3D] += dN_pTdpTdphidy_momentum[iP];
-          }
-        }
-      } // iP
+      //       dN_pTdpTdphidy_spectra[iS3D] += dN_pTdpTdphidy_momentum[iP];
+      //     }
+      //   }
+      // } // iP
 
     } // ipart
 
@@ -974,6 +1017,9 @@ void EmissionFunctionArray::calculate_spectra()
     printf("\n");
 
   } // loop over chunks
+
+  // copy particle spectra from device to host 
+  cudaMemcpy(dN_pTdpTdphidy, dN_pTdpTdphidy_d, spectra_length * sizeof(double), cudaMemcpyDeviceToHost);
 
   sw.toc();
   cout << "\nKernel launches took " << sw.takeTime() << " seconds.\n" << endl;
@@ -985,8 +1031,7 @@ void EmissionFunctionArray::calculate_spectra()
 
   cout << "Deallocating host and device memory" << endl;
 
-  free(dN_pTdpTdphidy_spectra);
-  free(dN_pTdpTdphidy_momentum);
+  free(dN_pTdpTdphidy);
   free(chosen_particles_table);
 
   free(Mass);
@@ -1087,6 +1132,7 @@ void EmissionFunctionArray::calculate_spectra()
   cudaFree(yp_d);
   cudaFree(etaValues_d);
   cudaFree(etaWeights_d);
+  cudaFree(dN_pTdpTdphidy_d);
   cudaFree(dN_pTdpTdphidy_d_blocks);
 
 }

@@ -325,101 +325,6 @@ double max_particle_number(double mbar, double degeneracy, double sign, double b
 }
 
 
-/*
-double compute_df_weight(LRF_Momentum pLRF, double mass_squared, double sign, double baryon, double T, double alphaB, Shear_Stress pimunu, double bulkPi, Baryon_Diffusion Vmu, deltaf_coefficients df, double baryon_enthalpy_ratio, int df_mode)
-{
-  // pLRF components
-  double E = pLRF.E;
-  double px = pLRF.px;
-  double py = pLRF.py;
-  double pz = pLRF.pz;
-
-  // pimunu LRF components
-  double pixx = pimunu.pixx_LRF;
-  double pixy = pimunu.pixy_LRF;
-  double pixz = pimunu.pixz_LRF;
-  double piyy = pimunu.piyy_LRF;
-  double piyz = pimunu.piyz_LRF;
-  double pizz = pimunu.pizz_LRF;
-
-  double pimunu_pmu_pnu = px * px * pixx  +  py * py * piyy  +  pz * pz * pizz  +  2.0 * (px * py * pixy  +  px * pz * pixz  +  py * pz * piyz);
-
-  // Vmu LRF components
-  double Vx = Vmu.Vx_LRF;
-  double Vy = Vmu.Vy_LRF;
-  double Vz = Vmu.Vz_LRF;
-
-  double Vmu_pmu = - (px * Vx  +  py * Vy  +  pz * Vz);
-
-  // total df correction
-  double df_tot = 0.0;
-
-  switch(df_mode)
-  {
-    case 1: // 14 moment
-    {
-      double chem = baryon * alphaB;
-      double feqbar = 1.0 - sign / (exp(E/T - chem) + sign);
-
-      double c0 = df.c0;
-      double c1 = df.c1;
-      double c2 = df.c2;
-      double c3 = df.c3;
-      double c4 = df.c4;
-      double shear14_coeff = df.shear14_coeff;
-
-      double df_shear = pimunu_pmu_pnu / shear14_coeff;
-      double df_bulk = ((c0 - c2) * mass_squared  +  (baryon * c1  +  (4.0 * c2  -  c0) * E) * E) * bulkPi;
-      double df_diff = (baryon * c3  +  c4 * E) * Vmu_pmu;
-
-      df_tot = feqbar * (df_shear + df_bulk + df_diff);
-      break;
-    }
-    case 2: // Chapman Enskog
-    case 3: // Modified (Mike) (switch to linearized df)
-    {
-      double chem = baryon * alphaB;
-      double feqbar = 1.0 - sign / (exp(E/T - chem) + sign);
-
-      double F = df.F;
-      double G = df.G;
-      double betabulk = df.betabulk;
-      double betaV = df.betaV;
-      double betapi = df.betapi;
-
-      double df_shear = pimunu_pmu_pnu / (2.0 * E * betapi * T);
-      double df_bulk = (baryon * G  +  F * E / T / T  +  (E  -  mass_squared / E) / (3.0 * T)) * bulkPi / betabulk;
-      double df_diff = (baryon_enthalpy_ratio  -  baryon / E) * Vmu_pmu / betaV;
-
-      df_tot = feqbar * (df_shear + df_bulk + df_diff);
-      break;
-    }
-    case 4: // Modified (Jonah) (switch to linearized df)
-    {
-      double feqbar = 1.0 - sign / (exp(E/T) + sign);
-
-      double delta_lambda = df.delta_lambda;
-      double delta_z = df.delta_z;
-      double betapi = df.betapi;
-
-      double df_shear = feqbar * pimunu_pmu_pnu / (2.0 * E * betapi * T);
-      double df_bulk = (delta_z  -  3.0 * delta_lambda)  +  feqbar * delta_lambda * (E  -  mass_squared / E) / T;
-
-      df_tot = df_shear + df_bulk;
-      break;
-    }
-    default:
-    {
-      printf("Error: use df_mode = (1,2,3,4)\n");
-      exit(-1);
-    }
-  } // df_mode
-
-  df_tot = max(-1.0, min(df_tot, 1.0));  // regulate |df| <= 1
-
-  return (1.0 + df_tot) / 2.0;
-}
-*/
 
 LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptances, long * samples, double mass, double sign, double T, double chem)
 {
@@ -471,7 +376,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       double weight = feq / weq_max / (r1 * r2 * r3);
 
       // check if 0 <= weight <= 1
-      //if(fabs(weight - 0.5) > 0.5) printf("Sample momentum error: weight = %lf out of bounds\n", weight);
+      if(fabs(weight - 0.5) > 0.5) printf("Sample momentum error: weight = %lf out of bounds\n", weight);
 
       // check pLRF acceptance
       if(canonical(generator) < weight)
@@ -859,7 +764,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       double T = T_fo[icell];             // temperature (GeV)
       double P = P_fo[icell];             // pressure (GeV/fm^3)
-      double E = E_fo[icell];             // energy density (GeV/fm^3)
+      double Energy = E_fo[icell];        // energy density (GeV/fm^3)
 
       double pitt = 0.0;                  // contravariant shear stress tensor pi^munu (GeV/fm^3)
       double pitx = 0.0;                  // enforce orthogonality pi.u = 0
@@ -911,7 +816,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         Vdsigma = Vt * dat  +  Vx * dax  +  Vy * day  +  Vn * dan;
 
         alphaB = muB / T;
-        baryon_enthalpy_ratio = nB / (E + P);
+        baryon_enthalpy_ratio = nB / (Energy + P);
       }
 
       // regulate bulk pressure if goes out of bounds given
@@ -924,7 +829,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         else if(bulkPi / P >= bulkPi_over_Peq_max) bulkPi = P * (bulkPi_over_Peq_max - 1.e-5);
       }
 
-      deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, E, P, bulkPi);
+      deltaf_coefficients df = df_data->evaluate_df_coefficients(T, muB, Energy, P, bulkPi);
 
       // df coefficients
       double c0 = df.c0;
@@ -1205,8 +1110,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           }
 
           // add particle
-          //if(canonical(generator_keep) < (w_flux * w_visc))
-          if(canonical(generator_momentum) < (w_flux * w_visc))
+          if(canonical(generator_keep) < (w_flux * w_visc))
           {
             // lab frame momentum
             Lab_Momentum pLab(pLRF);
