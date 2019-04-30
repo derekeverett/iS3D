@@ -96,7 +96,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   // particle spectra of chosen particle species
   momentum_length = pT_tab_length * phi_tab_length * y_tab_length;
   spectra_length = npart * pT_tab_length * phi_tab_length * y_tab_length;
-  //dN_pTdpTdphidy_momentum = (double*)calloc(momentum_length, sizeof(double));
   dN_pTdpTdphidy = (double*)calloc(spectra_length, sizeof(double));
 }
 
@@ -173,7 +172,6 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
       pitx = (pixx * ux  +  pixy * uy  +  tau2_un * pixn) / ut;
       pitt = (pitx * ux  +  pity * uy  +  tau2_un * pitn) / ut;
     }
-
 
     double bulkPi = 0.0;              // bulk pressure
 
@@ -319,7 +317,7 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
 
               double E = pt * ut  -  px_ux  -  py_uy  -  pn * tau2_un;  // u.p
               double feq = 1.0 / (exp(E/T  -  chem) + sign);
-              
+
               double feqbar = 1.0  -  sign * feq;
 
               // pi^munu.p_mu.p_nu
@@ -360,7 +358,916 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
               if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0));
 
               double f = feq * (1.0 + df);
-              
+
+              eta_integral += eta_weight * pdotdsigma * f;
+
+            } // ieta
+
+            dN_pTdpTdphidy_thread[ithread] = prefactor * eta_integral;
+          }
+          else
+          {
+            dN_pTdpTdphidy_thread[ithread] = 0.0;
+          }
+
+          // perform reduction over threads in each block:
+          int N = blockDim.x;  // number of threads in block (must be power of 2)
+          __syncthreads();     // prepare threads for reduction
+
+          while(N != 1)
+          {
+            N /= 2;
+
+            if(ithread < N) // reduce thread pairs
+            {
+              dN_pTdpTdphidy_thread[ithread] += dN_pTdpTdphidy_thread[ithread + N];
+            }
+            __syncthreads();
+          }
+
+          // store block's contribution to the spectra
+          if(ithread == 0)
+          {
+            long iP_block = iP  +  blockIdx.x * momentum_length;
+
+            dN_pTdpTdphidy_d_blocks[iP_block] = dN_pTdpTdphidy_thread[0];
+          }
+
+        } // iy
+
+      } // iphip
+
+    } // ipT
+
+  } // icell < endFO
+
+} // end function
+
+
+
+/*
+
+
+__global__ void calculate_dN_pTdpTdphidy_feqmod_threadReduction(double* dN_pTdpTdphidy_d_blocks, long endFO, long momentum_length, long pT_tab_length, long phi_tab_length, long y_tab_length, long eta_tab_length, double* pT_d, double* trig_d, double* y_d, double* etaValues_d, double* etaWeights_d, double mass_squared, double sign, double prefactor, double baryon, double *T_d, double *tau_d, double *eta_d, double *ux_d, double *uy_d, double *un_d, double *dat_d, double *dax_d, double *day_d, double *dan_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *bulkPi_d, double *alphaB_d, double *Vx_d, double *Vy_d, double *Vn_d, deltaf_coefficients *df_coeff_d, int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DIMENSION, int OUTFLOW, int DF_MODE, double DETA_MIN, double MASS_PION0, Gauss_Laguerre * laguerre)
+{
+
+  // contribution of dN_pTdpTdphidy from each thread
+  __shared__ double dN_pTdpTdphidy_thread[THREADS_PER_BLOCK];
+
+  long icell = (long)threadIdx.x +  (long)blockDim.x * (long)blockIdx.x;  // thread index in kernel
+  int ithread = threadIdx.x;                                              // thread index in block
+
+  dN_pTdpTdphidy_thread[ithread] = 0.0;                                   // initialize thread contribution to zero
+
+  __syncthreads();                                                        // sync threads for each block
+
+  if(icell < endFO)
+  {
+    /// gauss laguerre roots
+    const int pbar_pts = laguerre->points;
+
+    double * pbar_root1 = laguerre->root[1];
+    double * pbar_root2 = laguerre->root[2];
+
+    double * pbar_weight1 = laguerre->weight[1];
+    double * pbar_weight2 = laguerre->weight[2];
+
+    double A[3][3];
+
+    double tau = tau_d[icell];        // longitudinal proper time
+    double tau2 = tau * tau;
+
+    if(DIMENSION == 3)
+    {
+      etaValues_d[0] = eta_d[icell];  // spacetime rapidity from surface
+    }
+    double dat = dat_d[icell];        // dsigma_mu
+    double dax = dax_d[icell];
+    double day = day_d[icell];
+    double dan = dan_d[icell];
+
+    double ux = ux_d[icell];          // u^mu
+    double uy = uy_d[icell];          // enforce u.u = 1
+    double un = un_d[icell];
+    double ux2 = ux * ux;             // useful expressions
+    double uy2 = uy * uy;
+    double uperp == sqrt(ux2 + uy2);
+    double utperp = sqrt(1.0 + ux2 + uy2);
+    double tau2_un = tau2 * un;
+    double ut = sqrt(utperp * utperp  +  tau2_un * un);
+    double ut2 = ut * ut;
+
+    bool positive_time_volume = (ut * dat  +  ux * dax  +  uy * day  +  un * dan > 0.0);
+
+    double T = T_d[icell];            // temperature
+
+    double pitt = 0.0;                // pi^munu
+    double pitx = 0.0;                // enforce pi.u = 0, Tr(pi) = 0
+    double pity = 0.0;
+    double pitn = 0.0;
+    double pixx = 0.0;
+    double pixy = 0.0;
+    double pixn = 0.0;
+    double piyy = 0.0;
+    double piyn = 0.0;
+    double pinn = 0.0;
+
+    if(INCLUDE_SHEAR_DELTAF)
+    {
+      pixx = pixx_d[icell];
+      pixy = pixy_d[icell];
+      pixn = pixn_d[icell];
+      piyy = piyy_d[icell];
+      piyn = piyn_d[icell];
+      pinn = (pixx * (ux2 - ut2)  +  piyy * (uy2 - ut2)  +  2.0 * (pixy * ux * uy  +  tau2_un * (pixn * ux  +  piyn * uy))) / (tau2 * utperp * utperp);
+      pitn = (pixn * ux  +  piyn * uy  +  tau2_un * pinn) / ut;
+      pity = (pixy * ux  +  piyy * uy  +  tau2_un * piyn) / ut;
+      pitx = (pixx * ux  +  pixy * uy  +  tau2_un * pixn) / ut;
+      pitt = (pitx * ux  +  pity * uy  +  tau2_un * pitn) / ut;
+    }
+
+    double bulkPi = 0.0;              // bulk pressure
+
+    if(INCLUDE_BULK_DELTAF)
+    {
+      bulkPi = bulkPi_d[icell];
+    }
+
+    double alphaB = 0.0;              // muB / T
+    double Vt = 0.0;                  // V^mu
+    double Vx = 0.0;                  // enforce orthogonality V.u = 0
+    double Vy = 0.0;
+    double Vn = 0.0;
+    double chem = 0.0;
+
+    if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+    {
+      alphaB = alphaB_d[icell];
+      chem = baryon * alphaB;
+      Vx = Vx_d[icell];
+      Vy = Vy_d[icell];
+      Vn = Vn_d[icell];
+      Vt = (Vx * ux  +  Vy * uy  +  Vn * tau2_un) / ut;
+    }
+
+    // need basis vector components
+    double sinhL = tau * un / utperp;
+    double coshL = ut / utperp;
+
+    double Xt = uperp * coshL;
+    double Xn = uperp * sinhL / tau;
+    double Zt = sinhL;
+    double Zn = coshL / tau;
+
+    double tau2_Xn = tau2 * Xn;
+    double tau2_Zn = tau2 * Zn;
+
+    double Xx, Xy;
+    double Yx, Yy;
+
+    if(uperp < 1.e-5)
+    {
+      // stops (ux=0)/(uperp=0) nans for freezeout cells with no transverse flow
+      Xx = 1.0;   Yx = 0.0;
+      Xy = 0.0;   Yy = 1.0;
+    }
+    else
+    {
+        Xx = utperp * ux / uperp;   Yx = - uy / uperp;
+        Xy = utperp * uy / uperp;   Yy = ux / uperp;
+    }
+
+    // pimunu LRF components
+    double pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
+            + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
+
+    double pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xt + pixy*Xx + piyy*Xy + tau2*piyn*Xn);
+
+    double pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xx - piyn*Xy - tau2*pinn*Xn);
+
+    double piyy_LRF = pixx*Yx*Yx + 2.0*pixy*Yx*Yy + piyy*Yy*Yy;
+
+    double piyz_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
+
+    double pizz_LRF = - (pixx_LRF + piyy_LRF);
+
+    // get df coefficients
+    double F = df_coeff_d->F;
+    double G = df_coeff_d->G;
+    double betabulk = df_coeff_d->betabulk;
+    double baryon_enthalpy_ratio = df_coeff_d->baryon_enthalpy_ratio;
+    double betaV = df_coeff_d->betaV;
+    double betapi = df_coeff_d->betapi;
+
+    double z = df_coeff_d->z;
+    double lambda = df_coeff_d->lambda;
+    double delta_z = df_coeff_d->delta_z;
+    double delta_lambda = df_coeff_d->delta_lambda;
+
+
+    double shear_mod = 0.5 / betapi;
+    double bulk_mod, T_mod, chem_mod;
+
+    // linearized shear and bulk coefficients
+    double shear_coeff = 0.5 / (betapi * T);
+    double bulk0_coeff, bulk1_coeff, bulk2_coeff;
+
+    switch(DF_MODE)
+    {
+      case 3: // Mike
+      {
+        bulk_mod = bulkPi / (3.0 * betabulk);
+        T_mod = T  +  F * bulkPi / betabulk;
+        chem_mod = baryon * (alphaB  + G * bulkPi / betabulk);
+
+        bulk0_coeff = F / (T * T * betabulk) * bulkPi;
+        bulk1_coeff = G / betabulk * baryon * bulkPi;
+        bulk2_coeff = bulkPi / (3.0 * T * betabulk);
+        break;
+      }
+      case 4: // Jonah
+      {
+        bulk_mod = lambda;
+        T_mod = T;
+        alphaB_mod = 0.0;
+
+        bulk0_coeff = delta_z  -  3.0 * delta_lambda;
+        bulk1_coeff = delta_lambda / T;
+        break;
+      }
+      default:
+      {
+        printf("Error: set df_mode = (3,3) in parameters.dat\n");
+      }
+    }
+
+    double Axx = 1.0  +  pixx_LRF * shear_mod  +  bulk_mod;
+    double Axy = pixy_LRF * shear_mod;
+    double Axz = pixz_LRF * shear_mod;
+    double Ayx = Axy;
+    double Ayy = 1.0  +  piyy_LRF * shear_mod  +  bulk_mod;
+    double Ayz = piyz_LRF * shear_mod;
+    double Azx = Axz;
+    double Azy = Ayz;
+    double Azz = 1.0  +  pizz_LRF * shear_mod  +  bulk_mod;
+
+    double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
+    double detA_bulk_two_thirds = (1.0 + bulk_mod) * (1.0 + bulk_mod);
+
+    double neq_fact = T * T * T / two_pi2_hbarC3;
+    double dn_fact = bulkPi / betabulk;
+    double J20_fact = T * neq_fact;
+    double N10_fact = neq_fact;
+    double nmod_fact = T_mod * T_mod * T_mod / two_pi2_hbarC3;
+
+    // determine if feqmod breaks down
+    bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE, 0, T, F, betabulk);
+
+
+    // I need to use my old method (no matrix solver iterations)
+
+
+    // uniformly rescale eta space by detA if modified momentum space elements are shrunk
+    // this rescales the dsigma components orthogonal to the eta direction (only works for 2+1d, y = 0)
+    // for integrating modified distribution with narrow (y-eta) distributions
+    double eta_scale = 1.0;
+    if(detA > DETA_MIN && DIMENSION == 2)
+    {
+      eta_scale = detA / detA_bulk_two_thirds;
+    }
+
+    // compute renormalization factor
+    double renorm = 1.0;
+
+    if(INCLUDE_BULK_DELTAF)
+    {
+      if(DF_MODE == 3)
+      {
+        double mbar = mass / T;
+        double mbar_mod = mass / T_mod;
+
+        // maybe compute these individually on the device
+        double neq = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+
+        double N10 = baryon * N10_fact * degeneracy * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+
+        double J20 = J20_fact * degeneracy * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+
+        double n_linear = neq  +  dn_fact * (neq  +  N10 * G  +  J20 * F / T / T);
+
+        double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
+
+        renorm = n_linear / n_mod;
+      }
+      else if(DF_MODE == 4)
+      {
+        renorm = z;
+      }
+    }
+
+    // rescale normalization factor
+    if(DIMENSION == 2)
+    {
+      renorm /= detA_bulk_two_thirds;
+    }
+    else if(DIMENSION == 3)
+    {
+      renorm /= detA;
+    }
+
+
+
+    // loop over momentum
+    for(long ipT = 0; ipT < pT_tab_length; ipT++)
+    {
+      double pT = pT_d[ipT];
+
+      double mT = sqrt(mass_squared  +  pT * pT);
+      double mT_over_tau = mT / tau;
+
+      for(long iphip = 0; iphip < phi_tab_length; iphip++)
+      {
+        double px = pT * trig_d[iphip];
+        double py = pT * trig_d[iphip + phi_tab_length];
+
+        double px_dax = px * dax;   // useful expressions
+        double py_day = py * day;
+
+        double px_ux = px * ux;
+        double py_uy = py * uy;
+
+        double pixx_px_px = pixx * px * px;
+        double piyy_py_py = piyy * py * py;
+        double pitx_px = pitx * px;
+        double pity_py = pity * py;
+        double pixy_px_py = pixy * px * py;
+        double tau2_pixn_px = tau2_pixn * px;
+        double tau2_piyn_py = tau2_piyn * py;
+
+        for(long iy = 0; iy < y_tab_length; iy++)
+        {
+          double y = y_d[iy];
+
+          // momentum_length index
+          long iP = ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy);
+
+          if(positive_time_volume)
+          {
+            double eta_integral = 0.0;
+
+            // sum over eta
+            for(long ieta = 0; ieta < eta_tab_length; ieta++)
+            {
+              double eta = etaValues_d[ieta];
+              double eta_weight = etaWeights_d[ieta];
+
+              bool feqmod_breaks_down_narrow = false;
+
+              if(DIMENSION == 3 && !feqmod_breaks_down)
+              {
+                if(detA < 0.01 && fabs(y - eta) < detA)
+                {
+                  feqmod_breaks_down_narrow = true;
+                }
+              }
+
+              double sinhyeta = sinh(y - eta);
+              double coshyeta = sqrt(1.0  +  sinhyeta * sinhyeta);
+
+              double pt = mT * coshyeta;           // p^tau
+              double pn = mT_over_tau * sinhyeta;  // p^eta
+
+              double pdotdsigma = pt * dat  +  px_dax  +  py_day  +  pn * dan;
+
+              if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
+
+
+
+              double f;
+
+              // calculate feqmod
+              if(feqmod_breaks_down || feqmod_breaks_down_narrow)
+              {
+                double sinhyeta = sinh(y - eta);
+                double coshyeta = sqrt(1.0  +  sinhyeta * sinhyeta);
+
+                double pt = mT * coshyeta;           // p^tau
+                double pn = mT_over_tau * sinhyeta;  // p^eta
+
+                double pdotdsigma = pt * dat  +  px_dax  +  py_day  +  pn * dan;
+
+                if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
+
+                double E = pt * ut  -  px_ux  -  py_uy  -  pn * tau2_un;  // u.p
+                double feq = 1.0 / (exp(E/T  -  chem) + sign);
+                double feqbar = 1.0  -  sign * feq;
+
+                // pi^munu.p_mu.p_nu
+                double pimunu_pmu_pnu = pitt * pt * pt  +  pixx_px_px  +  piyy_py_py  +  tau4_pinn * pn * pn
+                    + 2.0 * (-(pitx_px + pity_py) * pt  +  pixy_px_py  +  pn * (tau2_pixn_px  +  tau2_piyn_py  -  tau2_pitn * pt));
+
+                double df;
+
+                if(DF_MODE == 3)
+                {
+                  double df_shear = shear_coeff * pimunu_pmu_pnu / E;
+                  double df_bulk = (bulk0_coeff * E  +  bulk1_coeff  +  bulk2_coeff * (E  -  mass_squared / E));
+
+                  df = feqbar * (df_shear + df_bulk);
+                }
+                else if(DF_MODE == 4)
+                {
+                  double df_shear = feqbar * shear_coeff * pimunu_pmu_pnu / E;
+                  double df_bulk = bulk0_coeff  +  feqbar * bulk1_coeff * (E  -  mass_squared / E);
+
+                  df = df_shear + df_bulk;
+                }
+
+                if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
+
+                f = feq * (1.0 + df);
+
+              } // feqmod breaks down
+              else
+              {
+                double sinhyeta_scale = sinh(y - eta_scale * eta);
+
+                double pt = mT * sqrt(1.0  +  sinhyeta_scale * sinhyeta_scale);  // p^\tau (GeV)
+                double pn = mT_over_tau *  sinhyeta_scale                        // p^\eta (GeV^2)
+                double tau2_pn = tau2 * pn;
+
+                // LRF momentum components pi_LRF = - Xi.p
+                double px_LRF = -Xt * pt  +  Xx * px  +  Xy * py  +  tau2_Xn * pn;
+                double py_LRF = Yx * px  +  Yy * py;
+                double pz_LRF = -Zt * pt  +  tau2_Zn * pn;
+
+                double pLRF[3] = {px_LRF, py_LRF, pz_LRF};
+
+                // this is where I need the old method
+                //matrix_multiplication(A_inv, pLRF, pLRF_mod, 3, 3);   // evaluate p_mod = A^-1.p at least once
+
+                double px_LRF_mod = pLRF[0];
+                double py_LRF_mod = pLRF[1];
+                double pz_LRF_mod = pLRF[2];
+
+                double E_mod = sqrt(mass_squared  +  px_LRF_mod * px_LRF_mod  +  py_LRF_mod * py_LRF_mod  +  pz_LRF_mod * pz_LRF_mod);
+
+                f = fabs(renorm) / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
+              }
+
+              eta_integral += eta_weight * pdotdsigma * f;
+
+            } // ieta
+
+            dN_pTdpTdphidy_thread[ithread] = prefactor * eta_integral;
+          }
+          else
+          {
+            dN_pTdpTdphidy_thread[ithread] = 0.0;
+          }
+
+          // perform reduction over threads in each block:
+          int N = blockDim.x;  // number of threads in block (must be power of 2)
+          __syncthreads();     // prepare threads for reduction
+
+          while(N != 1)
+          {
+            N /= 2;
+
+            if(ithread < N) // reduce thread pairs
+            {
+              dN_pTdpTdphidy_thread[ithread] += dN_pTdpTdphidy_thread[ithread + N];
+            }
+            __syncthreads();
+          }
+
+          // store block's contribution to the spectra
+          if(ithread == 0)
+          {
+            long iP_block = iP  +  blockIdx.x * momentum_length;
+
+            dN_pTdpTdphidy_d_blocks[iP_block] = dN_pTdpTdphidy_thread[0];
+          }
+
+        } // iy
+
+      } // iphip
+
+    } // ipT
+
+  } // icell < endFO
+
+} // end function
+
+*/
+
+__global__ void calculate_dN_pTdpTdphidy_feqmod_threadReduction(double* dN_pTdpTdphidy_d_blocks, long endFO, long momentum_length, long pT_tab_length, long phi_tab_length, long y_tab_length, long eta_tab_length, double* pT_d, double* trig_d, double* y_d, double* etaValues_d, double* etaWeights_d, double mass_squared, double sign, double prefactor, double baryon, double *T_d, double *tau_d, double *eta_d, double *ux_d, double *uy_d, double *un_d, double *dat_d, double *dax_d, double *day_d, double *dan_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *bulkPi_d, double *alphaB_d, double *Vx_d, double *Vy_d, double *Vn_d, deltaf_coefficients *df_coeff_d, int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DIMENSION, int OUTFLOW, int DF_MODE, double DETA_MIN, double MASS_PION0, Gauss_Laguerre * laguerre)
+{
+
+  // contribution of dN_pTdpTdphidy from each thread
+  __shared__ double dN_pTdpTdphidy_thread[THREADS_PER_BLOCK];
+
+  long icell = (long)threadIdx.x +  (long)blockDim.x * (long)blockIdx.x;  // thread index in kernel
+  int ithread = threadIdx.x;                                              // thread index in block
+
+  dN_pTdpTdphidy_thread[ithread] = 0.0;                                   // initialize thread contribution to zero
+
+  __syncthreads();                                                        // sync threads for each block
+
+  if(icell < endFO)
+  {
+    /// gauss laguerre roots
+    const int pbar_pts = laguerre->points;
+
+    double * pbar_root1 = laguerre->root[1];
+    double * pbar_root2 = laguerre->root[2];
+
+    double * pbar_weight1 = laguerre->weight[1];
+    double * pbar_weight2 = laguerre->weight[2];
+
+    double A[3][3];
+
+    double tau = tau_d[icell];        // longitudinal proper time
+    double tau2 = tau * tau;
+
+    if(DIMENSION == 3)
+    {
+      etaValues_d[0] = eta_d[icell];  // spacetime rapidity from surface
+    }
+    double dat = dat_d[icell];        // dsigma_mu
+    double dax = dax_d[icell];
+    double day = day_d[icell];
+    double dan = dan_d[icell];
+
+    double ux = ux_d[icell];          // u^mu
+    double uy = uy_d[icell];          // enforce u.u = 1
+    double un = un_d[icell];
+    double ux2 = ux * ux;             // useful expressions
+    double uy2 = uy * uy;
+    double uperp == sqrt(ux2 + uy2);
+    double utperp = sqrt(1.0 + ux2 + uy2);
+    double tau2_un = tau2 * un;
+    double ut = sqrt(utperp * utperp  +  tau2_un * un);
+    double ut2 = ut * ut;
+
+    bool positive_time_volume = (ut * dat  +  ux * dax  +  uy * day  +  un * dan > 0.0);
+
+    double T = T_d[icell];            // temperature
+
+    double pitt = 0.0;                // pi^munu
+    double pitx = 0.0;                // enforce pi.u = 0, Tr(pi) = 0
+    double pity = 0.0;
+    double pitn = 0.0;
+    double pixx = 0.0;
+    double pixy = 0.0;
+    double pixn = 0.0;
+    double piyy = 0.0;
+    double piyn = 0.0;
+    double pinn = 0.0;
+
+    if(INCLUDE_SHEAR_DELTAF)
+    {
+      pixx = pixx_d[icell];
+      pixy = pixy_d[icell];
+      pixn = pixn_d[icell];
+      piyy = piyy_d[icell];
+      piyn = piyn_d[icell];
+      pinn = (pixx * (ux2 - ut2)  +  piyy * (uy2 - ut2)  +  2.0 * (pixy * ux * uy  +  tau2_un * (pixn * ux  +  piyn * uy))) / (tau2 * utperp * utperp);
+      pitn = (pixn * ux  +  piyn * uy  +  tau2_un * pinn) / ut;
+      pity = (pixy * ux  +  piyy * uy  +  tau2_un * piyn) / ut;
+      pitx = (pixx * ux  +  pixy * uy  +  tau2_un * pixn) / ut;
+      pitt = (pitx * ux  +  pity * uy  +  tau2_un * pitn) / ut;
+    }
+
+    double bulkPi = 0.0;              // bulk pressure
+
+    if(INCLUDE_BULK_DELTAF)
+    {
+      bulkPi = bulkPi_d[icell];
+    }
+
+    double alphaB = 0.0;              // muB / T
+    double Vt = 0.0;                  // V^mu
+    double Vx = 0.0;                  // enforce orthogonality V.u = 0
+    double Vy = 0.0;
+    double Vn = 0.0;
+    double chem = 0.0;
+
+    if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+    {
+      alphaB = alphaB_d[icell];
+      chem = baryon * alphaB;
+      Vx = Vx_d[icell];
+      Vy = Vy_d[icell];
+      Vn = Vn_d[icell];
+      Vt = (Vx * ux  +  Vy * uy  +  Vn * tau2_un) / ut;
+    }
+
+    // need basis vector components
+    double sinhL = tau * un / utperp;
+    double coshL = ut / utperp;
+
+    double Xt = uperp * coshL;
+    double Xn = uperp * sinhL / tau;
+    double Zt = sinhL;
+    double Zn = coshL / tau;
+
+    double tau2_Xn = tau2 * Xn;
+    double tau2_Zn = tau2 * Zn;
+
+    double Xx, Xy;
+    double Yx, Yy;
+
+    if(uperp < 1.e-5)
+    {
+      // stops (ux=0)/(uperp=0) nans for freezeout cells with no transverse flow
+      Xx = 1.0;   Yx = 0.0;
+      Xy = 0.0;   Yy = 1.0;
+    }
+    else
+    {
+        Xx = utperp * ux / uperp;   Yx = - uy / uperp;
+        Xy = utperp * uy / uperp;   Yy = ux / uperp;
+    }
+
+    // pimunu LRF components
+    double pixx_LRF = pitt*Xt*Xt + pixx*Xx*Xx + piyy*Xy*Xy + tau2*tau2*pinn*Xn*Xn
+            + 2.0 * (-Xt*(pitx*Xx + pity*Xy) + pixy*Xx*Xy + tau2*Xn*(pixn*Xx + piyn*Xy - pitn*Xt));
+
+    double pixy_LRF = Yx*(-pitx*Xt + pixx*Xx + pixy*Xy + tau2*pixn*Xn) + Yy*(-pity*Xt + pixy*Xx + piyy*Xy + tau2*piyn*Xn);
+
+    double pixz_LRF = Zt*(pitt*Xt - pitx*Xx - pity*Xy - tau2*pitn*Xn) - tau2*Zn*(pitn*Xt - pixn*Xx - piyn*Xy - tau2*pinn*Xn);
+
+    double piyy_LRF = pixx*Yx*Yx + 2.0*pixy*Yx*Yy + piyy*Yy*Yy;
+
+    double piyz_LRF = -Zt*(pitx*Yx + pity*Yy) + tau2*Zn*(pixn*Yx + piyn*Yy);
+
+    double pizz_LRF = - (pixx_LRF + piyy_LRF);
+
+    // get df coefficients
+    double F = df_coeff_d->F;
+    double G = df_coeff_d->G;
+    double betabulk = df_coeff_d->betabulk;
+    double baryon_enthalpy_ratio = df_coeff_d->baryon_enthalpy_ratio;
+    double betaV = df_coeff_d->betaV;
+    double betapi = df_coeff_d->betapi;
+
+    double z = df_coeff_d->z;
+    double lambda = df_coeff_d->lambda;
+    double delta_z = df_coeff_d->delta_z;
+    double delta_lambda = df_coeff_d->delta_lambda;
+
+
+    double shear_mod = 0.5 / betapi;
+    double bulk_mod, T_mod, chem_mod;
+
+    // linearized shear and bulk coefficients
+    double shear_coeff = 0.5 / (betapi * T);
+    double bulk0_coeff, bulk1_coeff, bulk2_coeff;
+
+    switch(DF_MODE)
+    {
+      case 3: // Mike
+      {
+        bulk_mod = bulkPi / (3.0 * betabulk);
+        T_mod = T  +  F * bulkPi / betabulk;
+        chem_mod = baryon * (alphaB  + G * bulkPi / betabulk);
+
+        bulk0_coeff = F / (T * T * betabulk) * bulkPi;
+        bulk1_coeff = G / betabulk * baryon * bulkPi;
+        bulk2_coeff = bulkPi / (3.0 * T * betabulk);
+        break;
+      }
+      case 4: // Jonah
+      {
+        bulk_mod = lambda;
+        T_mod = T;
+        alphaB_mod = 0.0;
+
+        bulk0_coeff = delta_z  -  3.0 * delta_lambda;
+        bulk1_coeff = delta_lambda / T;
+        break;
+      }
+      default:
+      {
+        printf("Error: set df_mode = (3,3) in parameters.dat\n");
+      }
+    }
+
+    double Axx = 1.0  +  pixx_LRF * shear_mod  +  bulk_mod;
+    double Axy = pixy_LRF * shear_mod;
+    double Axz = pixz_LRF * shear_mod;
+    double Ayx = Axy;
+    double Ayy = 1.0  +  piyy_LRF * shear_mod  +  bulk_mod;
+    double Ayz = piyz_LRF * shear_mod;
+    double Azx = Axz;
+    double Azy = Ayz;
+    double Azz = 1.0  +  pizz_LRF * shear_mod  +  bulk_mod;
+
+    double detA = Axx * (Ayy * Azz  -  Ayz * Ayz)  -  Axy * (Axy * Azz  -  Ayz * Axz)  +  Axz * (Axy * Ayz  -  Ayy * Axz);
+    double detA_bulk_two_thirds = (1.0 + bulk_mod) * (1.0 + bulk_mod);
+
+    double neq_fact = T * T * T / two_pi2_hbarC3;
+    double dn_fact = bulkPi / betabulk;
+    double J20_fact = T * neq_fact;
+    double N10_fact = neq_fact;
+    double nmod_fact = T_mod * T_mod * T_mod / two_pi2_hbarC3;
+
+    // determine if feqmod breaks down
+    bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE, 0, T, F, betabulk);
+
+
+    // I need to use my old method (no matrix solver iterations)
+
+
+    // uniformly rescale eta space by detA if modified momentum space elements are shrunk
+    // this rescales the dsigma components orthogonal to the eta direction (only works for 2+1d, y = 0)
+    // for integrating modified distribution with narrow (y-eta) distributions
+    double eta_scale = 1.0;
+    if(detA > DETA_MIN && DIMENSION == 2)
+    {
+      eta_scale = detA / detA_bulk_two_thirds;
+    }
+
+    // compute renormalization factor
+    double renorm = 1.0;
+
+    if(INCLUDE_BULK_DELTAF)
+    {
+      if(DF_MODE == 3)
+      {
+        double mbar = mass / T;
+        double mbar_mod = mass / T_mod;
+
+        // maybe compute these individually on the device
+        double neq = neq_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+
+        double N10 = baryon * N10_fact * degeneracy * GaussThermal(J10_int, pbar_root1, pbar_weight1, pbar_pts, mbar, alphaB, baryon, sign);
+
+        double J20 = J20_fact * degeneracy * GaussThermal(J20_int, pbar_root2, pbar_weight2, pbar_pts, mbar, alphaB, baryon, sign);
+
+        double n_linear = neq  +  dn_fact * (neq  +  N10 * G  +  J20 * F / T / T);
+
+        double n_mod = nmod_fact * degeneracy * GaussThermal(neq_int, pbar_root1, pbar_weight1, pbar_pts, mbar_mod, alphaB_mod, baryon, sign);
+
+        renorm = n_linear / n_mod;
+      }
+      else if(DF_MODE == 4)
+      {
+        renorm = z;
+      }
+    }
+
+    // rescale normalization factor
+    if(DIMENSION == 2)
+    {
+      renorm /= detA_bulk_two_thirds;
+    }
+    else if(DIMENSION == 3)
+    {
+      renorm /= detA;
+    }
+
+
+
+    // loop over momentum
+    for(long ipT = 0; ipT < pT_tab_length; ipT++)
+    {
+      double pT = pT_d[ipT];
+
+      double mT = sqrt(mass_squared  +  pT * pT);
+      double mT_over_tau = mT / tau;
+
+      for(long iphip = 0; iphip < phi_tab_length; iphip++)
+      {
+        double px = pT * trig_d[iphip];
+        double py = pT * trig_d[iphip + phi_tab_length];
+
+        double px_dax = px * dax;   // useful expressions
+        double py_day = py * day;
+
+        double px_ux = px * ux;
+        double py_uy = py * uy;
+
+        double pixx_px_px = pixx * px * px;
+        double piyy_py_py = piyy * py * py;
+        double pitx_px = pitx * px;
+        double pity_py = pity * py;
+        double pixy_px_py = pixy * px * py;
+        double tau2_pixn_px = tau2_pixn * px;
+        double tau2_piyn_py = tau2_piyn * py;
+
+        for(long iy = 0; iy < y_tab_length; iy++)
+        {
+          double y = y_d[iy];
+
+          // momentum_length index
+          long iP = ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy);
+
+          if(positive_time_volume)
+          {
+            double eta_integral = 0.0;
+
+            // sum over eta
+            for(long ieta = 0; ieta < eta_tab_length; ieta++)
+            {
+              double eta = etaValues_d[ieta];
+              double eta_weight = etaWeights_d[ieta];
+
+              bool feqmod_breaks_down_narrow = false;
+
+              if(DIMENSION == 3 && !feqmod_breaks_down)
+              {
+                if(detA < 0.01 && fabs(y - eta) < detA)
+                {
+                  feqmod_breaks_down_narrow = true;
+                }
+              }
+
+              double sinhyeta = sinh(y - eta);
+              double coshyeta = sqrt(1.0  +  sinhyeta * sinhyeta);
+
+              double pt = mT * coshyeta;           // p^tau
+              double pn = mT_over_tau * sinhyeta;  // p^eta
+
+              double pdotdsigma = pt * dat  +  px_dax  +  py_day  +  pn * dan;
+
+              if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
+
+
+
+              double f;
+
+              // calculate feqmod
+              if(feqmod_breaks_down || feqmod_breaks_down_narrow)
+              {
+                double sinhyeta = sinh(y - eta);
+                double coshyeta = sqrt(1.0  +  sinhyeta * sinhyeta);
+
+                double pt = mT * coshyeta;           // p^tau
+                double pn = mT_over_tau * sinhyeta;  // p^eta
+
+                double pdotdsigma = pt * dat  +  px_dax  +  py_day  +  pn * dan;
+
+                if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
+
+                double E = pt * ut  -  px_ux  -  py_uy  -  pn * tau2_un;  // u.p
+                double feq = 1.0 / (exp(E/T  -  chem) + sign);
+                double feqbar = 1.0  -  sign * feq;
+
+                // pi^munu.p_mu.p_nu
+                double pimunu_pmu_pnu = pitt * pt * pt  +  pixx_px_px  +  piyy_py_py  +  tau4_pinn * pn * pn
+                    + 2.0 * (-(pitx_px + pity_py) * pt  +  pixy_px_py  +  pn * (tau2_pixn_px  +  tau2_piyn_py  -  tau2_pitn * pt));
+
+                double df;
+
+                if(DF_MODE == 3)
+                {
+                  double df_shear = shear_coeff * pimunu_pmu_pnu / E;
+                  double df_bulk = (bulk0_coeff * E  +  bulk1_coeff  +  bulk2_coeff * (E  -  mass_squared / E));
+
+                  df = feqbar * (df_shear + df_bulk);
+                }
+                else if(DF_MODE == 4)
+                {
+                  double df_shear = feqbar * shear_coeff * pimunu_pmu_pnu / E;
+                  double df_bulk = bulk0_coeff  +  feqbar * bulk1_coeff * (E  -  mass_squared / E);
+
+                  df = df_shear + df_bulk;
+                }
+
+                if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0)); // regulate df
+
+                f = feq * (1.0 + df);
+
+              } // feqmod breaks down
+              else
+              {
+                double sinhyeta_scale = sinh(y - eta_scale * eta);
+
+                double pt = mT * sqrt(1.0  +  sinhyeta_scale * sinhyeta_scale);  // p^\tau (GeV)
+                double pn = mT_over_tau *  sinhyeta_scale                        // p^\eta (GeV^2)
+                double tau2_pn = tau2 * pn;
+
+                // LRF momentum components pi_LRF = - Xi.p
+                double px_LRF = -Xt * pt  +  Xx * px  +  Xy * py  +  tau2_Xn * pn;
+                double py_LRF = Yx * px  +  Yy * py;
+                double pz_LRF = -Zt * pt  +  tau2_Zn * pn;
+
+                double pLRF[3] = {px_LRF, py_LRF, pz_LRF};
+
+                // this is where I need the old method
+                //matrix_multiplication(A_inv, pLRF, pLRF_mod, 3, 3);   // evaluate p_mod = A^-1.p at least once
+
+                double px_LRF_mod = pLRF[0];
+                double py_LRF_mod = pLRF[1];
+                double pz_LRF_mod = pLRF[2];
+
+                double E_mod = sqrt(mass_squared  +  px_LRF_mod * px_LRF_mod  +  py_LRF_mod * py_LRF_mod  +  pz_LRF_mod * pz_LRF_mod);
+
+                f = fabs(renorm) / (exp(E_mod / T_mod  -  chem_mod) + sign); // feqmod
+              }
+
               eta_integral += eta_weight * pdotdsigma * f;
 
             } // ieta
@@ -426,7 +1333,6 @@ __global__ void calculate_dN_pTdpTdphidy_blockReduction(double *dN_pTdpTdphidy_d
 
 
 
-
 void EmissionFunctionArray::write_dN_2pipTdpTdy_toFile(long *MCID)
 {
   char filename[255] = "";
@@ -445,7 +1351,6 @@ void EmissionFunctionArray::write_dN_2pipTdpTdy_toFile(long *MCID)
       for(long ipT = 0; ipT < pT_tab_length; ipT++)
       {
         double pT =  pT_tab->get(1, ipT + 1);
-
         double dN_2pipTdpTdy = 0.0;
 
         for(long iphip = 0; iphip < phi_tab_length; iphip++)
@@ -580,6 +1485,48 @@ void EmissionFunctionArray::write_dN_dphidy_toFile(long *MCID)
     spectra.close();
   }
 }
+
+
+void EmissionFunctionArray::write_dN_dy_toFile(long *MCID)
+{
+  char filename[255] = "";
+  printf("Writing thermal dN_dy to file...\n");
+
+  for(long ipart  = 0; ipart < npart; ipart++)
+  {
+    sprintf(filename, "results/continuous/dN_dy_%d.dat", MCID[ipart]);
+    ofstream spectra(filename, ios_base::out);
+
+    for(long iy = 0; iy < y_tab_length; iy++)
+    {
+      double y = 0.0;
+      if(DIMENSION == 3) y = y_tab->get(1, iy + 1);
+
+      double dN_dy = 0.0;
+
+      for(long iphip = 0; iphip < phi_tab_length; iphip++)
+      {
+        double phip_weight = phi_tab->get(2, iphip + 1);
+
+        for(long ipT = 0; ipT < pT_tab_length; ipT++)
+        {
+          double pT_weight = pT_tab->get(2, ipT + 1);
+
+          long iS3D = ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy));
+
+          dN_dphipdy += pT_weight * dN_pTdpTdphidy[iS3D];
+        }
+
+        spectra << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << dN_dphipdy << "\n";
+      }
+
+      if(iy < y_tab_length - 1) spectra << "\n";
+    }
+
+    spectra.close();
+  }
+}
+
 
 
 void EmissionFunctionArray::write_dN_dy_toFile(long *MCID)
@@ -930,7 +1877,7 @@ void EmissionFunctionArray::calculate_spectra()
       E[icell] = surf->E;
 
       tau[icell] = surf->tau;
-      if(DIMENSION == 3) 
+      if(DIMENSION == 3)
       {
         eta[icell] = surf->eta;
       }
@@ -1041,7 +1988,7 @@ void EmissionFunctionArray::calculate_spectra()
 
     // loop over particles
     for(int ipart = 0; ipart < npart; ipart++)
-    { 
+    {
       // reset block spectra to zero
       cudaMemset(dN_pTdpTdphidy_d_blocks, 0.0, block_momentum_length * sizeof(double));
 
@@ -1053,10 +2000,29 @@ void EmissionFunctionArray::calculate_spectra()
       double mass_squared = mass * mass;
       double prefactor = degen / h3;
 
-      // launch thread reduction kernel
-      cudaDeviceSynchronize();
-      calculate_dN_pTdpTdphidy_threadReduction<<<blocks_ker1, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
-      cudaDeviceSynchronize();
+      switch(DF_MODE)
+      {
+        case 1:
+        case 2:
+        {
+          // launch thread reduction kernel
+          cudaDeviceSynchronize();
+          calculate_dN_pTdpTdphidy_threadReduction<<<blocks_ker1, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
+          cudaDeviceSynchronize();
+
+          break;
+        }
+        case 3:
+        case 4:
+        {
+          // launch thread reduction kernel
+          cudaDeviceSynchronize();
+          calculate_dN_pTdpTdphidy_feqmod_threadReduction<<<blocks_ker1, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
+          cudaDeviceSynchronize();
+
+          break;
+        }
+      }
 
       err = cudaGetLastError();
       if(err != cudaSuccess)
@@ -1084,7 +2050,7 @@ void EmissionFunctionArray::calculate_spectra()
 
   } // loop over chunks
 
-  // copy particle spectra from device to host 
+  // copy particle spectra from device to host
   cudaMemcpy(dN_pTdpTdphidy, dN_pTdpTdphidy_d, spectra_length * sizeof(double), cudaMemcpyDeviceToHost);
 
   sw.toc();
@@ -1200,6 +2166,7 @@ void EmissionFunctionArray::calculate_spectra()
   cudaFree(yp_d);
   cudaFree(etaValues_d);
   cudaFree(etaWeights_d);
+
   cudaFree(dN_pTdpTdphidy_d);
   cudaFree(dN_pTdpTdphidy_d_blocks);
 
