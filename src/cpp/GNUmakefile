@@ -12,13 +12,13 @@
 
 #choose a compiler.
 #CC = pgc++ # pgi compiler for openacc support
-CC = g++
-#CC = icpc # icpc slower than g++ for sampler? (10/16/18)
+#CC = g++
+CC = icpc # icpc slower than g++ for sampler? (10/16/18)
 
 #choose flags corresponding to compiler
 #CFLAGS= -std=c++11 -O3 -fopenmp -lgsl -lgslcblas -lm # for g++
-CFLAGS= -std=c++11 -O3 -lgsl -lgslcblas -lm # for g++
-#CFLAGS= -std=c++11 -qopenmp -O3 -lgsl -lgslcblas # for icpc
+#CFLAGS= -std=c++11 -O3 -lgsl -lgslcblas -lm # for g++
+CFLAGS= -std=c++11 -qopenmp -O3 -lgsl -lgslcblas # for icpc
 
 RM		=	rm -f
 O               =       .o

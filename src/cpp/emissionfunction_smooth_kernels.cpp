@@ -8,9 +8,9 @@
 #include <stdio.h>
 #include <random>
 #include <array>
-#ifdef _OMP
+//#ifdef _OMP
 #include <omp.h>
-#endif
+//#endif
 #include "iS3D.h"
 #include "readindata.h"
 #include "emissionfunction.h"

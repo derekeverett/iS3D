@@ -213,6 +213,8 @@ void Deltaf_Data::load_df_coefficient_data()
 
 void Deltaf_Data::compute_jonah_coefficients(particle_info * particle_data, int Nparticle)
 {
+  if(df_mode != 4) return;
+
   // allocate memory for the arrays
   lambda_squared_array = (double *)calloc(jonah_points, sizeof(double));
   z_array = (double *)calloc(jonah_points, sizeof(double));

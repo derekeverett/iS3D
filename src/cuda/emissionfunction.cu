@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iomanip>
 #include <vector>
+#include <complex>
 #include <stdio.h>
 #include "main.cuh"
 #include "readindata.cuh"
@@ -18,7 +19,7 @@
 
 #define AMOUNT_OF_OUTPUT 0    // smaller value means less outputs
 #define THREADS_PER_BLOCK 128  // try optimizing this, also we can define two different threads/block for the separate kernels
-#define FO_CHUNK 12800
+#define FO_CHUNK 6400
 
 using namespace std;
 
@@ -406,27 +407,6 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
 
 
 // does a block reduction, where the previous kernel did a thread reduction.
-/*
-__global__ void calculate_dN_pTdpTdphidy_blockReduction(double* dN_pTdpTdphidy_d_blocks, long momentum_length, long blocks_ker1)
-{
-  long ithread = (long)threadIdx.x  +  (long)blockDim.x * (long)blockIdx.x;
-
-  // each thread is assigned a momentum coordinate
-  if(ithread < momentum_length)
-  {
-    // sum spectra contributions of the blocks from first kernel
-    for(long iblock_ker1 = 1; iblock_ker1 < blocks_ker1; iblock_ker1++)
-    {
-      dN_pTdpTdphidy_d_blocks[ithread] += dN_pTdpTdphidy_d_blocks[ithread  +  iblock_ker1 * momentum_length];
-    }
-    if(isnan(dN_pTdpTdphidy_d_blocks[ithread]))
-    {
-      printf("found dN_pTdpTdphidy_d nan \n");
-    }
-  }
-}
-*/
-
 __global__ void calculate_dN_pTdpTdphidy_blockReduction(double *dN_pTdpTdphidy_d, double* dN_pTdpTdphidy_d_blocks, long momentum_length, long blocks_ker1, long ipart, long npart)
 {
   long ithread = (long)threadIdx.x  +  (long)blockDim.x * (long)blockIdx.x;
@@ -459,9 +439,8 @@ void EmissionFunctionArray::write_dN_2pipTdpTdy_toFile(long *MCID)
 
     for(long iy = 0; iy < y_tab_length; iy++)
     {
-      double y;
-      if(DIMENSION == 2) y = 0.0;
-      else y = y_tab->get(1, iy + 1);
+      double y = 0.0;
+      if(DIMENSION == 3) y = y_tab->get(1, iy + 1);
 
       for(long ipT = 0; ipT < pT_tab_length; ipT++)
       {
@@ -474,64 +453,175 @@ void EmissionFunctionArray::write_dN_2pipTdpTdy_toFile(long *MCID)
           double phip = phi_tab->get(1, iphip + 1);
           double phip_weight = phi_tab->get(2, iphip + 1);
 
-          long iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
+          long iS3D = ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy));
 
           dN_2pipTdpTdy += phip_weight * dN_pTdpTdphidy[iS3D] / two_pi;
 
-        } //iphip
+        }
 
         spectra << scientific <<  setw(5) << setprecision(8) << y << "\t" << pT << "\t" << dN_2pipTdpTdy << "\n";
-      } //ipT
+      }
 
       if(iy < y_tab_length - 1) spectra << "\n";
-    } //iy
+    }
+
+    spectra.close();
+  }
+}
+
+void EmissionFunctionArray::write_vn_toFile(long *MCID)
+{
+  char filename[255] = "";
+  printf("Writing thermal vn to file...\n");
+
+  const complex<double> I(0.0,1.0);   // imaginary i
+
+  const int k_max = 7;                // v_n = {v_1, ..., v_7}
+
+  for(long ipart = 0; ipart < npart; ipart++)
+  {
+    sprintf(filename, "results/continuous/vn_%d.dat", MCID[ipart]);
+    ofstream vn_File(filename, ios_base::out);
+
+    for(long iy = 0; iy < y_tab_length; iy++)
+    {
+      double y = 0.0;
+      if(DIMENSION == 3) y = y_tab->get(1, iy + 1);
+
+      for(long ipT = 0; ipT < pT_tab_length; ipT++)
+      {
+        double pT = pT_tab->get(1, ipT + 1);
+
+        double Vn_real_numerator[k_max];
+        double Vn_imag_numerator[k_max];
+
+        for(int k = 0; k < k_max; k++)
+        {
+          Vn_real_numerator[k] = 0.0;
+          Vn_imag_numerator[k] = 0.0;
+        }
+
+        double vn_denominator = 0.0;
+
+        for(long iphip = 0; iphip < phi_tab_length; iphip++)
+        {
+          double phip = phi_tab->get(1, iphip + 1);
+          double phip_weight = phi_tab->get(2, iphip + 1);
+
+          long iS3D = ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy));
+
+          for(int k = 0; k < k_max; k++)
+          {
+            Vn_real_numerator[k] += cos(((double)k + 1.0) * phip) * phip_weight * dN_pTdpTdphidy[iS3D];
+            Vn_imag_numerator[k] += sin(((double)k + 1.0) * phip) * phip_weight * dN_pTdpTdphidy[iS3D];
+          }
+
+          vn_denominator += phip_weight * dN_pTdpTdphidy[iS3D];
+        } 
+
+        vn_File << scientific <<  setw(5) << setprecision(8) << y << "\t" << pT;
+
+        for(long k = 0; k < k_max; k++)
+        {
+          double vn = abs(Vn_real_numerator[k]  +  I * Vn_imag_numerator[k]) / vn_denominator;
+
+          if(vn_denominator < 1.e-15) vn = 0.0;
+
+          vn_File << "\t" << vn;
+        }
+
+        vn_File << "\n";
+      }
+
+       if(iy < y_tab_length - 1) vn_File << "\n";
+    } 
+
+    vn_File.close();
+  }
+}
+
+
+void EmissionFunctionArray::write_dN_dphidy_toFile(long *MCID)
+{
+  char filename[255] = "";
+  printf("Writing thermal dN_dphidy to file...\n");
+
+  for(long ipart  = 0; ipart < npart; ipart++)
+  {
+    sprintf(filename, "results/continuous/dN_dphipdy_%d.dat", MCID[ipart]);
+    ofstream spectra(filename, ios_base::app);
+
+    for(long iy = 0; iy < y_tab_length; iy++)
+    {
+      double y = 0.0;
+      if(DIMENSION == 3) y = y_tab->get(1, iy + 1);
+
+      for(long iphip = 0; iphip < phi_tab_length; iphip++)
+      {
+        double phip = phi_tab->get(1,iphip + 1);
+
+        double dN_dphipdy = 0.0;
+
+        for(long ipT = 0; ipT < pT_tab_length; ipT++)
+        {
+          double pT_weight = pT_tab->get(2, ipT + 1);
+
+          long iS3D = ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy));
+
+          dN_dphipdy += pT_weight * dN_pTdpTdphidy[iS3D];
+        }
+
+        spectra << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << dN_dphipdy << "\n";
+      }
+
+      if(iy < y_tab_length - 1) spectra << "\n";
+    }
 
     spectra.close();
   }
 }
 
 
-void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile()
+void EmissionFunctionArray::write_dN_dy_toFile(long *MCID)
 {
-  printf("writing to file\n");
-  //write 3D spectra in block format, different blocks for different species,
-  //different sublocks for different values of rapidity
-  //rows corespond to phip and columns correspond to pT
-
-  int y_pts = y_tab_length;     // default 3+1d pts
-  if(DIMENSION == 2) y_pts = 1; // 2+1d pts (y = 0)
-
   char filename[255] = "";
+  printf("Writing thermal dN_dy to file...\n");
 
-  sprintf(filename, "results/dN_pTdpTdphidy.dat");
-  ofstream spectraFile(filename, ios_base::app);
-  for (int ipart = 0; ipart < npart; ipart++)
+  for(long ipart  = 0; ipart < npart; ipart++)
   {
-    for (int iy = 0; iy < y_pts; iy++)
+    sprintf(filename, "results/continuous/dN_dy_%d.dat", MCID[ipart]);
+    ofstream spectra(filename, ios_base::out);
+
+    for(long iy = 0; iy < y_tab_length; iy++)
     {
-      double y;
-      if(DIMENSION == 2) y = 0.0;
-      else y = y_tab->get(1,iy + 1);
+      double y = 0.0;
+      if(DIMENSION == 3) y = y_tab->get(1, iy + 1);
 
-      for (int iphip = 0; iphip < phi_tab_length; iphip++)
+      double dN_dy = 0.0;
+
+      for(long iphip = 0; iphip < phi_tab_length; iphip++)
       {
-        double phip = phi_tab->get(1,iphip + 1);
+        double phip_weight = phi_tab->get(2, iphip + 1);
 
-        for (int ipT = 0; ipT < pT_tab_length; ipT++)
+        for(long ipT = 0; ipT < pT_tab_length; ipT++)
         {
-          double pT = pT_tab->get(1,ipT + 1);
-          //long long int is = ipart + (npart * ipT) + (npart * pT_tab_length * iphip) + (npart * pT_tab_length * phi_tab_length * iy);
-          long long int iS3D = ipart + npart * (ipT + pT_tab_length * (iphip + phi_tab_length * iy));
-          //if (dN_pTdpTdphidy[is] < 1.0e-40) spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << 0.0 << "\n";
-          //else spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[is] << "\n";
-          spectraFile << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << pT << "\t" << dN_pTdpTdphidy[iS3D] << "\n";
-        } //ipT
-        spectraFile << "\n";
-      } //iphip
-    } //iy
-  }//ipart
-  spectraFile.close();
+          double pT_weight = pT_tab->get(2, ipT + 1);
+
+          long iS3D = ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy));
+
+          dN_dy += phip_weight * pT_weight * dN_pTdpTdphidy[iS3D];
+
+        } 
+      }
+
+      spectra << setw(5) << setprecision(8) << y << "\t" << dN_dy << "\n";
+    } 
+
+    spectra.close();
+  }
 }
+
+
 
 
 void EmissionFunctionArray::calculate_spectra()
@@ -987,30 +1077,6 @@ void EmissionFunctionArray::calculate_spectra()
         err = cudaSuccess;
       }
 
-      // copy chunk contribution to particle's spectra from device to host
-      //cudaMemcpy(dN_pTdpTdphidy_momentum, dN_pTdpTdphidy_d_blocks, momentum_length * sizeof(double), cudaMemcpyDeviceToHost);
-
-      // if(cudaGetLastError() != cudaSuccess)
-      // {
-      //   printf("Error in memory copy from device to host: %s\n", cudaGetErrorString(cudaGetLastError()));
-      // }
-
-      // // amend particle spectra to the total
-      // for(int ipT = 0; ipT < pT_tab_length; ipT++)
-      // {
-      //   for(int iphip = 0; iphip < phi_tab_length; iphip++)
-      //   {
-      //     for(int iy = 0; iy < y_tab_length; iy++)
-      //     {
-      //       long iP = ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy);
-
-      //       long iS3D = ipart  +  npart * iP;
-
-      //       dN_pTdpTdphidy_spectra[iS3D] += dN_pTdpTdphidy_momentum[iP];
-      //     }
-      //   }
-      // } // iP
-
     } // ipart
 
     printf("Progress: finished chunk %ld of %ld", n + 1, chunks);
@@ -1027,7 +1093,9 @@ void EmissionFunctionArray::calculate_spectra()
 
   // write the results to disk
   write_dN_2pipTdpTdy_toFile(MCID);
-
+  write_vn_toFile(MCID);
+  //write_dN_dphidy_toFile(MCID);
+  //write_dN_dy_toFile(MCID);
 
   cout << "Deallocating host and device memory" << endl;
 

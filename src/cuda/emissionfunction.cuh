@@ -78,7 +78,10 @@ public:
   // double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
   void write_dN_2pipTdpTdy_toFile(long *MCID);
-  void write_dN_pTdpTdphidy_toFile(); // write 3D spectra to file
+  void write_vn_toFile(long *MCID);
+  void write_dN_dphidy_toFile(long *MCID);
+  void write_dN_dy_toFile(long *MCID);
+  
   void calculate_spectra();
 
 };

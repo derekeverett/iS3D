@@ -10,9 +10,9 @@
 #include <chrono>
 #include <limits>
 #include <array>
-#ifdef _OMP
-#include <omp.h>
-#endif
+//#ifdef _OMP
+//#include <omp.h>
+//#endif
 #include "iS3D.h"
 #include "readindata.h"
 #include "emissionfunction.h"
