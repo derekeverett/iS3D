@@ -5,14 +5,18 @@ viscous hydro and calculate 3D smooth particle spectra or a sampled particle lis
 The structure is based on iSpectra, the Cooper Frye code in the iEBE heavy ion
 event generator (Chun Shen, Zhi Qiu).  
 
-to build iS3D, one can do
+##Installation
+
+To compile iS3D, one can do 
 
     mkdir build && cd build
     cmake ..
     make
     make install
 
-To run iS3D, do
+##Usage 
+
+To run iS3D
 
     ./iS3D
 
