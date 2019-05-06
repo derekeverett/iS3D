@@ -7,18 +7,18 @@ event generator (Chun Shen, Zhi Qiu).
 
 to build iS3D, one can do
 
-$ mkdir build && cd build
-$ cmake ..
-$ make
-$ make install
+    mkdir build && cd build
+    cmake ..
+    make
+    make install
 
 To run iS3D, do
 
-$ ./iS3D
+    ./iS3D
 
 or
 
-$ sh runCPU.sh num_threads
+    sh runCPU.sh num_threads
 
 where num_threads is the number of cpu threads.
 
