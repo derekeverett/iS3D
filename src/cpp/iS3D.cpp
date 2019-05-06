@@ -7,7 +7,7 @@
 #include<cmath>
 #include<vector>
 #include<sys/time.h>
-
+#include<cpuid.h>
 #include "iS3D.h"
 #include "Table.h"
 #include "readindata.h"
@@ -76,6 +76,31 @@ void IS3D::run_particlization(int fo_from_file)
   cout << "Welcome to iS3D, a program to accelerate particle spectra computation from 3+1D Hydro Freezeout Surfaces!" << endl;
   cout << "Derek Everett, Mike McNelis, Sameed Pervaiz and Lipei Du (2018)" << endl;
   cout << "Based on iSpectra v1.2 : Chun Shen and Zhi Qiu" << endl;
+
+  
+  char CPUBrandString[0x40];
+  unsigned int CPUInfo[4] = {0,0,0,0};
+
+  __cpuid(0x80000000, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
+  unsigned int nExIds = CPUInfo[0];
+
+  memset(CPUBrandString, 0, sizeof(CPUBrandString));
+
+  for (unsigned int i = 0x80000000; i <= nExIds; ++i)
+  {
+      __cpuid(i, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
+
+      if (i == 0x80000002)
+          memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
+      else if (i == 0x80000003)
+          memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
+      else if (i == 0x80000004)
+          memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
+  }
+
+  cout << "\nCPU Type: " << CPUBrandString << "\n" << endl;
+
+
 
   // Read-in parameters
   cout << "Reading in parameters:\n" << endl;
