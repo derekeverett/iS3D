@@ -851,6 +851,8 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     // get average temperature (for fast mode)
     Plasma QGP;
     QGP.load_thermodynamic_averages();
+    //if set_T_switch is on, override the temperature given by FO file  
+    if (SET_T_SWITCH) QGP.temperature = T_SWITCH; 
     const double Tavg = QGP.temperature;
     const double muBavg = QGP.baryon_chemical_potential;
 

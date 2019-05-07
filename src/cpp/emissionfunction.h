@@ -78,6 +78,9 @@ private:
   int INCLUDE_SHEAR_DELTAF;
   int INCLUDE_BARYONDIFF_DELTAF;
 
+  int SET_T_SWITCH;
+  double T_SWITCH;
+
   int REGULATE_DELTAF;
   int OUTFLOW;
 

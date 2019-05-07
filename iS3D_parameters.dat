@@ -19,6 +19,9 @@ hrg_eos				= 2	 # HRG equation of state (PDG/chosen_particles.dat MUST be subset
 					 # 2: reads pdg_smash.dat (goes up to Υ(3S))
 					 # 3: reads pdg_box.dat (smash box: no decay info now, so can't do resdecays)
 
+set_T_switch			= 1      # set the freezeout temperature as parameter, ignoring temperature in surface file 
+T_switch			= 0.151  # if set_T_switch is on, this will be the switching temperature assigned to surface 
+
 dimension  		     	= 2      # this switch determines the dimensionality of the freezeout surface
 	                	      	 # 2: boost invariant
 	                	      	 # 3: full 3+1D

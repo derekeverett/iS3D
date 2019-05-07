@@ -169,6 +169,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     // get control parameters
     OPERATION = paraRdr->getVal("operation");
     MODE = paraRdr->getVal("mode");
+    SET_T_SWITCH = paraRdr->getVal("set_T_switch");
+    T_SWITCH = paraRdr->getVal("T_switch");
     DF_MODE = paraRdr->getVal("df_mode");
     DIMENSION = paraRdr->getVal("dimension");
     INCLUDE_BARYON = paraRdr->getVal("include_baryon");
@@ -1315,6 +1317,8 @@ void EmissionFunctionArray::calculate_spectra(std::vector< std::vector <Sampled_
     // averaged thermodynamic quantities
     Plasma * QGP = new Plasma;
     QGP->load_thermodynamic_averages();
+    //if set_T_switch is turned on, override the thermodynamic quantities from FO file
+    if (SET_T_SWITCH) QGP->temperature = T_SWITCH;
 
     // freezeout info
     FO_surf *surf = &surf_ptr[0];

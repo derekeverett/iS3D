@@ -17,7 +17,7 @@ CC = g++
 
 #choose flags corresponding to compiler
 #CFLAGS= -std=c++11 -O3 -fopenmp -lgsl -lgslcblas -lm # for g++
-CFLAGS= -std=c++11 -O3 -lgsl -lgslcblas -lm # for g++
+CFLAGS= -std=c++11 -O3 -lgsl -lgslcblas -lm -Wuninitialized # for g++
 #CFLAGS= -std=c++11 -qopenmp -O3 -lgsl -lgslcblas # for icpc
 
 RM		=	rm -f
