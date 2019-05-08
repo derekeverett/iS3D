@@ -1440,8 +1440,9 @@ PDG_Data::~PDG_Data()
 int PDG_Data::read_resonances_conventional(particle_info * particle, string pdg_filename)
 {
   double eps = 1e-15;
-  int Nparticle=0;
-  printf("\nLoading particle info from urqmd/smash pdg file (check that only 1 blank line at end of file)\n");
+  int Nparticle = 0;
+  printf("Loading particle info from urqmd/smash pdg file (check that only 1 blank line at end of file)\n");
+  printf("...using read_resonances_conventional() \n");
   ifstream resofile(pdg_filename);
   int local_i = 0;
   int dummy_int;
@@ -1460,10 +1461,20 @@ int PDG_Data::read_resonances_conventional(particle_info * particle, string pdg_
     resofile >> particle[local_i].charge;
     resofile >> particle[local_i].decays;
 
+    if (particle[local_i].decays > Maxdecaychannel)
+      {
+	cout << "Error : particle[local_i].decays = "<< particle[local_i].decays << "; local_i = " << local_i << endl;
+	exit(1);
+      }
+
     for (int j = 0; j < particle[local_i].decays; j++)
     {
       resofile >> dummy_int;
       resofile >> particle[local_i].decays_Npart[j];
+      if (particle[local_i].decays_Npart[j] > Maxdecaypart)
+	{
+	  cout << "Error : particle[local_i].decays_Npart[j] = "<< particle[local_i].decays_Npart[j] << "; local_i = " << local_i << "; j = " << j << endl;
+	} 
       resofile >> particle[local_i].decays_branchratio[j];
       resofile >> particle[local_i].decays_part[j][0];
       resofile >> particle[local_i].decays_part[j][1];
@@ -1514,6 +1525,7 @@ int PDG_Data::read_resonances_conventional(particle_info * particle, string pdg_
             {
               cout << "Error: can not find decay particle index for anti-baryon!" << endl;
               cout << "particle mc_id : " << particle[local_i-1].decays_part[j][k] << endl;
+	      cout << "local_i = " << local_i << endl;
               exit(1);
             }
             if (particle[idx].baryon == 0 && particle[idx].charge == 0 && particle[idx].strange == 0) particle[local_i].decays_part[j][k] = (particle[local_i-1].decays_part[j][k]);

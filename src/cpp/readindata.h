@@ -66,7 +66,7 @@ typedef struct
   int stable; // defines whether this particle is considered as stable
   int decays_Npart[Maxdecaychannel];
   double decays_branchratio[Maxdecaychannel];
-  int decays_part[Maxdecaychannel][Maxdecaypart];
+  long int decays_part[Maxdecaychannel][Maxdecaypart];
   int sign; //Bose-Einstein or Dirac-Fermi statistics
 
   // ~ particle number / cell volume (for sampler routine)
