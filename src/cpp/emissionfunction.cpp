@@ -169,7 +169,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     // get control parameters
     OPERATION = paraRdr->getVal("operation");
     MODE = paraRdr->getVal("mode");
-    SET_T_SWITCH = paraRdr->getVal("set_T_switch");
+    SET_T_SWITCH = paraRdr->getVal("set_FO_temperature");
     T_SWITCH = paraRdr->getVal("T_switch");
     DF_MODE = paraRdr->getVal("df_mode");
     DIMENSION = paraRdr->getVal("dimension");
