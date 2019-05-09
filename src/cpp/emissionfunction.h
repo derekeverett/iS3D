@@ -66,6 +66,8 @@ class EmissionFunctionArray
 {
 private:
   ParameterReader* paraRdr;
+    
+  long CORES;   // number of cores for openmp
 
   int OPERATION; // calculate smooth spectra or sample distributions
   int MODE; //vh or vah , ...
@@ -142,7 +144,7 @@ private:
 
 
   Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
-  int pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
+  long pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length;
   long FO_length;
   double *dN_pTdpTdphidy; //to hold smooth CF 3D spectra of all species
   double *logdN_PTdPTdPhidY; // hold log of smooth CF 3D spectra of parent (set in res decay for linear interpolation)

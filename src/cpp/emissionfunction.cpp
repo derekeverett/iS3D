@@ -11,9 +11,9 @@
 #include <complex>
 #include <array>
 #include <sys/time.h>
-#ifdef _OMP
+//#ifdef _OMP
 #include <omp.h>
-#endif
+//#endif
 #include "iS3D.h"
 #include "readindata.h"
 #include "emissionfunction.h"
@@ -154,6 +154,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in, Deltaf_Data * df_data_in)
   {
     paraRdr = paraRdr_in;
+
+    // tables
     pT_tab = pT_tab_in;
     pT_tab_length = pT_tab->getNumberOfRows();
     phi_tab = phi_tab_in;
@@ -163,11 +165,17 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     eta_tab = eta_tab_in;
     eta_tab_length = eta_tab->getNumberOfRows();
 
-    // get control parameters
+    // omp parameters
+    CORES = omp_get_max_threads();
+    cout << "Number of cores: " << CORES << endl;
+
+    // control parameters
     OPERATION = paraRdr->getVal("operation");
     MODE = paraRdr->getVal("mode");
     DF_MODE = paraRdr->getVal("df_mode");
     DIMENSION = paraRdr->getVal("dimension");
+    if(DIMENSION == 2) y_tab_length = 1;
+    else if(DIMENSION == 3) eta_tab_length = 1;
     INCLUDE_BARYON = paraRdr->getVal("include_baryon");
     INCLUDE_BULK_DELTAF = paraRdr->getVal("include_bulk_deltaf");
     INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
@@ -191,6 +199,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     MAX_NUM_SAMPLES = paraRdr->getVal("max_num_samples");
     SAMPLER_SEED = paraRdr->getVal("sampler_seed");
     if(OPERATION == 2) printf("Sampler seed set to %d \n", SAMPLER_SEED);
+      
 
     // parameters for sampler test
     //::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -1202,7 +1211,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     Stopwatch sw;
     sw.tic();
 
-    //double t1 = omp_get_wtime();
+    double t1 = omp_get_wtime();
 
     //struct timeval t1, t2;
     //gettimeofday(&t1, NULL);
@@ -1700,10 +1709,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     }
     sw.toc();
 
-    //double t2 = omp_get_wtime();
+    double t2 = omp_get_wtime();
     cout << "\ncalculate_spectra() took " << sw.takeTime() << " seconds." << endl;
     //cout << "\ncalculate_spectra() took " << t2.tv_sec - t1.tv_sec << " seconds." << endl;
-    //cout << "\ncalculate_spectra() took " << (t2 - t1) << " seconds." << endl;
+    cout << "\ncalculate_spectra() took " << (t2 - t1) << " seconds." << endl;
   }
 
 
