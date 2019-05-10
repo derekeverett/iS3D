@@ -261,6 +261,8 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
     // loop over momentum
     for(long ipT = 0; ipT < pT_tab_length; ipT++)
     {
+      long iP1D = phi_tab_length * ipT;
+
       double pT = pT_d[ipT];
 
       double mT = sqrt(mass_squared  +  pT * pT);
@@ -268,6 +270,8 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
 
       for(long iphip = 0; iphip < phi_tab_length; iphip++)
       {
+        long iP2D = y_tab_length * (iphip + iP1D);
+
         double px = pT * trig_d[iphip];
         double py = pT * trig_d[iphip + phi_tab_length];
 
@@ -290,10 +294,12 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
 
         for(long iy = 0; iy < y_tab_length; iy++)
         {
+          // momentum_length index
+          long iP3D = iy + iP2D;
+
           double y = y_d[iy];
 
-          // momentum_length index
-          long iP = ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy);
+          //long iP = ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy);
 
           if(positive_time_volume)
           {
@@ -388,7 +394,7 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
           // store block's contribution to the spectra
           if(ithread == 0)
           {
-            long iP_block = iP  +  blockIdx.x * momentum_length;
+            long iP_block = iP3D  +  blockIdx.x * momentum_length;
 
             dN_pTdpTdphidy_d_blocks[iP_block] = dN_pTdpTdphidy_thread[0];
           }
@@ -861,6 +867,8 @@ __global__ void calculate_dN_pTdpTdphidy_feqmod_threadReduction(double* dN_pTdpT
 
 */
 
+/*
+
 __global__ void calculate_dN_pTdpTdphidy_feqmod_threadReduction(double* dN_pTdpTdphidy_d_blocks, long endFO, long momentum_length, long pT_tab_length, long phi_tab_length, long y_tab_length, long eta_tab_length, double* pT_d, double* trig_d, double* y_d, double* etaValues_d, double* etaWeights_d, double mass_squared, double sign, double prefactor, double baryon, double *T_d, double *tau_d, double *eta_d, double *ux_d, double *uy_d, double *un_d, double *dat_d, double *dax_d, double *day_d, double *dan_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *bulkPi_d, double *alphaB_d, double *Vx_d, double *Vy_d, double *Vn_d, deltaf_coefficients *df_coeff_d, int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DIMENSION, int OUTFLOW, int DF_MODE, double DETA_MIN, double MASS_PION0, Gauss_Laguerre * laguerre)
 {
 
@@ -1312,6 +1320,8 @@ __global__ void calculate_dN_pTdpTdphidy_feqmod_threadReduction(double* dN_pTdpT
 
 } // end function
 
+*/
+
 
 // does a block reduction, where the previous kernel did a thread reduction.
 __global__ void calculate_dN_pTdpTdphidy_blockReduction(double *dN_pTdpTdphidy_d, double* dN_pTdpTdphidy_d_blocks, long momentum_length, long blocks_ker1, long ipart, long npart)
@@ -1351,14 +1361,14 @@ void EmissionFunctionArray::write_dN_2pipTdpTdy_toFile(long *MCID)
       for(long ipT = 0; ipT < pT_tab_length; ipT++)
       {
         double pT =  pT_tab->get(1, ipT + 1);
+
         double dN_2pipTdpTdy = 0.0;
 
         for(long iphip = 0; iphip < phi_tab_length; iphip++)
         {
-          double phip = phi_tab->get(1, iphip + 1);
           double phip_weight = phi_tab->get(2, iphip + 1);
 
-          long iS3D = ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy));
+          long iS3D = ipart  +  npart * (iy  +  y_tab_length * (iphip  +  phi_tab_length * ipT));
 
           dN_2pipTdpTdy += phip_weight * dN_pTdpTdphidy[iS3D] / two_pi;
 
@@ -1413,7 +1423,7 @@ void EmissionFunctionArray::write_vn_toFile(long *MCID)
           double phip = phi_tab->get(1, iphip + 1);
           double phip_weight = phi_tab->get(2, iphip + 1);
 
-          long iS3D = ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy));
+          long iS3D = ipart  +  npart * (iy  +  y_tab_length * (iphip  +  phi_tab_length * ipT));
 
           for(int k = 0; k < k_max; k++)
           {
@@ -1471,48 +1481,7 @@ void EmissionFunctionArray::write_dN_dphidy_toFile(long *MCID)
         {
           double pT_weight = pT_tab->get(2, ipT + 1);
 
-          long iS3D = ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy));
-
-          dN_dphipdy += pT_weight * dN_pTdpTdphidy[iS3D];
-        }
-
-        spectra << scientific <<  setw(5) << setprecision(8) << y << "\t" << phip << "\t" << dN_dphipdy << "\n";
-      }
-
-      if(iy < y_tab_length - 1) spectra << "\n";
-    }
-
-    spectra.close();
-  }
-}
-
-
-void EmissionFunctionArray::write_dN_dy_toFile(long *MCID)
-{
-  char filename[255] = "";
-  printf("Writing thermal dN_dy to file...\n");
-
-  for(long ipart  = 0; ipart < npart; ipart++)
-  {
-    sprintf(filename, "results/continuous/dN_dy_%d.dat", MCID[ipart]);
-    ofstream spectra(filename, ios_base::out);
-
-    for(long iy = 0; iy < y_tab_length; iy++)
-    {
-      double y = 0.0;
-      if(DIMENSION == 3) y = y_tab->get(1, iy + 1);
-
-      double dN_dy = 0.0;
-
-      for(long iphip = 0; iphip < phi_tab_length; iphip++)
-      {
-        double phip_weight = phi_tab->get(2, iphip + 1);
-
-        for(long ipT = 0; ipT < pT_tab_length; ipT++)
-        {
-          double pT_weight = pT_tab->get(2, ipT + 1);
-
-          long iS3D = ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy));
+          long iS3D = ipart  +  npart * (iy  +  y_tab_length * (iphip  +  phi_tab_length * ipT));
 
           dN_dphipdy += pT_weight * dN_pTdpTdphidy[iS3D];
         }
@@ -2017,7 +1986,7 @@ void EmissionFunctionArray::calculate_spectra()
         {
           // launch thread reduction kernel
           cudaDeviceSynchronize();
-          calculate_dN_pTdpTdphidy_feqmod_threadReduction<<<blocks_ker1, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
+          //calculate_dN_pTdpTdphidy_feqmod_threadReduction<<<blocks_ker1, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
           cudaDeviceSynchronize();
 
           break;
