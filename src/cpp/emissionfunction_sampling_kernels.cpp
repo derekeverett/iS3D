@@ -704,7 +704,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
     default_random_engine generator_poisson(seed);
     default_random_engine generator_type(seed + 10000);
     default_random_engine generator_momentum(seed + 20000);
-    default_random_engine generator_keep(seed + 30000);
+    //default_random_engine generator_keep(seed + 30000);
     default_random_engine generator_rapidity(seed + 40000);
 
     // get average temperature (for fast mode)
@@ -1110,7 +1110,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           }
 
           // add particle
-          if(canonical(generator_keep) < (w_flux * w_visc))
+          if(canonical(generator_momentum) < (w_flux * w_visc))
           {
             // lab frame momentum
             Lab_Momentum pLab(pLRF);

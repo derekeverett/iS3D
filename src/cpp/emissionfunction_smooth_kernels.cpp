@@ -249,7 +249,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         // now loop over all particle species and momenta
         for(long ipart = 0; ipart < npart; ipart++)
         {
-          // set particle properties
+          long iS0D = pT_tab_length * ipart;
+
           double mass = Mass[ipart];              // mass (GeV)
           double mass_squared = mass * mass;
           double sign = Sign[ipart];              // quantum statistics sign
@@ -259,12 +260,16 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
           for(long ipT = 0; ipT < pT_tab_length; ipT++)
           {
+            long iS1D =  phi_tab_length * (ipT + iS0D);
+
             double pT = pTValues[ipT];              // p_T (GeV)
             double mT = sqrt(mass_squared  +  pT * pT);    // m_T (GeV)
             double mT_over_tau = mT / tau;
 
             for(long iphip = 0; iphip < phi_tab_length; iphip++)
             {
+              long iS2D = y_tab_length * (iphip + iS1D);
+
               double px = pT * cosphiValues[iphip]; // p^x
               double py = pT * sinphiValues[iphip]; // p^y
 
@@ -287,6 +292,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
               for(long iy = 0; iy < y_tab_length; iy++)
               {
+                long iS3D = iy + iS2D;
+
                 double y = yValues[iy];
 
                 double eta_integral = 0.0;
@@ -355,9 +362,7 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
                 } // ieta
 
-                long iSpectra = n  +  CORES * (ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy)));
-                
-                dN_pTdpTdphidy_all[iSpectra] += (prefactor * degeneracy * eta_integral);
+                dN_pTdpTdphidy_all[n  +  CORES * iS3D] += (prefactor * degeneracy * eta_integral);
 
               } // rapidity points (iy)
 
@@ -368,8 +373,6 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         } // particle species (ipart)
 
       } // freezeout cells in the chunk (icell)
-
-      //printf("Progress: core %d of %ld finished\n", n, CORES);
 
     } // number of chunks / cores (n)
 
@@ -386,19 +389,18 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         {
           for(long iy = 0; iy < y_tab_length; iy++)
           {
-            long iS3D = ipart  +  npart * (ipT + pT_tab_length * (iphip  +  phi_tab_length * iy));
+            long iS3D = iy  +  y_tab_length * (iphip  +  phi_tab_length * (ipT  +  pT_tab_length * ipart));
 
             double dN_pTdpTdphidy_tmp = 0.0; // reduction variable
 
             #pragma omp simd reduction(+:dN_pTdpTdphidy_tmp)
             for(long n = 0; n < CORES; n++)
             {
-              long iSpectra = n  +  CORES * iS3D;
-              dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[iSpectra];
+              dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[n  +  CORES * iS3D];
 
             } // sum over the cores
 
-            dN_pTdpTdphidy[iS3D] = dN_pTdpTdphidy_tmp; // sum over all chunks
+            dN_pTdpTdphidy[iS3D] = dN_pTdpTdphidy_tmp; 
 
           } // rapidity points (iy)
 
@@ -744,8 +746,10 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         }
 
         // loop over hadrons
-        for(long ipart = 0; ipart < number_of_chosen_particles; ipart++)
+        for(long ipart = 0; ipart < npart; ipart++)
         {
+          long iS0D = pT_tab_length * ipart;
+          
           // set particle properties
           double mass = Mass[ipart];              // mass (GeV)
           double mass2 = mass * mass;
@@ -802,18 +806,23 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
 
           for(long ipT = 0; ipT < pT_tab_length; ipT++)
           {
+            long iS1D =  phi_tab_length * (ipT + iS0D);
+          
             double pT = pTValues[ipT];              // p_T (GeV)
             double mT = sqrt(mass2  +  pT * pT);    // m_T (GeV)
             double mT_over_tau = mT / tau;
 
             for(long iphip = 0; iphip < phi_tab_length; iphip++)
             {
+              long iS2D = y_tab_length * (iphip + iS1D);
+          
               double px = pT * cosphiValues[iphip]; // p^x
               double py = pT * sinphiValues[iphip]; // p^y
 
-
               for(long iy = 0; iy < y_tab_length; iy++)
               {
+                long iS3D = iy + iS2D;
+
                 double y = yValues[iy];
 
                 double eta_integral = 0.0;  // Cooper Frye integral over eta
@@ -946,10 +955,8 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
                   eta_integral += (pdotdsigma * f); // add contribution to integral
 
                 } // eta points (ieta)
-
-                long iSpectra = n  +  CORES * (ipart  +  npart * (ipT  +  pT_tab_length * (iphip  +  phi_tab_length * iy)));
                 
-                dN_pTdpTdphidy_all[iSpectra] += (prefactor * degeneracy * eta_integral);
+                dN_pTdpTdphidy_all[n  +  CORES * iS3D] += (prefactor * degeneracy * eta_integral);
 
               } // rapidity points (iy)
 
@@ -980,19 +987,18 @@ void EmissionFunctionArray::calculate_dN_pTdpTdphidy(double *Mass, double *Sign,
         {
           for(long iy = 0; iy < y_tab_length; iy++)
           {
-            long iS3D = ipart  +  npart * (ipT + pT_tab_length * (iphip  +  phi_tab_length * iy));
+            long iS3D = iy  +  y_tab_length * (iphip  +  phi_tab_length * (ipT  +  pT_tab_length * ipart));
 
             double dN_pTdpTdphidy_tmp = 0.0; // reduction variable
 
             #pragma omp simd reduction(+:dN_pTdpTdphidy_tmp)
             for(long n = 0; n < CORES; n++)
             {
-              long iSpectra = n  +  CORES * iS3D;
-              dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[iSpectra];
+              dN_pTdpTdphidy_tmp += dN_pTdpTdphidy_all[n  +  CORES * iS3D];
 
             } // sum over the cores
 
-            dN_pTdpTdphidy[iS3D] += dN_pTdpTdphidy_tmp; // sum over all chunks
+            dN_pTdpTdphidy[iS3D] = dN_pTdpTdphidy_tmp; 
 
           } // rapidity points (iy)
 
