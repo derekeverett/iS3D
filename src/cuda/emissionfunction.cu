@@ -27,6 +27,12 @@ using namespace std;
 EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in, Deltaf_Data * df_data_in)
 {
   // control parameters
+  OPERATION = paraRdr_in->getVal("operation");
+  if(OPERATION == 2) 
+  {
+    printf("Error: there is no sampler in cuda\n");
+    exit(-1);
+  }
   MODE = paraRdr_in->getVal("mode");
   DF_MODE = paraRdr_in->getVal("df_mode");
   DIMENSION = paraRdr_in->getVal("dimension");
@@ -97,6 +103,43 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   momentum_length = pT_tab_length * phi_tab_length * y_tab_length;
   spectra_length = npart * pT_tab_length * phi_tab_length * y_tab_length;
   dN_pTdpTdphidy = (double*)calloc(spectra_length, sizeof(double));
+
+
+  // spacetime grid
+  tau_min = paraRdr_in->getVal("tau_min");
+  tau_max = paraRdr_in->getVal("tau_max");
+  tau_bins = paraRdr_in->getVal("tau_bins");
+  tau_width = (tau_max - tau_min) / (double)tau_bins;
+
+  r_min = paraRdr_in->getVal("r_min");
+  r_max = paraRdr_in->getVal("r_max");
+  r_bins = paraRdr_in->getVal("r_bins");
+  r_width = (r_max - r_min) / (double)r_bins;
+
+  phi_bins = paraRdr_in->getVal("phi_bins");
+  phi_width = two_pi / (double)phi_bins;
+
+  double eta_cut = paraRdr_in->getVal("eta_cut");
+  eta_min = - eta_cut;
+  eta_max = eta_cut;
+  eta_bins = paraRdr_in->getVal("eta_bins");
+  eta_width = 2.0 * eta_cut / eta_bins;
+  if(DIMENSION == 2) 
+  {
+    eta_bins = 1;
+    eta_width = 1.0;
+  }
+
+
+  // spacetime distributions (2+1d case)
+  tau_length = npart * tau_bins * eta_bins;
+  r_length = npart * r_bins * eta_bins;
+  phi_length = npart * phi_bins * eta_bins; 
+
+  dN_taudtaudeta = (double*)calloc(tau_length, sizeof(double));
+  dN_2pirdrdeta = (double*)calloc(r_length, sizeof(double));
+  dN_dphideta = (double*)calloc(phi_length, sizeof(double));
+ 
 }
 
 
@@ -104,6 +147,7 @@ EmissionFunctionArray::~EmissionFunctionArray()
 {
 
 }
+
 
 __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_d_blocks, long endFO, long momentum_length, long pT_tab_length, long phi_tab_length, long y_tab_length, long eta_tab_length, double* pT_d, double* trig_d, double* y_d, double* etaValues_d, double* etaWeights_d, double mass_squared, double sign, double prefactor, double baryon, double *T_d, double *P_d, double *E_d, double *tau_d, double *eta_d, double *ux_d, double *uy_d, double *un_d, double *dat_d, double *dax_d, double *day_d, double *dan_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *bulkPi_d, double *alphaB_d, double *nB_d, double *Vx_d, double *Vy_d, double *Vn_d, deltaf_coefficients *df_coeff_d, int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DIMENSION, int OUTFLOW, int DF_MODE)
 {
@@ -405,6 +449,293 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
 
     } // ipT
 
+  } // icell < endFO
+
+} // end function
+
+
+__global__ void calculate_dN_dX_threadReduction(double* dN_taudtaudeta_d_blocks, double* dN_2pirdrdeta_d_blocks, double* dN_dphideta_d_blocks, long endFO, long momentum_length, long pT_tab_length, long phi_tab_length, long y_tab_length, long eta_tab_length, double* pT_d, double* trig_d, double* y_d, double* etaValues_d, double* etaWeights_d, double mass_squared, double sign, double prefactor, double baryon, double *T_d, double *P_d, double *E_d, double *tau_d, double *eta_d, double *ux_d, double *uy_d, double *un_d, double *dat_d, double *dax_d, double *day_d, double *dan_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *bulkPi_d, double *alphaB_d, double *nB_d, double *Vx_d, double *Vy_d, double *Vn_d, deltaf_coefficients *df_coeff_d, int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DIMENSION, int OUTFLOW, int DF_MODE)
+{
+  // contribution of dN_pTdpTdphidy from each thread
+  //__shared__ double dN_pTdpTdphidy_thread[THREADS_PER_BLOCK];
+  long icell = (long)threadIdx.x +  (long)blockDim.x * (long)blockIdx.x;  // thread index in kernel
+  long N = blockDim.x;                                                    // number threads per block
+
+  __syncthreads();                                             
+
+  if(icell < endFO)
+  {
+    double tau = tau_d[icell];        // longitudinal proper time
+    double tau2 = tau * tau;
+
+    double x = x_d[icell];
+    double y = y_d[icell];
+
+    double r = sqrt(x*x + y*y);
+    double phi = atan2(y,x);
+    if(phi < 0.0) phi += two_pi;
+
+    double eta = 0.0;
+    if(DIMENSION == 3)
+    {
+      eta = eta_d[icell];             // spacetime rapidity from surface
+    }
+
+    double dat = dat_d[icell];        // dsigma_mu
+    double dax = dax_d[icell];
+    double day = day_d[icell];
+    double dan = dan_d[icell];
+
+    double ux = ux_d[icell];          // u^mu
+    double uy = uy_d[icell];          // enforce u.u = 1
+    double un = un_d[icell];
+    double ux2 = ux * ux;             // useful expressions
+    double uy2 = uy * uy;
+    double utperp = sqrt(1.0 + ux2 + uy2);
+    double tau2_un = tau2 * un;
+    double ut = sqrt(utperp * utperp  +  tau2_un * un);
+    double ut2 = ut * ut;
+
+    bool positive_time_volume = (ut * dat  +  ux * dax  +  uy * day  +  un * dan) > 0.0;
+
+    double T = T_d[icell];            // temperature
+    double E = E_d[icell];            // energy density
+    double P = P_d[icell];            // pressure
+
+    double pitt = 0.0;                // pi^munu
+    double pitx = 0.0;                // enforce pi.u = 0, Tr(pi) = 0
+    double pity = 0.0;
+    double pitn = 0.0;
+    double pixx = 0.0;
+    double pixy = 0.0;
+    double pixn = 0.0;
+    double piyy = 0.0;
+    double piyn = 0.0;
+    double pinn = 0.0;
+
+    if(INCLUDE_SHEAR_DELTAF)
+    {
+      pixx = pixx_d[icell];
+      pixy = pixy_d[icell];
+      pixn = pixn_d[icell];
+      piyy = piyy_d[icell];
+      piyn = piyn_d[icell];
+      pinn = (pixx * (ux2 - ut2)  +  piyy * (uy2 - ut2)  +  2.0 * (pixy * ux * uy  +  tau2_un * (pixn * ux  +  piyn * uy))) / (tau2 * utperp * utperp);
+      pitn = (pixn * ux  +  piyn * uy  +  tau2_un * pinn) / ut;
+      pity = (pixy * ux  +  piyy * uy  +  tau2_un * piyn) / ut;
+      pitx = (pixx * ux  +  pixy * uy  +  tau2_un * pixn) / ut;
+      pitt = (pitx * ux  +  pity * uy  +  tau2_un * pitn) / ut;
+    }
+
+    double bulkPi = 0.0;              // bulk pressure
+
+    if(INCLUDE_BULK_DELTAF)
+    {
+      bulkPi = bulkPi_d[icell];
+    }
+
+    double alphaB = 0.0;              // muB / T
+    double nB = 0.0;                  // net baryon density
+    double Vt = 0.0;                  // V^mu
+    double Vx = 0.0;                  // enforce orthogonality V.u = 0
+    double Vy = 0.0;
+    double Vn = 0.0;
+    double chem = 0.0;
+    double baryon_enthalpy_ratio = 0.0;
+
+    if(INCLUDE_BARYON && INCLUDE_BARYONDIFF_DELTAF)
+    {
+      alphaB = alphaB_d[icell];
+      chem = baryon * alphaB;
+      nB = nB_d[icell];
+      Vx = Vx_d[icell];
+      Vy = Vy_d[icell];
+      Vn = Vn_d[icell];
+      Vt = (Vx * ux  +  Vy * uy  +  Vn * tau2_un) / ut;
+      baryon_enthalpy_ratio = nB / (E + P);
+    }
+
+    double tau2_pitn = tau2 * pitn;   // useful expressions
+    double tau2_pixn = tau2 * pixn;
+    double tau2_piyn = tau2 * piyn;
+    double tau4_pinn = tau2 * tau2 * pinn;
+    double tau2_Vn = tau2 * Vn;
+
+    // get df coefficients
+    double c0 = df_coeff_d->c0;       // 14 moment coefficients
+    double c1 = df_coeff_d->c1;
+    double c2 = df_coeff_d->c2;
+    double c3 = df_coeff_d->c3;
+    double c4 = df_coeff_d->c4;
+    double shear14_coeff = df_coeff_d->shear14_coeff;
+
+    double F = df_coeff_d->F;         // Chapman Enskog
+    double G = df_coeff_d->G;
+    double betabulk = df_coeff_d->betabulk;
+    double betaV = df_coeff_d->betaV;
+    double betapi = df_coeff_d->betapi;
+
+    // shear and bulk coefficients
+    double shear_coeff = 0.0;
+    double bulk0_coeff = 0.0;
+    double bulk1_coeff = 0.0;
+    double bulk2_coeff = 0.0;
+    double diff0_coeff = 0.0;
+    double diff1_coeff = 0.0;
+
+    switch(DF_MODE)
+    {
+      case 1: // 14 moment
+      {
+        shear_coeff = 1.0 / shear14_coeff;
+        bulk0_coeff = (c0 - c2) * mass_squared * bulkPi;
+        bulk1_coeff = c1 * baryon * bulkPi;
+        bulk2_coeff = (4.*c2 - c0) * bulkPi;
+        diff0_coeff = c3 * baryon;
+        diff1_coeff = c4;
+        break;
+      }
+      case 2: // Chapman enskog
+      {
+        shear_coeff = 0.5 / (betapi * T);
+        bulk0_coeff = F / (T * T * betabulk) * bulkPi;
+        bulk1_coeff = G / betabulk * baryon * bulkPi;
+        bulk2_coeff = bulkPi / (3.0 * T * betabulk);
+        diff0_coeff = baryon_enthalpy_ratio / betaV;
+        diff1_coeff = baryon / betaV;
+        break;
+      }
+      default:
+      {
+        printf("Error: set df_mode = (1,2) in parameters.dat\n");
+      }
+    }
+
+    double dN_deta = 0.0;
+
+    if(positive_time_volume)
+    {
+      // loop over momentum
+      for(long ipT = 0; ipT < pT_tab_length; ipT++)
+      {
+        double pT = pT_d[ipT];
+        double pT_weight = pT_weight_d[ipT];
+
+        double mT = sqrt(mass_squared  +  pT * pT);
+        double mT_over_tau = mT / tau;
+
+        for(long iphip = 0; iphip < phi_tab_length; iphip++)
+        {
+          double phip_weight = phip_weight_d[iphip];
+
+          double px = pT * trig_d[iphip];
+          double py = pT * trig_d[iphip + phi_tab_length];
+
+          double px_dax = px * dax;   // useful expressions
+          double py_day = py * day;
+
+          double px_ux = px * ux;
+          double py_uy = py * uy;
+
+          double pixx_px_px = pixx * px * px;
+          double piyy_py_py = piyy * py * py;
+          double pitx_px = pitx * px;
+          double pity_py = pity * py;
+          double pixy_px_py = pixy * px * py;
+          double tau2_pixn_px = tau2_pixn * px;
+          double tau2_piyn_py = tau2_piyn * py;
+
+          double Vx_px = Vx * px;
+          double Vy_py = Vy * py;
+
+          // integral over y (centered around eta point) 
+          for(long iy_minus_eta = 0; iy_minus_eta < y_minus_eta_tab_length; iy_minus_eta++)     
+          {
+            double y_minus_eta = y_minus_eta_d[iy_minus_eta];                 // this should be a seperate table for spacetime integration (borrow from eta gauss table) 
+            double y_minus_eta_weight = y_minus_eta_weight_d[iy_minus_eta];
+          
+            double sinhyeta = sinh(y_minus_eta);
+            double coshyeta = sqrt(1.0  +  sinhyeta * sinhyeta);
+
+            double pt = mT * coshyeta;           // p^tau
+            double pn = mT_over_tau * sinhyeta;  // p^eta
+
+            double pdotdsigma = pt * dat  +  px_dax  +  py_day  +  pn * dan;
+
+            if(OUTFLOW && pdotdsigma <= 0.0) continue;  // enforce outflow
+
+            double E = pt * ut  -  px_ux  -  py_uy  -  pn * tau2_un;  // u.p
+            double feq = 1.0 / (exp(E/T  -  chem) + sign);
+
+            double feqbar = 1.0  -  sign * feq;
+
+            // pi^munu.p_mu.p_nu
+            double pimunu_pmu_pnu = pitt * pt * pt  +  pixx_px_px  +  piyy_py_py  +  tau4_pinn * pn * pn
+                + 2.0 * (-(pitx_px + pity_py) * pt  +  pixy_px_py  +  pn * (tau2_pixn_px  +  tau2_piyn_py  -  tau2_pitn * pt));
+
+            // V^mu.p_mu
+            double Vmu_pmu = Vt * pt  -  Vx_px  -  Vy_py  -  tau2_Vn * pn;
+
+            double df;
+
+            switch(DF_MODE)
+            {
+              case 1: // 14 moment
+              {
+                double df_shear = shear_coeff * pimunu_pmu_pnu;
+                double df_bulk = bulk0_coeff  +  (bulk1_coeff  +  bulk2_coeff * E) * E;
+                double df_diff = (diff0_coeff  +  diff1_coeff * E) * Vmu_pmu;
+
+                df = feqbar * (df_shear + df_bulk + df_diff);
+                break;
+              }
+              case 2: // Chapman enskog
+              {
+                double df_shear = shear_coeff * pimunu_pmu_pnu / E;
+                double df_bulk = bulk0_coeff * E  +  bulk1_coeff  +  bulk2_coeff * (E  -  mass_squared / E);
+                double df_diff = (diff0_coeff  -  diff1_coeff / E) * Vmu_pmu;
+
+                df = feqbar * (df_shear + df_bulk + df_diff);
+                break;
+              }
+              default:
+              {
+                printf("Error: set df_mode = (1,2) in parameters.dat\n");
+              }
+            } // DF_MODE
+
+            if(REGULATE_DELTAF) df = max(-1.0, min(df, 1.0));
+
+            double f = feq * (1.0 + df);
+
+            dN_deta += pT_weight * phip_weight * y_minus_eta_weight * pdotdsigma * f;
+
+          } // iy
+
+        } // iphip
+
+      } // ipT
+
+    } // if positive time volume
+
+    // bin the spacetime distributions one thread at a time
+    __syncthreads();     
+
+    for(long n = 0; n < N; n++)
+    {
+      if(ithread == n)
+      {
+        // bin the spacetime distributions (better if bin distributions in local memory first: but need to figure out __shared__ at runtime)
+        // code....
+      }
+      __syncthreads();
+    }
+
+    if(ithread == 0)
+    {
+      // write local memory to device memory 
+    }
+   
   } // icell < endFO
 
 } // end function
