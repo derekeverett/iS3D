@@ -18,19 +18,23 @@
 #include <cuda_runtime.h>
 
 #define AMOUNT_OF_OUTPUT 0    // smaller value means less outputs
-#define THREADS_PER_BLOCK 128  // try optimizing this, also we can define two different threads/block for the separate kernels
-#define FO_CHUNK 6400
+//#define THREADS_PER_BLOCK 128  // try optimizing this, also we can define two different threads/block for the separate kernels
+//#define FO_CHUNK 6400
 
 using namespace std;
 
 // Class EmissionFunctionArray ------------------------------------------
 EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in, Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in, int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in, Deltaf_Data * df_data_in)
 {
+  // kernel parameters
+  threadsPerBlock = paraRdr_in->getVal("threads_per_block");
+  FO_chunk = paraRdr_in->getVal("chunk_size");
+
   // control parameters
   OPERATION = paraRdr_in->getVal("operation");
   if(OPERATION == 2) 
   {
-    printf("Error: there is no sampler in cuda\n");
+    printf("Error: there is no particle sampler in cuda\n");
     exit(-1);
   }
   MODE = paraRdr_in->getVal("mode");
@@ -64,6 +68,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     y_tab_length = 1;
     eta_tab_length = eta_tab->getNumberOfRows();
   }
+  y_minus_eta_tab_length = eta_tab->getNumberOfRows();
 
 
   // particle info
@@ -89,7 +94,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     }
     if(!found_match)
     {
-      printf("Chosen particles error: %d not found in pdg.dat\n", mc_id);
+      printf("Chosen particles error: %ld not found in pdg.dat\n", mc_id);
       exit(-1);
     }
   }
@@ -101,8 +106,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
   // particle spectra of chosen particle species
   momentum_length = pT_tab_length * phi_tab_length * y_tab_length;
-  spectra_length = npart * pT_tab_length * phi_tab_length * y_tab_length;
-  dN_pTdpTdphidy = (double*)calloc(spectra_length, sizeof(double));
+  spectra_length = npart * momentum_length;
+  if(OPERATION == 1) dN_pTdpTdphidy = (double*)calloc(spectra_length, sizeof(double));
 
 
   // spacetime grid
@@ -110,13 +115,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   tau_max = paraRdr_in->getVal("tau_max");
   tau_bins = paraRdr_in->getVal("tau_bins");
   tau_width = (tau_max - tau_min) / (double)tau_bins;
+  cout << "tau_width = " << tau_width << endl;
 
   r_min = paraRdr_in->getVal("r_min");
   r_max = paraRdr_in->getVal("r_max");
   r_bins = paraRdr_in->getVal("r_bins");
   r_width = (r_max - r_min) / (double)r_bins;
 
-  phi_bins = paraRdr_in->getVal("phi_bins");
+  phi_bins = paraRdr_in->getVal("phip_bins");
   phi_width = two_pi / (double)phi_bins;
 
   double eta_cut = paraRdr_in->getVal("eta_cut");
@@ -131,15 +137,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
 
-  // spacetime distributions (2+1d case)
-  tau_length = npart * tau_bins * eta_bins;
-  r_length = npart * r_bins * eta_bins;
-  phi_length = npart * phi_bins * eta_bins; 
-
-  dN_taudtaudeta = (double*)calloc(tau_length, sizeof(double));
-  dN_2pirdrdeta = (double*)calloc(r_length, sizeof(double));
-  dN_dphideta = (double*)calloc(phi_length, sizeof(double));
- 
+  // spacetime distributions 
+  spacetime_length = eta_bins * (tau_bins + r_bins + phi_bins);
+  X_length = npart * spacetime_length;
+  if(OPERATION == 0) dN_dX = (double*)calloc(X_length, sizeof(double));
 }
 
 
@@ -153,7 +154,8 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
 {
 
   // contribution of dN_pTdpTdphidy from each thread
-  __shared__ double dN_pTdpTdphidy_thread[THREADS_PER_BLOCK];
+  //long threads = THREADS_PER_BLOCK;
+  extern __shared__ double dN_pTdpTdphidy_thread[];
 
   long icell = (long)threadIdx.x +  (long)blockDim.x * (long)blockIdx.x;  // thread index in kernel
   int ithread = threadIdx.x;                                              // thread index in block
@@ -454,12 +456,27 @@ __global__ void calculate_dN_pTdpTdphidy_threadReduction(double* dN_pTdpTdphidy_
 } // end function
 
 
-__global__ void calculate_dN_dX_threadReduction(double* dN_taudtaudeta_d_blocks, double* dN_2pirdrdeta_d_blocks, double* dN_dphideta_d_blocks, long endFO, long momentum_length, long pT_tab_length, long phi_tab_length, long y_tab_length, long eta_tab_length, double* pT_d, double* trig_d, double* y_d, double* etaValues_d, double* etaWeights_d, double mass_squared, double sign, double prefactor, double baryon, double *T_d, double *P_d, double *E_d, double *tau_d, double *eta_d, double *ux_d, double *uy_d, double *un_d, double *dat_d, double *dax_d, double *day_d, double *dan_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *bulkPi_d, double *alphaB_d, double *nB_d, double *Vx_d, double *Vy_d, double *Vn_d, deltaf_coefficients *df_coeff_d, int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DIMENSION, int OUTFLOW, int DF_MODE)
+__global__ void calculate_dN_dX_threadReduction(double *dN_dX_d_blocks, long endFO, long tau_bins, long r_bins, long phi_bins, long eta_bins, double tau_min, double r_min, double eta_min, double tau_width, double r_width, double phi_width, double eta_width, long pT_tab_length, long phi_tab_length, long y_minus_eta_tab_length, double *pT_d, double *pT_weight_d, double *trig_d, double *phip_weight_d, double *y_minus_eta_d, double *y_minus_eta_weight_d, double mass_squared, double sign, double prefactor, double baryon, double *T_d, double *P_d, double *E_d, double *tau_d, double *x_d, double *y_d, double *eta_d, double *ux_d, double *uy_d, double *un_d, double *dat_d, double *dax_d, double *day_d, double *dan_d, double *pixx_d, double *pixy_d, double *pixn_d, double *piyy_d, double *piyn_d, double *bulkPi_d, double *alphaB_d, double *nB_d, double *Vx_d, double *Vy_d, double *Vn_d, deltaf_coefficients *df_coeff_d, int INCLUDE_BARYON, int REGULATE_DELTAF, int INCLUDE_SHEAR_DELTAF, int INCLUDE_BULK_DELTAF, int INCLUDE_BARYONDIFF_DELTAF, int DIMENSION, int OUTFLOW, int DF_MODE)
 {
   // contribution of dN_pTdpTdphidy from each thread
   //__shared__ double dN_pTdpTdphidy_thread[THREADS_PER_BLOCK];
   long icell = (long)threadIdx.x +  (long)blockDim.x * (long)blockIdx.x;  // thread index in kernel
+  long ithread = (long)threadIdx.x;                                       // thread index in block
   long N = blockDim.x;                                                    // number threads per block
+
+  long spacetime_block = (long)blockIdx.x * eta_bins * (tau_bins + r_bins + phi_bins);
+
+  /*
+  extern __shared__ double dN_taudtaudeta[];  // worried about going over stack
+  
+  if(ithread == 0)
+  {
+    for(long i = 0; i < spacetime_length; i++)
+    {
+      dN_dX[i] = 0.0;
+    }
+  }
+  */
 
   __syncthreads();                                             
 
@@ -472,7 +489,7 @@ __global__ void calculate_dN_dX_threadReduction(double* dN_taudtaudeta_d_blocks,
     double y = y_d[icell];
 
     double r = sqrt(x*x + y*y);
-    double phi = atan2(y,x);
+    double phi = atan2(y, x);
     if(phi < 0.0) phi += two_pi;
 
     double eta = 0.0;
@@ -649,10 +666,10 @@ __global__ void calculate_dN_dX_threadReduction(double* dN_taudtaudeta_d_blocks,
           double Vy_py = Vy * py;
 
           // integral over y (centered around eta point) 
-          for(long iy_minus_eta = 0; iy_minus_eta < y_minus_eta_tab_length; iy_minus_eta++)     
+          for(long iyeta = 0; iyeta < y_minus_eta_tab_length; iyeta++)     
           {
-            double y_minus_eta = y_minus_eta_d[iy_minus_eta];                 // this should be a seperate table for spacetime integration (borrow from eta gauss table) 
-            double y_minus_eta_weight = y_minus_eta_weight_d[iy_minus_eta];
+            double y_minus_eta = y_minus_eta_d[iyeta];                 // this should be a seperate table for spacetime integration (borrow from eta gauss table) 
+            double y_minus_eta_weight = y_minus_eta_weight_d[iyeta];
           
             double sinhyeta = sinh(y_minus_eta);
             double coshyeta = sqrt(1.0  +  sinhyeta * sinhyeta);
@@ -708,7 +725,7 @@ __global__ void calculate_dN_dX_threadReduction(double* dN_taudtaudeta_d_blocks,
 
             double f = feq * (1.0 + df);
 
-            dN_deta += pT_weight * phip_weight * y_minus_eta_weight * pdotdsigma * f;
+            dN_deta += prefactor * pT_weight * phip_weight * y_minus_eta_weight * pdotdsigma * f;
 
           } // iy
 
@@ -718,22 +735,43 @@ __global__ void calculate_dN_dX_threadReduction(double* dN_taudtaudeta_d_blocks,
 
     } // if positive time volume
 
-    // bin the spacetime distributions one thread at a time
+
+    // bin the spacetime distributions one thread at a time (try N = 32)
     __syncthreads();     
 
     for(long n = 0; n < N; n++)
     {
-      if(ithread == n)
+      if(ithread == n && icell < endFO)
       {
-        // bin the spacetime distributions (better if bin distributions in local memory first: but need to figure out __shared__ at runtime)
-        // code....
+        long ieta = 0;
+        if(DIMENSION == 3)
+        {
+          ieta = (long)floor((eta - eta_min) / eta_width); 
+        }
+        
+        if(ieta >= 0 && ieta < eta_bins)
+        {
+          long itau = (long)floor((tau - tau_min) / tau_width); 
+          long ir = (long)floor((r - r_min) / r_width);
+          long iphi = (long)floor(phi / phi_width);
+
+          if(itau >= 0 && itau < tau_bins) 
+          {
+            dN_dX_d_blocks[ieta  +  eta_bins * itau  +  spacetime_block] += dN_deta;
+          }
+
+          if(ir >= 0 && ir < r_bins) 
+          {
+            dN_dX_d_blocks[ieta  +  eta_bins * (ir + tau_bins)  +  spacetime_block] += dN_deta;
+          }
+
+          if(iphi >= 0 && iphi < phi_bins) 
+          {
+            dN_dX_d_blocks[ieta  +  eta_bins * (iphi + tau_bins + r_bins) +  spacetime_block] += dN_deta;
+          }
+        }
       }
       __syncthreads();
-    }
-
-    if(ithread == 0)
-    {
-      // write local memory to device memory 
     }
    
   } // icell < endFO
@@ -1672,6 +1710,24 @@ __global__ void calculate_dN_pTdpTdphidy_blockReduction(double *dN_pTdpTdphidy_d
   }
 }
 
+// does a block reduction, where the previous kernel did a thread reduction.
+__global__ void calculate_dN_dX_blockReduction(double *dN_dX_d, double* dN_dX_d_blocks, long spacetime_length, long blocks_ker1, long ipart, long npart)
+{
+  long ithread = (long)threadIdx.x  +  (long)blockDim.x * (long)blockIdx.x;
+
+  // each thread is assigned a spacetime coordinate
+  if(ithread < spacetime_length)
+  {
+    long iX = ipart  +  npart * ithread;
+
+    // sum spacetime contributions of the blocks from first kernel
+    for(long iblock_ker1 = 0; iblock_ker1 < blocks_ker1; iblock_ker1++)
+    {
+      dN_dX_d[iX] += dN_dX_d_blocks[ithread  +  iblock_ker1 * spacetime_length];
+    }
+  }
+}
+
 
 
 void EmissionFunctionArray::write_dN_2pipTdpTdy_toFile(long *MCID)
@@ -1681,7 +1737,7 @@ void EmissionFunctionArray::write_dN_2pipTdpTdy_toFile(long *MCID)
 
   for(long ipart = 0; ipart < npart; ipart++)
   {
-    sprintf(filename, "results/continuous/dN_2pipTdpTdy_%d.dat", MCID[ipart]);
+    sprintf(filename, "results/continuous/dN_2pipTdpTdy_%ld.dat", MCID[ipart]);
     ofstream spectra(filename, ios_base::out);
 
     for(long iy = 0; iy < y_tab_length; iy++)
@@ -1726,7 +1782,7 @@ void EmissionFunctionArray::write_vn_toFile(long *MCID)
 
   for(long ipart = 0; ipart < npart; ipart++)
   {
-    sprintf(filename, "results/continuous/vn_%d.dat", MCID[ipart]);
+    sprintf(filename, "results/continuous/vn_%ld.dat", MCID[ipart]);
     ofstream vn_File(filename, ios_base::out);
 
     for(long iy = 0; iy < y_tab_length; iy++)
@@ -1794,7 +1850,7 @@ void EmissionFunctionArray::write_dN_dphidy_toFile(long *MCID)
 
   for(long ipart  = 0; ipart < npart; ipart++)
   {
-    sprintf(filename, "results/continuous/dN_dphipdy_%d.dat", MCID[ipart]);
+    sprintf(filename, "results/continuous/dN_dphipdy_%ld.dat", MCID[ipart]);
     ofstream spectra(filename, ios_base::app);
 
     for(long iy = 0; iy < y_tab_length; iy++)
@@ -1836,7 +1892,7 @@ void EmissionFunctionArray::write_dN_dy_toFile(long *MCID)
 
   for(long ipart  = 0; ipart < npart; ipart++)
   {
-    sprintf(filename, "results/continuous/dN_dy_%d.dat", MCID[ipart]);
+    sprintf(filename, "results/continuous/dN_dy_%ld.dat", MCID[ipart]);
     ofstream spectra(filename, ios_base::out);
 
     for(long iy = 0; iy < y_tab_length; iy++)
@@ -1865,6 +1921,102 @@ void EmissionFunctionArray::write_dN_dy_toFile(long *MCID)
     } 
 
     spectra.close();
+  }
+}
+
+void EmissionFunctionArray::write_dN_taudtaudeta_toFile(long *MCID)
+{
+  char filename[255] = "";
+  printf("Writing thermal dN_taudtaudeta to file...\n");
+
+  for(long ipart = 0; ipart < npart; ipart++)
+  {
+    sprintf(filename, "results/continuous/dN_taudtaudeta_%ld.dat", MCID[ipart]);
+    ofstream dN_taudtaudeta(filename, ios_base::out);
+
+    for(long ieta = 0; ieta < eta_bins; ieta++)
+    {
+      double eta_mid = 0.0;
+
+      if(DIMENSION == 3) eta_mid = eta_min  +  eta_width * (ieta + 0.5);
+
+      for(long itau = 0; itau < tau_bins; itau++)
+      {
+        double tau_mid = tau_min  +  tau_width * (itau + 0.5);
+
+        long iX = ipart  +  npart * (ieta  +  eta_bins * itau);
+
+        dN_taudtaudeta << setprecision(6) << scientific << eta_mid << "\t" << tau_mid << "\t" << dN_dX[iX] / (tau_mid * tau_width * eta_width) << "\n";
+      }
+
+      if(ieta < eta_bins - 1) dN_taudtaudeta << "\n";
+    } 
+
+    dN_taudtaudeta.close();
+  }
+}
+
+void EmissionFunctionArray::write_dN_2pirdrdeta_toFile(long *MCID)
+{
+  char filename[255] = "";
+  printf("Writing thermal dN_2pirdrdeta to file...\n");
+
+  for(long ipart = 0; ipart < npart; ipart++)
+  {
+    sprintf(filename, "results/continuous/dN_2pirdrdeta_%ld.dat", MCID[ipart]);
+    ofstream dN_2pirdrdeta(filename, ios_base::out);
+
+    for(long ieta = 0; ieta < eta_bins; ieta++)
+    {
+      double eta_mid = 0.0;
+
+      if(DIMENSION == 3) eta_mid = eta_min  +  eta_width * (ieta + 0.5);
+
+      for(long ir = 0; ir < r_bins; ir++)
+      {
+        double r_mid = r_min  +  r_width * (ir + 0.5);
+
+        long iX = ipart  +  npart * (ieta  +  eta_bins * (ir + tau_bins));
+
+        dN_2pirdrdeta << setprecision(6) << scientific << eta_mid << "\t" << r_mid << "\t" << dN_dX[iX] / (two_pi * r_mid * r_width * eta_width) << "\n";
+      }
+
+      if(ieta < eta_bins - 1) dN_2pirdrdeta << "\n";
+    } 
+
+    dN_2pirdrdeta.close();
+  }
+}
+
+void EmissionFunctionArray::write_dN_dphideta_toFile(long *MCID)
+{
+  char filename[255] = "";
+  printf("Writing thermal dN_dphideta to file...\n");
+
+  for(long ipart = 0; ipart < npart; ipart++)
+  {
+    sprintf(filename, "results/continuous/dN_dphideta_%ld.dat", MCID[ipart]);
+    ofstream dN_dphideta(filename, ios_base::out);
+
+    for(long ieta = 0; ieta < eta_bins; ieta++)
+    {
+      double eta_mid = 0.0;
+
+      if(DIMENSION == 3) eta_mid = eta_min  +  eta_width * (ieta + 0.5);
+
+      for(long iphi = 0; iphi < phi_bins; iphi++)
+      {
+        double phi_mid = phi_width * (iphi + 0.5);
+
+        long iX = ipart  +  npart * (ieta  +  eta_bins * (iphi + tau_bins + r_bins));
+
+        dN_dphideta << setprecision(6) << scientific << eta_mid << "\t" << phi_mid << "\t" << dN_dX[iX] / (phi_width * eta_width) << "\n";
+      }
+
+      if(ieta < eta_bins - 1) dN_dphideta << "\n";
+    } 
+
+    dN_dphideta.close();
   }
 }
 
@@ -1903,16 +2055,24 @@ void EmissionFunctionArray::calculate_spectra()
 
   double h3 = pow(2.0 * M_PI * hbarC, 3);
 
-  long threadsPerBlock = THREADS_PER_BLOCK;
-  long FO_chunk = FO_CHUNK;
+  long chunks = (FO_length + FO_chunk - 1) / FO_chunk;                    // number of chunks
+  long partial = FO_length % FO_chunk;                                    // remainder cells
 
-  long blocks_ker1 = (FO_chunk + threadsPerBlock - 1) / threadsPerBlock;        // number of blocks in kernel 1 (thread reduction)
-  long blocks_ker2 = (momentum_length + threadsPerBlock - 1) / threadsPerBlock; // number of blocks in kernel 2 (block reduction)
+  long blocks_ker1 = (FO_chunk + threadsPerBlock - 1) / threadsPerBlock;  // number of blocks in kernel 1 (thread reduction)
+  long blocks_ker2;                                                       // number of blocks in kernel 2 (block reduction)
+  long block_length;
 
-  long chunks = (FO_length + FO_chunk - 1) / FO_chunk;
-  long partial = FO_length % FO_chunk;
+  if(OPERATION == 0)  // spacetime distribution
+  {
+    blocks_ker2 = (spacetime_length + threadsPerBlock - 1) / threadsPerBlock; 
+    block_length = blocks_ker1 * spacetime_length;
+  } 
+  else if(OPERATION == 1) // spectra
+  {
+    blocks_ker2 = (momentum_length + threadsPerBlock - 1) / threadsPerBlock;
+    block_length = blocks_ker1 * momentum_length;
+  }
 
-  long block_momentum_length = blocks_ker1 * momentum_length;
 
   cout << "________________________|______________" << endl;
   cout << "chosen_particles        |\t" << npart << endl;
@@ -1920,9 +2080,15 @@ void EmissionFunctionArray::calculate_spectra()
   cout << "phi_tab_length          |\t" << phi_tab_length << endl;
   cout << "y_tab_length            |\t" << y_tab_length << endl;
   cout << "eta_tab_length          |\t" << eta_tab_length << endl;
-  cout << "total spectra length    |\t" << spectra_length << endl;
   cout << "momentum length         |\t" << momentum_length << endl;
-  cout << "block momentum length   |\t" << block_momentum_length << endl;
+  cout << "total spectra length    |\t" << spectra_length << endl;
+  cout << "tau_bins                |\t" << tau_bins << endl;
+  cout << "r_bins                  |\t" << r_bins << endl;
+  cout << "phi_bins                |\t" << phi_bins << endl;
+  cout << "eta_bins                |\t" << eta_bins << endl;
+  cout << "spacetime length        |\t" << spacetime_length << endl;
+  cout << "total spacetime length  |\t" << X_length << endl;  
+  cout << "block length            |\t" << block_length << endl;
   cout << "freezeout cells         |\t" << FO_length << endl;
   cout << "chunk size              |\t" << FO_chunk << endl;
   cout << "number of chunks        |\t" << chunks << endl;
@@ -1958,7 +2124,7 @@ void EmissionFunctionArray::calculate_spectra()
   // freezeout surface info
   FO_surf *surf;
   double *T, *P, *E, *alphaB, *nB;            // thermodynamic properties
-  double *tau, *eta;                          // position
+  double *tau, *x, *y, *eta;                  // position
   double *ux, *uy, *un;                       // u^mu
   double *dat, *dax, *day, *dan;              // dsigma_mu
   double *pixx, *pixy, *pixn, *piyy, *piyn;   // pi^munu
@@ -1969,10 +2135,12 @@ void EmissionFunctionArray::calculate_spectra()
 
   // callocate memory
   T = (double*)calloc(FO_chunk, sizeof(double));
-  P = (double*)calloc(FO_chunk, sizeof(double)); // replace with df coefficients
+  P = (double*)calloc(FO_chunk, sizeof(double)); 
   E = (double*)calloc(FO_chunk, sizeof(double));
-  tau = (double*)calloc(FO_chunk, sizeof(double));
 
+  tau = (double*)calloc(FO_chunk, sizeof(double));
+  x = (double*)calloc(FO_chunk, sizeof(double));
+  y = (double*)calloc(FO_chunk, sizeof(double));
   if(DIMENSION == 3)
   {
     eta = (double*)calloc(FO_chunk, sizeof(double));
@@ -2018,10 +2186,20 @@ void EmissionFunctionArray::calculate_spectra()
   double *yp = (double*)calloc(y_tab_length, sizeof(double));
   double *etaValues = (double*)calloc(eta_tab_length, sizeof(double));
   double *etaWeights = (double*)calloc(eta_tab_length, sizeof(double));
+  double *y_minus_eta = (double*)calloc(y_minus_eta_tab_length, sizeof(double));
+
+  double *pT_weight = (double*)calloc(pT_tab_length, sizeof(double));
+  double *phip_weight = (double*)calloc(phi_tab_length, sizeof(double));
+  double *y_minus_eta_weight = (double*)calloc(y_minus_eta_tab_length, sizeof(double));
 
   for(long ipT = 0; ipT < pT_tab_length; ipT++)
   {
     pT[ipT] = pT_tab->get(1, ipT + 1);
+
+    if(OPERATION == 0) 
+    {
+      pT_weight[ipT] = pT_tab->get(2, ipT + 1);
+    }
   }
 
   for(long iphip = 0; iphip < phi_tab_length; iphip++)
@@ -2030,6 +2208,11 @@ void EmissionFunctionArray::calculate_spectra()
 
     trig[iphip] = cos(phip);
     trig[iphip + phi_tab_length] = sin(phip);
+
+    if(OPERATION == 0)
+    {
+      phip_weight[iphip] = phi_tab->get(2, iphip + 1);
+    }
   }
 
   if(DIMENSION == 2)
@@ -2051,11 +2234,17 @@ void EmissionFunctionArray::calculate_spectra()
     }
   }
 
+  for(long iyeta = 0; iyeta < y_minus_eta_tab_length; iyeta++)
+  {
+    y_minus_eta[iyeta] = eta_tab->get(1, iyeta + 1);
+    y_minus_eta_weight[iyeta] = eta_tab->get(2, iyeta + 1);
+  }
+
 
   cout << "Declaring and allocating device arrays " << endl;
 
   double *T_d, *P_d, *E_d, *alphaB_d, *nB_d;
-  double *tau_d, *eta_d;
+  double *tau_d, *x_d, *y_d, *eta_d;
   double *ux_d, *uy_d, *un_d;
   double *dat_d, *dax_d, *day_d, *dan_d;
   double *pixx_d, *pixy_d, *pixn_d, *piyy_d, *piyn_d;
@@ -2064,10 +2253,12 @@ void EmissionFunctionArray::calculate_spectra()
 
   deltaf_coefficients *df_coeff_d;
 
-  double *pT_d, *trig_d, *yp_d, *etaValues_d, *etaWeights_d;
+  double *pT_d, *trig_d, *yp_d, *etaValues_d, *etaWeights_d, *y_minus_eta_d;
+  double *pT_weight_d, *phip_weight_d, *y_minus_eta_weight_d;
 
-  double *dN_pTdpTdphidy_d;
-  double *dN_pTdpTdphidy_d_blocks;
+  double *dN_pTdpTdphidy_d, *dN_dX_d;
+  double *dN_pTdpTdphidy_d_blocks, *dN_dX_d_blocks;
+
 
 
   // allocate memory on device
@@ -2076,6 +2267,8 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMalloc((void**) &E_d, FO_chunk * sizeof(double));
 
   cudaMalloc((void**) &tau_d, FO_chunk * sizeof(double));
+  cudaMalloc((void**) &x_d, FO_chunk * sizeof(double));
+  cudaMalloc((void**) &y_d, FO_chunk * sizeof(double));
   if(DIMENSION == 3)
   {
     cudaMalloc((void**) &eta_d, FO_chunk * sizeof(double));
@@ -2120,9 +2313,23 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMalloc((void**) &yp_d, y_tab_length * sizeof(double));
   cudaMalloc((void**) &etaValues_d, eta_tab_length * sizeof(double));
   cudaMalloc((void**) &etaWeights_d, eta_tab_length * sizeof(double));
+  cudaMalloc((void**) &y_minus_eta_d, y_minus_eta_tab_length * sizeof(double));
 
-  cudaMalloc((void**) &dN_pTdpTdphidy_d, spectra_length * sizeof(double));
-  cudaMalloc((void**) &dN_pTdpTdphidy_d_blocks, block_momentum_length * sizeof(double));
+  cudaMalloc((void**) &pT_weight_d,  pT_tab_length * sizeof(double));
+  cudaMalloc((void**) &phip_weight_d, phi_tab_length * sizeof(double));
+  cudaMalloc((void**) &y_minus_eta_weight_d, y_minus_eta_tab_length * sizeof(double));
+
+  if(OPERATION == 0)
+  {
+    cudaMalloc((void**) &dN_dX_d, X_length * sizeof(double));
+    cudaMalloc((void**) &dN_dX_d_blocks, block_length * sizeof(double));
+  }
+  else if(OPERATION == 1)
+  {
+    cudaMalloc((void**) &dN_pTdpTdphidy_d, spectra_length * sizeof(double));
+    cudaMalloc((void**) &dN_pTdpTdphidy_d_blocks, block_length * sizeof(double));
+  }
+  
 
   err = cudaGetLastError();
   if(err != cudaSuccess)
@@ -2137,6 +2344,11 @@ void EmissionFunctionArray::calculate_spectra()
   cudaMemcpy(yp_d, yp, y_tab_length * sizeof(double), cudaMemcpyHostToDevice);
   cudaMemcpy(etaValues_d, etaValues, eta_tab_length * sizeof(double), cudaMemcpyHostToDevice);
   cudaMemcpy(etaWeights_d, etaWeights, eta_tab_length * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(y_minus_eta_d, y_minus_eta, y_minus_eta_tab_length * sizeof(double), cudaMemcpyHostToDevice);
+
+  cudaMemcpy(pT_weight_d, pT_weight, pT_tab_length * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(phip_weight_d, phip_weight, phi_tab_length * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(y_minus_eta_weight_d, y_minus_eta_weight, y_minus_eta_tab_length * sizeof(double), cudaMemcpyHostToDevice);
 
   err = cudaGetLastError();
   if(err != cudaSuccess)
@@ -2145,7 +2357,14 @@ void EmissionFunctionArray::calculate_spectra()
     err = cudaSuccess;
   }
 
-  cudaMemset(dN_pTdpTdphidy_d, 0.0, spectra_length * sizeof(double));
+  if(OPERATION == 0)
+  {
+    cudaMemset(dN_dX_d, 0.0, X_length * sizeof(double));
+  }
+  else
+  {
+    cudaMemset(dN_pTdpTdphidy_d, 0.0, spectra_length * sizeof(double));
+  }
 
   err = cudaGetLastError();
   if(err != cudaSuccess)
@@ -2177,6 +2396,8 @@ void EmissionFunctionArray::calculate_spectra()
       E[icell] = surf->E;
 
       tau[icell] = surf->tau;
+      x[icell] = surf->x;
+      y[icell] = surf->y;
       if(DIMENSION == 3)
       {
         eta[icell] = surf->eta;
@@ -2240,6 +2461,8 @@ void EmissionFunctionArray::calculate_spectra()
     cudaMemcpy(E_d, E, FO_chunk * sizeof(double), cudaMemcpyHostToDevice);
 
     cudaMemcpy(tau_d, tau, FO_chunk * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(x_d, x, FO_chunk * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(y_d, y, FO_chunk * sizeof(double), cudaMemcpyHostToDevice);
     if(DIMENSION == 3)
     {
       cudaMemcpy(eta_d, eta, FO_chunk * sizeof(double), cudaMemcpyHostToDevice);
@@ -2290,7 +2513,14 @@ void EmissionFunctionArray::calculate_spectra()
     for(int ipart = 0; ipart < npart; ipart++)
     {
       // reset block spectra to zero
-      cudaMemset(dN_pTdpTdphidy_d_blocks, 0.0, block_momentum_length * sizeof(double));
+      if(OPERATION == 0)
+      {
+        cudaMemset(dN_dX_d_blocks, 0.0, block_length * sizeof(double));
+      }
+      else if(OPERATION == 1)
+      {
+        cudaMemset(dN_pTdpTdphidy_d_blocks, 0.0, block_length * sizeof(double));
+      }
 
       double mass = Mass[ipart];
       double sign = Sign[ipart];
@@ -2306,19 +2536,28 @@ void EmissionFunctionArray::calculate_spectra()
         case 2:
         {
           // launch thread reduction kernel
-          cudaDeviceSynchronize();
-          calculate_dN_pTdpTdphidy_threadReduction<<<blocks_ker1, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
-          cudaDeviceSynchronize();
-
+          if(OPERATION == 0)
+          {
+            cudaDeviceSynchronize();
+            calculate_dN_dX_threadReduction<<<blocks_ker1, threadsPerBlock>>>(dN_dX_d_blocks, endFO, tau_bins, r_bins, phi_bins, eta_bins, tau_min, r_min, eta_min, tau_width, r_width, phi_width, eta_width, pT_tab_length, phi_tab_length, y_minus_eta_tab_length, pT_d, pT_weight_d, trig_d, phip_weight_d, y_minus_eta_d, y_minus_eta_weight_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, x_d, y_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
+            cudaDeviceSynchronize();
+          }
+          else if(OPERATION == 1)
+          {
+            cudaDeviceSynchronize();
+            calculate_dN_pTdpTdphidy_threadReduction<<<blocks_ker1, threadsPerBlock, sizeof(double)*threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
+            cudaDeviceSynchronize();
+          }
+          
           break;
         }
         case 3:
         case 4:
         {
           // launch thread reduction kernel
-          cudaDeviceSynchronize();
+          //cudaDeviceSynchronize();
           //calculate_dN_pTdpTdphidy_feqmod_threadReduction<<<blocks_ker1, threadsPerBlock>>>(dN_pTdpTdphidy_d_blocks, endFO, momentum_length, pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, pT_d, trig_d, yp_d, etaValues_d, etaWeights_d, mass_squared, sign, prefactor, baryon, T_d, P_d, E_d, tau_d, eta_d, ux_d, uy_d, un_d, dat_d, dax_d, day_d, dan_d, pixx_d, pixy_d, pixn_d, piyy_d, piyn_d, bulkPi_d, alphaB_d, nB_d, Vx_d, Vy_d, Vn_d, df_coeff_d, INCLUDE_BARYON, REGULATE_DELTAF, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF, DIMENSION, OUTFLOW, DF_MODE);
-          cudaDeviceSynchronize();
+          //cudaDeviceSynchronize();
 
           break;
         }
@@ -2332,10 +2571,19 @@ void EmissionFunctionArray::calculate_spectra()
       }
 
       // launch block reduction kernel
-      cudaDeviceSynchronize();
-      calculate_dN_pTdpTdphidy_blockReduction<<<blocks_ker2, threadsPerBlock>>>(dN_pTdpTdphidy_d, dN_pTdpTdphidy_d_blocks, momentum_length, blocks_ker1, ipart, npart);
-      cudaDeviceSynchronize();
-
+      if(OPERATION == 0)
+      {
+        cudaDeviceSynchronize();
+        calculate_dN_dX_blockReduction<<<blocks_ker2, threadsPerBlock>>>(dN_dX_d, dN_dX_d_blocks, spacetime_length, blocks_ker1, ipart, npart);
+        cudaDeviceSynchronize();
+      }
+      else if(OPERATION == 1)
+      {
+        cudaDeviceSynchronize();
+        calculate_dN_pTdpTdphidy_blockReduction<<<blocks_ker2, threadsPerBlock>>>(dN_pTdpTdphidy_d, dN_pTdpTdphidy_d_blocks, momentum_length, blocks_ker1, ipart, npart);
+        cudaDeviceSynchronize();
+      }
+    
       err = cudaGetLastError();
       if(err != cudaSuccess)
       {
@@ -2350,22 +2598,34 @@ void EmissionFunctionArray::calculate_spectra()
 
   } // loop over chunks
 
-  // copy particle spectra from device to host
-  cudaMemcpy(dN_pTdpTdphidy, dN_pTdpTdphidy_d, spectra_length * sizeof(double), cudaMemcpyDeviceToHost);
-
   sw.toc();
   cout << "\nKernel launches took " << sw.takeTime() << " seconds.\n" << endl;
 
 
-  // write the results to disk
-  write_dN_2pipTdpTdy_toFile(MCID);
-  write_vn_toFile(MCID);
-  //write_dN_dphidy_toFile(MCID);
-  //write_dN_dy_toFile(MCID);
+  // copy results from device to host and write to file
+  if(OPERATION == 0)
+  {
+    cudaMemcpy(dN_dX, dN_dX_d, X_length * sizeof(double), cudaMemcpyDeviceToHost);
 
-  cout << "Deallocating host and device memory" << endl;
+    write_dN_taudtaudeta_toFile(MCID);
+    write_dN_2pirdrdeta_toFile(MCID);
+    write_dN_dphideta_toFile(MCID);
 
-  free(dN_pTdpTdphidy);
+    free(dN_dX);
+  }
+  else if(OPERATION == 1)
+  {
+    cudaMemcpy(dN_pTdpTdphidy, dN_pTdpTdphidy_d, spectra_length * sizeof(double), cudaMemcpyDeviceToHost);
+
+    write_dN_2pipTdpTdy_toFile(MCID);
+    write_vn_toFile(MCID);
+    //write_dN_dphidy_toFile(MCID);
+    //write_dN_dy_toFile(MCID);
+
+    free(dN_pTdpTdphidy);
+  }
+ 
+  cout << "Deallocating host and device memory" << endl;  
   free(chosen_particles_table);
 
   free(Mass);
@@ -2379,6 +2639,8 @@ void EmissionFunctionArray::calculate_spectra()
   free(E);
 
   free(tau);
+  free(x);
+  free(y);
   if(DIMENSION == 3) free(eta);
 
   free(ux);
@@ -2414,6 +2676,16 @@ void EmissionFunctionArray::calculate_spectra()
     free(Vn);
   }
 
+  free(pT);
+  free(trig);
+  free(yp);
+  free(etaValues);
+  free(etaWeights);
+  free(y_minus_eta);
+  free(pT_weight);
+  free(phip_weight);
+  free(y_minus_eta_weight);
+
   free(df_coeff);
 
   // cudaFree = deallocate memory on device
@@ -2421,6 +2693,8 @@ void EmissionFunctionArray::calculate_spectra()
   cudaFree(P_d);
   cudaFree(E_d);
 
+  cudaFree(x_d);
+  cudaFree(y_d);
   cudaFree(tau_d);
   if(DIMENSION == 3)
   {
@@ -2467,9 +2741,16 @@ void EmissionFunctionArray::calculate_spectra()
   cudaFree(etaValues_d);
   cudaFree(etaWeights_d);
 
-  cudaFree(dN_pTdpTdphidy_d);
-  cudaFree(dN_pTdpTdphidy_d_blocks);
-
+  if(OPERATION == 0)
+  {
+    cudaFree(dN_dX_d);
+    cudaFree(dN_dX_d_blocks);
+  }
+  else if(OPERATION == 1)
+  {
+    cudaFree(dN_pTdpTdphidy_d);
+    cudaFree(dN_pTdpTdphidy_d_blocks);
+  }
 }
 
 

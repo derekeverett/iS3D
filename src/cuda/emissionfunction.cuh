@@ -12,35 +12,26 @@ using namespace std;
 class EmissionFunctionArray
 {
 private:
+  // kernel paremeters
+  long threadsPerBlock;   // number of threads per block
+  long FO_chunk;          // surface chunk size
+
 
   // control parameters
-  int MODE;      
-  int DF_MODE;   
-  int DIMENSION; 
-  int INCLUDE_BARYON;
-  int INCLUDE_SHEAR_DELTAF;
-  int INCLUDE_BULK_DELTAF;
-  int INCLUDE_BARYONDIFF_DELTAF;
-  int OUTFLOW;
-  int REGULATE_DELTAF;
+  int OPERATION, MODE, DF_MODE, DIMENSION;
+  int INCLUDE_BARYON, INCLUDE_SHEAR_DELTAF, INCLUDE_BULK_DELTAF, INCLUDE_BARYONDIFF_DELTAF;
+  int OUTFLOW, REGULATE_DELTAF;
   
 
   // freezeout surface
-  FO_surf *surf_ptr;
   long FO_length;
-
+  FO_surf *surf_ptr;
+  
 
   // momentum tables
-  Table *pT_tab;
-  Table *phi_tab;
-  Table *y_tab;
-  Table *eta_tab;
-
-  long pT_tab_length;
-  long phi_tab_length;
-  long y_tab_length;
-  long eta_tab_length;
-
+  long pT_tab_length, phi_tab_length, y_tab_length, eta_tab_length, y_minus_eta_tab_length;
+  Table *pT_tab, *phi_tab, *y_tab, *eta_tab;
+  
 
   // particle info
   particle_info* particles;  
@@ -54,10 +45,18 @@ private:
 
 
   // particle spectra of chosen particle species
-  long momentum_length;
-  long spectra_length;
-  //double *dN_pTdpTdphidy_momentum;    
+  long momentum_length, spectra_length;   
   double *dN_pTdpTdphidy;    
+
+  // spacetime grid
+  double tau_min, r_min, eta_min;
+  double tau_max, r_max, eta_max;
+  long tau_bins, r_bins, phi_bins, eta_bins;
+  double tau_width, r_width, phi_width, eta_width;
+
+  // spacetime distributions
+  long spacetime_length, X_length;
+  double *dN_dX;
 
 
 public:
@@ -81,6 +80,10 @@ public:
   void write_vn_toFile(long *MCID);
   void write_dN_dphidy_toFile(long *MCID);
   void write_dN_dy_toFile(long *MCID);
+
+  void write_dN_taudtaudeta_toFile(long *MCID);
+  void write_dN_2pirdrdeta_toFile(long *MCID);
+  void write_dN_dphideta_toFile(long *MCID);
   
   void calculate_spectra();
 

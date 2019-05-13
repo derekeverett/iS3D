@@ -1,4 +1,4 @@
-operation = 1					# operation
+operation = 0					# operation
 								# 0 : performs smooth cooper frye resulting in spacetime distribution dN/dXdy
 								# 1 : performs smooth cooper frye resulting in momentum distribution dN/pTdpTdphidy
 								# 2 : performs sampling of particle distribution resulting in particle list
@@ -43,6 +43,9 @@ deta_min = 1.e-5  				# minimum value of detA (for feqmod break down, for 3+1d w
 
 mass_pion0 = 0.138				# lightest pion mass (GeV)
 								# for feqmod breakdown criteria (pion0 most susceptible negative density)
+
+threads_per_block = 128			# number of threads per block in GPU (must be power of 2)
+chunk_size = 7680				# number of surface cells passed per GPU kernel launch
 
 oversample	= 1					# run sampler iteratively until mininum number of hadrons 
 								# or max number of events sampled
