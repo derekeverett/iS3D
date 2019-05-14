@@ -115,7 +115,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   tau_max = paraRdr_in->getVal("tau_max");
   tau_bins = paraRdr_in->getVal("tau_bins");
   tau_width = (tau_max - tau_min) / (double)tau_bins;
-  cout << "tau_width = " << tau_width << endl;
 
   r_min = paraRdr_in->getVal("r_min");
   r_max = paraRdr_in->getVal("r_max");
@@ -2026,6 +2025,8 @@ void EmissionFunctionArray::write_dN_dphideta_toFile(long *MCID)
 void EmissionFunctionArray::calculate_spectra()
 {
   cout << "calculate_spectra() has started... " << endl;
+  Stopwatch sw;
+  sw.tic();
 
   cudaDeviceSynchronize();    // test synchronize device
   cudaError_t err;            // errors
@@ -2375,8 +2376,7 @@ void EmissionFunctionArray::calculate_spectra()
 
 
   printf("\n");
-  Stopwatch sw;
-  sw.tic();
+  
 
   for(long n = 0; n < chunks; n++)
   {
@@ -2598,9 +2598,6 @@ void EmissionFunctionArray::calculate_spectra()
 
   } // loop over chunks
 
-  sw.toc();
-  cout << "\nKernel launches took " << sw.takeTime() << " seconds.\n" << endl;
-
 
   // copy results from device to host and write to file
   if(OPERATION == 0)
@@ -2751,6 +2748,9 @@ void EmissionFunctionArray::calculate_spectra()
     cudaFree(dN_pTdpTdphidy_d);
     cudaFree(dN_pTdpTdphidy_d_blocks);
   }
+
+  sw.toc();
+  cout << "\nKernel launches took " << sw.takeTime() << " seconds.\n" << endl;
 }
 
 
