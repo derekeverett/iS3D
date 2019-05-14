@@ -303,7 +303,7 @@ double Deltaf_Data::calculate_linear_bulkPi(double *f_data, double bulkPi, doubl
   return (f_L * (bulkR - bulkPi)  +  f_R * (bulkPi - bulkL)) / dbulk;
 }
 
-deltaf_coefficients Deltaf_Data::linear_interpolation(double T, double E, double P, double bulkPi)
+deltaf_coefficients Deltaf_Data::linear_interpolation(double T, double E, double P, double nB, double bulkPi)
 {
   double T4 = T * T * T * T;
 
@@ -350,6 +350,7 @@ deltaf_coefficients Deltaf_Data::linear_interpolation(double T, double E, double
       df.betabulk = calculate_linear_temperature(betabulk_data, T, TL, TR, iTL, iTR) * T4;
       df.betaV = 1.0;
       df.betapi = calculate_linear_temperature(betapi_data, T, TL, TR, iTL, iTR) * T4;
+      df.baryon_enthalpy_ratio = nB / (E + P);
 
       break;
     }
@@ -450,7 +451,7 @@ double Deltaf_Data::calculate_bilinear(double ** f_data, double T, double muB, d
   return ((f_LL*(TR - T) + f_RL*(T - TL)) * (muBR - muB)  +  (f_LR*(TR - T) + f_RR*(T - TL)) * (muB - muBL)) / (dT * dmuB);
 }
 
-deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, double E, double P, double bulkPi)
+deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, double E, double P, double nB, double bulkPi)
 {
   // left and right T, muB indices
   int iTL = (int)floor((T - T_min) / dT);
@@ -506,6 +507,7 @@ deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, do
       df.betabulk = calculate_bilinear(betabulk_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) * T4;
       df.betaV = calculate_bilinear(betaV_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) * T3;
       df.betapi = calculate_bilinear(betapi_data, T, muB, TL, TR, muBL, muBR, iTL, iTR, imuBL, imuBR) * T4;
+      df.baryon_enthalpy_ratio = nB / (E + P);
 
       break;
     }
@@ -524,7 +526,7 @@ deltaf_coefficients Deltaf_Data::bilinear_interpolation(double T, double muB, do
   return df;
 }
 
-deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, double E, double P, double bulkPi)
+deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, double E, double P, double nB, double bulkPi)
 {
   // evaluate the df coefficients by interpolating the data
 
@@ -532,13 +534,13 @@ deltaf_coefficients Deltaf_Data::evaluate_df_coefficients(double T, double muB, 
 
   if(!include_baryon)
   {
-    df = linear_interpolation(T, E, P, bulkPi);         // linear interpolation wrt T (at muB = 0)
+    df = linear_interpolation(T, E, P, nB, bulkPi);         // linear interpolation wrt T (at muB = 0)
   }
   else
   {
     // muB on freezeout surface should be nonzero in general
     // otherwise should set include_baryon = 0
-    df = bilinear_interpolation(T, muB, E, P, bulkPi);  // bilinear wrt (T, muB)
+    df = bilinear_interpolation(T, muB, E, P, nB, bulkPi);  // bilinear wrt (T, muB)
   }
 
   return df;
@@ -555,10 +557,11 @@ void Deltaf_Data::test_df_coefficients(double bulkPi_over_P)
   double E = QGP.energy_density;
   double T = QGP.temperature;
   double P = QGP.pressure;
+  double nB = QGP.net_baryon_density;
   double muB = QGP.baryon_chemical_potential;
   double bulkPi = bulkPi_over_P * P;
 
-  deltaf_coefficients df = evaluate_df_coefficients(T, muB, E, P, bulkPi);
+  deltaf_coefficients df = evaluate_df_coefficients(T, muB, E, P, nB, bulkPi);
 
   if(df_mode == 1)
   {
@@ -566,7 +569,7 @@ void Deltaf_Data::test_df_coefficients(double bulkPi_over_P)
   }
   else if(df_mode == 2 || df_mode == 3)
   {
-    printf("\n(F, G, betabulk, betaV, betapi) = (%lf, %lf, %lf, %lf, %lf)\n\n", df.F, df.G, df.betabulk, df.betaV, df.betapi);
+    printf("\n(F, G, betabulk, betaV, betapi, nB/(E+P)) = (%lf, %lf, %lf, %lf, %lf, %lf)\n\n", df.F, df.G, df.betabulk, df.betaV, df.betapi, df.baryon_enthalpy_ratio);
   }
   else if(df_mode == 4)
   {

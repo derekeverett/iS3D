@@ -70,13 +70,13 @@ class Deltaf_Data
         double calculate_linear_temperature(double ** f_data, double T, double TL, double TR, int iTL, int iTR);
         double calculate_linear_bulkPi(double *f_data, double bulkPi, double bulkL, double bulkR, int ibulkL, int ibulkR, double dbulk);
 
-        deltaf_coefficients linear_interpolation(double T, double E, double P, double bulkPi);
+        deltaf_coefficients linear_interpolation(double T, double E, double P, double nB, double bulkPi);
 
         double calculate_bilinear(double ** f_data, double T, double muB, double TL, double TR, double muBL, double muBR, int iTL, int iTR, int imuBL, int imuBR);
 
-        deltaf_coefficients bilinear_interpolation(double T, double muB, double E, double P, double bulkPi);
+        deltaf_coefficients bilinear_interpolation(double T, double muB, double E, double P, double nB, double bulkPi);
 
-        deltaf_coefficients evaluate_df_coefficients(double T, double muB, double E, double P, double bulkPi);
+        deltaf_coefficients evaluate_df_coefficients(double T, double muB, double E, double P, double nB, double bulkPi);
 
         void test_df_coefficients(double bulkPi_over_P);
 

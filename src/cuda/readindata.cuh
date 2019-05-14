@@ -120,6 +120,7 @@ typedef struct
   double betabulk;
   double betaV;
   double betapi;
+  double baryon_enthalpy_ratio;
 
   // Jonah coefficients
   double lambda;
