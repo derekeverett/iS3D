@@ -84,7 +84,6 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
 
     //declare a huge array of size npart * FO_chunk * pT_tab_length * phi_tab_length * y_tab_length
     //to hold the spin polarization vector for each surface cell in a chunk, for all particle species
-    int npart = number_of_chosen_particles;
 
     //four components of spin polarization vector for each FO element
     double *St_all, *Sx_all, *Sy_all, *Sn_all;
@@ -138,7 +137,7 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
         double wyn = wyn_fo[icell];
 
         //now loop over all particle species and momenta
-        for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+        for(long ipart = 0; ipart < npart; ipart++)
         {
           // set particle properties
           double mass = Mass[ipart];    // (GeV)
@@ -146,7 +145,7 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
           double sign = Sign[ipart];
           double degeneracy = Degeneracy[ipart];
 
-          for (int ipT = 0; ipT < pT_tab_length; ipT++)
+          for(long ipT = 0; ipT < pT_tab_length; ipT++)
           {
             // set transverse radial momentum and transverse mass (GeV)
             double pT = pTValues[ipT];
@@ -154,12 +153,12 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
             // useful expression
             double mT_over_tau = mT / tau;
 
-            for (int iphip = 0; iphip < phi_tab_length; iphip++)
+            for(long iphip = 0; iphip < phi_tab_length; iphip++)
             {
               double px = pT * trig_phi_table[iphip][0]; //contravariant
               double py = pT * trig_phi_table[iphip][1]; //contravariant
 
-              for (int iy = 0; iy < y_pts; iy++)
+              for(long iy = 0; iy < y_pts; iy++)
               {
                 double y = yValues[iy];
 
@@ -170,7 +169,7 @@ void EmissionFunctionArray::calculate_spin_polzn(double *Mass, double *Sign, dou
                 double Snorm_eta_sum = 0.0;
 
                 // sum over eta
-                for (int ieta = 0; ieta < eta_pts; ieta++)
+                for(long ieta = 0; ieta < eta_pts; ieta++)
                 {
                   double eta = etaValues[ieta];
                   double delta_eta_weight = etaDeltaWeights[ieta];

@@ -517,8 +517,6 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
     // to determine the number of events you want to sample
     printf("Total particle yield: ");
 
-    int npart = number_of_chosen_particles;
-
     double Ntot = 0.0;                    // total particle yield
 
     //#pragma omp parallel for reduction(+:Ntot)
@@ -670,7 +668,7 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
       bool feqmod_breaks_down = does_feqmod_breakdown(MASS_PION0, T, F, bulkPi, betabulk, detA, DETA_MIN, z, laguerre, DF_MODE, 0, T, F, betabulk);
 
       // sum over hadrons
-      for(int ipart = 0; ipart < npart; ipart++)
+      for(long ipart = 0; ipart < npart; ipart++)
       {
         double equilibrium_density = Equilibrium_Density[ipart];
         double bulk_density = Bulk_Density[ipart];
@@ -689,15 +687,13 @@ double EmissionFunctionArray::calculate_total_yield(double * Equilibrium_Density
     return Ntot;
   }
 
-void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, int *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Deltaf_Data *df_data, Gauss_Laguerre * laguerre, Gauss_Legendre * legendre)
+void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, double *Degeneracy, double *Baryon, long *MCID, double *Equilibrium_Density, double *Bulk_Density, double *Diffusion_Density, double *T_fo, double *P_fo, double *E_fo, double *tau_fo, double *x_fo, double *y_fo, double *eta_fo, double *ux_fo, double *uy_fo, double *un_fo, double *dat_fo, double *dax_fo, double *day_fo, double *dan_fo, double *pixx_fo, double *pixy_fo, double *pixn_fo, double *piyy_fo, double *piyn_fo, double *bulkPi_fo, double *muB_fo, double *nB_fo, double *Vx_fo, double *Vy_fo, double *Vn_fo, Deltaf_Data *df_data, Gauss_Laguerre * laguerre, Gauss_Legendre * legendre)
   {
-    int npart = number_of_chosen_particles;
-
     double y_max = 0.5;                 // effective volume extension by 2.y_max
     if(DIMENSION == 2) y_max = Y_CUT;   // default value is 2.y_max = 1 (for 3+1d)
 
     // set seed
-    unsigned seed;
+    unsigned long int seed;
     if (SAMPLER_SEED < 0) seed = chrono::system_clock::now().time_since_epoch().count();
     else seed = SAMPLER_SEED;
 
@@ -937,7 +933,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
 
       if(FAST)
       {
-        for(int ipart = 0; ipart < npart; ipart++)
+        for(long ipart = 0; ipart < npart; ipart++)
         {
           double equilibrium_density = Equilibrium_Density[ipart];
           double bulk_density = Bulk_Density[ipart];
@@ -951,7 +947,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
         double neq_fact = T * T * T / two_pi2_hbarC3;
         double J20_fact = T * neq_fact;
 
-        for(int ipart = 0; ipart < npart; ipart++)
+        for(long ipart = 0; ipart < npart; ipart++)
         {
           double mass = Mass[ipart];
           double mbar = mass / T;
@@ -996,8 +992,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
           double w_visc = 1.0;                                // viscous weight
           double w_flux;                                      // flux weight
 
-          // sample the local rest frame momentum
-          // and compute viscous weight
+          // sample the local rest frame momentum and compute flux / viscous weights
           switch(DF_MODE)
           {
             case 1: // 14 moment
@@ -1109,7 +1104,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             }
           }
 
-          // add particle
+          // keep particle
           if(canonical(generator_momentum) < (w_flux * w_visc))
           {
             // lab frame momentum
@@ -1173,8 +1168,7 @@ void EmissionFunctionArray::sample_dN_pTdpTdphidy(double *Mass, double *Sign, do
             }
             else
             {
-              //CAREFUL push_back is not a thread-safe operation
-              //how should we modify for GPU version?
+              // CAREFUL push_back is not a thread-safe operation
               #pragma omp critical
               particle_event_list[ievent].push_back(new_particle);
             }

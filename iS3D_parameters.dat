@@ -1,4 +1,4 @@
-operation = 1					# operation
+operation = 0					# operation
 								# 0 : performs smooth cooper frye resulting in spacetime distribution dN/dXdy
 								# 1 : performs smooth cooper frye resulting in momentum distribution dN/pTdpTdphidy
 								# 2 : performs sampling of particle distribution resulting in particle list
@@ -45,24 +45,24 @@ mass_pion0 = 0.138				# lightest pion mass (GeV)
 								# for feqmod breakdown criteria (pion0 most susceptible negative density)
 
 threads_per_block = 128			# number of threads per block in GPU (must be power of 2)
-chunk_size = 128				# number of surface cells passed per GPU kernel launch
+chunk_size = 6400				# number of surface cells passed per GPU kernel launch
 
 oversample	= 1					# run sampler iteratively until mininum number of hadrons 
 								# or max number of events sampled
 
-fast = 0						# switch to run sampler in fast mode
+fast = 1						# switch to run sampler in fast mode
 								# compute thermal density for (T_avg, muB_avg) rather than (T, muB) for each cell
 								# assumes (T,muB) throughout surface are very close to (T_avg, muB_avg)
 								# turn off if you have corona cells
 
-y_cut = 5.0						# rapidity cut: |y| <= y_cut
+y_cut = 3.0						# rapidity cut: |y| <= y_cut
 
-min_num_hadrons = 1.0e+10		# across all samples >= min_num_hadrons
-max_num_samples	= 1.0e+8   		# oversampling will finish after this number of samples
+min_num_hadrons = 1.0e+8		# across all samples >= min_num_hadrons
+max_num_samples	= 1.0e+3   		# oversampling will finish after this number of samples
 
 sampler_seed = 1 				# sets seed of particle sampler. If sampler_seed < 0, seed is set using clocktime
 
-test_sampler = 1				# perform sampler test only (i.. write sampled pT spectra and vn to file only)
+test_sampler = 0				# perform sampler test only (i.. write sampled pT spectra and vn to file only)
 								# set to zero for actual runs
 
 pT_min = 0.0					# pT min in GeV (for sampler tests)
@@ -84,10 +84,7 @@ r_min = 0.0						# r min in fm (for sampled dN_2pirdrdy test)
 r_max = 12.0					# r max in fm
 r_bins = 60						# number of r bins
 
-group_particles = 0				# group particles with the similar mass and to speed up calculations
-particle_diff_tolerance = 0.01	# grouping particle mass tolerance
-
-do_resonance_decays = 0			# switch for resonance decays after thermal spectra calculation (not finished)
-lightest_particle = 111			# PDG MC ID of lightest particle for resonance decay feed-down
+#do_resonance_decays = 0			# switch for resonance decays after thermal spectra calculation (not finished)
+#lightest_particle = 111			# PDG MC ID of lightest particle for resonance decay feed-down
 
 

@@ -184,7 +184,7 @@ void IS3D::run_particlization(int fo_from_file)
   cout << "Total number of freezeout cells: " <<  FO_length << endl;
   cout << "Number of chosen particles: " << chosen_particles.getNumberOfRows() << endl;
 
-  Table pT_tab("tables/pT/pT_gauss_table_48pt.dat");                          // pT value and weight table
+  Table pT_tab("tables/pT/pT_uniform_table.dat");                          // pT value and weight table
   Table phi_tab("tables/phi/phi_gauss_table_48pt.dat");                 // phip value and weight table
   Table y_tab("tables/y_trapezoid_table_21pt.dat");                     // y values and weights
   Table eta_tab("tables/eta/eta_gauss_table_48pt.dat"); // eta_s values and weights for smooth CFF

@@ -31,7 +31,7 @@ ifeq "$(MAIN)" ""
 MAIN		=	iS3D.e
 endif
 
-SRC   =	RuniS3D.cpp iS3D.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp emissionfunction_polzn_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp viscous_correction.cpp emissionfunction_resonance_decays.cpp
+SRC   =	RuniS3D.cpp iS3D.cpp arsenal.cpp emissionfunction.cpp emissionfunction_smooth_kernels.cpp emissionfunction_sampling_kernels.cpp emissionfunction_polzn_kernels.cpp Table.cpp readindata.cpp ParameterReader.cpp deltafReader.cpp gaussThermal.cpp viscous_correction.cpp 
 INC   = iS3D.h arsenal.h emissionfunction.h Table.h readindata.h Stopwatch.h ParameterReader.h deltafReader.h gaussThermal.h viscous_correction.h
 
 
@@ -90,4 +90,4 @@ install:	$(TARGET)
 ./readindata.cpp: iS3D.h readindata.h arsenal.h Table.h ParameterReader.h
 ./ParameterReader.cpp: arsenal.h ParameterReader.h
 ./gaussThermal.cpp: gaussThermal.h
-./emissionfunction_resonance_decays.cpp: iS3D.h readindata.h emissionfunction.h Stopwatch.h arsenal.h ParameterReader.h
+#./emissionfunction_resonance_decays.cpp: iS3D.h readindata.h emissionfunction.h Stopwatch.h arsenal.h ParameterReader.h

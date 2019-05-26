@@ -149,62 +149,105 @@ bool does_feqmod_breakdown(double mass_pion0, double T, double F, double bulkPi,
 
 
 // Class EmissionFunctionArray ------------------------------------------
-EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table* chosen_particles_in, Table* pT_tab_in,
+EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr, Table* chosen_particles_in, Table* pT_tab_in,
   Table* phi_tab_in, Table* y_tab_in, Table* eta_tab_in, particle_info* particles_in,
   int Nparticles_in, FO_surf* surf_ptr_in, long FO_length_in, Deltaf_Data * df_data_in)
   {
-    paraRdr = paraRdr_in;
-
-    // tables
-    pT_tab = pT_tab_in;
-    pT_tab_length = pT_tab->getNumberOfRows();
-    phi_tab = phi_tab_in;
-    phi_tab_length = phi_tab->getNumberOfRows();
-    y_tab = y_tab_in;
-    y_tab_length = y_tab->getNumberOfRows();
-    eta_tab = eta_tab_in;
-    eta_tab_length = eta_tab->getNumberOfRows();
-
     // omp parameters
     CORES = omp_get_max_threads();
     cout << "Number of cores: " << CORES << endl;
 
-    // control parameters
+    // mode parameters
     OPERATION = paraRdr->getVal("operation");
     MODE = paraRdr->getVal("mode");
     DF_MODE = paraRdr->getVal("df_mode");
     DIMENSION = paraRdr->getVal("dimension");
-    if(DIMENSION == 2) y_tab_length = 1;
-    else if(DIMENSION == 3) eta_tab_length = 1;
+  
     INCLUDE_BARYON = paraRdr->getVal("include_baryon");
-    INCLUDE_BULK_DELTAF = paraRdr->getVal("include_bulk_deltaf");
     INCLUDE_SHEAR_DELTAF = paraRdr->getVal("include_shear_deltaf");
+    INCLUDE_BULK_DELTAF = paraRdr->getVal("include_bulk_deltaf");
     INCLUDE_BARYONDIFF_DELTAF = paraRdr->getVal("include_baryondiff_deltaf");
-
     REGULATE_DELTAF = paraRdr->getVal("regulate_deltaf");
     OUTFLOW = paraRdr->getVal("outflow");
 
-    DETA_MIN = paraRdr->getVal("deta_min");
-    GROUP_PARTICLES = paraRdr->getVal("group_particles");
-    PARTICLE_DIFF_TOLERANCE = paraRdr->getVal("particle_diff_tolerance");
 
+    // momentum tables
+    pT_tab = pT_tab_in;
+    phi_tab = phi_tab_in;
+    y_tab = y_tab_in;
+    eta_tab = eta_tab_in;
+    pT_tab_length = pT_tab->getNumberOfRows();
+    phi_tab_length = phi_tab->getNumberOfRows();
+    y_tab_length = y_tab->getNumberOfRows();
+    eta_tab_length = 1;
+    if(DIMENSION == 2)
+    {
+      y_tab_length = 1;
+      eta_tab_length = eta_tab->getNumberOfRows();
+    }
+    y_minus_eta_tab_length = eta_tab->getNumberOfRows();
+
+
+    // freezeout surface
+    surf_ptr = surf_ptr_in;
+    FO_length = FO_length_in;
+
+
+    // particle info
+    particles = particles_in;
+    Nparticles = Nparticles_in;
+    npart = chosen_particles_in->getNumberOfRows();
+    chosen_particles_table = (long*)calloc(npart, sizeof(long));
+
+    for(long ipart = 0; ipart < npart; ipart++)
+    {
+      long mc_id = chosen_particles_in->get(1, ipart + 1);
+      bool found_match = false;
+
+      // search for match in PDG file
+      for(long iPDG = 0; iPDG < Nparticles; iPDG++)
+      {
+        if(particles[iPDG].mc_id == mc_id)
+        {
+          chosen_particles_table[ipart] = iPDG;
+          found_match = true;
+          break;
+        }
+      }
+      if(!found_match)
+      {
+        printf("Chosen particles error: %ld not found in pdg.dat\n", mc_id);
+        exit(-1);
+      }
+    }
+
+
+    // df coefficients
+    df_data = df_data_in;
+
+
+    // feqmod breakdown parameters
+    DETA_MIN = paraRdr->getVal("deta_min");
     MASS_PION0 = paraRdr->getVal("mass_pion0");
 
-    LIGHTEST_PARTICLE = paraRdr->getVal("lightest_particle");
-    DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
 
+    // resonance decay parameters
+    //LIGHTEST_PARTICLE = paraRdr->getVal("lightest_particle");
+    //DO_RESONANCE_DECAYS = paraRdr->getVal("do_resonance_decays");
+
+
+    // sampler parameters
     OVERSAMPLE = paraRdr->getVal("oversample");
     FAST = paraRdr->getVal("fast");
     MIN_NUM_HADRONS = paraRdr->getVal("min_num_hadrons");
     MAX_NUM_SAMPLES = paraRdr->getVal("max_num_samples");
     SAMPLER_SEED = paraRdr->getVal("sampler_seed");
-    if(OPERATION == 2) printf("Sampler seed set to %d \n", SAMPLER_SEED);
-      
-
-    // parameters for sampler test
-    //::::::::::::::::::::::::::::::::::::::::::::::::::::
+    if(OPERATION == 2) printf("Sampler seed set to %ld \n", SAMPLER_SEED);
     TEST_SAMPLER = paraRdr->getVal("test_sampler");
+    Nevents = 1;  // default
+   
 
+    // histrogram parameters
     PT_MIN = paraRdr->getVal("pT_min");
     PT_MAX = paraRdr->getVal("pT_max");
     PT_BINS = paraRdr->getVal("pT_bins");
@@ -217,10 +260,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     PHIP_BINS = paraRdr->getVal("phip_bins");
     PHIP_WIDTH = two_pi / (double)PHIP_BINS;
 
-    ETA_CUT = paraRdr->getVal("eta_cut");
-    ETA_BINS = paraRdr->getVal("eta_bins");
-    ETA_WIDTH = 2.0 * ETA_CUT / (double)ETA_BINS;
-
     TAU_MIN = paraRdr->getVal("tau_min");
     TAU_MAX = paraRdr->getVal("tau_max");
     TAU_BINS = paraRdr->getVal("tau_bins");
@@ -230,48 +269,52 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     R_MAX = paraRdr->getVal("r_max");
     R_BINS = paraRdr->getVal("r_bins");
     R_WIDTH = (R_MAX - R_MIN) / (double)R_BINS;
-    //::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-    particles = particles_in;
-    Nparticles = Nparticles_in;
-    surf_ptr = surf_ptr_in;
-    FO_length = FO_length_in;
-    df_data = df_data_in;
-    number_of_chosen_particles = chosen_particles_in->getNumberOfRows();
+    ETA_CUT = paraRdr->getVal("eta_cut");
+    ETA_BINS = paraRdr->getVal("eta_bins");
+    ETA_WIDTH = 2.0 * ETA_CUT / (double)ETA_BINS;
 
-    // allocate memory for sampled distributions / spectra (for sampler testing)
-    dN_dy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
-    dN_deta_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
-    dN_dphipdy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
-    dN_2pipTdpTdy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
+    if(OPERATION == 0 && DIMENSION == 2) 
+    {
+      ETA_BINS = 1;
+      ETA_WIDTH = 1.0;
+    }
 
-    pT_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
+
+    // event-averaged sampled distributions 
+    dN_dy_count = (double**)calloc(npart, sizeof(double));
+    dN_2pipTdpTdy_count = (double**)calloc(npart, sizeof(double));
+    dN_dphipdy_count = (double**)calloc(npart, sizeof(double));
+
     vn_real_count = (double***)calloc(K_MAX, sizeof(double));
     vn_imag_count = (double***)calloc(K_MAX, sizeof(double));
+    pT_count = (double**)calloc(npart, sizeof(double));
 
-    dN_taudtaudy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
-    dN_twopirdrdy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
-    dN_dphisdy_count = (double**)calloc(number_of_chosen_particles, sizeof(double));
+    dN_taudtaudy_count = (double**)calloc(npart, sizeof(double));
+    dN_twopirdrdy_count = (double**)calloc(npart, sizeof(double));
+    dN_dphisdy_count = (double**)calloc(npart, sizeof(double));
+    dN_deta_count = (double**)calloc(npart, sizeof(double));
 
-    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(long ipart = 0; ipart < npart; ipart++)
     {
       dN_dy_count[ipart] = (double*)calloc(Y_BINS, sizeof(double));
-      dN_deta_count[ipart] = (double*)calloc(ETA_BINS, sizeof(double));
-      dN_dphipdy_count[ipart] = (double*)calloc(PHIP_BINS, sizeof(double));
       dN_2pipTdpTdy_count[ipart] = (double*)calloc(PT_BINS, sizeof(double));
+      dN_dphipdy_count[ipart] = (double*)calloc(PHIP_BINS, sizeof(double));
+      
       pT_count[ipart] = (double*)calloc(PT_BINS, sizeof(double));
 
       dN_taudtaudy_count[ipart] = (double*)calloc(TAU_BINS, sizeof(double));
       dN_twopirdrdy_count[ipart] = (double*)calloc(R_BINS, sizeof(double));
       dN_dphisdy_count[ipart] = (double*)calloc(PHIP_BINS, sizeof(double));
+      dN_deta_count[ipart] = (double*)calloc(ETA_BINS, sizeof(double));
     }
 
     for(int k = 0; k < K_MAX; k++)
     {
-      vn_real_count[k] = (double**)calloc(number_of_chosen_particles, sizeof(double));
-      vn_imag_count[k] = (double**)calloc(number_of_chosen_particles, sizeof(double));
+      vn_real_count[k] = (double**)calloc(npart, sizeof(double));
+      vn_imag_count[k] = (double**)calloc(npart, sizeof(double));
 
-      for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+      for(long ipart = 0; ipart < npart; ipart++)
       {
         vn_real_count[k][ipart] = (double*)calloc(PT_BINS, sizeof(double));
         vn_imag_count[k][ipart] = (double*)calloc(PT_BINS, sizeof(double));
@@ -279,115 +322,68 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     }
 
 
-    chosen_particles_01_table = new int[Nparticles];
+    // continuous distributions
+    spectra_length = npart * pT_tab_length * phi_tab_length * y_tab_length;
+    spacetime_length = npart * ETA_BINS * (TAU_BINS + R_BINS + PHIP_BINS);
 
-    //a class member to hold 3D smooth CF spectra for all chosen particles
-    dN_pTdpTdphidy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+    dN_pTdpTdphidy = new double [spectra_length];
+    dN_dX = new double [spacetime_length];
     // holds smooth CF spectra of a given parent resonance
-    logdN_PTdPTdPhidY = new double [pT_tab_length * phi_tab_length * y_tab_length];
+    //logdN_PTdPTdPhidY = new double [pT_tab_length * phi_tab_length * y_tab_length];
 
-    //zero the array
-    for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
+    // zero arrays
+    for(long iS3D = 0; iS3D < spectra_length; iS3D++)
     {
-      dN_pTdpTdphidy[iSpectra] = 0.0;
+      dN_pTdpTdphidy[iS3D] = 0.0;
     }
-    for(int iS_parent = 0; iS_parent < pT_tab_length * phi_tab_length * y_tab_length; iS_parent++)
+    for(long iX = 0; iX < spacetime_length; iX++)
     {
-      logdN_PTdPTdPhidY[iS_parent] = 0.0; // is it harmful to have a y_tab_length =/= 1 if DIMENSION = 2 (waste of memory?)
+      dN_dX[iX] = 0.0;
     }
+    // for(int iS_parent = 0; iS_parent < pT_tab_length * phi_tab_length * y_tab_length; iS_parent++)
+    // {
+    //   logdN_PTdPTdPhidY[iS_parent] = 0.0; // is it harmful to have a y_tab_length =/= 1 if DIMENSION = 2 (waste of memory?)
+    // }
 
-    if (MODE == 5)
+
+    // spin polarization
+    if(MODE == 5)
     {
-      //class member to hold polarization vector of chosen particles
-      St = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
-      Sx = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
-      Sy = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
-      Sn = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
-      //holds the normalization of the polarization vector of chosen particles
-      Snorm = new double [number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length];
+      St = new double [spectra_length];
+      Sx = new double [spectra_length];
+      Sy = new double [spectra_length];
+      Sn = new double [spectra_length];
+      Snorm = new double [spectra_length];
 
-      for (int iSpectra = 0; iSpectra < number_of_chosen_particles * pT_tab_length * phi_tab_length * y_tab_length; iSpectra++)
+      // zero arrays
+      for(long iS3D = 0; iS3D < spectra_length; iS3D++)
       {
-        St[iSpectra] = 0.0;
-        Sx[iSpectra] = 0.0;
-        Sy[iSpectra] = 0.0;
-        Sn[iSpectra] = 0.0;
-        Snorm[iSpectra] = 0.0;
+        St[iS3D] = 0.0;
+        Sx[iS3D] = 0.0;
+        Sy[iS3D] = 0.0;
+        Sn[iS3D] = 0.0;
+        Snorm[iS3D] = 0.0;
       }
-    } // if (MODE == 5)
-
-    for (int n = 0; n < Nparticles; n++) chosen_particles_01_table[n] = 0;
-
-    //only grab chosen particles from the table
-    for (int m = 0; m < number_of_chosen_particles; m++)
-    { //loop over all chosen particles
-      int mc_id = chosen_particles_in->get(1, m + 1);
-
-      for (int n = 0; n < Nparticles; n++)
-      {
-        if (particles[n].mc_id == mc_id)
-        {
-          chosen_particles_01_table[n] = 1;
-          break;
-        }
-      }
-    } // for (int m = 0; m < number_of_chosen_particles; m++)
-
-    // next, for sampling processes
-    chosen_particles_sampling_table = new int[number_of_chosen_particles];
-    // first copy the chosen_particles table, but now using indices instead of mc_id
-    int current_idx = 0;
-    for (int m = 0; m < number_of_chosen_particles; m++)
-    {
-      int mc_id = chosen_particles_in->get(1, m + 1);
-      for (int n = 0; n < Nparticles; n++)
-      {
-        if (particles[n].mc_id == mc_id)
-        {
-          chosen_particles_sampling_table[current_idx] = n;
-          current_idx ++;
-          break;
-        }
-      }
-    } //for (int m = 0; m < number_of_chosen_particles; m++)
-
-    // next re-order them so that particles with similar mass are adjacent
-    if (GROUP_PARTICLES == 1) // sort particles according to their mass; bubble-sorting
-    {
-      for (int m = 0; m < number_of_chosen_particles; m++)
-      {
-        for (int n = 0; n < number_of_chosen_particles - m - 1; n++)
-        {
-          if (particles[chosen_particles_sampling_table[n]].mass > particles[chosen_particles_sampling_table[n + 1]].mass)
-          {
-            // swap them
-            int particle_idx = chosen_particles_sampling_table[n + 1];
-            chosen_particles_sampling_table[n + 1] = chosen_particles_sampling_table[n];
-            chosen_particles_sampling_table[n] = particle_idx;
-          }
-        } // for (int n = 0; n < number_of_chosen_particles - m - 1; n++)
-      } // for (int m = 0; m < number_of_chosen_particles; m++)
-    } // if (GROUP_PARTICLES == 1)
+    } 
   } // EmissionFunctionArray::EmissionFunctionArray
 
   EmissionFunctionArray::~EmissionFunctionArray()
   {
-    delete[] chosen_particles_01_table;
-    delete[] chosen_particles_sampling_table;
-    delete[] dN_pTdpTdphidy; //for holding 3d spectra of all chosen particles
-    delete[] logdN_PTdPTdPhidY;
+    delete[] dN_pTdpTdphidy;
+    delete[] dN_dX;
+    //delete[] logdN_PTdPTdPhidY;
   }
 
 
-  void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile(int *MCID)
+  void EmissionFunctionArray::write_dN_pTdpTdphidy_toFile(long *MCID)
   {
     printf("Writing thermal spectra to file...\n");
 
     char filename[255] = "";
 
-    for(long ipart  = 0; ipart < number_of_chosen_particles; ipart++)
+    for(long ipart  = 0; ipart < npart; ipart++)
     {
-      sprintf(filename, "results/continuous/dN_pTdpTdphidy_%d.dat", MCID[ipart]);
+      sprintf(filename, "results/continuous/dN_pTdpTdphidy_%ld.dat", MCID[ipart]);
       ofstream spectra(filename, ios_base::out);
   
       spectra << "y" << "\t" << "phip" << "\t" << "pT" << "\t" << "dN_pTdpTdphidy" << "\n";
@@ -416,15 +412,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
 
-  void EmissionFunctionArray::write_dN_dphidy_toFile(int *MCID)
+  void EmissionFunctionArray::write_dN_dphidy_toFile(long *MCID)
   {
     printf("Writing thermal dN_dphidy to file...\n");
     char filename[255] = "";
 
     // write a separate file for each species
-    for(long ipart  = 0; ipart < number_of_chosen_particles; ipart++)
+    for(long ipart  = 0; ipart < npart; ipart++)
     {
-      sprintf(filename, "results/continuous/dN_dphidy_%d.dat", MCID[ipart]);
+      sprintf(filename, "results/continuous/dN_dphidy_%ld.dat", MCID[ipart]);
       ofstream spectra(filename, ios_base::out);
 
       for(long iy = 0; iy < y_tab_length; iy++)
@@ -453,15 +449,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     }
   }
 
-  void EmissionFunctionArray::write_dN_twopipTdpTdy_toFile(int *MCID)
+  void EmissionFunctionArray::write_dN_twopipTdpTdy_toFile(long *MCID)
   {
     printf("Writing thermal dN_twopipTdpTdy to file...\n");
 
     char filename[255] = "";
 
-    for(long ipart  = 0; ipart < number_of_chosen_particles; ipart++)
+    for(long ipart  = 0; ipart < npart; ipart++)
     {
-      sprintf(filename, "results/continuous/dN_2pipTdpTdy_%d.dat", MCID[ipart]);
+      sprintf(filename, "results/continuous/dN_2pipTdpTdy_%ld.dat", MCID[ipart]);
       ofstream spectra(filename, ios_base::out);
 
       for(long iy = 0; iy < y_tab_length; iy++)
@@ -496,15 +492,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
 
-  void EmissionFunctionArray::write_dN_dy_toFile(int *MCID)
+  void EmissionFunctionArray::write_dN_dy_toFile(long *MCID)
   {
     printf("Writing thermal dN_dy to file...\n");
     char filename[255] = "";
 
     //write a separate file for each species
-    for(long ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(long ipart = 0; ipart < npart; ipart++)
     {
-      sprintf(filename, "results/continuous/dN_dy_%d.dat", MCID[ipart]);
+      sprintf(filename, "results/continuous/dN_dy_%ld.dat", MCID[ipart]);
       ofstream spectra(filename, ios_base::out);
 
       for(long iy = 0; iy < y_tab_length; iy++)
@@ -533,6 +529,104 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   }
 
 
+  void EmissionFunctionArray::write_dN_taudtaudeta_toFile(long *MCID)
+  {
+    char filename[255] = "";
+    printf("Writing thermal dN_taudtaudeta to file...\n");
+
+    for(long ipart = 0; ipart < npart; ipart++)
+    {
+      sprintf(filename, "results/continuous/dN_taudtaudeta_%ld.dat", MCID[ipart]);
+      ofstream dN_taudtaudeta(filename, ios_base::out);
+
+      for(long ieta = 0; ieta < ETA_BINS; ieta++)
+      {
+        double eta_mid = 0.0;
+
+        if(DIMENSION == 3) eta_mid = -ETA_CUT  +  ETA_WIDTH * (ieta + 0.5);
+
+        for(long itau = 0; itau < TAU_BINS; itau++)
+        {
+          double tau_mid = TAU_MIN  +  TAU_WIDTH * (itau + 0.5);
+
+          long iX = ipart  +  npart * (ieta  +  ETA_BINS * itau);
+
+          dN_taudtaudeta << setprecision(6) << scientific << eta_mid << "\t" << tau_mid << "\t" << dN_dX[iX] / (tau_mid * TAU_WIDTH * ETA_WIDTH) << "\n";
+        }
+
+        if(ieta < ETA_BINS - 1) dN_taudtaudeta << "\n";
+      } 
+
+      dN_taudtaudeta.close();
+    }
+  }
+
+  void EmissionFunctionArray::write_dN_2pirdrdeta_toFile(long *MCID)
+  {
+    char filename[255] = "";
+    printf("Writing thermal dN_2pirdrdeta to file...\n");
+
+    for(long ipart = 0; ipart < npart; ipart++)
+    {
+      sprintf(filename, "results/continuous/dN_2pirdrdeta_%ld.dat", MCID[ipart]);
+      ofstream dN_2pirdrdeta(filename, ios_base::out);
+
+      for(long ieta = 0; ieta < ETA_BINS; ieta++)
+      {
+        double eta_mid = 0.0;
+
+        if(DIMENSION == 3) eta_mid = -ETA_CUT  +  ETA_WIDTH * (ieta + 0.5);
+
+        for(long ir = 0; ir < R_BINS; ir++)
+        {
+          double r_mid = R_MIN  +  R_WIDTH * (ir + 0.5);
+
+          long iX = ipart  +  npart * (ieta  +  ETA_BINS * (ir + TAU_BINS));
+
+          dN_2pirdrdeta << setprecision(6) << scientific << eta_mid << "\t" << r_mid << "\t" << dN_dX[iX] / (two_pi * r_mid * R_WIDTH * ETA_WIDTH) << "\n";
+        }
+
+        if(ieta < ETA_BINS - 1) dN_2pirdrdeta << "\n";
+      } 
+
+      dN_2pirdrdeta.close();
+    }
+  }
+
+
+  void EmissionFunctionArray::write_dN_dphideta_toFile(long *MCID)
+  {
+    char filename[255] = "";
+    printf("Writing thermal dN_dphideta to file...\n");
+
+    for(long ipart = 0; ipart < npart; ipart++)
+    {
+      sprintf(filename, "results/continuous/dN_dphideta_%ld.dat", MCID[ipart]);
+      ofstream dN_dphideta(filename, ios_base::out);
+
+      for(long ieta = 0; ieta < ETA_BINS; ieta++)
+      {
+        double eta_mid = 0.0;
+
+        if(DIMENSION == 3) eta_mid = -ETA_CUT  +  ETA_WIDTH * (ieta + 0.5);
+
+        for(long iphi = 0; iphi < PHIP_BINS; iphi++)
+        {
+          double phi_mid = PHIP_WIDTH * (iphi + 0.5);
+
+          long iX = ipart  +  npart * (ieta  +  ETA_BINS * (iphi + TAU_BINS + R_BINS));
+
+          dN_dphideta << setprecision(6) << scientific << eta_mid << "\t" << phi_mid << "\t" << dN_dX[iX] / (PHIP_WIDTH * ETA_WIDTH) << "\n";
+        }
+
+        if(ieta < ETA_BINS - 1) dN_dphideta << "\n";
+      } 
+
+      dN_dphideta.close();
+    }
+  }
+
+
   void EmissionFunctionArray::write_polzn_vector_toFile()
   {
     printf("Writing polarization vector to file...\n");
@@ -550,7 +644,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     ofstream SyFile(filename_y, ios_base::out);
     ofstream SnFile(filename_n, ios_base::out);
 
-    for(long ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(long ipart = 0; ipart < npart; ipart++)
     {
       for(long iy = 0; iy < y_tab_length; iy++)
       {
@@ -587,10 +681,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   {
     printf("Writing sampled particles list to file...\n");
 
-    for(int ievent = 0; ievent < Nevents; ievent++)
+    for(long ievent = 0; ievent < Nevents; ievent++)
     {
       char filename[255] = "";
-      sprintf(filename, "results/particle_list_%d.dat", ievent + 1);
+      sprintf(filename, "results/particle_list_%ld.dat", ievent + 1);
 
       //ofstream spectraFile(filename, ios_base::app);
       ofstream spectraFile(filename, ios_base::out);
@@ -599,7 +693,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
       //write the header
       spectraFile << "mcid" << "," << "tau" << "," << "x" << "," << "y" << "," << "eta" << "," << "E" << "," << "px" << "," << "py" << "," << "pz" << "\n";
-      for (int ipart = 0; ipart < num_particles; ipart++)
+      for(long ipart = 0; ipart < num_particles; ipart++)
       {
         int mcid = particle_event_list[ievent][ipart].mcID;
         double tau = particle_event_list[ievent][ipart].tau;
@@ -621,10 +715,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
   {
     printf("Writing sampled particles list to OSCAR File...\n");
 
-    for(int ievent = 0; ievent < Nevents; ievent++)
+    for(long ievent = 0; ievent < Nevents; ievent++)
     {
       char filename[255] = "";
-      sprintf(filename, "results/particle_list_osc_%d.dat", ievent + 1);
+      sprintf(filename, "results/particle_list_osc_%ld.dat", ievent + 1);
 
       ofstream spectraFile(filename, ios_base::out);
 
@@ -633,7 +727,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       //write the header
       //spectraFile << "#" << " " << num_particles << "\n";
       spectraFile << "n pid px py pz E m x y z t" << "\n";
-      for (int ipart = 0; ipart < num_particles; ipart++)
+      for(long ipart = 0; ipart < num_particles; ipart++)
       {
         int mcid = particle_event_list[ievent][ipart].mcID;
         double x = particle_event_list[ievent][ipart].x;
@@ -652,7 +746,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     } // ievent
   }
 
-  void EmissionFunctionArray::write_sampled_dN_dy_to_file_test(int * MCID)
+  void EmissionFunctionArray::write_sampled_dN_dy_to_file_test(long *MCID)
   {
     printf("Writing event-averaged dN/dy of each species to file...\n");
 
@@ -661,13 +755,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int iy = 0; iy < Y_BINS; iy++) y_mid[iy] = -Y_CUT + Y_WIDTH * ((double)iy + 0.5);
 
     // write dN/dy for each species
-    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(int ipart = 0; ipart < npart; ipart++)
     {
       char file[255] = "";
       char file2[255] = "";
 
-      sprintf(file, "results/sampled/dN_dy/dN_dy_%d_test.dat", MCID[ipart]);
-      sprintf(file2, "results/sampled/dN_dy/dN_dy_%d_average_test.dat", MCID[ipart]);
+      sprintf(file, "results/sampled/dN_dy/dN_dy_%ld_test.dat", MCID[ipart]);
+      sprintf(file2, "results/sampled/dN_dy/dN_dy_%ld_average_test.dat", MCID[ipart]);
       ofstream dN_dy(file, ios_base::out);
       ofstream dN_dy_avg(file2, ios_base::out);
 
@@ -688,11 +782,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     } // ipart
 
-    free_2D(dN_dy_count, number_of_chosen_particles);
+    free_2D(dN_dy_count, npart);
   }
 
 
-  void EmissionFunctionArray::write_sampled_dN_deta_to_file_test(int * MCID)
+  void EmissionFunctionArray::write_sampled_dN_deta_to_file_test(long *MCID)
   {
     printf("Writing event-averaged dN/deta of each species to file...\n");
 
@@ -700,10 +794,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ieta = 0; ieta < ETA_BINS; ieta++) eta_mid[ieta] = -ETA_CUT + ETA_WIDTH * ((double)ieta + 0.5);
 
     // write dN/deta for each species
-    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(int ipart = 0; ipart < npart; ipart++)
     {
       char file[255] = "";
-      sprintf(file, "results/sampled/dN_deta/dN_deta_%d_test.dat", MCID[ipart]);
+      sprintf(file, "results/sampled/dN_deta/dN_deta_%ld_test.dat", MCID[ipart]);
       ofstream dN_deta(file, ios_base::out);
 
       for(int ieta = 0; ieta < ETA_BINS; ieta++)
@@ -714,12 +808,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     } // ipart
 
-    free_2D(dN_deta_count, number_of_chosen_particles);
+    free_2D(dN_deta_count, npart);
   }
 
 
 
-  void EmissionFunctionArray::write_sampled_dN_2pipTdpTdy_to_file_test(int * MCID)
+  void EmissionFunctionArray::write_sampled_dN_2pipTdpTdy_to_file_test(long *MCID)
   {
     printf("Writing event-averaged dN/2pipTdpTdy of each species to file...\n");
 
@@ -727,10 +821,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ipT = 0; ipT < PT_BINS; ipT++) pT_mid[ipT] = PT_MIN  +  PT_WIDTH * ((double)ipT + 0.5);
 
     // write dN/2pipTdpTdy for each species
-    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(int ipart = 0; ipart < npart; ipart++)
     {
       char file[255] = "";
-      sprintf(file, "results/sampled/dN_2pipTdpTdy/dN_2pipTdpTdy_%d_test.dat", MCID[ipart]);
+      sprintf(file, "results/sampled/dN_2pipTdpTdy/dN_2pipTdpTdy_%ld_test.dat", MCID[ipart]);
       ofstream dN_2pipTdpTdy(file, ios_base::out);
 
       for(int ipT = 0; ipT < PT_BINS; ipT++)
@@ -741,11 +835,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     } // ipart
 
-    free_2D(dN_2pipTdpTdy_count, number_of_chosen_particles);
+    free_2D(dN_2pipTdpTdy_count, npart);
   }
 
 
-   void EmissionFunctionArray::write_sampled_dN_dphipdy_to_file_test(int * MCID)
+   void EmissionFunctionArray::write_sampled_dN_dphipdy_to_file_test(long *MCID)
   {
     printf("Writing event-averaged dN/dphipdy of each species to file...\n");
 
@@ -753,10 +847,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int iphip = 0; iphip < PHIP_BINS; iphip++) phip_mid[iphip] = PHIP_WIDTH * ((double)iphip + 0.5);
 
     // write dN/2pipTdpTdy for each species
-    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(int ipart = 0; ipart < npart; ipart++)
     {
       char file[255] = "";
-      sprintf(file, "results/sampled/dN_dphipdy/dN_dphipdy_%d_test.dat", MCID[ipart]);
+      sprintf(file, "results/sampled/dN_dphipdy/dN_dphipdy_%ld_test.dat", MCID[ipart]);
       ofstream dN_dphipdy(file, ios_base::out);
 
       for(int iphip = 0; iphip < PHIP_BINS; iphip++)
@@ -767,11 +861,11 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     } // ipart
 
-    free_2D(dN_dphipdy_count, number_of_chosen_particles);
+    free_2D(dN_dphipdy_count, npart);
   }
 
 
-  void EmissionFunctionArray::write_continuous_vn_toFile(int *MCID)
+  void EmissionFunctionArray::write_continuous_vn_toFile(long *MCID)
   {
     printf("Writing continuous vn(pT,y) to file (for testing vn's)...\n");
     char filename[255] = "";
@@ -781,9 +875,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     const int k_max = 7;                // v_n = {v_1, ..., v_7}
 
     // write a separate file for each species
-    for(long ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(long ipart = 0; ipart < npart; ipart++)
     {
-      sprintf(filename, "results/continuous/vn_%d.dat", MCID[ipart]);
+      sprintf(filename, "results/continuous/vn_%ld.dat", MCID[ipart]);
       ofstream vn_File(filename, ios_base::out);
 
       for(long iy = 0; iy < y_tab_length; iy++)
@@ -847,7 +941,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
   }
 
-  void EmissionFunctionArray::write_sampled_vn_to_file_test(int * MCID)
+  void EmissionFunctionArray::write_sampled_vn_to_file_test(long *MCID)
   {
     printf("Writing event-averaged vn(pT) of each species to file...\n");
 
@@ -857,10 +951,10 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int ipT = 0; ipT < PT_BINS; ipT++) pT_mid[ipT] = PT_MIN +  PT_WIDTH * ((double)ipT + 0.5);
 
     // write vn(pT) for each species
-    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(int ipart = 0; ipart < npart; ipart++)
     {
       char file[255] = "";
-      sprintf(file, "results/sampled/vn/vn_%d_test.dat", MCID[ipart]);
+      sprintf(file, "results/sampled/vn/vn_%ld_test.dat", MCID[ipart]);
       ofstream vn(file, ios_base::out);
 
       for(int ipT = 0; ipT < PT_BINS; ipT++)
@@ -881,13 +975,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       vn.close();
     } // ipart
 
-    free_2D(pT_count, number_of_chosen_particles);
-    free_3D(vn_real_count, K_MAX, number_of_chosen_particles);
-    free_3D(vn_imag_count, K_MAX, number_of_chosen_particles);
+    free_2D(pT_count, npart);
+    free_3D(vn_real_count, K_MAX, npart);
+    free_3D(vn_imag_count, K_MAX, npart);
   }
 
 
- void EmissionFunctionArray::write_sampled_dN_dX_to_file_test(int * MCID)
+ void EmissionFunctionArray::write_sampled_dN_dX_to_file_test(long *MCID)
   {
     printf("Writing event-averaged boost invariant spacetime distributions dN_dX of each species to file...\n");
 
@@ -903,15 +997,15 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     for(int iphi = 0; iphi < PHIP_BINS; iphi++) phi_mid[iphi] = PHIP_WIDTH * ((double)iphi + 0.5);
 
     // now event-average dN_dXdy and normalize to dNdy and write them to file
-    for(int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(int ipart = 0; ipart < npart; ipart++)
     {
       char file_time[255] = "";
       char file_radial[255] = "";
       char file_azimuthal[255] = "";
 
-      sprintf(file_time, "results/sampled/dN_taudtaudy/dN_taudtaudy_%d_test.dat", MCID[ipart]);
-      sprintf(file_radial, "results/sampled/dN_2pirdrdy/dN_2pirdrdy_%d_test.dat", MCID[ipart]);
-      sprintf(file_azimuthal, "results/sampled/dN_dphisdy/dN_dphisdy_%d_test.dat", MCID[ipart]);
+      sprintf(file_time, "results/sampled/dN_taudtaudy/dN_taudtaudy_%ld_test.dat", MCID[ipart]);
+      sprintf(file_radial, "results/sampled/dN_2pirdrdy/dN_2pirdrdy_%ld_test.dat", MCID[ipart]);
+      sprintf(file_azimuthal, "results/sampled/dN_dphisdy/dN_dphisdy_%ld_test.dat", MCID[ipart]);
 
       ofstream dN_taudtaudy(file_time, ios_base::out);
       ofstream dN_twopirdrdy(file_radial, ios_base::out);
@@ -939,9 +1033,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       dN_dphisdy.close();
     } // ipart
 
-    free_2D(dN_taudtaudy_count, number_of_chosen_particles);
-    free_2D(dN_twopirdrdy_count, number_of_chosen_particles);
-    free_2D(dN_dphisdy_count, number_of_chosen_particles);
+    free_2D(dN_taudtaudy_count, npart);
+    free_2D(dN_twopirdrdy_count, npart);
+    free_2D(dN_dphisdy_count, npart);
   }
 
 
@@ -957,30 +1051,29 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     //struct timeval t1, t2;
     //gettimeofday(&t1, NULL);
 
-    //fill arrays with all particle info and freezeout info to pass to function which will perform the integral
 
     printf("Loading particle and freezeout surface arrays...\n");
 
-    //particle info
+    // particle info
     particle_info *particle;
     double *Mass, *Sign, *Degeneracy, *Baryon;
-    int *MCID;
+    long *MCID;
     double *Equilibrium_Density, *Bulk_Density, *Diffusion_Density;
 
-    Mass = (double*)calloc(number_of_chosen_particles, sizeof(double));
-    Sign = (double*)calloc(number_of_chosen_particles, sizeof(double));
-    Degeneracy = (double*)calloc(number_of_chosen_particles, sizeof(double));
-    Baryon = (double*)calloc(number_of_chosen_particles, sizeof(double));
+    Mass = (double*)calloc(npart, sizeof(double));
+    Sign = (double*)calloc(npart, sizeof(double));
+    Degeneracy = (double*)calloc(npart, sizeof(double));
+    Baryon = (double*)calloc(npart, sizeof(double));
 
-    MCID = (int*)calloc(number_of_chosen_particles, sizeof(int));
+    MCID = (long*)calloc(npart, sizeof(int));
 
-    Equilibrium_Density = (double*)calloc(number_of_chosen_particles, sizeof(double));
-    Bulk_Density = (double*)calloc(number_of_chosen_particles, sizeof(double));
-    Diffusion_Density = (double*)calloc(number_of_chosen_particles, sizeof(double));
+    Equilibrium_Density = (double*)calloc(npart, sizeof(double));
+    Bulk_Density = (double*)calloc(npart, sizeof(double));
+    Diffusion_Density = (double*)calloc(npart, sizeof(double));
 
-    for (int ipart = 0; ipart < number_of_chosen_particles; ipart++)
+    for(long ipart = 0; ipart < npart; ipart++)
     {
-      int particle_idx = chosen_particles_sampling_table[ipart];
+      int particle_idx = chosen_particles_table[ipart];
 
       particle = &particles[particle_idx];
 
@@ -988,7 +1081,9 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       Sign[ipart] = particle->sign;
       Degeneracy[ipart] = particle->gspin;
       Baryon[ipart] = particle->baryon;
+
       MCID[ipart] = particle->mc_id;
+
       Equilibrium_Density[ipart] = particle->equilibrium_density;
       Bulk_Density[ipart] = particle->bulk_density;
       Diffusion_Density[ipart] = particle->diff_density;
@@ -998,7 +1093,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     Gauss_Laguerre * gla = new Gauss_Laguerre;
     gla->load_roots_and_weights("tables/gla_roots_weights_64_points.txt");
 
-    // gauss legendre roots and weights
+    // gauss legendre roots and weights (no longer needed)
     Gauss_Legendre * legendre = new Gauss_Legendre;
     legendre->load_roots_and_weights("tables/gauss_legendre_48pts.dat");
 
@@ -1006,12 +1101,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     Plasma * QGP = new Plasma;
     QGP->load_thermodynamic_averages();
 
+
     // freezeout info
     FO_surf *surf = &surf_ptr[0];
 
     // freezeout surface info exclusive for VH
     double *E, *T, *P;
-    if (MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
+    if(MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
     {
       E = (double*)calloc(FO_length, sizeof(double));
       P = (double*)calloc(FO_length, sizeof(double));
@@ -1065,7 +1161,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     //thermal vorticity tensor for polarization studies
     double *wtx, *wty, *wtn, *wxy, *wxn, *wyn;
-    if (MODE == 5)
+    if(MODE == 5)
     {
       wtx = (double*)calloc(FO_length, sizeof(double));
       wty = (double*)calloc(FO_length, sizeof(double));
@@ -1083,17 +1179,14 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
     if(MODE == 2)
     {
       PL = (double*)calloc(FO_length, sizeof(double));
-
-      //Wt = (double*)calloc(FO_length, sizeof(double));
       Wx = (double*)calloc(FO_length, sizeof(double));
       Wy = (double*)calloc(FO_length, sizeof(double));
-      //Wn = (double*)calloc(FO_length, sizeof(double));
 
       Lambda = (double*)calloc(FO_length, sizeof(double));
       aL = (double*)calloc(FO_length, sizeof(double));
 
       // 14-moment coefficients (VAH_PL)
-      if (DF_MODE == 4)
+      if(DF_MODE == 5)
       {
         c0 = (double*)calloc(FO_length, sizeof(double));
         c1 = (double*)calloc(FO_length, sizeof(double));
@@ -1103,12 +1196,12 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
-    for (long icell = 0; icell < FO_length; icell++)
+    for(long icell = 0; icell < FO_length; icell++)
     {
-      //reading info from surface
+      // reading info from surface
       surf = &surf_ptr[icell];
 
-      if (MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
+      if(MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
       {
         E[icell] = surf->E;
         P[icell] = surf->P;
@@ -1153,7 +1246,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         Vn[icell] = surf->Vn;
       }
 
-      if (MODE == 5)
+      if(MODE == 5)
       {
         wtx[icell] = surf->wtx;
         wty[icell] = surf->wty;
@@ -1165,15 +1258,13 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       if(MODE == 2)
       {
         PL[icell] = surf->PL;
-        //Wt[icell] = surf->Wt;
         Wx[icell] = surf->Wx;
         Wy[icell] = surf->Wy;
-        //Wn[icell] = surf->Wn;
 
         Lambda[icell] = surf->Lambda;
         aL[icell] = surf->aL;
 
-        if (DF_MODE == 4)
+        if(DF_MODE == 5)
         {
           c0[icell] = surf->c0;
           c1[icell] = surf->c1;
@@ -1184,9 +1275,8 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
       }
     }
 
-    // compute the particle spectra
-
-    if (MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7) // viscous hydro
+    // compute the Cooper-Frye formula
+    if(MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7) // viscous hydro
     {
       switch(DF_MODE)
       {
@@ -1195,17 +1285,17 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         {
           switch(OPERATION)
           {
-            case 0: // smooth CFF spacetime distribution
+            case 0: // continuous spacetime distribution
             {
               calculate_dN_dX(MCID, Mass, Sign, Degeneracy, Baryon, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data);
               break;
             }
-            case 1: // smooth CFF momentum distribution
+            case 1: // continuous momentum spectra
             {
               calculate_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, T, P, E, tau, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data);
               break;
             }
-            case 2: // sample CFF
+            case 2: // sampled distributions
             {
               if(OVERSAMPLE)
               {
@@ -1216,7 +1306,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 Nevents = (long)min(ceil(MIN_NUM_HADRONS / Ntotal), MAX_NUM_SAMPLES);
               }
 
-              printf("Sampling %d event(s)\n", Nevents);
+              printf("Sampling %ld event(s)\n", Nevents);
 
               particle_event_list.resize(Nevents);
 
@@ -1224,20 +1314,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               if(DF_MODE == 2) printf("Sampling particles with Chapman Enskog df...\n");
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
-
-              if(TEST_SAMPLER) // only for testing the sampler
-              {
-                write_sampled_dN_dy_to_file_test(MCID);
-                write_sampled_dN_deta_to_file_test(MCID);
-                write_sampled_dN_2pipTdpTdy_to_file_test(MCID);
-                write_sampled_dN_dphipdy_to_file_test(MCID);
-                write_sampled_vn_to_file_test(MCID);
-                write_sampled_dN_dX_to_file_test(MCID);
-              }
-              else // do for actual runs
-              {
-                write_particle_list_OSC();
-              }
 
               particle_event_list_in = particle_event_list[0];  // only one event per core
               break;
@@ -1255,17 +1331,17 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         {
           switch(OPERATION)
           {
-            case 0: // smooth CFF spacetime distribution
+            case 0: // continuous spacetime distributions
             {
               calculate_dN_dX_feqmod(MCID, Mass, Sign, Degeneracy, Baryon, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, gla, df_data);
               break;
             }
-            case 1: // smooth CF
+            case 1: // continuous momentum spectra
             {
               calculate_dN_ptdptdphidy_feqmod(Mass, Sign, Degeneracy, Baryon, T, P, E, tau, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, gla, df_data);
               break;
             }
-            case 2: // sampler
+            case 2: // sampled distributions
             {
               if(OVERSAMPLE)
               {
@@ -1274,7 +1350,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
                 Nevents = (long)min(ceil(MIN_NUM_HADRONS / Ntotal), MAX_NUM_SAMPLES);
               }
 
-              printf("Sampling %d event(s)\n", Nevents);
+              printf("Sampling %ld event(s)\n", Nevents);
 
               particle_event_list.resize(Nevents);
 
@@ -1282,21 +1358,6 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               if(DF_MODE == 4) printf("Sampling particles with Jonah's modified distribution...\n");
 
               sample_dN_pTdpTdphidy(Mass, Sign, Degeneracy, Baryon, MCID, Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, x, y, eta, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla, legendre);
-
-
-              if(TEST_SAMPLER) // only for testing the sampler
-              {
-                write_sampled_dN_dy_to_file_test(MCID);
-                write_sampled_dN_deta_to_file_test(MCID);
-                write_sampled_dN_2pipTdpTdy_to_file_test(MCID);
-                write_sampled_dN_dphipdy_to_file_test(MCID);
-                write_sampled_vn_to_file_test(MCID);
-                write_sampled_dN_dX_to_file_test(MCID);
-              }
-              else // do for actual runs
-              {
-                write_particle_list_OSC();
-              }
 
               particle_event_list_in = particle_event_list[0];
 
@@ -1307,57 +1368,66 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
               cout << "Set operation to 1 or 2" << endl;
               exit(-1);
             }
-          } //switch(OPERATION)
+          } // switch(OPERATION)
           break;
-        } //case 3
+        } 
         default:
         {
-          cout << "Please specify df_mode = (1,2,3,4) in parameters.dat..." << endl;
+          cout << "Please set df_mode = (1,2,3,4) in iS3D_parameters.dat" << endl;
           exit(-1);
         }
-      } //switch(DF_MODE)
-    } // if (MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
-    else if (MODE == 2)
+      } // switch(DF_MODE)
+    } // if(MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6)
+    // else if(MODE == 2) // vahydro
+    // {
+    //   switch(OPERATION)
+    //   {
+    //     case 1: // smooth CF
+    //     {
+    //       // calculate_dN_pTdpTdphidy_VAH_PL(Mass, Sign, Degeneracy,
+    //       //     tau, eta, ux, uy, un,
+    //       //     dat, dax, day, dan, T,
+    //       //     pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+    //       //     Wx, Wy, Lambda, aL, c0, c1, c2, c3, c4);
+
+    //       break;
+    //     }
+    //     case 2: // sampler
+    //     {
+    //       // sample_dN_pTdpTdphidy_VAH_PL(Mass, Sign, Degeneracy,
+    //       //       tau, eta, ux, uy, un,
+    //       //       dat, dax, day, dan, T,
+    //       //       pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
+    //       //       Wx, Wy, Lambda, aL, c0, c1, c2, c3, c4);
+    //       break;
+    //     }
+    //     default:
+    //     {
+    //       cout << "Please specify df_mode = (1,2,3) in parameters.dat..." << endl;
+    //       exit(-1);
+    //     }
+    //   } //switch(OPERATION)
+    // } //else if(MODE == 2)
+    else if(MODE == 5) 
     {
-      switch(OPERATION)
-      {
-        case 1: // smooth CF
-        {
-          // calculate_dN_pTdpTdphidy_VAH_PL(Mass, Sign, Degeneracy,
-          //     tau, eta, ux, uy, un,
-          //     dat, dax, day, dan, T,
-          //     pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-          //     Wx, Wy, Lambda, aL, c0, c1, c2, c3, c4);
+      calculate_spin_polzn(Mass, Sign, Degeneracy, tau, eta, ux, uy, un, dat, dax, day, dan, wtx, wty, wtn, wxy, wxn, wyn, QGP);
+    }
 
-          break;
-        }
-        case 2: // sampler
-        {
-          // sample_dN_pTdpTdphidy_VAH_PL(Mass, Sign, Degeneracy,
-          //       tau, eta, ux, uy, un,
-          //       dat, dax, day, dan, T,
-          //       pitt, pitx, pity, pitn, pixx, pixy, pixn, piyy, piyn, pinn, bulkPi,
-          //       Wx, Wy, Lambda, aL, c0, c1, c2, c3, c4);
-          break;
-        }
-        default:
-        {
-          cout << "Please specify df_mode = (1,2,3) in parameters.dat..." << endl;
-          exit(-1);
-        }
-      } //switch(OPERATION)
-    } //else if(MODE == 2)
-
-    else if (MODE == 5) calculate_spin_polzn(Mass, Sign, Degeneracy, tau, eta, ux, uy, un, dat, dax, day, dan, wtx, wty, wtn, wxy, wxn, wyn, QGP);
-
-    //write the results to file
-    if(OPERATION == 1)
+    // write the results to file
+    if(OPERATION == 0)
+    {
+      write_dN_taudtaudeta_toFile(MCID);
+      write_dN_2pirdrdeta_toFile(MCID);
+      write_dN_dphideta_toFile(MCID);
+    }
+    else if(OPERATION == 1)
     {
       //write_dN_pTdpTdphidy_toFile(MCID);
       write_continuous_vn_toFile(MCID);
       write_dN_twopipTdpTdy_toFile(MCID);
       //write_dN_dphidy_toFile(MCID);
       //write_dN_dy_toFile(MCID);
+
 
       // option to do resonance decays option
       //if(DO_RESONANCE_DECAYS)
@@ -1371,16 +1441,35 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
         //write_dN_dpTdphidy_with_resonance_decays_toFile();
       //}
     }
+    else if(OPERATION == 2)
+    {
+      if(TEST_SAMPLER)
+      {
+        write_sampled_dN_dy_to_file_test(MCID);
+        write_sampled_dN_2pipTdpTdy_to_file_test(MCID);
+        write_sampled_dN_dphipdy_to_file_test(MCID);
+        
+        write_sampled_vn_to_file_test(MCID);
+        write_sampled_dN_dX_to_file_test(MCID);
+        write_sampled_dN_deta_to_file_test(MCID);
+      }
+      else 
+      {
+        write_particle_list_OSC();
+      }
+    }
+    else if(MODE == 5) 
+    {
+      write_polzn_vector_toFile();
+    }
 
-    if(MODE == 5) write_polzn_vector_toFile();
 
-    cout << "Freeing freezeout surface memory..." << endl;
-    // free memory
+    cout << "Freeing memory..." << endl;
     free(Mass);
     free(Sign);
     free(Baryon);
 
-    if (MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
+    if(MODE == 0 || MODE == 1 || MODE == 4 || MODE == 5 || MODE == 6 || MODE == 7)
     {
       free(E);
       free(P);
@@ -1411,7 +1500,7 @@ EmissionFunctionArray::EmissionFunctionArray(ParameterReader* paraRdr_in, Table*
 
     if(INCLUDE_BULK_DELTAF) free(bulkPi);
 
-    if (MODE == 5)
+    if(MODE == 5)
     {
       free(wtx);
       free(wty);

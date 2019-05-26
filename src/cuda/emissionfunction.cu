@@ -2602,6 +2602,24 @@ void EmissionFunctionArray::calculate_spectra()
 
     free(dN_pTdpTdphidy);
   }
+
+  // show memory usage of GPU
+  size_t free_byte, total_byte;
+
+  err = cudaMemGetInfo(&free_byte, &total_byte);
+
+  if(err != cudaSuccess)
+  {
+    printf("Error: cudaMemGetInfo fails, %s \n", cudaGetErrorString(err));
+    err = cudaSuccess;
+  }
+
+  double free_db = (double)free_byte;
+  double total_db = (double)total_byte;
+  double used_db = total_db - free_db;
+  printf("GPU memory usage: used = %f, free = %f MB, total = %f MB\n", used_db/1024.0/1024.0, free_db/1024.0/1024.0, total_db/1024.0/1024.0);
+
+
  
   cout << "Deallocating host and device memory" << endl;  
   free(chosen_particles_table);
