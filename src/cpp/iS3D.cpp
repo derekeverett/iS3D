@@ -184,10 +184,17 @@ void IS3D::run_particlization(int fo_from_file)
   cout << "Total number of freezeout cells: " <<  FO_length << endl;
   cout << "Number of chosen particles: " << chosen_particles.getNumberOfRows() << endl;
 
-  Table pT_tab("tables/pT/pT_uniform_table.dat");                          // pT value and weight table
-  Table phi_tab("tables/phi/phi_gauss_table_48pt.dat");                 // phip value and weight table
-  Table y_tab("tables/y_trapezoid_table_21pt.dat");                     // y values and weights
-  Table eta_tab("tables/eta/eta_gauss_table_48pt.dat"); // eta_s values and weights for smooth CFF
+  int operation = paraRdr->getVal("operation");
+
+  string pT_Table_File = "tables/pT/pT_gauss_table_48pt.dat"; 
+  if(operation == 1) 
+  {
+    pT_Table_File = "tables/pT/pT_uniform_table.dat"; 
+  }
+  Table pT_tab(pT_Table_File);                              // pT value and weight table
+  Table phi_tab("tables/phi/phi_gauss_table_48pt.dat");     // phip value and weight table
+  Table y_tab("tables/y_trapezoid_table_21pt.dat");         // y values and weights
+  Table eta_tab("tables/eta/eta_gauss_table_48pt.dat");     // eta_s values and weights for smooth CFF
 
   EmissionFunctionArray efa(paraRdr, &chosen_particles, &pT_tab, &phi_tab, &y_tab, &eta_tab, particle_data, Nparticle, surf_ptr, FO_length, df_data);
 
@@ -195,7 +202,7 @@ void IS3D::run_particlization(int fo_from_file)
   efa.calculate_spectra(particle_event_list_in);
 
   //copy final particle list to memory to pass to JETSCAPE module
-  int operation = paraRdr->getVal("operation");
+  
   if (operation == 2)
   {
     cout << "Copying final particle list to memory" << endl;
