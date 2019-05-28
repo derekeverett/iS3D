@@ -19,7 +19,14 @@ mkdir smash_box
 
 echo "compiling"
 #clean and compile
-sh cleanMake.sh
+#sh cleanMake.sh
+rm -r build
+mkdir build
+cd build 
+cmake ..
+make 
+make install
+cd ..
 
 echo "running code to generate vh coeffs"
 #run the executable to generate new tables

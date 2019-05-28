@@ -9,7 +9,7 @@
 using namespace std;
 #include <sstream>
 #include <fstream>
-#include <libconfig.h>
+//#include <libconfig.h>
 #include "../include/gauss_integration.hpp"
 #include "../include/thermal_integrands.hpp"
 #include "../include/freearray.hpp"

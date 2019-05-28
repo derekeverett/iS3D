@@ -9,7 +9,7 @@ DIR_OBJ = ./src
 CFLAGS= $(OPTIMIZATION) $(OPTIONS)
 
 # Compiler options
-COMPILER = g++
+COMPILER = icpc
 OPTIMIZATION = -O3
 CFLAGS := $(CFLAG) -Wno-comment
 
