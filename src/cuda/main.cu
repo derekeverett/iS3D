@@ -52,9 +52,14 @@ int main()
   df_data->compute_jonah_coefficients(particle_data, Nparticle);
   df_data->test_df_coefficients(-0.1);
   
-
+  int operation = paraRdr->getVal("operation");
   // Load momentum tables
-  Table pT_tab("tables/pT/pT_uniform_table.dat"); 
+  string pT_file = "tables/pT/pT_gauss_table_48pt.dat";
+  if(operation == 1)
+  {
+    pT_file = "tables/pT/pT_uniform_table.dat";
+  }
+  Table pT_tab(pT_file); 
   Table phi_tab("tables/phi/phi_gauss_table_48pt.dat");
   Table y_tab("tables/y_trapezoid_table_21pt.dat");
   Table eta_tab("tables/eta/eta_gauss_table_48pt.dat"); 

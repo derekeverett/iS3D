@@ -626,15 +626,14 @@ __global__ void calculate_dN_dX_threadReduction(double *dN_dX_d_blocks, long end
       for(long ipT = 0; ipT < pT_tab_length; ipT++)
       {
         double pT = pT_d[ipT];
-        double pT_weight = pT_weight_d[ipT];
 
         double mT = sqrt(mass_squared  +  pT * pT);
         double mT_over_tau = mT / tau;
 
+        double weight1 = prefactor * pT_weight_d[ipT];
+
         for(long iphip = 0; iphip < phi_tab_length; iphip++)
         {
-          double phip_weight = phip_weight_d[iphip];
-
           double px = pT * trig_d[iphip];
           double py = pT * trig_d[iphip + phi_tab_length];
 
@@ -655,11 +654,12 @@ __global__ void calculate_dN_dX_threadReduction(double *dN_dX_d_blocks, long end
           double Vx_px = Vx * px;
           double Vy_py = Vy * py;
 
+          double weight2 = weight1 * phip_weight_d[iphip];
+
           // integral over y (centered around eta point) 
           for(long iyeta = 0; iyeta < y_minus_eta_tab_length; iyeta++)     
           {
-            double y_minus_eta = y_minus_eta_d[iyeta];                 // this should be a seperate table for spacetime integration (borrow from eta gauss table) 
-            double y_minus_eta_weight = y_minus_eta_weight_d[iyeta];
+            double y_minus_eta = y_minus_eta_d[iyeta];                         
           
             double sinhyeta = sinh(y_minus_eta);
             double coshyeta = sqrt(1.0  +  sinhyeta * sinhyeta);
@@ -715,9 +715,9 @@ __global__ void calculate_dN_dX_threadReduction(double *dN_dX_d_blocks, long end
 
             double f = feq * (1.0 + df);
 
-            dN_deta += prefactor * pT_weight * phip_weight * y_minus_eta_weight * pdotdsigma * f;
+            dN_deta += weight2 * y_minus_eta_weight_d[iyeta] * pdotdsigma * f;
 
-          } // iy
+          } // iyeta
 
         } // iphip
 
@@ -731,7 +731,7 @@ __global__ void calculate_dN_dX_threadReduction(double *dN_dX_d_blocks, long end
 
     for(long n = 0; n < N; n++)
     {
-      if(ithread == n && icell < endFO)
+      if(ithread == n)
       {
         long ieta = 0;
         if(DIMENSION == 3)
