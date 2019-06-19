@@ -1,4 +1,4 @@
-iS3D (c) Derek Everett, Mike McNelis, Sameed Pervaiz and Lipei Du.
+iS3D (c) Mike McNelis, Derek Everett, Sameed Pervaiz and Lipei Du.
 
 ## Purpose
 This code can read in a freeze out surface from 3+1D viscous hydro or anisotropic
@@ -31,4 +31,4 @@ The freezeout surface is read from input/surface.dat, or from memory depending o
 By default, input/surface.dat contains a toy freezeout surface with one cell. 
 See parameters.dat for a list of compatible formats.
 
-The results will be written in the results/ directory, so this directory must exist at runtime.
+The results will be written in the `results` directory, so this directory must exist at runtime.
