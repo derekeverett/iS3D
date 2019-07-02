@@ -271,8 +271,9 @@ double fast_max_particle_number(double equilibrium_density, double bulk_density,
       exit(-1);
     }
   } // df_mode
-
-  if(particle_density < 0.0) printf("Fast max particle error: particle number is negative\n");
+  
+  //DEREK Turned this off because it overflowed stdout buffer. Why is it happening so often and is it a problem???
+  //if(particle_density < 0.0) printf("Fast max particle error: particle number is negative\n");
 
   return particle_density;
 }
