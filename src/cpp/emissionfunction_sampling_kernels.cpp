@@ -42,7 +42,7 @@ void EmissionFunctionArray::sample_dN_dy(Sampled_Particle new_particle, double y
   }
   else if(DIMENSION == 2)
   {
-    printf("Error: boost-invariant particle not within rapidity cut\n");
+    //printf("Error: boost-invariant particle not within rapidity cut\n");
   }
 }
 
@@ -187,7 +187,7 @@ double pion_thermal_weight_max(double x, double chem)
     (-0.3541350577684533 + 143218.69233952634*x - 24516.803600065778*x2 - 115811.59391199696*x3 +
      35814.36403387459*x4);
 
-  if(x < 0.1) printf("Out of data interpolation range: extrapolating fit...\n");
+  //if(x < 0.1) printf("Out of data interpolation range: extrapolating fit...\n");
 
   double buffer = 1.00001; // ensures rescaled w_eq <= 1.0 numerically
 
@@ -351,7 +351,7 @@ double max_particle_number(double mbar, double degeneracy, double sign, double b
     }
   } // df_mode
 
-  if(particle_density < 0.0) printf("Error: particle number is negative\n");
+  //if(particle_density < 0.0) printf("Error: particle number is negative\n");
 
   return particle_density;
 }
@@ -507,7 +507,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
       double weight = 1.0 / (exp(Ebar) + sign) / weq_max / (r1 * r2 * r3);
 
       // check if 0 <= weight <= 1
-      if(fabs(weight - 0.5) > 0.5) printf("Sample momentum error: weight = %lf out of bounds\n", weight);
+      //if(fabs(weight - 0.5) > 0.5) printf("Sample momentum error: weight = %lf out of bounds\n", weight);
 
       // check pLRF acceptance
       if(canonical(generator) < weight) break;
@@ -589,7 +589,7 @@ LRF_Momentum sample_momentum(default_random_engine& generator, long * acceptance
 
       double weight = pbar/Ebar * exponent / (exponent + sign);
 
-      if(fabs(weight - 0.5) > 0.5) printf("Sample momemtum error: weight = %f out of bounds\n", weight);
+      //if(fabs(weight - 0.5) > 0.5) printf("Sample momemtum error: weight = %f out of bounds\n", weight);
 
       // check pLRF acceptance
       if(canonical(generator) < weight) break;

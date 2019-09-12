@@ -50,12 +50,12 @@ void Milne_Basis::test_orthonormality(double tau2)
 
     double epsilon = 1.e-14;    // best order of magnitude I could get, why?...
 
-    if(U_normal > epsilon) printf("U is not normalized to 1 (%.6g)\n", U_normal);
-    if(X_normal > epsilon) printf("X is not normalized to -1 (%.6g)\n", X_normal);
-    if(Y_normal > epsilon) printf("Y is not normalized to -1 (%.6g)\n", Y_normal);
-    if(Z_normal > epsilon) printf("Z is not normalized to -1 (%.6g)\n", Z_normal);
-    if(U_orthogonal > epsilon) printf("U is not orthogonal (%.6g)\n", U_orthogonal);
-    if(X_orthogonal > epsilon) printf("X is not orthogonal (%.6g)\n", X_orthogonal);
+    //if(U_normal > epsilon) printf("U is not normalized to 1 (%.6g)\n", U_normal);
+    //if(X_normal > epsilon) printf("X is not normalized to -1 (%.6g)\n", X_normal);
+    //if(Y_normal > epsilon) printf("Y is not normalized to -1 (%.6g)\n", Y_normal);
+    //if(Z_normal > epsilon) printf("Z is not normalized to -1 (%.6g)\n", Z_normal);
+    //if(U_orthogonal > epsilon) printf("U is not orthogonal (%.6g)\n", U_orthogonal);
+    //if(X_orthogonal > epsilon) printf("X is not orthogonal (%.6g)\n", X_orthogonal);
 }
 
 Surface_Element_Vector::Surface_Element_Vector(double dsigmat_in, double dsigmax_in, double dsigmay_in, double dsigman_in)
@@ -114,8 +114,8 @@ void Shear_Stress::test_pimunu_orthogonality_and_tracelessness(double ut, double
 
     double epsilon = 1.e-15;
 
-    if(pimunu_umu > epsilon) printf("pimunu is not orthogonal (%.6g)\n", pimunu_umu);
-    if(Tr_pimunu > epsilon) printf("pimunu is not traceless (%.6g)\n", Tr_pimunu);
+    //if(pimunu_umu > epsilon) printf("pimunu is not orthogonal (%.6g)\n", pimunu_umu);
+    //if(Tr_pimunu > epsilon) printf("pimunu is not traceless (%.6g)\n", Tr_pimunu);
 }
 
 void Shear_Stress::boost_pimunu_to_lrf(Milne_Basis basis_vectors, double tau2)
@@ -155,7 +155,7 @@ void Baryon_Diffusion::test_Vmu_orthogonality(double ut, double ux, double uy, d
 
     double epsilon = 1.e-15;
 
-    if(Vmu_umu > epsilon) printf("Vmu is not orthogonal\n");
+    //if(Vmu_umu > epsilon) printf("Vmu is not orthogonal\n");
 }
 
 void Baryon_Diffusion::boost_Vmu_to_lrf(Milne_Basis basis_vectors, double tau2)
