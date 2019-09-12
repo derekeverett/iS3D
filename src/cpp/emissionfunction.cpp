@@ -1525,10 +1525,11 @@ void EmissionFunctionArray::calculate_spectra(std::vector< std::vector <Sampled_
               {
                 // average particle yield
                 double Ntotal = calculate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla);
-
+		Ntotal = fabsf(Ntotal); //prevent overflow 
                 // number of events to sample
                 //Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
 		Nevents = min( (int)ceil(MIN_NUM_HADRONS / Ntotal) , MAX_NUM_SAMPLES );
+		Nevents = fabs(Nevents); //prevent overflow 
               }
 
               printf("Sampling %d event(s)\n", Nevents);
@@ -1588,9 +1589,10 @@ void EmissionFunctionArray::calculate_spectra(std::vector< std::vector <Sampled_
               if(OVERSAMPLE)
               {
                 double Ntotal = calculate_total_yield(Equilibrium_Density, Bulk_Density, Diffusion_Density, T, P, E, tau, ux, uy, un, dat, dax, day, dan, pixx, pixy, pixn, piyy, piyn, bulkPi, muB, nB, Vx, Vy, Vn, df_data, gla);
-
+		Ntotal = fabsf(Ntotal); //prevent overflow 
                 //Nevents = (int)ceil(MIN_NUM_HADRONS / Ntotal);
 		Nevents = min( (int)ceil(MIN_NUM_HADRONS / Ntotal) , MAX_NUM_SAMPLES );
+		Nevents = fabs(Nevents); //prevent overflow 
               }
 
               printf("Sampling %d event(s)\n", Nevents);
